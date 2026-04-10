@@ -141,3 +141,4 @@ vite.config.ts.timestamp-*
 # Editors
 *.code-workspace
 .cursor/hooks/state
+.claude/*.local.json
