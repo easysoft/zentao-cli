@@ -6,12 +6,12 @@
 
 * 基于最新的禅道 RESTful API 2.0 实现
 * 安全的用户认证管理，支持多用户切换
-* 支持工作区切换，记住当前产品、项目、执行等信息，简化操作
-* 支持对数据进行摘取、过滤、排序等操作，自动处理数据中的 HTML 为 Markdown
-* 对 AI Agents 友好，完善的帮助信息，支持输出 Markdown
-* 使用方便，通过 npx zentao 立即使用
-* 使用现代的 bun、TypeScript 开发，类型安全
-* 完善的测试覆盖，确保代码质量
+* 支持工作区切换，可记住当前产品、项目、执行等信息，简化操作
+* 支持对数据进行摘取、过滤、排序等处理，并自动将 HTML 转换为 Markdown
+* 对 AI Agents 友好，帮助信息完善，支持输出 Markdown
+* 使用便捷，可通过 `npx zentao` 立即运行
+* 使用现代的 bun 与 TypeScript 开发，具备类型安全
+* 提供完善的测试覆盖，保障代码质量
 
 ## 快速使用
 
@@ -19,24 +19,25 @@
 # 全局安装 zentao-cli 工具
 npm install -g zentao
 
-# 其他安装使用方式
+# 其他安装与运行方式
 # bun install -g zentao  # ← 使用 bun 安装
 # npx zentao             # ← 通过 npx 免安装运行
 # pnpm dlx zentao        # ← 通过 pnpm 免安装运行
 
-# 首次执行会提示用户输入禅道 URL、用户和账号来登录禅道，登录成功后会记住用户信息，方便后续使用
+# 首次执行时会提示输入禅道 URL、用户名和密码完成登录
+# 登录成功后会记住用户信息，方便后续使用
 zentao
 
 # 查看禅道产品
 zentao product
 
-# 查看给定 ID 的产品
+# 查看指定 ID 的产品
 zentao product 1
 
-# 更新禅道产品#1
+# 更新禅道产品 #1
 zentao product update 1 --name=产品1
 
-# 其他功能可以通过 zentao help 查看帮助信息
+# 更多功能可通过 help 查看
 zentao help
 ```
 
@@ -46,8 +47,9 @@ zentao help
 
 #### 登录验证
 
-首次执行 `zentao` 会提示用户输入禅道 URL、用户名和密码来登录禅道，登录成功后会记住用户信息（包括禅道 URL、账号、Token，不包括密码），方便后续使用。
-也可以通过 `zentao login` 命令来进行登录，支持通过 `-s <zentao_url>`、`-u <account>`、`-p <password>` 参数指定禅道 URL、用户名和密码，例如：
+首次执行 `zentao` 时，会提示输入禅道 URL、用户名和密码完成登录。登录成功后会记住用户信息（包括禅道 URL、账号和 Token，不包括密码），方便后续使用。
+
+也可以通过 `zentao login` 命令登录，支持使用 `-s <zentao_url>`、`-u <account>`、`-p <password>` 参数指定禅道 URL、用户名和密码，例如：
 
 ```bash
 # 登录禅道
@@ -56,16 +58,20 @@ zentao login -s https://zentao.example.com -u admin -p 123456
 
 #### 环境变量
 
-zentao-cli 支持从环境变量获取禅道服务地址、用户账号和密码，如果已经指定了 `-s`、`-u`、`-p` 参数，则优先使用这些参数，环境变量将不会生效。有时虽然有设置环境变量，但之前已经手动进行过身份验证，如果想忽略之前的身份信息，则可以通过 `zentao login --useEnv` 参数来强制使用环境变量重新进行验证。支持如下环境变量：
+`zentao-cli` 支持从环境变量中读取禅道服务地址、用户账号和密码。如果已经显式指定了 `-s`、`-u`、`-p` 参数，则优先使用这些参数，环境变量不会生效。
+
+有时即使已经设置了环境变量，之前手动登录过的身份信息仍可能被优先使用。如果希望忽略已有身份信息并强制使用环境变量重新验证，可以通过 `zentao login --useEnv` 来实现。
+
+支持如下环境变量：
 
 * `ZENTAO_URL`：禅道服务地址
 * `ZENTAO_ACCOUNT`：用户账号
 * `ZENTAO_PASSWORD`：密码
-* `ZENTAO_TOKEN`：TOKEN，当没有密码时，可以通过该环境变量获取 TOKEN
+* `ZENTAO_TOKEN`：TOKEN。当未提供密码时，可通过该环境变量读取 TOKEN
 
 #### 账户切换
 
-zentao-cli 支持登录多个禅道服务，或者同一个服务登录多个账号，登录成功后会以最后一次登录的服务账号为当前账户，可以通过 `zentao profile` 命令查看当前用户信息和切换当前用户。
+`zentao-cli` 支持登录多个禅道服务，或在同一服务下登录多个账号。登录成功后，默认将最后一次登录的服务账号设为当前账户。可以通过 `zentao profile` 查看当前用户信息并切换当前用户。
 
 ```bash
 # 查看当前用户信息
@@ -83,24 +89,24 @@ $ zentao profile dev1@zentao.example.com
 
 #### 退出登录
 
-使用 `zentao logout` 来退出当前用户，同时会移除 `~/.config/zentao/zentao.json` 文件中的用户信息。
+使用 `zentao logout` 可退出当前用户，同时移除 `~/.config/zentao/zentao.json` 文件中的对应用户信息。
 
 ```bash
-# 退出当前用户：
+# 退出当前用户
 $ zentao logout
 
-# 退出指定的用户：
+# 退出指定用户
 $ zentao logout dev1@zentao.example.com
 ```
 
 ### 工作区管理
 
-zentao-cli 支持记住用户上次访问的产品、项目和执行，这样在调用相关 API 时自动使用上次的参数，方便用户快速访问和操作禅道数据。可以通过如下命令来管理工作区：
+`zentao-cli` 支持记住用户上次访问的产品、项目和执行信息，这样在调用相关 API 时可以自动使用上次的上下文参数，方便快速访问和操作禅道数据。可以通过如下命令管理工作区：
 
 * `zentao workspace`：查看当前工作区信息
 * `zentao workspace ls`：查看所有工作区信息
 * `zentao workspace <id>`：查看指定 ID 的工作区信息
-* `zentao workspace set <id>`：设置当前工作区为指定 ID 的工作区
+* `zentao workspace set <id>`：将指定 ID 的工作区设为当前工作区
 * `zentao workspace set --product=<id>`：自动设置产品所属的工作区
 * `zentao workspace set --project=<id>`：自动设置项目所属的工作区
 * `zentao workspace set --execution=<id>`：自动设置执行所属的工作区
@@ -134,24 +140,24 @@ $ zentao workspace set 2
 # 自动设置执行所属的项目和产品
 $ zentao workspace --execution=2
 
-# 设置工作区后调用一些 API 可以省略相关参数
+# 设置工作区后，调用部分 API 时可省略相关参数
 $ zentao bug ls # ← 无需指定 --product 参数
 
 # 输出略
 ```
 
-用户工作区信息和相关设置保存在 `~/.config/zentao/zentao.json` 文件中。
+用户的工作区信息及相关设置保存在 `~/.config/zentao/zentao.json` 文件中。
 
-如果配置了 `autoSetWorkspace` 选项，则在调用相关操作时会**自动设置工作区**，具体包括：
+如果启用了 `autoSetWorkspace` 选项，则在调用相关操作时会**自动设置工作区**，具体包括：
 
-* 获取单个产品详情，创建新产品，更新产品等操作时，会自动设置工作区为产品所属的工作区
-* 获取单个项目详情，创建新项目，更新项目等操作时，会自动设置工作区为项目所属的工作区
-* 获取单个执行详情，创建新执行，更新执行等操作时，会自动设置工作区为执行所属的工作区
+* 获取单个产品详情、创建新产品、更新产品等操作时，会自动将工作区设置为该产品所属的工作区
+* 获取单个项目详情、创建新项目、更新项目等操作时，会自动将工作区设置为该项目所属的工作区
+* 获取单个执行详情、创建新执行、更新执行等操作时，会自动将工作区设置为该执行所属的工作区
 
-下面为自动设置工作区后的输出示例：
+下面是自动设置工作区后的输出示例：
 
 ```bash
-# 获取禅道产品#1 信息
+# 获取禅道产品 #1 信息
 $ zentao product 1
 
 * id: 1
@@ -165,9 +171,9 @@ $ zentao product 1
 
 #### 命令调用方式
 
-禅道数据访问和操作支持两种方式：
+禅道数据访问和操作支持两种调用方式：
 
-第一种：**原始方式**，通过如下 `ls`、`get` 等命令来访问和操作禅道数据，具体包括:
+第一种：**原始方式**，通过如下 `ls`、`get` 等命令访问和操作禅道数据，具体包括：
 
 * `zentao ls`：获取对象列表
 * `zentao get <moduleName> <objectID>`：获取单个对象
@@ -177,7 +183,7 @@ $ zentao product 1
 * `zentao do <moduleName> <action> <objectID> [params]`：执行对象操作
 * `zentao help <moduleName>`：获取模块帮助信息
 
-第二种：**简写方式**，通过如下 `zentao <moduleName>` 命令来访问和操作禅道数据，具体包括:
+第二种：**简写方式**，通过如下 `zentao <moduleName>` 命令访问和操作禅道数据，具体包括：
 
 * `zentao <moduleName>`：获取对象列表
 * `zentao <moduleName> <objectID>`：获取单个对象
@@ -188,11 +194,11 @@ $ zentao product 1
 * `zentao <moduleName> help`：获取模块帮助信息
 
 > [!TIP]
-> 优先推荐简写方式，当简写方式模块名与命令行一级命令冲突时，则必须使用原始方式调用。
+> 推荐优先使用简写方式。当简写方式中的模块名与命令行一级命令冲突时，必须改用原始方式调用。
 
 #### 获取禅道对象列表
 
-支持通过 `zentao <moduleName>` 的方式来获取给定模块的对象列表。
+支持通过 `zentao <moduleName>` 的方式获取指定模块的对象列表。
 
 ```bash
 # 获取禅道产品列表
@@ -222,7 +228,7 @@ $ zentao product --format=json
     }
 }
 
-# 获取项目 #5 下的执行列表，如果省略 --project 参数则使用当前工作区中的项目
+# 获取项目 #5 下的执行列表；如果省略 --project 参数，则使用当前工作区中的项目
 $ zentao execution --project=5
 
 # 输出略
@@ -231,7 +237,7 @@ $ zentao execution --project=5
 <details>
 <summary>原始方式</summary>
 
-通过 `zentao ls <moduleName>` 获取给定模块的对象列表。
+通过 `zentao ls <moduleName>` 获取指定模块的对象列表。
 
 ```bash
 # 获取禅道产品列表
@@ -251,10 +257,10 @@ $ zentao ls product --format=json
 
 #### 获取禅道单个对象
 
-支持通过 `zentao <moduleName> <objectID>` 获取给定模块的指定 ID 的对象信息。
+支持通过 `zentao <moduleName> <objectID>` 获取指定模块、指定 ID 的对象信息。
 
 ```bash
-# 获取禅道产品#1 信息
+# 获取禅道产品 #1 信息
 $ zentao product 1
 
 * id: 1
@@ -265,10 +271,10 @@ $ zentao product 1
 <details>
 <summary>原始方式</summary>
 
-通过 `zentao get <moduleName> <objectID>` 获取给定模块的指定 ID 的对象信息。
+通过 `zentao get <moduleName> <objectID>` 获取指定模块、指定 ID 的对象信息。
 
 ```bash
-# 获取禅道产品#1 信息
+# 获取禅道产品 #1 信息
 $ zentao get product 1
 
 # 输出略
@@ -278,10 +284,10 @@ $ zentao get product 1
 
 #### 删除禅道对象
 
-支持通过 `zentao <moduleName> delete <objectIDs>` 删除给定模块的指定 ID 的对象，如果要删除多个对象，则可以通过逗号分隔多个 ID，默认删除前会输出删除对象的详细信息以供确认，如果不需要确认，则可以通过 `--yes` 参数来强制删除。
+支持通过 `zentao <moduleName> delete <objectIDs>` 删除指定模块中的指定 ID 对象。删除多个对象时，可使用逗号分隔多个 ID。默认删除前会输出待删除对象的详细信息供用户确认；如果无需确认，可通过 `--yes` 参数强制删除。
 
 ```bash
-# 删除禅道产品#1
+# 删除禅道产品 #1
 $ zentao product delete 1
 
 要删除的产品 #1：
@@ -293,7 +299,7 @@ $ zentao product delete 1
 是否继续？（y/n）: y
 已删除 产品 #1
 
-# 删除禅道产品#1 和 #2
+# 删除禅道产品 #1 和 #2
 $ zentao product delete 1,2
 
 要删除的产品（共 2 个）：
@@ -306,7 +312,7 @@ $ zentao product delete 1,2
 是否继续？（y/n）: y
 已删除 2 个产品
 
-# 强制删除禅道产品#1 和 #2
+# 强制删除禅道产品 #1 和 #2
 $ zentao product delete 1,2 --yes
 
 已删除 2 个产品：1, 2
@@ -327,15 +333,15 @@ $ zentao product delete 1,2 --yes --format=json
 <details>
 <summary>原始方式</summary>
 
-通过 `zentao delete <moduleName> <objectIDs>` 删除给定模块的指定 ID 的对象，如果要删除多个对象，则可以通过逗号分隔多个 ID。
+通过 `zentao delete <moduleName> <objectIDs>` 删除指定模块中的指定 ID 对象。删除多个对象时，可通过逗号分隔多个 ID。
 
 ```bash
-# 删除禅道产品#1
+# 删除禅道产品 #1
 $ zentao delete product 1
 
 # 输出略
 
-# 删除禅道产品#1 和 #2
+# 删除禅道产品 #1 和 #2
 $ zentao delete product 1,2
 
 # 输出略
@@ -345,14 +351,14 @@ $ zentao delete product 1,2
 
 #### 创建禅道对象
 
-支持通过 `zentao <moduleName> create [params]` 创建给定模块的对象。
+支持通过 `zentao <moduleName> create [params]` 创建指定模块中的对象。
 
 ```bash
 # 创建禅道产品
 $ zentao product create --name=产品1
 ```
 
-可以通过 `--data='JSON_STRING'` 参数，指定创建对象的 JSON 数据，如果 JSON 数据是一个对象数组，则可以进行批量创建。
+也可以通过 `--data='JSON_STRING'` 指定创建对象所需的 JSON 数据；如果 JSON 数据是对象数组，则可进行批量创建。
 
 ```bash
 # 创建禅道产品，并指定 JSON 数据
@@ -365,14 +371,14 @@ $ zentao product create --data='[{"name": "产品1"}, {"name": "产品2"}]'
 <details>
 <summary>原始方式</summary>
 
-通过 `zentao create <moduleName> [params]` 创建给定模块的对象。
+通过 `zentao create <moduleName> [params]` 创建指定模块中的对象。
 
 ```bash
 # 创建禅道产品
 $ zentao create product --name=产品1
 ```
 
-可以通过 `--data='JSON_STRING'` 参数，指定创建对象的 JSON 数据，如果 JSON 数据是一个对象数组，则可以进行批量创建。
+也可以通过 `--data='JSON_STRING'` 指定创建对象所需的 JSON 数据；如果 JSON 数据是对象数组，则可进行批量创建。
 
 ```bash
 # 创建禅道产品，并指定 JSON 数据
@@ -386,40 +392,40 @@ $ zentao create product --data='[{"name": "产品1"}, {"name": "产品2"}]'
 
 #### 更新禅道对象
 
-支持通过 `zentao <moduleName> update [objectID] [params]` 更新给定模块的指定 ID 的对象。
+支持通过 `zentao <moduleName> update [objectID] [params]` 更新指定模块中指定 ID 的对象。
 
 ```bash
-# 更新禅道产品#1
+# 更新禅道产品 #1
 $ zentao product update 1 --name=产品1
 ```
 
-可以通过 `--data='JSON_STRING'` 参数，指定更新对象的 JSON 数据，如果 JSON 数据是一个对象数组，则可以进行批量更新。
+也可以通过 `--data='JSON_STRING'` 指定更新对象所需的 JSON 数据；如果 JSON 数据是对象数组，则可进行批量更新。
 
 ```bash
-# 更新禅道产品#1，并指定 JSON 数据
+# 更新禅道产品 #1，并指定 JSON 数据
 $ zentao product update 1 --data='{"name": "产品1"}'
 
-# 更新禅道产品#1 和 #2，并指定 JSON 数据，进行批量更新
+# 更新禅道产品 #1 和 #2，并指定 JSON 数据，进行批量更新
 $ zentao product update --data='[{"id": 1, "name": "产品1"}, {"id": 2, "name": "产品2"}]'
 ```
 
 <details>
 <summary>原始方式</summary>
 
-通过 `zentao update <moduleName> [objectID] [params]` 更新给定模块的指定 ID 的对象。
+通过 `zentao update <moduleName> [objectID] [params]` 更新指定模块中指定 ID 的对象。
 
 ```bash
-# 更新禅道产品#1
+# 更新禅道产品 #1
 $ zentao update product 1 --name=产品1
 ```
 
-可以通过 `--data='JSON_STRING'` 参数，指定更新对象的 JSON 数据，如果 JSON 数据是一个对象数组，则可以进行批量更新。
+也可以通过 `--data='JSON_STRING'` 指定更新对象所需的 JSON 数据；如果 JSON 数据是对象数组，则可进行批量更新。
 
 ```bash
-# 更新禅道产品#1，并指定 JSON 数据
+# 更新禅道产品 #1，并指定 JSON 数据
 $ zentao update product 1 --data='{"name": "产品1"}'
 
-# 更新禅道产品#1 和 #2，并指定 JSON 数据，进行批量更新
+# 更新禅道产品 #1 和 #2，并指定 JSON 数据，进行批量更新
 $ zentao update product --data='[{"id": 1, "name": "产品1"}, {"id": 2, "name": "产品2"}]'
 ```
 
@@ -427,32 +433,32 @@ $ zentao update product --data='[{"id": 1, "name": "产品1"}, {"id": 2, "name":
 
 #### 其他操作
 
-支持通过 `zentao <moduleName> <action> <objectID> [params]` 执行给定模块的指定 ID 的对象的指定操作。
+支持通过 `zentao <moduleName> <action> <objectID> [params]` 对指定模块、指定 ID 的对象执行特定操作。
 
 ```bash
 # 解决禅道 BUG #1
 $ zentao bug resolve 1 --comment "已解决"
 ```
 
-不同的对象支持的操作不同，具体可以通过 `zentao <moduleName> --help` 获取给定模块支持的操作。
+不同对象支持的操作不同，具体可通过 `zentao <moduleName> --help` 查看对应模块支持的操作。
 
 <details>
 <summary>原始方式</summary>
 
-通过 `zentao do <moduleName> <action> <objectID> [params]` 执行给定模块的指定 ID 的对象的指定操作。
+通过 `zentao do <moduleName> <action> <objectID> [params]` 对指定模块、指定 ID 的对象执行特定操作。
 
 ```bash
 # 解决禅道 BUG #1
 $ zentao do bug resolve 1 --comment "已解决"
 ```
 
-不同的对象支持的操作不同，具体可以通过 `zentao do <moduleName> --help` 获取给定模块支持的操作。
+不同对象支持的操作不同，具体可通过 `zentao do <moduleName> --help` 查看对应模块支持的操作。
 
 </details>
 
 ### 命令行管道与标准输入 (Stdin) 支持
 
-支持通过命令行管道与标准输入 (Stdin) 来传递 `--data` 参数，例如创建产品时通过管道传递 JSON 数据：
+支持通过命令行管道与标准输入（Stdin）传递 `--data` 参数。例如，创建产品时可以通过管道传入 JSON 数据：
 
 ```bash
 # 创建禅道产品，通过管道传递 JSON 数据
@@ -464,8 +470,9 @@ echo '{"name": "新产品"}' | zentao product create
 
 ### 批量操作错误处理
 
-当进行批量操作出错时默认情况将自动跳过出错的对象，继续执行后续操作，如果需要停止执行后续操作，则可以通过 `--batch-fail-fast` 参数来实现。
-也可以通过 `batchFailFast` 配置项来全局开启此功能。下面为批量删除产品出错时的输出示例：
+进行批量操作时，默认会在某个对象出错后自动跳过该对象，并继续执行后续操作。如果希望在出错后立即停止，可使用 `--batch-fail-fast` 参数。
+
+也可以通过 `batchFailFast` 配置项在全局范围内开启此行为。下面是批量删除产品出错时的输出示例：
 
 ```bash
 # 批量删除 5 个产品，但在第三个产品时出错
@@ -511,14 +518,14 @@ $ zentao product delete 1,2,3,4,5 --yes --batch-fail-fast --format=json
 
 ### 静默模式
 
-支持通过 `--silent` 参数，在执行命令时启用静默模式，不输出任何信息，仅在出错时输出错误信息。
+支持通过 `--silent` 参数在执行命令时启用静默模式。启用后，不再输出普通信息，仅在出错时输出错误信息。
 
 ```bash
-# 在执行命令时启用静默模式，不输出任何信息，仅在出错时输出错误信息
+# 启用静默模式，仅在出错时输出错误信息
 $ zentao product create --silent
 ```
 
-支持通过 `silent` 配置项来全局开启此功能。
+也可以通过 `silent` 配置项在全局范围内开启该功能。
 
 ```bash
 # 设置全局静默模式
@@ -527,19 +534,19 @@ $ zentao config set silent true
 
 ### 获取帮助
 
-支持通过 `zentao help` 获取所有一级命令帮助信息，支持通过 `zentao <command> --help` 获取给定命令的帮助信息。
+支持通过 `zentao help` 获取所有一级命令的帮助信息，也支持通过 `zentao <command> --help` 获取指定命令的帮助信息。
 
 ```bash
 # 获取所有一级命令帮助信息
 $ zentao help
 
-# 获取给定命令的帮助信息
+# 获取指定命令的帮助信息
 $ zentao <command> --help
 ```
 
 ### 输出格式
 
-支持通过 `--format=json｜markdown|raw` 参数，指定输出格式。默认输出 Markdown 格式，其中 `raw` 表示输出原始 JSON 数据。
+支持通过 `--format=json|markdown|raw` 参数指定输出格式。默认输出 Markdown 格式，其中 `raw` 表示输出原始 JSON 数据。
 
 ```bash
 # 获取禅道产品信息，并输出 Markdown 格式
@@ -552,7 +559,7 @@ $ zentao product
 
 已显示 2 项，共 2 项，当前第 1 页，每页 100 条
 
-# 如果获取的是单个对象，则以列表的形式输出
+# 如果获取的是单个对象，则以列表形式输出
 $ zentao product 1
 
 * id: 1
@@ -596,11 +603,11 @@ $ zentao product --format=raw
 
 ### 数据处理
 
-zentao-cli 支持对数据进行摘取、过滤、排序等操作，方便用户快速获取需要的数据。
+`zentao-cli` 支持对数据进行摘取、过滤、排序等处理，方便用户快速获取所需信息。
 
 #### 摘取给定属性
 
-支持通过 `--pick=<field1>,<field2>,...` 参数，指定获取对象的指定字段，多个字段用逗号分隔，支持通过 `.` 连接子字段。
+支持通过 `--pick=<field1>,<field2>,...` 参数指定需要输出的字段。多个字段用逗号分隔，支持通过 `.` 访问子字段。
 
 ```bash
 # 获取禅道产品信息，并摘取产品名称和 ID
@@ -616,9 +623,9 @@ $ zentao product --pick=id,name
 
 #### 过滤数据
 
-支持通过 `--filter=<field1><operator><value>,<field2><operator><value>,...` 参数，指定过滤条件，多个条件用逗号分隔，字段名称支持通过 `.` 连接子字段，当参数值包含逗号时，需要使用引号包裹参数值。
+支持通过 `--filter=<field1><operator><value>,<field2><operator><value>,...` 参数指定过滤条件。多个条件用逗号分隔，字段名支持通过 `.` 访问子字段。当参数值中包含逗号时，需要使用引号包裹。
 
-在同一个 `--filter` 内通过逗号分隔多个过滤条件，会使用 AND 逻辑进行过滤。如果要使用 OR 逻辑，则可以通过多个 `--filter` 参数来实现。
+在同一个 `--filter` 参数内使用逗号分隔多个条件时，会按 AND 逻辑进行过滤。如果需要 OR 逻辑，则可使用多个 `--filter` 参数。
 
 支持的运算符：
 
@@ -631,10 +638,10 @@ $ zentao product --pick=id,name
 * `~` 包含
 * `!~` 不包含
 
-下面为一些使用示例：
+下面是一些使用示例：
 
 ```bash
-# 获取禅道产品信息，并过滤产品名称包含 "产品" 的产品
+# 获取禅道产品信息，并过滤名称包含 "产品" 的产品
 $ zentao product --filter 'name~产品'
 
 | id | name | ... |
@@ -644,7 +651,7 @@ $ zentao product --filter 'name~产品'
 
 已显示 2 项，共 2 项，当前第 1 页，每页 100 条
 
-# 获取禅道产品信息，并过滤产品名称包含 "产品" 或 产品名称为"项目1" 的产品
+# 获取禅道产品信息，并过滤名称包含 "产品" 或名称为 "项目1" 的产品
 $ zentao product --filter 'name~产品' --filter 'name:项目1'
 
 | id | name | ... |
@@ -656,7 +663,7 @@ $ zentao product --filter 'name~产品' --filter 'name:项目1'
 
 已显示 4 项，共 4 项，当前第 1 页，每页 100 条
 
-# 当参数值包含逗号时，需要使用引号包裹参数值，例如：
+# 当参数值中包含逗号时，需要使用引号包裹，例如：
 $ zentao product --filter 'name~"产品1,产品2"'
 
 # 输出略
@@ -664,12 +671,12 @@ $ zentao product --filter 'name~"产品1,产品2"'
 
 #### 模糊搜索
 
-当输出的数据是列表时支持进行模糊搜索，通过 `--search=<keyword>,<keyword>,...` 参数，指定模糊搜索关键词，多个关键词使用逗号分隔；通过 `--search-fields=<field1>,<field2>,...` 参数，指定模糊搜索的字段，多个字段用逗号分隔，支持通过 `.` 连接子字段。
+当输出结果为列表时，支持通过 `--search=<keyword>,<keyword>,...` 参数进行模糊搜索。多个关键词使用逗号分隔；通过 `--search-fields=<field1>,<field2>,...` 指定搜索字段，多个字段用逗号分隔，并支持通过 `.` 访问子字段。
 
-如果要使用 OR 逻辑，则可以通过多个 `--search` 参数来实现。
+如果需要 OR 逻辑，则可以使用多个 `--search` 参数。
 
 ```bash
-# 获取禅道产品信息，并模糊搜索产品名称或描述包含 "产品" 的产品
+# 获取禅道产品信息，并搜索名称或描述中包含 "产品" 的产品
 $ zentao product --search=产品 --search-fields=name,desc
 
 | id | name | ... |
@@ -679,7 +686,7 @@ $ zentao product --search=产品 --search-fields=name,desc
 
 已显示 2 项，共 2 项，当前第 1 页，每页 100 条
 
-# 获取禅道产品信息，并模糊搜索产品名称包含 "产品1" 或 "产品2" 的产品
+# 获取禅道产品信息，并搜索名称中包含 "产品1" 或 "产品2" 的产品
 $ zentao product --search=产品1 --search=产品2
 
 | id | name | ... |
@@ -692,7 +699,7 @@ $ zentao product --search=产品1 --search=产品2
 
 #### 排序数据
 
-支持通过 `--sort=<field1>_asc,<field2>_desc,...` 参数，指定排序条件，多个排序条件用逗号分隔，字段名称支持通过 `.` 连接子字段。
+支持通过 `--sort=<field1>_asc,<field2>_desc,...` 参数指定排序条件。多个排序条件用逗号分隔，字段名支持通过 `.` 访问子字段。
 
 ```bash
 # 获取禅道产品信息，并按产品名称排序
@@ -708,11 +715,11 @@ $ zentao ls product --sort=name_asc
 
 #### 分页数据
 
-当输出的数据是列表时可以通过如下选项来控制分页：
+当输出结果为列表时，可以通过如下选项控制分页：
 
-* `--page=<pageNumber>`：指定分页页码，默认值为 1
+* `--page=<pageNumber>`：指定页码，默认值为 1
 * `--recPerPage=<recPerPage>`：指定分页大小，默认值为 20
-* `--all`：获取所有数据，不进行分页
+* `--all`：获取全部数据，不分页
 * `--limit=<number>`：指定获取数据的数量
 
 ```bash
@@ -750,7 +757,7 @@ $ zentao config set defaultOutputFormat json
 $ zentao config set lang en
 ```
 
-通过 `zentao config get [key]` 来查看默认配置，如果不指定 `key`，则获取所有默认配置。
+通过 `zentao config get [key]` 查看默认配置；如果不指定 `key`，则返回全部默认配置。
 
 ```bash
 # 查看默认输出格式
@@ -772,7 +779,7 @@ batchFailFast: false
 
 ### 获取版本信息
 
-通过 `zentao version` 获取 zentao-cli 版本信息，如果已经登录了禅道，则获取当前登录的禅道版本信息。
+通过 `zentao version` 获取 `zentao-cli` 版本信息；如果已经登录禅道，还会同时输出当前登录的禅道版本信息。
 
 ```bash
 # 获取 zentao-cli 版本信息
@@ -784,7 +791,7 @@ zentao https://zentao.example.com 22.2
 
 ### 自动补全
 
-支持通过 `zentao autocomplete` 命令生成自动补全脚本，支持 zsh、bash 和 fish 三种 shell。
+支持通过 `zentao autocomplete` 命令生成自动补全脚本，支持 `zsh`、`bash` 和 `fish` 三种 shell。
 
 ```bash
 # 生成 zsh 自动补全脚本
@@ -801,15 +808,15 @@ $ zentao autocomplete fish
 
 ### 在 AI Agents 中使用
 
-提示 AI Agents 提示用户安装 zentao-cli，然后让 AI 调用 zentao-cli 来访问和操作禅道数据。下面是参考提示词：
+可以提示 AI Agent 先让用户安装 `zentao-cli`，再调用该工具访问和操作禅道数据。下面是参考提示词：
 
-提示安装 zentao-cli 工具：
+提示安装 `zentao-cli` 工具：
 
 ```prompt
-通过 npm 全局安装 zentao-cli 工具。
+通过 npm 全局安装 zentao 工具。
 ```
 
-安装完成后就可以提示调用 zentao-cli 工具，获取禅道产品信息：
+安装完成后，即可提示调用 `zentao-cli` 获取禅道产品信息：
 
 ```prompt
 通过 zentao-cli 工具，获取禅道产品信息。
@@ -817,16 +824,16 @@ $ zentao autocomplete fish
 
 ### 通过 zentao-api Skill 使用
 
-[禅道 API 技能](https://github.com/easysoft/zentao-skills) 中已经实现了 zentao-cli 工具的使用，推荐使用该技能来访问和操作禅道数据。具体使用方法参考[文档](https://github.com/easysoft/zentao-skills)。
+[禅道 API 技能](https://github.com/easysoft/zentao-skills) 已经封装了 `zentao-cli` 的使用方式，推荐通过该技能访问和操作禅道数据。具体使用方法可参考其[文档](https://github.com/easysoft/zentao-skills)。
 
 ## 开发指引
 
 ### 技术栈
 
-* 使用 Bun + TypeScript 开发，构建为 Node.js 兼容产物，通过 npm 发布，无需用户安装 Bun
+* 使用 Bun + TypeScript 开发，构建为 Node.js 兼容产物，通过 npm 发布，用户无需安装 Bun
 * 用户配置存储：[configstore](https://github.com/sindresorhus/configstore)
 * 终端开发辅助库：[commander.js](https://github.com/tj/commander.js)
-* 对象的嵌套属性访问：[dot-prop](https://github.com/sindresorhus/dot-prop)
+* 对象嵌套属性访问：[dot-prop](https://github.com/sindresorhus/dot-prop)
 * HTML 转 Markdown：[turndown](https://github.com/mixmark-io/turndown)
 * [Node.js CLI 应用程序最佳实践](https://github.com/lirantal/nodejs-cli-apps-best-practices/blob/main/README_zh-Hans.md)
 
@@ -836,7 +843,7 @@ $ zentao autocomplete fish
 zentao-cli/
 ├── src/
 │   ├── commands/           # 命令实现
-│   ├── api/                # API 客户端（HTTP 请求封装、Token管理
+│   ├── api/                # API 客户端（HTTP 请求封装、Token 管理）
 │   ├── auth/               # 认证逻辑
 │   ├── utils/              # 工具函数
 │   ├── config/             # 配置管理
@@ -853,9 +860,9 @@ zentao-cli/
 
 ### 用户配置管理
 
-用户配置管理使用 [configstore](https://github.com/sindresorhus/configstore) 来管理用户配置，配置文件保存在 `~/.config/zentao/zentao.json` 文件中，该文件在首次创建时强制设置文件权限为 `600`，防止同主机的其他用户越权读取。
+用户配置使用 [configstore](https://github.com/sindresorhus/configstore) 管理，配置文件保存在 `~/.config/zentao/zentao.json` 中。首次创建该文件时，会强制设置文件权限为 `600`，以防止同一主机上的其他用户越权读取。
 
-下面为一个配置文件示例：
+下面是一个配置文件示例：
 
 ```json
 {
@@ -955,7 +962,7 @@ zentao-cli/
 
 ### 错误提示
 
-当执行命令或调用禅道 API 出错时，会输出错误信息，并提示用户检查配置文件，目前可能存在如下错误：
+当执行命令或调用禅道 API 出错时，会输出错误信息，并提示用户检查配置或参数。当前可能存在如下错误：
 
 | 错误代码 | 错误原因 |
 | --- | --- |
@@ -963,7 +970,7 @@ zentao-cli/
 | 1001 | 必须提供有效的禅道服务地址、用户名和密码 |
 | 1002 | 所提供的禅道服务地址 xxx 无法访问 |
 | 1003 | 当前用户名和密码不正确 |
-| 1004 | 所提供的 Token 失效，请提供密码重新进行登录，或者提供新的 TOKEN |
+| 1004 | 所提供的 Token 已失效，请提供密码重新登录，或提供新的 TOKEN |
 | 1005 | 配置文件损坏或无法读取，请检查 `~/.config/zentao/zentao.json` |
 | 1006 | 未找到指定的用户配置，请先使用 `zentao login` 登录 |
 | 1007 | 指定的用户配置不存在，请通过 `zentao profile` 查看可用配置 |
@@ -975,7 +982,7 @@ zentao-cli/
 | 2004 | field1 参数值 field1Value 无效，请检查参数格式是否正确 |
 | 2005 | 不支持的操作，请通过 `zentao <moduleName> --help` 查看支持的操作 |
 | 2006 | 当前用户没有权限执行此操作 |
-| 2007 | `--data` 参数的 JSON 数据格式无效 |
+| 2007 | `--data` 参数中的 JSON 数据格式无效 |
 | 2008 | 禅道服务端返回错误，请查看详细错误信息 |
 | **数据处理 (30xx)** | |
 | 3001 | `--pick` 指定的字段不存在 |
@@ -988,10 +995,10 @@ zentao-cli/
 | 5001 | 请求超时，请检查网络连接或禅道服务是否正常 |
 | 5002 | SSL/TLS 证书验证失败，请检查禅道服务地址是否正确 |
 
-下面为一个常见错误输出：
+下面是一个常见错误输出：
 
 ```bash
-# 在没有登录验证的情况下访问禅道数据
+# 在未登录验证的情况下访问禅道数据
 $ zentao product
 
 Error(E1001): 必须提供有效的禅道服务地址、用户名和密码
@@ -1011,15 +1018,15 @@ $ zentao product --format=json
 
 禅道 API 2.0 的验证过程如下：
 
-1. 检查 `~/.config/zentao/zentao.json` 文件是否存在，如果存在则读取文件中的信息，并执行步骤 3，如果不存在则执行步骤 2
-2. 从环境变量 `ZENTAO_URL`、`ZENTAO_ACCOUNT`、`ZENTAO_TOKEN` 或 `ZENTAO_PASSWORD` 获取禅道服务地址、用户账号和 TOKEN/密码，如果没有 TOKEN 但有密码则执行登录请求获取 TOKEN，如果 TOKEN 存在则并执行步骤 3，如果不存在则执行步骤 4
-3. 使用拿到的 TOKEN 进行一次测试请求（获取用户列表信息），如果请求成功则将相关信息缓存到 `~/.config/zentao/zentao.json` 文件中，如果请求失败则执行步骤 4
-4. 如果 TOKEN 实现，尝试从环境变量读取 `ZENTAO_URL`、`ZENTAO_ACCOUNT` 和 `ZENTAO_PASSWORD`，并执行一次登录操作，尝试重新获取 TOKEN 信息，如果成功则将相关信息缓存到 `~/.config/zentao/zentao.json` 文件中，如果失败则执行步骤 5
-5. 则终端输出提示用户采用 `zentao login -s <zentao_url> -u <account> -p <password>` 命令手动登录
+1. 检查 `~/.config/zentao/zentao.json` 文件是否存在；如果存在，则读取其中的信息，并执行步骤 3；如果不存在，则执行步骤 2
+2. 从环境变量 `ZENTAO_URL`、`ZENTAO_ACCOUNT`、`ZENTAO_TOKEN` 或 `ZENTAO_PASSWORD` 中读取禅道服务地址、用户账号和 TOKEN/密码。如果没有 TOKEN 但有密码，则先执行登录请求获取 TOKEN；如果 TOKEN 存在，则执行步骤 3；否则执行步骤 4
+3. 使用获取到的 TOKEN 发起一次测试请求（获取用户列表信息）。如果请求成功，则将相关信息缓存到 `~/.config/zentao/zentao.json` 文件中；如果请求失败，则执行步骤 4
+4. 如果 TOKEN 失效，则尝试从环境变量读取 `ZENTAO_URL`、`ZENTAO_ACCOUNT` 和 `ZENTAO_PASSWORD`，并再次执行登录操作以重新获取 TOKEN。如果成功，则将相关信息缓存到 `~/.config/zentao/zentao.json` 文件中；如果失败，则执行步骤 5
+5. 在终端提示用户使用 `zentao login -s <zentao_url> -u <account> -p <password>` 命令手动登录
 
 ### 禅道 API 调用
 
-禅道 API 2.0 基础路径 `$BASE_URL` 为 `$ZENTAO_URL/api.php/v2`，在 [zentao-openapi.json](./data/zentao-openapi.json) 文件中存储了禅道 API 2.0 的 OpenAPI 规范，可以参考该文件来了解禅道 API 2.0 的详细信息。
+禅道 API 2.0 的基础路径 `$BASE_URL` 为 `$ZENTAO_URL/api.php/v2`。仓库中的 [zentao-openapi.json](./data/zentao-openapi.json) 文件保存了禅道 API 2.0 的 OpenAPI 规范，可据此了解 API 详情。
 
 下面说明常见的 API 调用方式。
 
@@ -1045,7 +1052,7 @@ $ zentao product --format=json
 
 #### 获取用户列表信息
 
-获取用户列表信息，通常也用于验证 Token 是否有效。
+获取用户列表信息通常也可用于验证 Token 是否有效。
 
 请求地址：`GET $BASE_URL/users`，请求参数：
 
@@ -1091,7 +1098,7 @@ $ zentao product --format=json
 
 ### 测试
 
-使用 bun 的测试框架 [bun:test](https://bun.sh/docs/test) 来编写测试用例。
+使用 bun 的测试框架 [bun:test](https://bun.sh/docs/test) 编写测试用例。
 
 ```bash
 # 运行所有测试
