@@ -1,0 +1,58 @@
+import { Command } from 'commander';
+import { getAllProfiles, getCurrentProfile, setCurrentProfile, profileKey } from '../config/store.js';
+import { ZentaoError, formatError } from '../errors.js';
+import type { GlobalOptions } from './types.js';
+
+export function registerProfileCommand(program: Command): void {
+    program
+        .command('profile')
+        .description('查看或切换用户配置')
+        .argument('[profileKey]', '要切换到的用户配置（格式：account@server）')
+        .action((key: string | undefined) => {
+            const globalOpts = program.opts() as GlobalOptions;
+            try {
+                if (key) {
+                    const success = setCurrentProfile(key);
+                    if (!success) throw new ZentaoError('E1007');
+                    if (!globalOpts.silent) {
+                        console.log(`已切换到: ${key}`);
+                    }
+                    return;
+                }
+
+                const profiles = getAllProfiles();
+                if (profiles.length === 0) {
+                    throw new ZentaoError('E1006');
+                }
+
+                const current = getCurrentProfile();
+                const currentKey = current ? profileKey(current.account, current.server) : '';
+
+                if (globalOpts.format === 'json' || globalOpts.format === 'raw') {
+                    console.log(JSON.stringify({
+                        status: 'success',
+                        currentProfile: currentKey,
+                        profiles: profiles.map((p) => ({
+                            key: profileKey(p.account, p.server),
+                            server: p.server,
+                            account: p.account,
+                            current: profileKey(p.account, p.server) === currentKey,
+                        })),
+                    }, null, 4));
+                    return;
+                }
+
+                for (const p of profiles) {
+                    const pKey = profileKey(p.account, p.server);
+                    const marker = pKey === currentKey ? ' (当前)' : '';
+                    console.log(`* ${pKey}${marker}`);
+                }
+            } catch (error) {
+                if (error instanceof ZentaoError) {
+                    console.error(formatError(error, globalOpts.format ?? 'markdown'));
+                    process.exit(1);
+                }
+                throw error;
+            }
+        });
+}
