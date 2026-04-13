@@ -10,9 +10,9 @@ import type { GlobalOptions } from './types.js';
 function workspaceToDisplay(ws: Workspace): Record<string, unknown> {
     return {
         ID: ws.id,
-        产品: ws.product ? `#${ws.product.id} ${ws.product.name}` : '-',
-        项目: ws.project ? `#${ws.project.id} ${ws.project.name}` : '-',
-        执行: ws.execution ? `#${ws.execution.id} ${ws.execution.name}` : '-',
+        产品: ws.product ? `#${ws.product.id} ${ws.product.name}` : '空',
+        项目: ws.project ? `#${ws.project.id} ${ws.project.name}` : '空',
+        执行: ws.execution ? `#${ws.execution.id} ${ws.execution.name}` : '空',
     };
 }
 
@@ -41,7 +41,6 @@ export function registerWorkspaceCommand(program: Command): void {
                 }
 
                 const ws = getCurrentWorkspace(profile);
-                if (!ws) throw new ZentaoError('E4002');
 
                 if (globalOpts.format === 'json' || globalOpts.format === 'raw') {
                     console.log(formatJson({ status: 'success', data: ws }));

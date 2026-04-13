@@ -1,14 +1,37 @@
 import type { Profile, Workspace, WorkspaceRef } from '../types/index.js';
 import { saveProfile } from './store.js';
 
-/** 获取 Profile 当前激活的工作区 */
-export function getCurrentWorkspace(profile: Profile): Workspace | undefined {
-    if (!profile.currentWorkspace || !profile.workspaces?.length) return undefined;
-    return profile.workspaces.find((w) => w.id === profile.currentWorkspace);
+/**
+ * 确保 Profile 任意时刻都有一个“当前工作区”可用。
+ * - 若完全没有工作区，则创建一个空工作区并设为当前
+ * - 若有工作区但 currentWorkspace 缺失/无效，则切到第一个工作区
+ */
+export function ensureCurrentWorkspace(profile: Profile): Workspace {
+    if (!profile.workspaces) profile.workspaces = [];
+
+    const byId =
+        profile.currentWorkspace
+            ? profile.workspaces.find((w) => w.id === profile.currentWorkspace)
+            : undefined;
+    if (byId) return byId;
+
+    if (profile.workspaces.length > 0) {
+        profile.currentWorkspace = profile.workspaces[0].id;
+        saveProfile(profile);
+        return profile.workspaces[0];
+    }
+
+    return createWorkspace(profile, {});
+}
+
+/** 获取 Profile 当前激活的工作区（始终返回一个可用工作区） */
+export function getCurrentWorkspace(profile: Profile): Workspace {
+    return ensureCurrentWorkspace(profile);
 }
 
 /** 列出 Profile 下所有工作区 */
 export function listWorkspaces(profile: Profile): Workspace[] {
+    ensureCurrentWorkspace(profile);
     return profile.workspaces ?? [];
 }
 
