@@ -77,14 +77,14 @@ zentao login -s https://zentao.example.com -u admin -p 123456
 # 查看当前用户信息
 $ zentao profile
 
-* https://admin@zentao.example.com (当前)
-* https://dev1@zentao.example.com
+* admin@https://zentao.example.com (当前)
+* dev1@https://zentao.example.com
 
 # 切换当前用户
-$ zentao profile dev1@zentao.example.com
+$ zentao profile dev1@https://zentao.example.com
 
-* https://admin@zentao.example.com
-* https://dev1@zentao.example.com (当前)
+* admin@https://zentao.example.com
+* dev1@https://zentao.example.com (当前)
 ```
 
 #### 退出登录
@@ -96,7 +96,7 @@ $ zentao profile dev1@zentao.example.com
 $ zentao logout
 
 # 退出指定用户
-$ zentao logout dev1@zentao.example.com
+$ zentao logout dev1@https://zentao.example.com
 ```
 
 ### 工作区管理
