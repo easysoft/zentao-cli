@@ -1,4 +1,5 @@
 import { Command } from 'commander';
+import { createInterface } from 'node:readline';
 import { getModuleNames } from '../modules/registry.js';
 
 const ROOT_COMMANDS = [
@@ -132,16 +133,43 @@ function generateScript(shell: string): string {
     }
 }
 
+async function promptShellSelection(): Promise<string> {
+    if (!process.stdin.isTTY || !process.stderr.isTTY) {
+        throw new Error('未提供 shell 参数，请在交互终端中选择，或显式传入 bash|zsh|fish');
+    }
+
+    const shells = ['zsh', 'bash', 'fish'] as const;
+    const rl = createInterface({ input: process.stdin, output: process.stderr });
+
+    process.stderr.write('请选择要生成的自动补全脚本:\n');
+    shells.forEach((shell, index) => {
+        process.stderr.write(`  ${index + 1}) ${shell}\n`);
+    });
+
+    return new Promise((resolve, reject) => {
+        rl.question('请输入编号 (1-3): ', (answer) => {
+            rl.close();
+            const idx = Number(answer.trim());
+            if (!Number.isInteger(idx) || idx < 1 || idx > shells.length) {
+                reject(new Error(`无效选择: ${answer || '(empty)'}`));
+                return;
+            }
+            resolve(shells[idx - 1]);
+        });
+    });
+}
+
 /** 注册 `zentao autocomplete`：输出 shell 自动补全脚本 */
 export function registerAutocompleteCommand(program: Command): void {
     program
         .command('autocomplete')
         .description('生成 shell 自动补全脚本')
-        .argument('<shell>', 'shell 类型 (bash|zsh|fish)')
-        .action((shell: string) => {
-            const normalized = shell.toLowerCase();
+        .argument('[shell]', 'shell 类型 (bash|zsh|fish)')
+        .action(async (shell?: string) => {
+            const selectedShell = shell ?? await promptShellSelection();
+            const normalized = selectedShell.toLowerCase();
             if (!['bash', 'zsh', 'fish'].includes(normalized)) {
-                console.error(`不支持的 shell: ${shell}，仅支持 bash、zsh、fish`);
+                console.error(`不支持的 shell: ${selectedShell}，仅支持 bash、zsh、fish`);
                 process.exit(1);
             }
 
