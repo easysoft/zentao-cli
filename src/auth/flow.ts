@@ -1,7 +1,7 @@
 import type { Profile } from '../types/index.js';
 import { ZentaoClient } from '../api/client.js';
 import { ZentaoError } from '../errors.js';
-import { getCurrentProfile, saveProfile, getProfileConfig, profileKey } from '../config/store.js';
+import { getCurrentProfile, saveProfile, getProfileConfig, profileKey, buildProfile } from '../config/store.js';
 import { login, validateToken, getEnvCredentials } from './login.js';
 
 export interface AuthContext {
@@ -60,16 +60,4 @@ export async function ensureAuth(options?: { insecure?: boolean; timeout?: numbe
 
     // Step 5: Cannot authenticate
     throw new ZentaoError('E1006');
-}
-
-function buildProfile(server: string, account: string, token: string, user?: Record<string, unknown>): Profile {
-    const now = new Date().toISOString();
-    return {
-        server: server.replace(/\/+$/, ''),
-        account,
-        token,
-        user,
-        loginTime: now,
-        lastUsedTime: now,
-    };
 }

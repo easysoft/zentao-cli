@@ -132,3 +132,20 @@ export function updateProfile(profile: Profile, updates: Partial<Profile>): void
 export function getConfigPath(): string {
     return CONFIG_PATH;
 }
+
+/** 构建 Profile 对象 */
+export function buildProfile(server: string, account: string, token: string, user?: Record<string, unknown>, oldProfile?: Profile): Profile {
+    const now = new Date().toISOString();
+    return {
+        ...oldProfile,
+        server: server.replace(/\/+$/, ''),
+        account,
+        token,
+        user: oldProfile ? {
+            ...oldProfile.user,
+            ...user
+        } : user,
+        loginTime: now,
+        lastUsedTime: now,
+    };
+}
