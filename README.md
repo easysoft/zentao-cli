@@ -786,8 +786,8 @@ batchFailFast: false
 # 获取 zentao-cli 版本信息
 $ zentao version
 
-zentao-cli 1.0.0
-zentao https://zentao.example.com 22.2
+Zentao CLI: 0.1.0
+Zentao Server: 22.1 (https://zentao.example.com)
 ```
 
 ### 自动补全

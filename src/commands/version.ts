@@ -42,10 +42,10 @@ export function registerVersionCommand(program: Command): void {
                 return;
             }
 
-            console.log(`zentao-cli ${version}`);
+            console.log(`Zentao CLI: ${version}`);
             const profile = getCurrentProfile();
             if (profile) {
-                console.log(`zentao ${profile.server}`);
+                console.log(`Zentao Server: ${profile.serverConfig?.version ? profile.serverConfig.version.toUpperCase() : 'Unknown'} (${profile.server})`);
             }
         });
 }
