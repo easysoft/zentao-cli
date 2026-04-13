@@ -31,7 +31,7 @@ describe('formatError', () => {
     test('formats as markdown', () => {
         const error = new ZentaoError('E1001');
         const result = formatError(error, 'markdown');
-        expect(result).toBe('Error(E1001): 必须提供有效的禅道服务地址、用户名和密码');
+        expect(result).toBe('Error(E1001): 必须提供有效的禅道服务地址、用户名和密码或 TOKEN');
     });
 
     test('formats as json', () => {
