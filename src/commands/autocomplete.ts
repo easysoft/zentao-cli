@@ -1,4 +1,7 @@
 import { Command } from 'commander';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
 import { createInterface } from 'node:readline';
 import { getModuleNames } from '../modules/registry.js';
 
@@ -133,6 +136,10 @@ function generateScript(shell: string): string {
     }
 }
 
+function getCompletionFilePath(shell: string): string {
+    return join(homedir(), '.config', 'zentao', `.zentao-completion.${shell}`);
+}
+
 async function promptShellSelection(): Promise<string> {
     if (!process.stdin.isTTY || !process.stderr.isTTY) {
         throw new Error('未提供 shell 参数，请在交互终端中选择，或显式传入 bash|zsh|fish');
@@ -173,6 +180,14 @@ export function registerAutocompleteCommand(program: Command): void {
                 process.exit(1);
             }
 
-            console.log(generateScript(normalized));
+            const script = generateScript(normalized);
+            const completionFile = getCompletionFilePath(normalized);
+            const completionDir = join(homedir(), '.config', 'zentao');
+
+            mkdirSync(completionDir, { recursive: true });
+            writeFileSync(completionFile, script, 'utf-8');
+
+            console.log(`自动补全脚本已保存到: ${completionFile}`);
+            console.log(`请在终端配置中追加: source ${completionFile}`);
         });
 }
