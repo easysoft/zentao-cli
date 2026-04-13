@@ -21,7 +21,7 @@ export const ERROR_CODES = {
     E2005: '不支持的操作，请通过 `zentao {module} --help` 查看支持的操作',
     E2006: '当前用户没有权限执行此操作',
     E2007: '`--data` 参数中的 JSON 数据格式无效',
-    E2008: '禅道服务端返回错误，请查看详细错误信息',
+    E2008: '禅道服务端返回错误（Url：{url}，Status：{status}），请查看详细错误信息：{serverResponse}',
 
     // 数据处理 (30xx)
     E3001: '`--pick` 指定的字段不存在',

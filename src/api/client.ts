@@ -110,9 +110,9 @@ export class ZentaoClient {
 
     /** 将 HTTP 状态码映射为 CLI 统一错误（401→Token 失效等） */
     private async handleHttpError(response: Response): Promise<never> {
-        let body: Record<string, unknown> | undefined;
+        let body: string | undefined;
         try {
-            body = await response.json() as Record<string, unknown>;
+            body = await response.text();
         } catch {
             // ignore
         }
@@ -125,7 +125,7 @@ export class ZentaoClient {
             case 404:
                 throw new ZentaoError('E2002', { object: response.url });
             default:
-                throw new ZentaoError('E2008', undefined, body ?? { status: response.status, statusText: response.statusText });
+                throw new ZentaoError('E2008', undefined, { url: response.url, status: response.status, statusText: response.statusText, serverResponse: body ?? undefined });
         }
     }
 
