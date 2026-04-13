@@ -53,14 +53,14 @@ export function registerLoginCommand(program: Command): void {
                 const oldProfile = getProfile(account, server);
                 let profile: Profile;
                 if (token) {
-                    profile = buildProfile(server, account, token, undefined, oldProfile);
+                    profile = buildProfile(server, account, token, undefined, undefined, oldProfile);
                 } else {
                     const result = await login(server, account, password, {
                         insecure: globalOpts.insecure,
                         timeout: globalOpts.timeout,
                     });
 
-                    profile = buildProfile(server, account, result.token, result.user, oldProfile);
+                    profile = buildProfile(server, account, result.token, result.serverConfig, result.user, oldProfile);
                 }
 
                 saveProfile(profile);

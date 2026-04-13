@@ -44,6 +44,28 @@ export interface UserConfig {
     jsonPretty?: boolean;
 }
 
+/** 禅道服务端配置 */
+export interface ServerConfig {
+    /** 禅道版本 */
+    version: string;
+    /** 系统模式 */
+    systemMode: string;
+    /** 冲刺概念 */
+    sprintConcept: string;
+    /** 请求类型 */
+    requestType: string;
+    /** 请求修复 */
+    requestFix: string;
+    /** 模块变量 */
+    moduleVar: string;
+    /** 方法变量 */
+    methodVar: string;
+    /** 视图变量 */
+    viewVar: string;
+    /** 会话变量 */
+    sessionVar: string;
+}
+
 /**
  * 用户配置（Profile），对应一个禅道服务上的一个账号。
  * 存储在 ~/.config/zentao/zentao.json 的 profiles 数组中。
@@ -67,6 +89,8 @@ export interface Profile {
     workspaces?: Workspace[];
     /** 该 Profile 的用户配置 */
     config?: UserConfig;
+    /** 禅道服务端配置 */
+    serverConfig?: ServerConfig;
 }
 
 /** 顶层配置数据结构，对应 ~/.config/zentao/zentao.json 文件 */

@@ -2,7 +2,7 @@ import Configstore from 'configstore';
 import { chmodSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
-import type { ConfigData, Profile, UserConfig } from '../types/index.js';
+import type { ConfigData, Profile, ServerConfig, UserConfig } from '../types/index.js';
 import { ZentaoError } from '../errors.js';
 import { DEFAULT_CONFIG } from './defaults.js';
 
@@ -155,7 +155,7 @@ export function getConfigPath(): string {
  * 构建或更新 Profile。
  * 若传入 `oldProfile`，会合并 `workspaces`、`config` 等已有字段，并合并 `user` 信息。
  */
-export function buildProfile(server: string, account: string, token: string, user?: Record<string, unknown>, oldProfile?: Profile): Profile {
+export function buildProfile(server: string, account: string, token: string, serverConfig?: ServerConfig, user?: Record<string, unknown>, oldProfile?: Profile): Profile {
     const now = new Date().toISOString();
     return {
         ...oldProfile,
@@ -168,5 +168,6 @@ export function buildProfile(server: string, account: string, token: string, use
         } : user,
         loginTime: now,
         lastUsedTime: now,
+        serverConfig: oldProfile?.serverConfig ?? serverConfig,
     };
 }

@@ -1,11 +1,12 @@
 import { ZentaoClient } from '../api/client.js';
-import type { LoginResponse, ApiResponse } from '../types/index.js';
+import type { LoginResponse, ApiResponse, ServerConfig } from '../types/index.js';
 import { ZentaoError } from '../errors.js';
 
 /** 密码登录成功后的结果 */
 export interface LoginResult {
     token: string;
     user?: Record<string, unknown>;
+    serverConfig?: ServerConfig;
 }
 
 /** 从环境变量读取的凭证片段（任一字段可能缺失） */
@@ -60,15 +61,17 @@ export async function login(
 
         const client = new ZentaoClient(url, data.token, options);
         let user: Record<string, unknown> | undefined;
+        let serverConfig: ServerConfig | undefined;
         try {
+            serverConfig = await client.getServerConfig();
             const usersResp = await client.get<ApiResponse>('/users', { browseType: 'inside', recPerPage: 100 });
             const users = usersResp.users as Array<Record<string, unknown>> | undefined;
             user = users?.find((u) => u.account === account);
-        } catch {
+        } catch(error) {
             // Token valid but couldn't fetch user details - not fatal
         }
 
-        return { token: data.token, user };
+        return { token: data.token, user, serverConfig };
     } catch (error) {
         clearTimeout(timer);
         if (error instanceof ZentaoError) throw error;

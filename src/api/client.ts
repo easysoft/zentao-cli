@@ -1,4 +1,4 @@
-import type { ApiResponse, RequestOptions } from '../types/index.js';
+import type { ApiResponse, RequestOptions, ServerConfig } from '../types/index.js';
 import { ZentaoError } from '../errors.js';
 
 /** 创建 {@link ZentaoClient} 时的可选行为（TLS、超时等） */
@@ -148,6 +148,22 @@ export class ZentaoClient {
     /** 在同一线程/进程内复用客户端实例时，用于刷新 Token */
     setToken(token: string): void {
         this.token = token;
+    }
+
+    /** 获取禅道服务端配置 */
+    async getServerConfig(): Promise<ServerConfig> {
+        const url = `${this.baseUrl.replace('/api.php/v2', '')}/?mode=getconfig`;
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (!response.ok) {
+            return this.handleHttpError(response);
+        }
+
+        const serverConfig = await response.json() as ServerConfig;
+        return serverConfig;
     }
 }
 

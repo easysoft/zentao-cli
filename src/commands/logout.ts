@@ -17,7 +17,10 @@ export function registerLogoutCommand(program: Command): void {
                     targetKey = key;
                 } else {
                     const current = getCurrentProfile();
-                    if (!current) throw new ZentaoError('E1006');
+                    if (!current) {
+                        console.log('未找到当前用户配置，请先使用 `zentao login` 登录');
+                        return;
+                    }
                     targetKey = profileKey(current.account, current.server);
                 }
 
