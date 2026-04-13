@@ -5,6 +5,7 @@ import { registerProfileCommand } from './profile.js';
 import { registerConfigCommand } from './config.js';
 import { registerWorkspaceCommand } from './workspace.js';
 import { registerVersionCommand } from './version.js';
+import { registerAutocompleteCommand } from './autocomplete.js';
 import { registerCrudCommands } from './crud.js';
 import { registerModuleCommands } from './register-modules.js';
 
@@ -16,6 +17,7 @@ export function registerAllCommands(program: Command): void {
     registerConfigCommand(program);
     registerWorkspaceCommand(program);
     registerVersionCommand(program);
+    registerAutocompleteCommand(program);
     registerCrudCommands(program);
     registerModuleCommands(program);
 }
