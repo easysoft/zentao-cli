@@ -971,7 +971,7 @@ zentao-cli/
 | 错误代码 | 错误原因 |
 | --- | --- |
 | **认证与配置 (10xx)** | |
-| 1001 | 必须提供有效的禅道服务地址、用户名和密码 |
+| 1001 | 必须提供有效的禅道服务地址、用户名和密码或 TOKEN |
 | 1002 | 所提供的禅道服务地址 xxx 无法访问 |
 | 1003 | 当前用户名和密码不正确 |
 | 1004 | 所提供的 Token 已失效，请提供密码重新登录，或提供新的 TOKEN |
@@ -1020,13 +1020,12 @@ $ zentao product --format=json
 
 ### 用户验证过程
 
-禅道 API 2.0 的验证过程如下：
+调用禅道 API 需要在请求头中增加 `token` 字段，其值为获取到的 TOKEN。获取 TOKEN 的过程如下：
 
 1. 检查 `~/.config/zentao/zentao.json` 文件是否存在；如果存在，则读取其中的信息，并执行步骤 3；如果不存在，则执行步骤 2
-2. 从环境变量 `ZENTAO_URL`、`ZENTAO_ACCOUNT`、`ZENTAO_TOKEN` 或 `ZENTAO_PASSWORD` 中读取禅道服务地址、用户账号和 TOKEN/密码。如果没有 TOKEN 但有密码，则先执行登录请求获取 TOKEN；如果 TOKEN 存在，则执行步骤 3；否则执行步骤 4
-3. 使用获取到的 TOKEN 发起一次测试请求（获取用户列表信息）。如果请求成功，则将相关信息缓存到 `~/.config/zentao/zentao.json` 文件中；如果请求失败，则执行步骤 4
-4. 如果 TOKEN 失效，则尝试从环境变量读取 `ZENTAO_URL`、`ZENTAO_ACCOUNT` 和 `ZENTAO_PASSWORD`，并再次执行登录操作以重新获取 TOKEN。如果成功，则将相关信息缓存到 `~/.config/zentao/zentao.json` 文件中；如果失败，则执行步骤 5
-5. 在终端提示用户使用 `zentao login -s <zentao_url> -u <account> -p <password>` 命令手动登录
+2. 从环境变量 `ZENTAO_URL`、`ZENTAO_ACCOUNT`、`ZENTAO_TOKEN` 或 `ZENTAO_PASSWORD` 中读取禅道服务地址、用户账号和 TOKEN/密码，如果没有 TOKEN 但有密码，则先执行登录请求获取 TOKEN；
+3. 使用获取到的 TOKEN 发起所需的请求（获取用户列表信息）。如果请求成功，则只需后续流程，如果请求失败，且原因是 Token 失效，则重新从环境变量获取账户避免登录，执行步骤2；
+4. 在终端提示用户使用 `zentao login -s <zentao_url> -u <account> -p <password>` 命令手动登录
 
 ### 禅道 API 调用
 
@@ -1055,8 +1054,6 @@ $ zentao product --format=json
 ```
 
 #### 获取用户列表信息
-
-获取用户列表信息通常也可用于验证 Token 是否有效。
 
 请求地址：`GET $BASE_URL/users`，请求参数：
 
