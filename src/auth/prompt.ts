@@ -25,8 +25,8 @@ export async function promptLogin(): Promise<PromptResult> {
         const account = await ask(rl, '用户名 (Account): ');
         if (!account) throw new Error('Account is required');
 
-        const password = await ask(rl, '密码 (Password): ');
-        if (!password) throw new Error('Password is required');
+        const password = await ask(rl, '密码(Password) 或 Token : ');
+        if (!password) throw new Error('Password or Token is required');
 
         const normalizedUrl = url.replace(/\/+$/, '');
         try {
@@ -35,7 +35,7 @@ export async function promptLogin(): Promise<PromptResult> {
             throw new Error(`Invalid URL: ${normalizedUrl}`);
         }
 
-        return { url: normalizedUrl, account, password };
+        return { url: normalizedUrl, account, password: password.length === 40 ? '' : password, token: password.length === 40 ? password : '' };
     } finally {
         rl.close();
     }
