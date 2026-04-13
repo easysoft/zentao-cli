@@ -25,7 +25,8 @@
   ],
   "scripts": {
     "dev": "bun run src/index.ts",
-    "build": "bun run scripts/build.ts",
+    "build": "bun run scripts/build.ts --minify",
+    "build:sf": "bun run scripts/build.ts --compile --minify",
     "test": "bun test"
   },
   "dependencies": {
