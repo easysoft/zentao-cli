@@ -21,6 +21,7 @@ export interface UserConfig {
     autoSetWorkspace?: boolean;
     pagers?: Record<string, number>;
     silent?: boolean;
+    jsonPretty?: boolean;
 }
 
 export interface Profile {

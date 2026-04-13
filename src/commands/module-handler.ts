@@ -129,7 +129,7 @@ export async function handleModuleCommand(
             }
 
             if (!silent) {
-                const output = formatOutput(processed, { format, isList: true, fields, pager });
+                const output = formatOutput(processed, { format, isList: true, fields, pager, jsonPretty: config.jsonPretty });
                 if (output) console.log(output);
             }
             break;
@@ -151,7 +151,7 @@ export async function handleModuleCommand(
             }
 
             if (!silent) {
-                const output = formatOutput(obj, { format, isList: false, fields, rawResponse: response });
+                const output = formatOutput(obj, { format, isList: false, fields, rawResponse: response, jsonPretty: config.jsonPretty });
                 if (output) console.log(output);
             }
             break;
@@ -165,12 +165,12 @@ export async function handleModuleCommand(
             }
 
             if (Array.isArray(body)) {
-                await handleBatchCreate(client, module, body as Record<string, unknown>[], opts, format, silent);
+                await handleBatchCreate(client, module, body as Record<string, unknown>[], opts, format, silent, profile);
             } else {
                 const path = resolveCreatePath(module);
                 const response = await client.post(path, body);
                 if (!silent) {
-                    const output = formatOutput(response, { format, isList: false, rawResponse: response });
+                    const output = formatOutput(response, { format, isList: false, rawResponse: response, jsonPretty: config.jsonPretty });
                     if (output) console.log(output);
                 }
             }
@@ -184,13 +184,13 @@ export async function handleModuleCommand(
             }
 
             if (Array.isArray(body)) {
-                await handleBatchUpdate(client, module, body as Array<Record<string, unknown> & { id: number }>, opts, format, silent);
+                await handleBatchUpdate(client, module, body as Array<Record<string, unknown> & { id: number }>, opts, format, silent, profile);
             } else {
                 if (!operation.objectId) throw new ZentaoError('E2003', { fields: 'id', module: module.name });
                 const path = resolveDetailPath(module, operation.objectId);
                 const response = await client.put(path, body);
                 if (!silent) {
-                    const output = formatOutput(response, { format, isList: false, rawResponse: response });
+                    const output = formatOutput(response, { format, isList: false, rawResponse: response, jsonPretty: config.jsonPretty });
                     if (output) console.log(output);
                 }
             }
@@ -278,7 +278,7 @@ export async function handleModuleCommand(
                 : await client.post(path, body);
 
             if (!silent) {
-                const output = formatOutput(response, { format, isList: false, rawResponse: response });
+                const output = formatOutput(response, { format, isList: false, rawResponse: response, jsonPretty: config.jsonPretty });
                 if (output) console.log(output);
             }
             break;
@@ -293,6 +293,7 @@ async function handleBatchCreate(
     opts: DataOptions,
     format: OutputFormat,
     silent: boolean,
+    profile: Profile,
 ): Promise<void> {
     const results: unknown[] = [];
     for (const item of items) {
@@ -301,7 +302,8 @@ async function handleBatchCreate(
         results.push(response);
     }
     if (!silent) {
-        const output = formatOutput(results, { format, isList: true });
+        const config = getProfileConfig(profile);
+        const output = formatOutput(results, { format, isList: true, jsonPretty: config.jsonPretty });
         if (output) console.log(output);
     }
 }
@@ -313,6 +315,7 @@ async function handleBatchUpdate(
     opts: DataOptions,
     format: OutputFormat,
     silent: boolean,
+    profile: Profile,
 ): Promise<void> {
     const results: unknown[] = [];
     for (const item of items) {
@@ -322,7 +325,8 @@ async function handleBatchUpdate(
         results.push(response);
     }
     if (!silent) {
-        const output = formatOutput(results, { format, isList: true });
+        const config = getProfileConfig(profile);
+        const output = formatOutput(results, { format, isList: true, jsonPretty: config.jsonPretty });
         if (output) console.log(output);
     }
 }

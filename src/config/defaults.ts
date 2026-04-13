@@ -11,6 +11,7 @@ export const DEFAULT_CONFIG: Required<UserConfig> = {
     autoSetWorkspace: false,
     pagers: {},
     silent: false,
+    jsonPretty: false,
 };
 
 export const VALID_CONFIG_KEYS = Object.keys(DEFAULT_CONFIG);

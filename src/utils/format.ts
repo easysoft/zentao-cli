@@ -46,6 +46,7 @@ export function formatOutput(
         isList: boolean;
         fields?: string[];
         pager?: Pager;
+        jsonPretty?: boolean;
         rawResponse?: unknown;
     },
 ): string {
@@ -58,7 +59,7 @@ export function formatOutput(
         if (options.pager) {
             result.pager = normalizePager(options.pager);
         }
-        return formatJson(result);
+        return formatJson(result, options.jsonPretty ?? false);
     }
 
     // Markdown format

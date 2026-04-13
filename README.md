@@ -748,6 +748,7 @@ $ zentao product --page=1 --recPerPage=100
 * `pagers`：分页配置，支持 `product`、`project`、`execution` 等模块
 * `autoSetWorkspace`：是否自动设置工作区，默认值为 `false`
 * `silent`：是否启用静默模式，默认值为 `false`
+* `jsonPretty`：是否在 JSON 格式化时添加空格，默认值为 `false`
 
 ```bash
 # 设置默认输出格式为 JSON
@@ -942,6 +943,9 @@ zentao-cli/
 
                 /* 是否自动设置工作区 */
                 "autoSetWorkspace": true,
+
+                /* 是否在 JSON 格式化时添加空格 */
+                "jsonPretty": false,
 
                 /* 分页配置 */
                 "pagers": {
