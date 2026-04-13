@@ -918,7 +918,21 @@ zentao-cli/
                 }
             ],
 
-            /* 配置 */
+            /* 服务器配置 */
+            "serverConfig": {
+                /* 禅道版本 */
+                "version": "ipd5.0",
+                "systemMode": "PLM",
+                "sprintConcept": "0",
+                "requestType": "PATH_INFO",
+                "requestFix":"-",
+                "moduleVar":"m",
+                "methodVar":"f",
+                "viewVar":"t",
+                "sessionVar":"zentaosid"
+            },
+
+            /* 客户端配置 */
             "config": {
                 /* 默认输出格式 */
                 "defaultOutputFormat": "markdown",
