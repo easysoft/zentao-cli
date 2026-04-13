@@ -45,8 +45,14 @@ export function registerProfileCommand(program: Command): void {
 
                 for (const p of profiles) {
                     const pKey = profileKey(p.account, p.server);
-                    const marker = pKey === currentKey ? ' (当前)' : '';
-                    console.log(`* ${pKey}${marker}`);
+                    const parts = [pKey];
+                    if (p.serverConfig) {
+                        parts.push(`(${p.serverConfig.version.toUpperCase()})`);
+                    }
+                    if (pKey === currentKey) {
+                        parts.push(' [当前]');
+                    }
+                    console.log(`* ${parts.join('')}`);
                 }
             } catch (error) {
                 if (error instanceof ZentaoError) {
