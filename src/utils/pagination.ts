@@ -1,13 +1,21 @@
 import type { ZentaoClient } from '../api/client.js';
 import type { ApiListResponse, Pager } from '../types/index.js';
 
+/** 控制分页拉取行为的选项，与禅道 `pageID` / `recPerPage` 对应 */
 export interface PaginationOptions {
+    /** 起始页码（1-based） */
     page?: number;
     recPerPage?: number;
+    /** 为 true 时顺序请求直至最后一页（或与 `limit` 组合提前结束） */
     all?: boolean;
+    /** 最多保留的记录条数（在 `all` 为 true 时用于截断） */
     limit?: number;
 }
 
+/**
+ * 获取列表数据：默认只取一页；`all` 或 `limit` 为真时按 `pageTotal` 循环请求。
+ * `dataKey` 为响应 JSON 中数组字段名（如 `bugs`、`tasks`）。
+ */
 export async function fetchAllPages<T extends Record<string, unknown>>(
     client: ZentaoClient,
     path: string,
@@ -46,6 +54,7 @@ export async function fetchAllPages<T extends Record<string, unknown>>(
         }
 
         currentPage++;
+        // 无数据或已超过服务端声明的总页数时结束；后者依赖首次响应中的 pager.pageTotal
         if (currentPage > totalPages || pageData.length === 0) break;
     }
 

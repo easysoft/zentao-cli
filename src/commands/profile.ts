@@ -3,11 +3,12 @@ import { getAllProfiles, getCurrentProfile, setCurrentProfile, profileKey } from
 import { ZentaoError, formatError } from '../errors.js';
 import type { GlobalOptions } from './types.js';
 
+/** 注册 `zentao profile`：列出或切换 `account@server` 形式的本地 Profile */
 export function registerProfileCommand(program: Command): void {
     program
         .command('profile')
         .description('查看或切换用户配置')
-        .argument('[profileKey]', '要切换到的用户配置（格式：account@server）')
+        .argument('[profileKey]', '要切换到的用户配置（格式：account@server，例如 admin@https://zentao.example.com）')
         .action((key: string | undefined) => {
             const globalOpts = program.opts() as GlobalOptions;
             try {

@@ -1,5 +1,6 @@
 import { getNestedValue } from './format.js';
 
+/** 对列表每一项按字段路径（支持 `a.b`）摘取子集 */
 export function pickFields(data: Record<string, unknown>[], fields: string[]): Record<string, unknown>[] {
     return data.map((item) => {
         const picked: Record<string, unknown> = {};
@@ -10,6 +11,7 @@ export function pickFields(data: Record<string, unknown>[], fields: string[]): R
     });
 }
 
+/** {@link pickFields} 的单条版本 */
 export function pickFieldsSingle(data: Record<string, unknown>, fields: string[]): Record<string, unknown> {
     const picked: Record<string, unknown> = {};
     for (const field of fields) {
@@ -26,8 +28,10 @@ interface FilterCondition {
     value: string;
 }
 
+/** 较长运算符优先匹配，避免 `!=` 被拆成 `!` 与 `=` */
 const OPERATORS: FilterOperator[] = ['!=', '>=', '<=', '!~', '>', '<', '~', ':'];
 
+/** 解析单条 `--filter` 表达式为 AND 条件列表 */
 function parseFilterExpression(expr: string): FilterCondition[] {
     const conditions: FilterCondition[] = [];
     const parts = splitFilterParts(expr);
@@ -59,6 +63,7 @@ function parseFilterExpression(expr: string): FilterCondition[] {
     return conditions;
 }
 
+/** 按逗号拆分条件，尊重引号内的逗号不作为分隔符 */
 function splitFilterParts(expr: string): string[] {
     const parts: string[] = [];
     let current = '';
@@ -127,6 +132,10 @@ export function filterData(data: Record<string, unknown>[], filterGroups: string
     );
 }
 
+/**
+ * 客户端排序。表达式形如 `field_asc,other_desc`，未写后缀时默认升序。
+ * 数值字段尝试按数字比较，否则按字符串 `localeCompare`。
+ */
 export function sortData(data: Record<string, unknown>[], sortExpr: string): Record<string, unknown>[] {
     const parts = sortExpr.split(',').map((s) => s.trim()).filter(Boolean);
     const sortFields = parts.map((part) => {

@@ -1,5 +1,9 @@
 import type { ModuleDefinition } from '../types/index.js';
 
+/**
+ * 内置模块注册表：key 为 CLI 子命令名（小写），value 为对应禅道 REST 资源元数据。
+ * 新增模块时在此表中补充定义，并由 `registerModuleCommands` 动态注册命令。
+ */
 export const MODULES: Record<string, ModuleDefinition> = {
     user: {
         name: 'user',
@@ -280,14 +284,17 @@ export const MODULES: Record<string, ModuleDefinition> = {
     },
 };
 
+/** 按名称（大小写不敏感）查找模块定义 */
 export function getModule(name: string): ModuleDefinition | undefined {
     return MODULES[name.toLowerCase()];
 }
 
+/** 返回所有已注册模块名，用于生成动态子命令 */
 export function getModuleNames(): string[] {
     return Object.keys(MODULES);
 }
 
+/** 判断给定字符串是否为已注册模块名 */
 export function isModuleName(name: string): boolean {
     return name.toLowerCase() in MODULES;
 }

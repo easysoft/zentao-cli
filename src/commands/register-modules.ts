@@ -6,6 +6,7 @@ import { resolveOperation, handleModuleCommand } from './module-handler.js';
 import { ZentaoError, formatError } from '../errors.js';
 import type { GlobalOptions, DataOptions } from './types.js';
 
+/** 为命令挂载数据查询、分页、过滤及父子上下文等通用选项 */
 export function addDataOptions(cmd: Command): Command {
     return cmd
         .option('--format <format>', '输出格式 (markdown|json|raw)')
@@ -27,6 +28,7 @@ export function addDataOptions(cmd: Command): Command {
         .option('--execution <id>', '执行 ID');
 }
 
+/** Commander 的 `collect` 回调：将多次出现的选项累积为数组 */
 function collect(value: string, previous: string[]): string[] {
     return previous.concat([value]);
 }
@@ -36,6 +38,7 @@ const BUILTIN_COMMANDS = [
     'help', 'ls', 'get', 'create', 'update', 'delete', 'do', 'autocomplete',
 ];
 
+/** 根据内置模块注册表为每个业务模块注册 `zentao <module> ...` 子命令 */
 export function registerModuleCommands(program: Command): void {
     for (const name of getModuleNames()) {
         if (BUILTIN_COMMANDS.includes(name)) continue;
@@ -91,6 +94,7 @@ export function registerModuleCommands(program: Command): void {
     }
 }
 
+/** 打印模块级内建帮助（与 `zentao <module> help` 对应） */
 function showModuleHelp(mod: ReturnType<typeof getModule>): void {
     if (!mod) return;
     const actions = getAvailableActions(mod);

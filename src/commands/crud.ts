@@ -6,6 +6,7 @@ import { handleModuleCommand } from './module-handler.js';
 import { addDataOptions } from './register-modules.js';
 import type { GlobalOptions, DataOptions } from './types.js';
 
+/** 注册 `ls` / `get` / `create` / `update` / `delete` / `do` 等通用 CRUD 入口 */
 export function registerCrudCommands(program: Command): void {
     // zentao ls <module>
     const lsCmd = program
@@ -79,6 +80,7 @@ export function registerCrudCommands(program: Command): void {
     });
 }
 
+/** 校验模块名、完成鉴权后转交给 {@link handleModuleCommand} */
 async function runCrudCommand(
     program: Command,
     moduleName: string,

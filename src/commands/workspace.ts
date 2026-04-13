@@ -1,11 +1,12 @@
 import { Command } from 'commander';
-import { getCurrentProfile, getProfileConfig } from '../config/store.js';
+import { getCurrentProfile } from '../config/store.js';
 import { getCurrentWorkspace, listWorkspaces, setCurrentWorkspace, getWorkspaceById } from '../config/workspace.js';
 import { ZentaoError, formatError } from '../errors.js';
 import { formatTable, formatList, formatJson } from '../utils/format.js';
 import type { Workspace } from '../types/index.js';
 import type { GlobalOptions } from './types.js';
 
+/** 将工作区引用展平为适合表格/列表展示的中文字段 */
 function workspaceToDisplay(ws: Workspace): Record<string, unknown> {
     return {
         ID: ws.id,
@@ -15,6 +16,7 @@ function workspaceToDisplay(ws: Workspace): Record<string, unknown> {
     };
 }
 
+/** 注册 `zentao workspace` 及其 `ls` / `set` 子命令 */
 export function registerWorkspaceCommand(program: Command): void {
     const wsCmd = program
         .command('workspace')

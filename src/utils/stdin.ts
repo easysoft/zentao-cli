@@ -1,5 +1,6 @@
 import { ZentaoError } from '../errors.js';
 
+/** 在非 TTY 标准输入下读取全部内容；交互终端上返回 `undefined` */
 export async function readStdin(): Promise<string | undefined> {
     if (process.stdin.isTTY) return undefined;
 
@@ -14,6 +15,7 @@ export async function readStdin(): Promise<string | undefined> {
     });
 }
 
+/** 解析 `--data` / 管道 JSON，失败时抛出 `E2007` */
 export function parseDataParam(input: string): unknown {
     try {
         return JSON.parse(input);
@@ -22,6 +24,10 @@ export function parseDataParam(input: string): unknown {
     }
 }
 
+/**
+ * 解析请求体：`@-` 或未传且存在管道输入时从 stdin 读；否则将 `dataOption` 当作 JSON 字符串。
+ * 显式 `@-` 且无 stdin 内容时抛出 `E2007`。
+ */
 export async function resolveData(dataOption?: string): Promise<unknown | undefined> {
     if (dataOption === '@-' || dataOption === undefined) {
         const stdin = await readStdin();

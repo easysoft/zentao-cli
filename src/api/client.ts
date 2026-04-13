@@ -1,17 +1,29 @@
 import type { ApiResponse, RequestOptions } from '../types/index.js';
 import { ZentaoError } from '../errors.js';
 
+/** 创建 {@link ZentaoClient} 时的可选行为（TLS、超时等） */
 export interface ClientOptions {
+    /** 为 true 时跳过 TLS 证书校验（仅在单次请求期间临时设置环境变量） */
     insecure?: boolean;
+    /** 默认请求超时（毫秒），可被单次 {@link RequestOptions.timeout} 覆盖 */
     timeout?: number;
 }
 
+/**
+ * 禅道 REST API v2 的轻量封装。
+ * 负责拼接 `.../api.php/v2` 前缀、注入 Token、序列化 JSON，并将 HTTP/网络错误映射为 {@link ZentaoError}。
+ */
 export class ZentaoClient {
     readonly baseUrl: string;
     private token: string;
     private timeout: number;
     private insecure: boolean;
 
+    /**
+     * @param serverUrl 禅道站点根地址，如 `https://zentao.example.com`（末尾 `/` 会被去掉）
+     * @param token API Token（请求头 `Token`）
+     * @param options 客户端级选项
+     */
     constructor(serverUrl: string, token: string, options?: ClientOptions) {
         const url = serverUrl.replace(/\/+$/, '');
         this.baseUrl = `${url}/api.php/v2`;
@@ -20,6 +32,11 @@ export class ZentaoClient {
         this.insecure = options?.insecure ?? false;
     }
 
+    /**
+     * 发起一次 API 请求。
+     * - `status === 'fail'` 的 JSON 响应会抛出 {@link ZentaoError} `E2008`
+     * - 超时、证书、连接失败等会映射为对应的 `E5xxx` / `E1002` 等错误
+     */
     async request<T extends ApiResponse = ApiResponse>(
         method: string,
         path: string,
@@ -52,6 +69,7 @@ export class ZentaoClient {
             fetchOptions.body = JSON.stringify(options.body);
         }
 
+        // Node 全局 TLS 开关：仅在本次 fetch 期间生效，在 finally 中恢复，避免污染其他并发请求
         if (this.insecure) {
             process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
         }
@@ -90,6 +108,7 @@ export class ZentaoClient {
         }
     }
 
+    /** 将 HTTP 状态码映射为 CLI 统一错误（401→Token 失效等） */
     private async handleHttpError(response: Response): Promise<never> {
         let body: Record<string, unknown> | undefined;
         try {
@@ -126,11 +145,13 @@ export class ZentaoClient {
         return this.request<T>('DELETE', path);
     }
 
+    /** 在同一线程/进程内复用客户端实例时，用于刷新 Token */
     setToken(token: string): void {
         this.token = token;
     }
 }
 
+/** {@link ZentaoClient} 的工厂函数，语义上与 `new ZentaoClient` 等价 */
 export function createClient(serverUrl: string, token: string, options?: ClientOptions): ZentaoClient {
     return new ZentaoClient(serverUrl, token, options);
 }

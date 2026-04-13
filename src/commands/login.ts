@@ -6,6 +6,7 @@ import { ZentaoError, formatError } from '../errors.js';
 import type { Profile } from '../types/index.js';
 import type { GlobalOptions } from './types.js';
 
+/** 注册 `zentao login`：支持参数、环境变量与交互式提示 */
 export function registerLoginCommand(program: Command): void {
     program
         .command('login')

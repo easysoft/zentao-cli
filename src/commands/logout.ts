@@ -3,6 +3,7 @@ import { removeProfile, getCurrentProfile, profileKey } from '../config/store.js
 import { ZentaoError, formatError } from '../errors.js';
 import type { GlobalOptions } from './types.js';
 
+/** 注册 `zentao logout`：按 key 删除本地保存的 Profile */
 export function registerLogoutCommand(program: Command): void {
     program
         .command('logout')

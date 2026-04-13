@@ -2,11 +2,13 @@ import { ZentaoClient } from '../api/client.js';
 import type { LoginResponse, ApiResponse } from '../types/index.js';
 import { ZentaoError } from '../errors.js';
 
+/** 密码登录成功后的结果 */
 export interface LoginResult {
     token: string;
     user?: Record<string, unknown>;
 }
 
+/** 从环境变量读取的凭证片段（任一字段可能缺失） */
 export interface EnvCredentials {
     url?: string;
     account?: string;
@@ -14,6 +16,10 @@ export interface EnvCredentials {
     token?: string;
 }
 
+/**
+ * 使用账号密码调用 `/users/login` 获取 Token，并尽力拉取当前账号的用户详情。
+ * 用户列表拉取失败不视为致命错误（Token 仍然有效）。
+ */
 export async function login(
     serverUrl: string,
     account: string,
@@ -81,6 +87,10 @@ export async function login(
     }
 }
 
+/**
+ * 通过一次轻量 GET（用户列表，仅取 1 条）探测 Token 是否仍然有效。
+ * 任意异常均返回 `false`，由调用方决定是否回退到环境变量或交互登录。
+ */
 export async function validateToken(
     serverUrl: string,
     token: string,
@@ -95,6 +105,7 @@ export async function validateToken(
     }
 }
 
+/** 读取 `ZENTAO_URL` / `ZENTAO_ACCOUNT` / `ZENTAO_PASSWORD` / `ZENTAO_TOKEN` */
 export function getEnvCredentials(): EnvCredentials {
     return {
         url: process.env.ZENTAO_URL,

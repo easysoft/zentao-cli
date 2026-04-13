@@ -1,10 +1,10 @@
 import { Command } from 'commander';
 import { readFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 import { getCurrentProfile, getProfileConfig, profileKey } from '../config/store.js';
 import type { GlobalOptions } from './types.js';
 
+/** 从当前工作目录的 `package.json` 读取 CLI 版本（开发与本地运行场景） */
 function getCliVersion(): string {
     try {
         // Try multiple paths for development vs built mode
@@ -23,6 +23,7 @@ function getCliVersion(): string {
     }
 }
 
+/** 注册 `zentao version`：输出 CLI 与当前 Profile 指向的服务器 */
 export function registerVersionCommand(program: Command): void {
     program
         .command('version')

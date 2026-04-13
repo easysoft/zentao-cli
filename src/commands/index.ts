@@ -8,6 +8,7 @@ import { registerVersionCommand } from './version.js';
 import { registerCrudCommands } from './crud.js';
 import { registerModuleCommands } from './register-modules.js';
 
+/** 注册内置子命令与各动态模块子命令 */
 export function registerAllCommands(program: Command): void {
     registerLoginCommand(program);
     registerLogoutCommand(program);

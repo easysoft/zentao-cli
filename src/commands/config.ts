@@ -5,6 +5,7 @@ import { ZentaoError, formatError } from '../errors.js';
 import { formatJson } from '../utils/format.js';
 import type { GlobalOptions } from './types.js';
 
+/** 注册 `zentao config get|set`：读写当前 Profile 下的用户偏好 */
 export function registerConfigCommand(program: Command): void {
     const configCmd = program
         .command('config')

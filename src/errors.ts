@@ -1,3 +1,7 @@
+/**
+ * 错误码与默认消息映射表。
+ * 消息模板中的 {key} 占位符会在构造 ZentaoError 时被替换为实际值。
+ */
 export const ERROR_CODES = {
     // 认证与配置 (10xx)
     E1001: '必须提供有效的禅道服务地址、用户名和密码或 TOKEN',
@@ -33,12 +37,25 @@ export const ERROR_CODES = {
     E5002: 'SSL/TLS 证书验证失败，请检查禅道服务地址是否正确',
 } as const;
 
+/** 错误码类型，限定为 ERROR_CODES 中定义的 key */
 export type ErrorCode = keyof typeof ERROR_CODES;
 
+/**
+ * 禅道 CLI 统一错误类。
+ * 所有可预期的错误（认证、API、数据处理、网络）均通过此类抛出，
+ * 便于在命令层统一捕获并按输出格式渲染。
+ */
 export class ZentaoError extends Error {
+    /** 数字错误码（不含前缀 E），如 '1001' */
     code: string;
+    /** 附加的错误详情，如禅道服务端返回的原始响应 */
     details?: unknown;
 
+    /**
+     * @param code 错误码，如 'E1001'
+     * @param replacements 消息模板占位符替换值，如 { url: 'https://...' }
+     * @param details 附加详情，会在 JSON 输出中包含
+     */
     constructor(code: ErrorCode, replacements?: Record<string, string>, details?: unknown) {
         let message = ERROR_CODES[code] as string;
         if (replacements) {
@@ -53,6 +70,7 @@ export class ZentaoError extends Error {
     }
 }
 
+/** 将 ZentaoError 格式化为用户可读的字符串（Markdown 或 JSON） */
 export function formatError(error: ZentaoError, format: string): string {
     if (format === 'json' || format === 'raw') {
         const obj: Record<string, unknown> = {

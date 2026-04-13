@@ -6,12 +6,18 @@ function ask(rl: ReturnType<typeof createInterface>, question: string): Promise<
     });
 }
 
+/** 交互式登录收集到的原始输入（密码与 Token 二选一由长度启发式区分） */
 export interface PromptResult {
     url: string;
     account: string;
     password: string;
+    token: string;
 }
 
+/**
+ * 在 TTY 上询问 URL、账号与密码/Token。
+ * 若第三项长度为 40，则按禅道 Token 常见长度视为 Token，否则视为密码。
+ */
 export async function promptLogin(): Promise<PromptResult> {
     const rl = createInterface({
         input: process.stdin,

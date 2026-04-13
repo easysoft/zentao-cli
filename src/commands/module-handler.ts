@@ -14,12 +14,21 @@ import { createInterface } from 'node:readline';
 
 type OperationType = 'list' | 'get' | 'create' | 'update' | 'delete' | 'action';
 
+/** 将 `zentao bug 1` / `zentao bug ls` 等 argv 解析为统一的操作描述 */
 interface ResolvedOperation {
     type: OperationType;
     objectId?: string;
     actionName?: string;
 }
 
+/**
+ * 解析模块子命令参数：
+ * - 无参数 → 列表
+ * - 已知关键字 `create` / `update` / `delete` / `ls` → 对应操作
+ * - 与模块 `actions` 匹配的首参 → 扩展操作，次参为对象 ID
+ * - 纯数字首参 → 视为详情 `get`
+ * - 其余情况回退为列表（例如未知子命令）
+ */
 export function resolveOperation(
     module: ModuleDefinition,
     args: string[],
@@ -31,7 +40,7 @@ export function resolveOperation(
     const first = args[0];
 
     if (first === 'help') {
-        return { type: 'list' }; // Will be handled separately
+        return { type: 'list' };
     }
 
     const operations = ['create', 'update', 'delete', 'ls', 'help'];
@@ -55,6 +64,7 @@ export function resolveOperation(
     return { type: 'list' };
 }
 
+/** JSON/raw 模式下跳过交互确认，便于脚本化调用 */
 async function confirmDelete(format: string, count: number): Promise<boolean> {
     if (format === 'json' || format === 'raw') return true;
 
@@ -67,6 +77,9 @@ async function confirmDelete(format: string, count: number): Promise<boolean> {
     });
 }
 
+/**
+ * 执行模块级 CRUD 或扩展操作：负责拼路径、分页拉取、客户端过滤/排序、HTML 转 Markdown 及格式化输出。
+ */
 export async function handleModuleCommand(
     client: ZentaoClient,
     module: ModuleDefinition,
@@ -90,6 +103,7 @@ export async function handleModuleCommand(
         case 'list': {
             const path = resolveListPath(module, workspace, explicitParams);
             const queryParams: Record<string, string | number> = {};
+            // 未知选项在 register-modules 中也会进入 extraArgs；此处仅收集 `key=value` 形式作为查询参数透传给 API
             for (const arg of extraArgs) {
                 const match = arg.match(/^--(\w+)=(.+)$/);
                 if (match) queryParams[match[1]] = match[2];
@@ -160,7 +174,6 @@ export async function handleModuleCommand(
         case 'create': {
             let body = await resolveData(opts.data);
             if (!body) {
-                // Build body from extra args
                 body = buildBodyFromArgs(extraArgs);
             }
 
@@ -216,6 +229,7 @@ export async function handleModuleCommand(
             const failFast = opts.batchFailFast ?? config.batchFailFast ?? false;
 
             for (const id of ids) {
+                // failFast：一旦出现失败，后续 ID 不再请求接口，仅记入 skipped
                 if (failFast && failed.length > 0) {
                     skipped.push(id);
                     continue;
@@ -286,6 +300,7 @@ export async function handleModuleCommand(
     }
 }
 
+/** 顺序提交多条创建请求，聚合响应后一次性输出 */
 async function handleBatchCreate(
     client: ZentaoClient,
     module: ModuleDefinition,
@@ -308,6 +323,7 @@ async function handleBatchCreate(
     }
 }
 
+/** 批量更新：每项必须含 `id` 字段，其余字段作为 PUT 请求体 */
 async function handleBatchUpdate(
     client: ZentaoClient,
     module: ModuleDefinition,
@@ -331,6 +347,7 @@ async function handleBatchUpdate(
     }
 }
 
+/** 将 `--field=value` 形式的 argv 转为 JSON 体，并对布尔值与纯数字做简单类型推断 */
 function buildBodyFromArgs(args: string[]): Record<string, unknown> {
     const body: Record<string, unknown> = {};
     for (const arg of args) {
