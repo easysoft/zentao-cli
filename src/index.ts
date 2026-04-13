@@ -1,7 +1,7 @@
 /**
  * CLI 入口：装配 Commander、注册子命令，并在捕获到 {@link ZentaoError} 时按 `--format` 渲染后退出。
  */
-import { Command } from 'commander';
+import { Command, CommanderError } from 'commander';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { registerAllCommands } from './commands/index.js';
@@ -29,6 +29,19 @@ program
     .option('--timeout <ms>', '请求超时时间（毫秒）', parseInt);
 
 registerAllCommands(program);
+
+/**
+ * Commander 在「仅有子命令、未指定子命令且无根级 action」时会 `help({ error: true })`，并以码 1 退出。
+ * 无参运行应视为查看帮助，与 `-h` 一致以 0 退出。
+ */
+program.exitOverride((err) => {
+    if (err.code === 'commander.executeSubCommandAsync') {
+        return;
+    }
+    const exitCode =
+        err instanceof CommanderError && err.code === 'commander.help' && err.exitCode === 1 ? 0 : err.exitCode;
+    process.exit(exitCode);
+});
 
 program.parseAsync(process.argv).catch((error) => {
     if (error instanceof ZentaoError) {
