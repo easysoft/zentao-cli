@@ -1,13 +1,27 @@
 import type { Profile } from '../types/index.js';
 import { ZentaoClient } from '../api/client.js';
 import { ZentaoError } from '../errors.js';
-import { getCurrentProfile, saveProfile, getProfileConfig, profileKey, buildProfile } from '../config/store.js';
+import { getCurrentProfile, getProfile, saveProfile, getProfileConfig, buildProfile } from '../config/store.js';
 import { login, validateToken, getEnvCredentials } from './login.js';
 
 /** 已通过鉴权后的运行时上下文，供命令层发起 API 调用 */
 export interface AuthContext {
     client: ZentaoClient;
     profile: Profile;
+}
+
+function shouldValidateToken(lastUsedTime?: string): boolean {
+    if (!lastUsedTime) {
+        return true;
+    }
+
+    const lastUsedAt = new Date(lastUsedTime).getTime();
+    if (Number.isNaN(lastUsedAt)) {
+        return true;
+    }
+
+    const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+    return Date.now() - lastUsedAt > ONE_DAY_MS;
 }
 
 /**
@@ -26,9 +40,9 @@ export async function ensureAuth(options?: { insecure?: boolean; timeout?: numbe
             insecure: options?.insecure ?? config.insecure,
             timeout: options?.timeout ?? config.timeout,
         };
+        const needValidateToken = shouldValidateToken(currentProfile.lastUsedTime);
 
-        const valid = await validateToken(currentProfile.server, currentProfile.token, clientOpts);
-        if (valid) {
+        if (!needValidateToken || (await validateToken(currentProfile.server, currentProfile.token, clientOpts))) {
             currentProfile.lastUsedTime = new Date().toISOString();
             saveProfile(currentProfile);
             return {
@@ -42,9 +56,12 @@ export async function ensureAuth(options?: { insecure?: boolean; timeout?: numbe
 
     if (env.url && env.account && env.token) {
         const clientOpts = { insecure: options?.insecure, timeout: options?.timeout };
-        const valid = await validateToken(env.url, env.token, clientOpts);
-        if (valid) {
-            const profile = buildProfile(env.url, env.account, env.token);
+        const normalizedServer = env.url.replace(/\/+$/, '');
+        const existingProfile = getProfile(env.account, normalizedServer);
+        const needValidateToken = shouldValidateToken(existingProfile?.lastUsedTime);
+
+        if (!needValidateToken || (await validateToken(env.url, env.token, clientOpts))) {
+            const profile = buildProfile(env.url, env.account, env.token, undefined, undefined, existingProfile);
             saveProfile(profile);
             return {
                 client: new ZentaoClient(env.url, env.token, clientOpts),
