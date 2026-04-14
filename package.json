@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "type": "module",
   "description": "禅道命令行工具，支持在你喜爱的终端里访问和操作禅道数据，对 AI Agents 友好。",
-  "author": "EasySoft <admin@easycorp.ltd>",
+  "author": "Sun Hao <sunhao@chandao.com>",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -27,6 +27,7 @@
     "dev": "bun run src/index.ts",
     "build": "bun run scripts/build.ts --minify",
     "build:sf": "bun run scripts/build.ts --compile --minify",
+    "update-registry": "bun run scripts/update-registry.ts",
     "test": "bun test"
   },
   "dependencies": {
