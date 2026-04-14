@@ -56,7 +56,7 @@ export async function ensureAuth(options?: { insecure?: boolean; timeout?: numbe
     if (env.url && env.account && env.password) {
         const clientOpts = { insecure: options?.insecure, timeout: options?.timeout };
         const result = await login(env.url, env.account, env.password, clientOpts);
-        const profile = buildProfile(env.url, env.account, result.token, result.user);
+        const profile = buildProfile(env.url, env.account, result.token, undefined, result.user);
         saveProfile(profile);
         return {
             client: new ZentaoClient(env.url, result.token, clientOpts),
