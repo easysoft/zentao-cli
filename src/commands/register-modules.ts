@@ -4,7 +4,7 @@ import { getAvailableActions } from '../modules/resolver.js';
 import { ensureAuth } from '../auth/flow.js';
 import { resolveOperation, handleModuleCommand } from './module-handler.js';
 import { ZentaoError, formatError } from '../errors.js';
-import type { GlobalOptions, DataOptions } from './types.js';
+import type { GlobalOptions, DataOptions } from '../types/index.js';
 
 /** 为命令挂载数据查询、分页、过滤及父子上下文等通用选项 */
 export function addDataOptions(cmd: Command): Command {

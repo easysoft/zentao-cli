@@ -9,7 +9,7 @@ import { filterData, sortData, searchData, pickFields, pickFieldsSingle } from '
 import { fetchAllPages } from '../utils/pagination.js';
 import { formatOutput } from '../utils/format.js';
 import { resolveData } from '../utils/stdin.js';
-import type { DataOptions } from './types.js';
+import type { DataOptions } from '../types/index.js';
 import { createInterface } from 'node:readline';
 
 type OperationType = 'list' | 'get' | 'create' | 'update' | 'delete' | 'action';

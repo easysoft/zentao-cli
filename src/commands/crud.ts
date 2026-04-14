@@ -4,7 +4,7 @@ import { ZentaoError, formatError } from '../errors.js';
 import { ensureAuth } from '../auth/flow.js';
 import { handleModuleCommand } from './module-handler.js';
 import { addDataOptions } from './register-modules.js';
-import type { GlobalOptions, DataOptions } from './types.js';
+import type { GlobalOptions, DataOptions } from '../types/index.js';
 
 /** 注册 `ls` / `get` / `create` / `update` / `delete` / `do` 等通用 CRUD 入口 */
 export function registerCrudCommands(program: Command): void {

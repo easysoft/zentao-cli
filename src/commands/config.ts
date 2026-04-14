@@ -2,8 +2,8 @@ import { Command } from 'commander';
 import { getCurrentProfile, getProfileConfig, setProfileConfig } from '../config/store.js';
 import { VALID_CONFIG_KEYS } from '../config/defaults.js';
 import { ZentaoError, formatError } from '../errors.js';
-import { formatJson } from '../utils/format.js';
-import type { GlobalOptions } from './types.js';
+import { formatJson } from '../utils/format';
+import type { GlobalOptions } from '../types/index.js';
 
 /** 注册 `zentao config get|set`：读写当前 Profile 下的用户偏好 */
 export function registerConfigCommand(program: Command): void {

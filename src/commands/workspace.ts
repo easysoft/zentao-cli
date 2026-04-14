@@ -2,9 +2,8 @@ import { Command } from 'commander';
 import { getCurrentProfile } from '../config/store.js';
 import { getCurrentWorkspace, listWorkspaces, setCurrentWorkspace, getWorkspaceById } from '../config/workspace.js';
 import { ZentaoError, formatError } from '../errors.js';
-import { formatTable, formatList, formatJson } from '../utils/format.js';
-import type { Workspace } from '../types/index.js';
-import type { GlobalOptions } from './types.js';
+import { formatTable, formatList, formatJson } from '../utils/format';
+import type { Workspace, GlobalOptions } from '../types/index.js';
 
 /** 将工作区引用展平为适合表格/列表展示的中文字段 */
 function workspaceToDisplay(ws: Workspace): Record<string, unknown> {

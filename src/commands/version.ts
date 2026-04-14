@@ -2,7 +2,7 @@ import { Command } from 'commander';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { getCurrentProfile, getProfileConfig, profileKey } from '../config/store.js';
-import type { GlobalOptions } from './types.js';
+import type { GlobalOptions } from '../types/index.js';
 
 /** 从当前工作目录的 `package.json` 读取 CLI 版本（开发与本地运行场景） */
 function getCliVersion(): string {
