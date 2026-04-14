@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { getModule } from '../modules/registry.js';
+import { getModule } from '../modules/index.js';
 import { ZentaoError, formatError } from '../errors.js';
 import { ensureAuth } from '../auth/flow.js';
 import { handleModuleCommand } from './module-handler.js';

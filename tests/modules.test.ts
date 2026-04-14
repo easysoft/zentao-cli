@@ -1,9 +1,9 @@
 import { describe, test, expect } from 'bun:test';
-import { MODULES, getModule, getModuleNames, isModuleName } from '../src/modules/registry';
-import { resolveListPath, resolveDetailPath, resolveActionPath, getAvailableActions } from '../src/modules/resolver';
+import { MODULES, getModule, getModuleNames, isModuleName } from '../src/modules';
+import { findAction, getAvailableActions, resolveActionUrl, resolveListPathParams } from '../src/modules';
 import type { Workspace } from '../src/types/config';
 
-describe('module registry', () => {
+    describe('module registry', () => {
     test('contains expected modules', () => {
         const names = getModuleNames();
         expect(names).toContain('product');
@@ -18,7 +18,9 @@ describe('module registry', () => {
         const mod = getModule('product');
         expect(mod).toBeDefined();
         expect(mod!.name).toBe('product');
-        expect(mod!.pluralKey).toBe('products');
+        const listAction = findAction(mod!, 'list');
+        expect(listAction).toBeDefined();
+        expect(listAction!.path).toBe('/products');
     });
 
     test('getModule is case insensitive', () => {
@@ -54,13 +56,16 @@ describe('module registry', () => {
 
     test('product module has list operation', () => {
         const product = getModule('product')!;
-        expect(product.operations).toContain('list');
+        const listAction = findAction(product, 'list');
+        expect(listAction).toBeDefined();
+        expect(listAction!.name).toBe('list');
     });
 
     test('bug module has no top-level list', () => {
         const bug = getModule('bug')!;
-        expect(bug.operations).not.toContain('list');
-        expect(bug.listScopes.length).toBeGreaterThan(0);
+        const listAction = findAction(bug, 'list');
+        expect(listAction).toBeDefined();
+        expect(listAction!.path).toBe('/{scope}/{scopeID}/bugs');
     });
 });
 
@@ -74,47 +79,54 @@ describe('module resolver', () => {
 
     test('resolves top-level list path for product', () => {
         const mod = getModule('product')!;
-        const path = resolveListPath(mod);
+        const listAction = findAction(mod, 'list')!;
+        const path = resolveActionUrl(listAction, resolveListPathParams(listAction, workspace, {}));
         expect(path).toBe('/products');
     });
 
     test('resolves scoped list path for bug with workspace', () => {
         const mod = getModule('bug')!;
-        const path = resolveListPath(mod, workspace);
+        const listAction = findAction(mod, 'list')!;
+        const path = resolveActionUrl(listAction, resolveListPathParams(listAction, workspace, {}));
         // Should prefer execution scope
         expect(path).toBe('/executions/30/bugs');
     });
 
     test('resolves scoped list path with explicit product param', () => {
         const mod = getModule('bug')!;
-        const path = resolveListPath(mod, undefined, { product: 5 });
+        const listAction = findAction(mod, 'list')!;
+        const path = resolveActionUrl(listAction, resolveListPathParams(listAction, workspace, { product: 5 }));
         expect(path).toBe('/products/5/bugs');
     });
 
     test('resolves scoped list path with explicit project param', () => {
         const mod = getModule('bug')!;
-        const path = resolveListPath(mod, undefined, { project: 7 });
+        const listAction = findAction(mod, 'list')!;
+        const path = resolveActionUrl(listAction, resolveListPathParams(listAction, workspace, { project: 7 }));
         expect(path).toBe('/projects/7/bugs');
     });
 
-    test('throws when no workspace for scoped module', () => {
+    test('throws when no scope for scoped module', () => {
         const mod = getModule('bug')!;
-        expect(() => resolveListPath(mod)).toThrow();
+        const listAction = findAction(mod, 'list')!;
+        expect(() => resolveActionUrl(listAction, resolveListPathParams(listAction, {} as Workspace, {}))).toThrow();
     });
 
     test('resolves detail path', () => {
         const mod = getModule('product')!;
-        expect(resolveDetailPath(mod, 1)).toBe('/products/1');
+        const getAction = findAction(mod, 'get')!;
+        expect(resolveActionUrl(getAction, { productID: 1 })).toBe('/products/1');
     });
 
     test('resolves action path', () => {
         const mod = getModule('bug')!;
-        expect(resolveActionPath(mod, 'resolve', 5)).toBe('/bugs/5/resolve');
+        const action = findAction(mod, 'action', 'resolve')!;
+        expect(resolveActionUrl(action, { bugID: 5 })).toBe('/bugs/5/resolve');
     });
 
     test('throws for unknown action', () => {
         const mod = getModule('bug')!;
-        expect(() => resolveActionPath(mod, 'nonexistent', 1)).toThrow();
+        expect(findAction(mod, 'action', 'nonexistent')).toBeUndefined();
     });
 
     test('getAvailableActions returns action names', () => {
@@ -127,13 +139,15 @@ describe('module resolver', () => {
 
     test('task list resolves under execution', () => {
         const mod = getModule('task')!;
-        const path = resolveListPath(mod, workspace);
+        const listAction = findAction(mod, 'list')!;
+        const path = resolveActionUrl(listAction, resolveListPathParams(listAction, workspace, {}));
         expect(path).toBe('/executions/30/tasks');
     });
 
     test('product list path under program with explicit param', () => {
         const mod = getModule('product')!;
-        const path = resolveListPath(mod, undefined, { program: 3 });
-        expect(path).toBe('/programs/3/products');
+        const listAction = findAction(mod, 'list')!;
+        const path = resolveActionUrl(listAction, resolveListPathParams(listAction, workspace, { program: 3 }));
+        expect(path).toBe('/products');
     });
 });

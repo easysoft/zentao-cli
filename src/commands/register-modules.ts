@@ -1,9 +1,10 @@
 import { Command } from 'commander';
-import { getModuleNames, getModule } from '../modules/helper.js';
-import { getAvailableActions } from '../modules/resolver.js';
+import { getModuleNames, getModule } from '../modules/index.js';
+import { getAvailableActions, findAction, hasActionType } from '../modules/resolver.js';
 import { ensureAuth } from '../auth/flow.js';
 import { resolveOperation, handleModuleCommand } from './module-handler.js';
 import { ZentaoError, formatError } from '../errors.js';
+import type { ModuleDefinition } from '../types/index.js';
 import type { GlobalOptions, DataOptions } from '../types/index.js';
 
 /** 为命令挂载数据查询、分页、过滤及父子上下文等通用选项 */
@@ -50,7 +51,7 @@ export function registerModuleCommands(program: Command): void {
 
         const cmd = program
             .command(name)
-            .description(`${name} 模块${actionDesc}`)
+            .description(`${mod.display ?? name} 模块${actionDesc}`)
             .argument('[args...]', '参数')
             .allowUnknownOption(true);
 
@@ -66,14 +67,13 @@ export function registerModuleCommands(program: Command): void {
                     timeout: globalOpts.timeout,
                 });
 
-                const operation = resolveOperation(mod, args);
-
                 if (args[0] === 'help') {
                     showModuleHelp(mod);
                     return;
                 }
 
-                // Collect unknown options as extra args for body building
+                const operation = resolveOperation(mod, args);
+
                 const knownOpts = new Set([
                     'format', 'pick', 'filter', 'sort', 'search', 'searchFields',
                     'page', 'recPerPage', 'all', 'limit', 'data', 'yes', 'silent',
@@ -96,29 +96,52 @@ export function registerModuleCommands(program: Command): void {
 }
 
 /** 打印模块级内建帮助（与 `zentao <module> help` 对应） */
-function showModuleHelp(mod: ReturnType<typeof getModule>): void {
-    if (!mod) return;
-    const actions = getAvailableActions(mod);
+function showModuleHelp(mod: ModuleDefinition): void {
+    console.log(`模块: ${mod.display ?? mod.name}`);
+    if (mod.description) console.log(`描述: ${mod.description}`);
 
-    console.log(`模块: ${mod.name}`);
     console.log(`\n操作:`);
-    if (mod.operations.includes('list')) console.log(`  zentao ${mod.name}                    获取列表`);
-    if (mod.operations.includes('get')) console.log(`  zentao ${mod.name} <id>               获取详情`);
-    if (mod.operations.includes('create')) console.log(`  zentao ${mod.name} create [params]    创建`);
-    if (mod.operations.includes('update')) console.log(`  zentao ${mod.name} update <id>        更新`);
-    if (mod.operations.includes('delete')) console.log(`  zentao ${mod.name} delete <ids>       删除`);
+    if (hasActionType(mod, 'list')) console.log(`  zentao ${mod.name}                    获取列表`);
+    if (hasActionType(mod, 'get')) console.log(`  zentao ${mod.name} <id>               获取详情`);
+    if (hasActionType(mod, 'create')) console.log(`  zentao ${mod.name} create [params]    创建`);
+    if (hasActionType(mod, 'update')) console.log(`  zentao ${mod.name} update <id>        更新`);
+    if (hasActionType(mod, 'delete')) console.log(`  zentao ${mod.name} delete <ids>       删除`);
 
+    const actions = getAvailableActions(mod);
     if (actions.length > 0) {
         console.log(`\n扩展操作:`);
-        for (const action of actions) {
-            console.log(`  zentao ${mod.name} ${action} <id>     ${action}`);
+        for (const actionName of actions) {
+            const action = findAction(mod, 'action', actionName);
+            const display = action?.display ?? actionName;
+            console.log(`  zentao ${mod.name} ${actionName} <id>     ${display}`);
         }
     }
 
-    if (mod.listScopes.length > 0) {
-        console.log(`\n上下文参数:`);
-        for (const scope of mod.listScopes) {
-            console.log(`  --${scope.parent} <id>`);
+    const listAction = findAction(mod, 'list');
+    if (listAction?.pathParams) {
+        const scopeParams = Object.entries(listAction.pathParams)
+            .filter(([key]) => key !== 'scope' && key !== 'scopeID');
+        const hasScopePattern = 'scope' in listAction.pathParams;
+
+        if (hasScopePattern || scopeParams.length > 0) {
+            console.log(`\n上下文参数:`);
+            if (hasScopePattern) {
+                const scopeDef = listAction.pathParams.scope;
+                if (typeof scopeDef === 'object' && scopeDef.options) {
+                    for (const opt of scopeDef.options) {
+                        const singular = String(opt.value).replace(/s$/, '');
+                        console.log(`  --${singular} <id>          ${opt.label}`);
+                    }
+                } else {
+                    console.log(`  --product <id>          产品`);
+                    console.log(`  --project <id>          项目`);
+                    console.log(`  --execution <id>        执行`);
+                }
+            }
+            for (const [key, def] of scopeParams) {
+                const desc = typeof def === 'string' ? def : def.description ?? key;
+                console.log(`  --${key} <id>          ${desc}`);
+            }
         }
     }
 }

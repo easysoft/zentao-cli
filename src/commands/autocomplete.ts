@@ -3,7 +3,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline';
-import { getModuleNames } from '../modules/registry.js';
+import { getModuleNames } from '../modules/index.js';
 
 const ROOT_COMMANDS = [
     'login', 'logout', 'profile', 'config', 'workspace', 'version',
