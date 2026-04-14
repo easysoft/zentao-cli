@@ -43,17 +43,18 @@ export function registerProfileCommand(program: Command): void {
                     return;
                 }
 
-                for (const p of profiles) {
+                const lines = profiles.map((p) => {
                     const pKey = profileKey(p.account, p.server);
                     const parts = [pKey];
                     if (p.serverConfig) {
-                        parts.push(`(${p.serverConfig.version.toUpperCase()})`);
+                        parts.push(` (${p.serverConfig.version.toUpperCase()})`);
                     }
                     if (pKey === currentKey) {
-                        parts.push(' [当前]');
+                        parts.push(' **[当前]**');
                     }
-                    console.log(`* ${parts.join('')}`);
-                }
+                    return `* ${parts.join('')}`;
+                });
+                console.log(Bun.markdown.ansi(lines.join('\n')));
             } catch (error) {
                 if (error instanceof ZentaoError) {
                     console.error(formatError(error, globalOpts.format ?? 'markdown'));
