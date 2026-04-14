@@ -33,6 +33,7 @@ function collect(value: string, previous: string[]): string[] {
     return previous.concat([value]);
 }
 
+/** 内置模块命令列表 */
 const BUILTIN_COMMANDS = [
     'login', 'logout', 'profile', 'config', 'workspace', 'version',
     'help', 'ls', 'get', 'create', 'update', 'delete', 'do', 'autocomplete',
