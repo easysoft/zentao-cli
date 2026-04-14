@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { getModuleNames, getModule } from '../modules/registry.js';
+import { getModuleNames, getModule } from '../modules/helper.js';
 import { getAvailableActions } from '../modules/resolver.js';
 import { ensureAuth } from '../auth/flow.js';
 import { resolveOperation, handleModuleCommand } from './module-handler.js';
