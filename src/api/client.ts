@@ -43,9 +43,10 @@ export class ZentaoClient {
         options?: RequestOptions,
     ): Promise<T> {
         let url = `${this.baseUrl}${path}`;
-        if (options?.params) {
+        if (options?.query) {
             const search = new URLSearchParams();
-            for (const [key, value] of Object.entries(options.params)) {
+            for (const [key, value] of Object.entries(options.query)) {
+                if (value === undefined) continue;
                 search.set(key, String(value));
             }
             url += `?${search.toString()}`;
@@ -129,8 +130,8 @@ export class ZentaoClient {
         }
     }
 
-    async get<T extends ApiResponse = ApiResponse>(path: string, params?: Record<string, string | number>): Promise<T> {
-        return this.request<T>('GET', path, { params });
+    async get<T extends ApiResponse = ApiResponse>(path: string, query?: Record<string, string | number>): Promise<T> {
+        return this.request<T>('GET', path, { query });
     }
 
     async post<T extends ApiResponse = ApiResponse>(path: string, body?: unknown): Promise<T> {
