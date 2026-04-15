@@ -1,5 +1,10 @@
 # 后续计划
 
+## 提供自动安装脚本
+
+根据用户环境自动安装 zentao-cli 工具，支持 macOS、Linux 和 Windows 系统。
+如果用户已经安装则自动检查更新并升级。
+
 ## 自动升级
 
 支持通过 `zentao update` 命令检查新版本并自动升级 zentao-cli 工具
