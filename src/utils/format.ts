@@ -92,7 +92,6 @@ function normalizePager(pager: Pager): Record<string, number> {
         total: pager.recTotal,
         page: pager.pageID,
         recPerPage: pager.recPerPage,
-        totalPage: pager.pageTotal,
     };
 }
 

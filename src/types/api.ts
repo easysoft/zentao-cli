@@ -5,7 +5,7 @@ export interface Pager {
     /** 每页记录数 */
     recPerPage: number;
     /** 总页数 */
-    pageTotal: number;
+    pageTotal?: number;
     /** 当前页码 */
     pageID: number;
 }
@@ -39,7 +39,7 @@ export interface LoginResponse extends ApiResponse {
 /** API 请求选项 */
 export interface RequestOptions {
     /** URL 查询参数 */
-    params?: Record<string, string | number>;
+    query?: Record<string, string | number>;
     /** 请求体（自动序列化为 JSON） */
     body?: unknown;
     /** 单次请求的超时时间（毫秒），覆盖客户端默认值 */

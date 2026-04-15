@@ -1,3 +1,4 @@
+import { Pager } from "./api";
 import { OutputFormat } from "./config";
 
 /** 模块操作类型 */
@@ -37,14 +38,7 @@ export interface ModuleActionParam {
 export type ModuleActionResultType = 'text' | 'object' | 'list';
 
 /** 列表分页信息 */
-export type ListPagerInfo = {
-    /** 当前页码 */
-    page: number;
-    /** 每页记录数 */
-    recPerPage: number;
-    /** 总记录数 */
-    recTotal: number;
-};
+export type ListPagerInfo = Pager;
 
 /** 模块操作请求体 */
 export interface ModuleActionRequestBody {
@@ -154,4 +148,28 @@ export interface ModuleDefinition {
 
     /** 模块操作 */
     actions: ModuleAction[];
+}
+
+/** 将 `zentao bug 1` / `zentao bug ls` 等 argv 解析为统一的操作描述 */
+export interface ResolvedModuleCommand {
+    /** 模块名称 */
+    module: string;
+
+    /** 操作 */
+    action: ModuleAction;
+
+    /** 操作参数，用于格式化 API 请求路径，请求参数和请求数据*/
+    params: Record<string, unknown>;
+
+    /** API 请求路径，例如 `/api/bugs/1` */
+    path: string;
+
+    /** API 请求查询参数 */
+    query?: Record<string, string | number>;
+
+    /** 操作数据，通常作为 body 用于提交到服务器 */
+    data?: string | Record<string, unknown>;
+
+    /** 操作 ID */
+    id?: number;
 }

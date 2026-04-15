@@ -1,68 +1,14 @@
 import type { ZentaoClient } from '../api/client.js';
-import type { ModuleDefinition, ModuleAction, OutputFormat, Profile } from '../types/index.js';
-import { ZentaoError } from '../errors.js';
-import { findAction, getAvailableActions, resolveActionUrl, resolveListPathParams, extractResult, extractPager, resolveRender } from '../modules/resolver.js';
-import { getCurrentWorkspace } from '../config/workspace.js';
+import type { ModuleDefinition, ModuleAction, Profile, ModuleActionName, ResolvedModuleCommand, UserConfig } from '../types/index.js';
+import { findAction, getAvailableActions, extractResult, extractPager, hasActionType, resolveModuleCommand } from '../modules/resolver.js';
 import { getProfileConfig } from '../config/store.js';
 import { convertHtmlFields, convertHtmlFieldsInArray } from '../utils/html.js';
 import { filterData, sortData, searchData, pickFields, pickFieldsSingle } from '../utils/data.js';
-import { fetchAllPages } from '../utils/pagination.js';
 import { formatOutput } from '../utils/format.js';
-import { resolveData } from '../utils/stdin.js';
-import type { DataOptions } from '../types/index.js';
+import type { ModuleActionOptions } from '../types/index.js';
 import { createInterface } from 'node:readline';
+import { renderError } from '../utils/render.js';
 
-type OperationType = 'list' | 'get' | 'create' | 'update' | 'delete' | 'action';
-
-/** 将 `zentao bug 1` / `zentao bug ls` 等 argv 解析为统一的操作描述 */
-interface ResolvedOperation {
-    type: OperationType;
-    objectId?: string;
-    actionName?: string;
-}
-
-/**
- * 解析模块子命令参数：
- * - 无参数 → 列表
- * - 已知关键字 `create` / `update` / `delete` / `ls` → 对应操作
- * - 与模块 `actions` 匹配的首参 → 扩展操作，次参为对象 ID
- * - 纯数字首参 → 视为详情 `get`
- * - 其余情况回退为列表（例如未知子命令）
- */
-export function resolveOperation(
-    module: ModuleDefinition,
-    args: string[],
-): ResolvedOperation {
-    if (args.length === 0) {
-        return { type: 'list' };
-    }
-
-    const first = args[0];
-
-    if (first === 'help') {
-        return { type: 'list' };
-    }
-
-    const builtinOps = ['create', 'update', 'delete', 'ls', 'help'];
-    if (builtinOps.includes(first)) {
-        if (first === 'ls') return { type: 'list' };
-        if (first === 'delete') return { type: 'delete', objectId: args[1] };
-        if (first === 'update') return { type: 'update', objectId: args[1] };
-        if (first === 'create') return { type: 'create' };
-        return { type: 'list' };
-    }
-
-    const actions = getAvailableActions(module);
-    if (actions.includes(first)) {
-        return { type: 'action', actionName: first, objectId: args[1] };
-    }
-
-    if (/^\d+$/.test(first)) {
-        return { type: 'get', objectId: first };
-    }
-
-    return { type: 'list' };
-}
 
 /** JSON/raw 模式下跳过交互确认，便于脚本化调用 */
 async function confirmDelete(format: string, count: number): Promise<boolean> {
@@ -77,11 +23,90 @@ async function confirmDelete(format: string, count: number): Promise<boolean> {
     });
 }
 
-/** 从 action pathParams 中提取第一个 ID 参数名（如 `bugID`、`userID`） */
-function getIdParamName(action: ModuleAction): string | undefined {
-    if (!action.pathParams) return undefined;
-    return Object.keys(action.pathParams).find(k => k.endsWith('ID') && k !== 'scopeID');
+/** 处理列表操作 */
+async function handleListCommand(client: ZentaoClient, module: ModuleDefinition, command: ResolvedModuleCommand, options: ModuleActionOptions, config: UserConfig) {
+    const {action, path, query} = command;
+    const silent = options.silent ?? config.silent ?? false;
+    const result = await client.get(path, query);
+    const format = options.format ?? config.defaultOutputFormat ?? 'markdown';
+    const data = extractResult(action, result) as Record<string, unknown>[];
+    const pager = extractPager(action, result);
+    let processed: Record<string, unknown>[] = data;
+
+    if (config.htmlToMarkdown !== false) {
+        processed = convertHtmlFieldsInArray(processed);
+    }
+    if (options.filter?.length) {
+        processed = filterData(processed, options.filter);
+    }
+    if (options.search?.length) {
+        const searchFields = options.searchFields?.split(',');
+        processed = searchData(processed, options.search, searchFields);
+    }
+    if (options.sort) {
+        processed = sortData(processed, options.sort);
+    }
+
+    const fields = options.pick?.split(',');
+    if (fields) {
+        processed = pickFields(processed, fields);
+    }
+
+    if (silent) {
+        return;
+    }
+    const output = formatOutput(processed, { format, isList: true, fields, pager, jsonPretty: config.jsonPretty });
+    if (output) console.log(output);
 }
+
+/** 处理获取单个对象操作 */
+async function handleGetCommand(client: ZentaoClient, module: ModuleDefinition, command: ResolvedModuleCommand, options: ModuleActionOptions, config: UserConfig) {
+    const {action, path, query} = command;
+    const format = options.format ?? config.defaultOutputFormat ?? 'markdown';
+    const silent = options.silent ?? config.silent ?? false;
+
+    const response = await client.get(path, query);
+    if (silent) {
+        return;
+    }
+
+    let data = (extractResult(action, response) ?? response) as Record<string, unknown>;
+    if (config.htmlToMarkdown !== false) {
+        data = convertHtmlFields(data);
+    }
+    const fields = options.pick?.split(',');
+    if (fields) {
+        data = pickFieldsSingle(data, fields);
+    }
+
+    const output = formatOutput(data, { format, isList: false, fields: options.pick?.split(','), jsonPretty: config.jsonPretty });
+
+    if (output) console.log(output);
+}
+
+/** 处理对象通用操作 */
+async function handleActionCommand(client: ZentaoClient, module: ModuleDefinition, command: ResolvedModuleCommand, options: ModuleActionOptions, config: UserConfig) {
+    const {action, path, query, data: body} = command;
+    const format = options.format ?? config.defaultOutputFormat ?? 'markdown';
+    const silent = options.silent ?? config.silent ?? false;
+
+    if (action.type === 'delete') {
+        if (!await confirmDelete(format, options.id?.length ?? 0)) {
+            return;
+        }
+    }
+
+    const result = await client.request(action.method, path, { query, body });
+    if (silent) {
+        return;
+    }
+
+    const data = extractResult(action, result);
+    const output = formatOutput(data, { format, isList: false, fields: options.pick?.split(','), jsonPretty: config.jsonPretty });
+
+    if (output) console.log(output);
+}
+
 
 /**
  * 执行模块级 CRUD 或扩展操作：负责拼路径、分页拉取、客户端过滤/排序、HTML 转 Markdown 及格式化输出。
@@ -89,319 +114,109 @@ function getIdParamName(action: ModuleAction): string | undefined {
 export async function handleModuleCommand(
     client: ZentaoClient,
     module: ModuleDefinition,
+    actionName: ModuleActionName,
+    args: string[],
     profile: Profile,
-    operation: ResolvedOperation,
-    opts: DataOptions,
-    extraArgs: string[],
+    options: ModuleActionOptions,
 ): Promise<void> {
     const config = getProfileConfig(profile);
-    const format = (opts.format ?? config.defaultOutputFormat ?? 'markdown') as OutputFormat;
-    const silent = opts.silent ?? config.silent ?? false;
-    const workspace = getCurrentWorkspace(profile);
-    const shouldConvertHtml = config.htmlToMarkdown !== false;
+    const batchFailFast = options.batchFailFast ?? config.batchFailFast ?? false;
+    const format = options.format ?? config.defaultOutputFormat ?? 'markdown';
 
-    const explicitParams: Record<string, number> = {};
-    if (opts.product) explicitParams.product = Number(opts.product);
-    if (opts.project) explicitParams.project = Number(opts.project);
-    if (opts.execution) explicitParams.execution = Number(opts.execution);
-
-    switch (operation.type) {
-        case 'list': {
-            const action = findAction(module, 'list');
-            if (!action) throw new ZentaoError('E2005', { module: module.name });
-
-            const pathValues = resolveListPathParams(action, workspace, explicitParams);
-            const path = resolveActionUrl(action, pathValues);
-
-            const queryParams: Record<string, string | number> = {};
-            for (const arg of extraArgs) {
-                const match = arg.match(/^--(\w+)=(.+)$/);
-                if (match) queryParams[match[1]] = match[2];
-            }
-
-            const dataKey = typeof action.resultGetter === 'string' ? action.resultGetter : module.name + 's';
-
-            const paginationOpts = {
-                page: opts.page ? Number(opts.page) : 1,
-                recPerPage: opts.recPerPage ? Number(opts.recPerPage) : (config.pagers?.[module.name] ?? config.defaultRecPerPage ?? 20),
-                all: opts.all,
-                limit: opts.limit ? Number(opts.limit) : undefined,
-                queryParams,
-            };
-
-            const { data, pager } = await fetchAllPages<Record<string, unknown>>(
-                client, path, dataKey, paginationOpts,
-            );
-
-            let processed: Record<string, unknown>[] = data;
-
-            if (shouldConvertHtml) {
-                processed = convertHtmlFieldsInArray(processed);
-            }
-            if (opts.filter?.length) {
-                processed = filterData(processed, opts.filter);
-            }
-            if (opts.search?.length) {
-                const searchFields = opts.searchFields?.split(',');
-                processed = searchData(processed, opts.search, searchFields);
-            }
-            if (opts.sort) {
-                processed = sortData(processed, opts.sort);
-            }
-
-            const fields = opts.pick?.split(',');
-            if (fields) {
-                processed = pickFields(processed, fields);
-            }
-
-            if (!silent) {
-                const output = formatOutput(processed, { format, isList: true, fields, pager, jsonPretty: config.jsonPretty });
-                if (output) console.log(output);
-            }
-            break;
-        }
-
-        case 'get': {
-            if (!operation.objectId) throw new ZentaoError('E2003', { fields: 'id', module: module.name });
-
-            const action = findAction(module, 'get');
-            if (!action) throw new ZentaoError('E2005', { module: module.name });
-
-            const idParam = getIdParamName(action) ?? 'id';
-            const path = resolveActionUrl(action, { [idParam]: operation.objectId });
-            const response = await client.get(path);
-            let obj = (extractResult(action, response) ?? response) as Record<string, unknown>;
-
-            if (shouldConvertHtml) {
-                obj = convertHtmlFields(obj);
-            }
-
-            const fields = opts.pick?.split(',');
-            if (fields) {
-                obj = pickFieldsSingle(obj, fields);
-            }
-
-            if (!silent) {
-                const output = formatOutput(obj, { format, isList: false, fields, rawResponse: response, jsonPretty: config.jsonPretty });
-                if (output) console.log(output);
-            }
-            break;
-        }
-
-        case 'create': {
-            const action = findAction(module, 'create');
-            if (!action) throw new ZentaoError('E2005', { module: module.name });
-
-            let body = await resolveData(opts.data);
-            if (!body) {
-                body = buildBodyFromArgs(extraArgs);
-            }
-
-            if (Array.isArray(body)) {
-                await handleBatchCreate(client, module, action, body as Record<string, unknown>[], format, silent, profile);
-            } else {
-                const path = resolveActionUrl(action, {});
-                const response = await client.post(path, body);
-                if (!silent) {
-                    const output = formatOutput(response, { format, isList: false, rawResponse: response, jsonPretty: config.jsonPretty });
-                    if (output) console.log(output);
-                }
-            }
-            break;
-        }
-
-        case 'update': {
-            const action = findAction(module, 'update');
-            if (!action) throw new ZentaoError('E2005', { module: module.name });
-
-            let body = await resolveData(opts.data);
-            if (!body) {
-                body = buildBodyFromArgs(extraArgs);
-            }
-
-            if (Array.isArray(body)) {
-                await handleBatchUpdate(client, module, action, body as Array<Record<string, unknown> & { id: number }>, format, silent, profile);
-            } else {
-                if (!operation.objectId) throw new ZentaoError('E2003', { fields: 'id', module: module.name });
-                const idParam = getIdParamName(action) ?? 'id';
-                const path = resolveActionUrl(action, { [idParam]: operation.objectId });
-                const response = await client.put(path, body);
-                if (!silent) {
-                    const output = formatOutput(response, { format, isList: false, rawResponse: response, jsonPretty: config.jsonPretty });
-                    if (output) console.log(output);
-                }
-            }
-            break;
-        }
-
-        case 'delete': {
-            if (!operation.objectId) throw new ZentaoError('E2003', { fields: 'id', module: module.name });
-
-            const action = findAction(module, 'delete');
-            if (!action) throw new ZentaoError('E2005', { module: module.name });
-
-            const ids = operation.objectId.split(',').map((s) => s.trim());
-            const idParam = getIdParamName(action) ?? 'id';
-
-            if (!opts.yes && ids.length > 0) {
-                const confirmed = await confirmDelete(format, ids.length);
-                if (!confirmed) {
-                    if (!silent) console.log('已取消');
-                    return;
-                }
-            }
-
-            const success: string[] = [];
-            const failed: string[] = [];
-            const skipped: string[] = [];
-            const errors: Array<{ objectID: string; error: { code: string; message: string } }> = [];
-            const failFast = opts.batchFailFast ?? config.batchFailFast ?? false;
-
-            for (const id of ids) {
-                if (failFast && failed.length > 0) {
-                    skipped.push(id);
-                    continue;
-                }
+    /** 批量操作时，如果 id 是数组，则遍历每个 ID 执行操作，如果出错则停止 */
+    if (Array.isArray(options.id)) {
+        if (options.id.length > 1) {
+            for (const id of options.id) {
+                let error: Error | undefined;
                 try {
-                    const path = resolveActionUrl(action, { [idParam]: id });
-                    await client.del(path);
-                    success.push(id);
+                    await handleModuleCommand(client, module, actionName, args, profile, { ...options, id });
                 } catch (error) {
-                    failed.push(id);
-                    if (error instanceof ZentaoError) {
-                        errors.push({ objectID: id, error: { code: error.code, message: error.message } });
+                    error = error as Error;
+                }
+                if (error) {
+                    if (batchFailFast) {
+                        throw error;
                     }
+                    console.error(renderError(error, format));
                 }
             }
 
-            const renderFn = resolveRender(action, format);
-            if (!silent) {
-                if (renderFn) {
-                    const result = { status: failed.length > 0 ? 'fail' : 'success', success, failed, skipped };
-                    console.log(renderFn(result));
-                } else if (format === 'json' || format === 'raw') {
-                    const result: Record<string, unknown> = {
-                        status: failed.length > 0 ? 'fail' : 'success',
-                        result: { success, failed, skipped },
-                    };
-                    if (errors.length > 0) {
-                        (result.result as Record<string, unknown>).errors = errors;
-                        result.error = errors[0].error;
-                    }
-                    console.log(JSON.stringify(result, null, 4));
-                } else {
-                    if (success.length > 0) {
-                        console.log(`已删除 ${success.length} 个${module.display ?? module.name}：${success.join(', ')}`);
-                    }
-                    if (failed.length > 0) {
-                        console.log(`操作失败：${failed.join(', ')}`);
-                        if (errors.length > 0) {
-                            console.log(`失败原因：Error(E${errors[0].error.code}): ${errors[0].error.message}`);
-                        }
-                    }
-                    if (skipped.length > 0) {
-                        console.log(`已跳过 ${skipped.length} 个${module.display ?? module.name}：${skipped.join(', ')}`);
-                    }
-                }
-            }
+            return;
+        }
+        options.id = options.id[0];
+    }
+
+    const command = resolveModuleCommand(module, actionName, options, args);
+    switch (command.action.type) {
+        case 'list': {
+            await handleListCommand(client, module, command, options, config);
             break;
         }
-
+        case 'get': {
+            await handleGetCommand(client, module, command, options, config);
+            break;
+        }
+        case 'create':
+        case 'update':
+        case 'delete':
         case 'action': {
-            if (!operation.actionName) throw new ZentaoError('E2005');
-            if (!operation.objectId) throw new ZentaoError('E2003', { fields: 'id', module: module.name });
-
-            const action = findAction(module, 'action', operation.actionName);
-            if (!action) throw new ZentaoError('E2005', { module: module.name, action: operation.actionName });
-
-            const idParam = getIdParamName(action) ?? 'id';
-            const path = resolveActionUrl(action, { [idParam]: operation.objectId });
-
-            let body = await resolveData(opts.data);
-            if (!body) {
-                body = buildBodyFromArgs(extraArgs);
-            }
-
-            const response = action.method === 'put'
-                ? await client.put(path, body)
-                : await client.post(path, body);
-
-            const renderFn = resolveRender(action, format);
-            if (!silent) {
-                if (renderFn) {
-                    const output = renderFn(response);
-                    if (output) console.log(output);
-                } else {
-                    const output = formatOutput(response, { format, isList: false, rawResponse: response, jsonPretty: config.jsonPretty });
-                    if (output) console.log(output);
-                }
-            }
+            await handleActionCommand(client, module, command, options, config);
             break;
         }
     }
 }
 
-/** 顺序提交多条创建请求，聚合响应后一次性输出 */
-async function handleBatchCreate(
-    client: ZentaoClient,
-    module: ModuleDefinition,
-    action: ModuleAction,
-    items: Record<string, unknown>[],
-    format: OutputFormat,
-    silent: boolean,
-    profile: Profile,
-): Promise<void> {
-    const results: unknown[] = [];
-    for (const item of items) {
-        const path = resolveActionUrl(action, {});
-        const response = await client.post(path, item);
-        results.push(response);
-    }
-    if (!silent) {
-        const cfg = getProfileConfig(profile);
-        const output = formatOutput(results, { format, isList: true, jsonPretty: cfg.jsonPretty });
-        if (output) console.log(output);
-    }
-}
+/** 打印模块级内建帮助（与 `zentao <module> help` 对应） */
+export function showModuleHelp(mod: ModuleDefinition): void {
+    console.log(`模块: ${mod.display ?? mod.name}`);
+    if (mod.description) console.log(`描述: ${mod.description}`);
 
-/** 批量更新：每项必须含 `id` 字段，其余字段作为 PUT 请求体 */
-async function handleBatchUpdate(
-    client: ZentaoClient,
-    module: ModuleDefinition,
-    action: ModuleAction,
-    items: Array<Record<string, unknown> & { id: number }>,
-    format: OutputFormat,
-    silent: boolean,
-    profile: Profile,
-): Promise<void> {
-    const idParam = getIdParamName(action) ?? 'id';
-    const results: unknown[] = [];
-    for (const item of items) {
-        const { id, ...body } = item;
-        const path = resolveActionUrl(action, { [idParam]: id });
-        const response = await client.put(path, body);
-        results.push(response);
-    }
-    if (!silent) {
-        const cfg = getProfileConfig(profile);
-        const output = formatOutput(results, { format, isList: true, jsonPretty: cfg.jsonPretty });
-        if (output) console.log(output);
-    }
-}
+    console.log(`\n操作:`);
+    if (hasActionType(mod, 'list')) console.log(`  zentao ${mod.name}                    获取列表`);
+    if (hasActionType(mod, 'get')) console.log(`  zentao ${mod.name} <id>               获取详情`);
+    if (hasActionType(mod, 'create')) console.log(`  zentao ${mod.name} create [params]    创建`);
+    if (hasActionType(mod, 'update')) console.log(`  zentao ${mod.name} update <id>        更新`);
+    if (hasActionType(mod, 'delete')) console.log(`  zentao ${mod.name} delete <ids>       删除`);
 
-/** 将 `--field=value` 形式的 argv 转为 JSON 体，并对布尔值与纯数字做简单类型推断 */
-function buildBodyFromArgs(args: string[]): Record<string, unknown> {
-    const body: Record<string, unknown> = {};
-    for (const arg of args) {
-        const match = arg.match(/^--(\w[\w.-]*)=(.*)$/);
-        if (match) {
-            const key = match[1];
-            let value: unknown = match[2];
-            if (value === 'true') value = true;
-            else if (value === 'false') value = false;
-            else if (/^\d+$/.test(value as string)) value = Number(value);
-            body[key] = value;
+    const actions = getAvailableActions(mod);
+    if (actions.length > 0) {
+        console.log(`\n扩展操作:`);
+        for (const actionName of actions) {
+            const action = findAction(mod, 'action', actionName);
+            const display = action?.display ?? actionName;
+            console.log(`  zentao ${mod.name} ${actionName} <id>     ${display}`);
         }
     }
-    return body;
+
+    const listAction = findAction(mod, 'list');
+    if (listAction?.pathParams) {
+        const scopeParams = Object.entries(listAction.pathParams)
+            .filter(([key]) => key !== 'scope' && key !== 'scopeID');
+        const hasScopePattern = 'scope' in listAction.pathParams;
+
+        if (hasScopePattern || scopeParams.length > 0) {
+            console.log(`\n上下文参数:`);
+            if (hasScopePattern) {
+                const scopeDef = listAction.pathParams.scope;
+                if (typeof scopeDef === 'object' && scopeDef.options) {
+                    for (const opt of scopeDef.options) {
+                        const singular = String(opt.value).replace(/s$/, '');
+                        console.log(`  --${singular} <id>          ${opt.label}`);
+                    }
+                } else {
+                    console.log(`  --product <id>          产品`);
+                    console.log(`  --project <id>          项目`);
+                    console.log(`  --execution <id>        执行`);
+                }
+            }
+            for (const [key, def] of scopeParams) {
+                const desc = typeof def === 'string' ? def : def.description ?? key;
+                console.log(`  --${key} <id>          ${desc}`);
+            }
+        }
+    }
+}
+
+export function showModuleActionHelp(mod: ModuleDefinition, action: ModuleAction): void {
+    // TODO
 }
