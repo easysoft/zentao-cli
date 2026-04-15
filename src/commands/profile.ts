@@ -2,7 +2,7 @@ import { Command } from 'commander';
 import { getAllProfiles, getCurrentProfile, setCurrentProfile, profileKey } from '../config/store.js';
 import { ZentaoError, formatError } from '../errors.js';
 import type { GlobalOptions } from '../types/index.js';
-import { renderMarkdown } from '../utils/markdown.js';
+import { renderMarkdown } from '../utils/render.js';
 
 /** 注册 `zentao profile`：列出或切换 `account@server` 形式的本地 Profile */
 export function registerProfileCommand(program: Command): void {

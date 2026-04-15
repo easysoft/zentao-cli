@@ -1,3 +1,5 @@
+import { OutputFormat } from "./config";
+
 /** 模块操作类型 */
 export type ModuleActionType = 'list' | 'get' | 'create' | 'update' | 'delete' | 'action';
 
@@ -72,7 +74,7 @@ export interface ModuleActionResponse {
 };
 
 /** 模块操作结果渲染类型 */
-export type ModuleActionResultRenderType = 'json' | 'markdown' | 'raw' | (string & {});
+export type ModuleActionResultRenderType = OutputFormat;
 
 /** 模块操作结果渲染函数 */
 export type ModuleActionResultRender = (result: unknown, type: ModuleActionResultRenderType, action: ModuleAction) => string;
