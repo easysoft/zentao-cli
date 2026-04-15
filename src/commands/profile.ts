@@ -16,7 +16,7 @@ export function registerProfileCommand(program: Command): void {
                     const success = setCurrentProfile(key);
                     if (!success) throw new ZentaoError('E1007');
                     if (!globalOpts.silent) {
-                        console.log(`已切换到: ${key}`);
+                        console.log(Bun.markdown.ansi(`已切换到: \`${key}\``));
                     }
                     return;
                 }
