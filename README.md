@@ -9,7 +9,7 @@
 * 支持工作区切换，可记住当前产品、项目、执行等信息，简化操作
 * 支持对数据进行摘取、过滤、排序等处理，并自动将 HTML 转换为 Markdown
 * 对 AI Agents 友好，帮助信息完善，支持输出 Markdown
-* 使用便捷，可通过 `npx zentao` 立即运行
+* 使用便捷，可通过 `npx zentao-cli` 立即运行
 * 使用现代的 bun 与 TypeScript 开发，具备类型安全
 * 提供完善的测试覆盖，保障代码质量
 
@@ -17,12 +17,12 @@
 
 ```bash
 # 全局安装 zentao-cli 工具
-npm install -g zentao
+npm install -g zentao-cli
 
 # 其他安装与运行方式
-# bun install -g zentao  # ← 使用 bun 安装
-# npx zentao             # ← 通过 npx 免安装运行
-# pnpm dlx zentao        # ← 通过 pnpm 免安装运行
+# bun install -g zentao-cli  # ← 使用 bun 安装
+# npx zentao-cli             # ← 通过 npx 免安装运行
+# pnpm dlx zentao-cli        # ← 通过 pnpm 免安装运行
 
 # 首次执行时会提示输入禅道 URL、用户名和密码完成登录
 # 登录成功后会记住用户信息，方便后续使用
@@ -814,7 +814,7 @@ $ zentao autocomplete fish
 提示安装 `zentao-cli` 工具：
 
 ```prompt
-通过 npm 全局安装 zentao 工具。
+通过 npm 全局安装 zentao-cli 工具。
 ```
 
 安装完成后，即可提示调用 `zentao-cli` 获取禅道产品信息：
