@@ -16,7 +16,8 @@ program
     .option('--format <format>', '输出格式 (markdown|json|raw)')
     .option('--silent', '静默模式')
     .option('--insecure', '跳过 SSL/TLS 证书验证')
-    .option('--timeout <ms>', '请求超时时间（毫秒）', parseInt);
+    .option('--timeout <ms>', '请求超时时间（毫秒）', parseInt)
+    .option('--machine-readable', '启用机器可读模式，简化格式，禁用颜色输出');
 
 registerAllCommands(program);
 
