@@ -19,6 +19,7 @@ const result = await Bun.build({
     } : {}),
     define: {
         BUILD_TIME: Date.now().toString(),
+        BUILD_VERSION: JSON.stringify(pkg.version),
     },
 });
 

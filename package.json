@@ -28,7 +28,8 @@
     "build": "bun run scripts/build.ts --minify",
     "build:sf": "bun run scripts/build.ts --compile --minify",
     "update-registry": "bun run scripts/update-registry.ts",
-    "test": "bun test"
+    "test": "bun test",
+    "prepublishOnly": "bun run build"
   },
   "dependencies": {
     "commander": "^13.0.0",
@@ -42,6 +43,7 @@
     "typescript": "^5.7.0"
   },
   "engines": {
+    "node": ">=18",
     "bun": ">=1.3.12"
   }
 }

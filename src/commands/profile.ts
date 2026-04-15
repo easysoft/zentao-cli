@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import { getAllProfiles, getCurrentProfile, setCurrentProfile, profileKey } from '../config/store.js';
 import { ZentaoError, formatError } from '../errors.js';
 import type { GlobalOptions } from '../types/index.js';
+import { renderMarkdown } from '../utils/markdown.js';
 
 /** 注册 `zentao profile`：列出或切换 `account@server` 形式的本地 Profile */
 export function registerProfileCommand(program: Command): void {
@@ -16,7 +17,7 @@ export function registerProfileCommand(program: Command): void {
                     const success = setCurrentProfile(key);
                     if (!success) throw new ZentaoError('E1007');
                     if (!globalOpts.silent) {
-                        console.log(Bun.markdown.ansi(`已切换到: \`${key}\``));
+                        console.log(renderMarkdown(`已切换到: \`${key}\``));
                     }
                     return;
                 }
@@ -54,7 +55,7 @@ export function registerProfileCommand(program: Command): void {
                     }
                     return `* ${parts.join('')}`;
                 });
-                console.log(Bun.markdown.ansi(lines.join('\n')));
+                console.log(renderMarkdown(lines.join('\n')));
             } catch (error) {
                 if (error instanceof ZentaoError) {
                     console.error(formatError(error, globalOpts.format ?? 'markdown'));
