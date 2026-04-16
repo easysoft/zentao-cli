@@ -49,6 +49,8 @@ const AGENT_TARGETS: Record<string, McpAgentTarget> = {
     'cherry-studio':  { label: 'Cherry Studio',   configPath: '',                                                                  format: 'cherry-studio' },
     'opencode':       { label: 'OpenCode',        configPath: join(home, '.config', 'opencode', 'opencode.json'),                  format: 'opencode' },
     'codex':          { label: 'Codex',           configPath: join(home, '.codex', 'config.toml'),                                 format: 'codex' },
+    'antigravity':    { label: 'Antigravity',     configPath: join(home, '.gemini', 'antigravity', 'mcp_config.json'),             format: 'mcpServers' },
+    'gemini':         { label: 'Gemini',          configPath: join(home, '.gemini', 'mcp_config.json'),                            format: 'mcpServers' },
 };
 
 const AGENT_NAMES = Object.keys(AGENT_TARGETS);

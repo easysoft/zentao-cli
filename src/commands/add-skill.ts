@@ -20,6 +20,8 @@ const AGENT_TARGETS: Record<string, AgentTarget> = {
     'codex':       { label: 'Codex',       dir: join(homedir(), '.agents', 'skills', SKILL_NAME) },
     'opencode':    { label: 'OpenCode',    dir: join(homedir(), '.config', 'opencode', 'skills', SKILL_NAME) },
     'vscode':      { label: 'VS Code',     dir: join(homedir(), '.copilot', 'skills', SKILL_NAME) },
+    'antigravity': { label: 'Antigravity', dir: join(homedir(), '.gemini', 'antigravity', 'skills', SKILL_NAME) },
+    'gemini':      { label: 'Gemini',      dir: join(homedir(), '.gemini', 'skills', SKILL_NAME) },
 };
 
 const AGENT_NAMES = Object.keys(AGENT_TARGETS);
