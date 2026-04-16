@@ -1,3 +1,5 @@
+import { createInterface } from "node:readline";
+
 /** 交互式登录收集到的原始输入（密码与 Token 二选一由长度启发式区分） */
 export interface PromptResult {
     url: string;
@@ -11,7 +13,12 @@ export interface PromptResult {
  * 若第三项长度为 40，则按禅道 Token 常见长度视为 Token，否则视为密码。
  */
 export async function promptLogin(): Promise<PromptResult> {
-    const url = prompt('禅道服务地址 (URL): ');
+    const rl = createInterface({ input: process.stdin, output: process.stderr });
+    const url = await new Promise<string>((resolve) => {
+        rl.question('禅道服务地址 (URL): ', (answer) => {
+            resolve(answer);
+        });
+    });
     if (!url) throw new Error('URL is required');
 
     const account = prompt('用户名 (Account): ');
