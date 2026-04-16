@@ -21,10 +21,18 @@ export async function promptLogin(): Promise<PromptResult> {
     });
     if (!url) throw new Error('URL is required');
 
-    const account = prompt('用户名 (Account): ');
+    const account: string = await new Promise((resolve) => {
+        rl.question('用户名 (Account): ', (answer) => {
+            resolve(answer);
+        });
+    });
     if (!account) throw new Error('Account is required');
 
-    const password = prompt('密码(Password) 或 Token : ');
+    const password: string = await new Promise((resolve) => {
+        rl.question('密码(Password) 或 Token : ', (answer) => {
+            resolve(answer);
+        });
+    });
     if (!password) throw new Error('Password or Token is required');
 
     const normalizedUrl = url.replace(/\/+$/, '');
