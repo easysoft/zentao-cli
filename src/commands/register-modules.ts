@@ -1,8 +1,8 @@
 import { Command } from 'commander';
 import { getModuleNames, getModule } from '../modules/index.js';
-import { getAvailableActions} from '../modules/resolver.js';
+import { findAction, getAvailableActions} from '../modules/resolver.js';
 import { ensureAuth } from '../auth/flow.js';
-import { handleModuleCommand, showModuleHelp } from './module-handler.js';
+import { handleModuleCommand, showModuleActionHelp, showModuleHelp } from './module-handler.js';
 import { ZentaoError } from '../errors.js';
 import type { GlobalOptions, ModuleActionName, ModuleActionOptions } from '../types/index.js';
 import { renderError } from '../utils/render.js';
@@ -88,7 +88,12 @@ export function registerModuleCommands(program: Command): void {
                     args.unshift(action);
                 }
 
-                await handleModuleCommand(client, mod, action as ModuleActionName, args,profile, options);
+                if (args[0] === 'help') {
+                    showModuleActionHelp(mod, findAction(mod, 'action', action as ModuleActionName)!);
+                    return;
+                }
+
+                await handleModuleCommand(client, mod, action as ModuleActionName, args, profile, options);
             } catch (error) {
                 if (error instanceof ZentaoError) {
                     console.log(renderError(error, options.format ?? 'markdown'));
