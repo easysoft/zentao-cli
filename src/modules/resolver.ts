@@ -42,6 +42,17 @@ export function resolveModuleCommand(
     }
 
     const params: Record<string, unknown> = {};
+    let positionalID: string | undefined;
+
+    if (extraArgs.length > 0 && !extraArgs[0].startsWith('-')) {
+        const candidateID = extraArgs[0].trim();
+        const idParts = candidateID.split(',').map((part) => part.trim()).filter(Boolean);
+        const isNumericID = idParts.length > 0 && idParts.every((part) => /^\d+$/.test(part));
+        if (isNumericID) {
+            positionalID = candidateID;
+            extraArgs.shift();
+        }
+    }
     if (opts.params) {
         try {
             Object.assign(params, JSON.parse(opts.params));
@@ -62,7 +73,7 @@ export function resolveModuleCommand(
     }
 
     // 解析操作 ID
-    const rawID = +String(params.id ?? params[`${module.name}ID`] ?? opts.id);
+    const rawID = +String(positionalID ?? params.id ?? params[`${module.name}ID`] ?? opts.id);
     const id = Number.isNaN(rawID) ? undefined : rawID;
 
     // --- 解析路径参数 ---

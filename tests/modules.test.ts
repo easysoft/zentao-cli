@@ -1,6 +1,6 @@
 import { describe, test, expect } from 'bun:test';
 import { MODULES, getModule, getModuleNames, isModuleName } from '../src/modules';
-import { findAction, getAvailableActions, resolveActionUrl, resolveListPathParams } from '../src/modules';
+import { findAction, getAvailableActions, resolveActionUrl, resolveListPathParams, resolveModuleCommand } from '../src/modules';
 import type { Workspace } from '../src/types/config';
 
     describe('module registry', () => {
@@ -149,5 +149,30 @@ describe('module resolver', () => {
         const listAction = findAction(mod, 'list')!;
         const path = resolveActionUrl(listAction, resolveListPathParams(listAction, workspace, { program: 3 }));
         expect(path).toBe('/products');
+    });
+
+    test('supports positional id for update action', () => {
+        const mod = getModule('product')!;
+        const command = resolveModuleCommand(
+            mod,
+            'update',
+            {},
+            ['1', '--name=产品1'],
+        );
+        expect(command.id).toBe(1);
+        expect(command.path).toBe('/products/1');
+        expect(command.data).toEqual({ name: '产品1' });
+    });
+
+    test('supports positional id for delete action', () => {
+        const mod = getModule('product')!;
+        const command = resolveModuleCommand(
+            mod,
+            'delete',
+            {},
+            ['1'],
+        );
+        expect(command.id).toBe(1);
+        expect(command.path).toBe('/products/1');
     });
 });
