@@ -1,6 +1,6 @@
 {
   "name": "zentao-cli",
-  "version": "0.1.1",
+  "version": "0.1.2-beta.0",
   "type": "module",
   "description": "禅道命令行工具，支持在你喜爱的终端里访问和操作禅道数据，对 AI Agents 友好。",
   "author": "Sun Hao <sunhao@chandao.com>",
