@@ -114,3 +114,27 @@ $ zentao product 1
 
 已设置工作区
 ```
+
+## 增强交互体验 (Interactive Prompts)
+
+引入如 `@clack/prompts` 等交互式终端界面库。对于命令所需的必填参数（尤其是在 `login` 命令中），如果不通过命令行传入，不要直接拒绝并退出程序，而是降级为优雅的交互式问答界面，引导用户完成输入（包括隐藏输入密码）。
+
+## 改善色彩与终端视觉 (Graceful Color & Styling)
+
+引入如 `picocolors` 库，为命令行输出添加色彩增强（警告黄、错误红、成功绿等），以便用户能够迅速锚定重点信息。同时需保证在 `--machine-readable` 或 `--format json` 模式下自动移除这些色彩。
+
+## 支持“多级优先”的环境变量层 (Zero Configuration)
+
+增强并完善 `ZENTAO_URL`、`ZENTAO_ACCOUNT`、`ZENTAO_PASSWORD` 及 `ZENTAO_TOKEN` 的环境变量读取支持，将其优先级置顶。这能在无交互环境或 CI/CD 流水线中实现真正无需调用 `login` 的“零配置启动”。
+
+## 标准化调试模式 (Debug Mode)
+
+标准化并实现 `--debug` 参数（或采用通用的 `DEBUG=zentao:*` 规范）。允许在调试时输出底层请求的 Payload 详情、HTTP 状态和 Raw 文本等日志，降低报错除错排查的门槛。
+
+## 清理残留配置机制 (Clean Storage)
+
+补充一条类似 `zentao clean` 的抹除命令或卸载流程。在使用 `npm uninstall` 或取消工具使用时，能为用户指出并彻底删除原先 `configstore` 写入在当前机器上的敏感缓存与本地数据。
+
+## 支持容器化与原生体分发 (Docker and Binary Builds)
+
+在项目中提供一份 `Dockerfile` 并维护相应镜像版本，以便仅使用 Docker 的运维人员直连使用。或者考虑完全利用 Bun 构建系统特性发布无需安装任何 Runtime 依赖便能直接运行的 Native Binary 可执行文件。
