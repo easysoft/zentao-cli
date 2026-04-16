@@ -272,8 +272,8 @@ export function showModuleHelp(mod: ModuleDefinition): void {
         { name: 'options', placeholder: 'json', description: 'CLI 调用选项（JSON 对象），可替代单独的公共选项' },
         { name: 'yes', description: '跳过确认提示，适用于 delete 操作' },
         { name: 'silent', description: '静默模式，不输出任何结果' },
-        { name: 'batch-fail-fast', description: '批量操作遇到错误时立即停止，适用于批量 create/update/delete 操作' },
-        { name: 'id', placeholder: 'id', description: '对象 ID，批量操作时用逗号分隔，适用于 get/update/delete 操作' },
+        // { name: 'batch-fail-fast', description: '批量操作遇到错误时立即停止，适用于批量 create/update/delete 操作' },
+        { name: 'id', placeholder: 'id', description: '对象 ID，适用于 get/update/delete 操作' },
         { name: 'format', placeholder: 'type', description: '输出格式，支持 markdown、json、raw' },
     ]);
 
