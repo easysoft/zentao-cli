@@ -48,7 +48,9 @@ zentao help
 zentao add-skill
 ```
 
-## 在 AI 中使用
+## 在 AI Agents 中使用
+
+### 通过 Zentao CLI 技能使用
 
 支持通过 `zentao-cli` 技能访问和操作禅道数据。安装技能可以通过 `zentao add-skill` 一键安装技能到 AI Agent，目前支持 Claude Code、Cursor、Codex、OpenCode、VS Code 等 AI Agent。
 
@@ -77,6 +79,31 @@ $ zentao add-skill claude-code
 产品 xxx 有哪些研发中的需求？
 
 需求 xxx 有哪些风险？
+```
+
+### 通过 MCP 服务使用
+
+支持通过 `npx zentao-cli mcp` 启动 MCP 服务，然后通过 MCP 客户端访问和操作禅道数据。目前各大 Agents 工具无需提前安装 zentao-cli 本身，只需要在 MCP 服务配置中增加如下配置即可：
+
+```json
+{
+  "mcpServers": {
+
+    /**
+     * 禅道 MCP 服务，只需要追加如下配置即可
+     */
+    "zentao-cli": {
+      "command": "npx",
+      "args": ["zentao-cli", "mcp"],
+      "env": {
+        "ZENTAO_URL": "https://zentao.example.com",
+        "ZENTAO_ACCOUNT": "admin",
+        "ZENTAO_PASSWORD": "123456"
+      }
+    }
+    /* 禅道 MCP 服务结束 */
+  }
+}
 ```
 
 ## 核心功能
