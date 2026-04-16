@@ -83,25 +83,20 @@ $ zentao add-skill claude-code
 
 ### 通过 MCP 服务使用
 
-支持通过 `npx zentao-cli mcp` 启动 MCP 服务，然后通过 MCP 客户端访问和操作禅道数据。目前各大 Agents 工具无需提前安装 zentao-cli 本身，只需要在 MCP 服务配置中增加如下配置即可：
+支持通过 `npx -y zentao-cli mcp` 启动 MCP 服务，然后通过 MCP 客户端访问和操作禅道数据。目前各大 Agents 工具无需提前安装 zentao-cli 本身，只需要在 MCP 服务配置中增加如下配置即可：
 
 ```json
 {
   "mcpServers": {
-
-    /**
-     * 禅道 MCP 服务，只需要追加如下配置即可
-     */
     "zentao-cli": {
       "command": "npx",
-      "args": ["zentao-cli", "mcp"],
+      "args": ["-y", "zentao-cli", "mcp"],
       "env": {
         "ZENTAO_URL": "https://zentao.example.com",
         "ZENTAO_ACCOUNT": "admin",
         "ZENTAO_PASSWORD": "123456"
       }
     }
-    /* 禅道 MCP 服务结束 */
   }
 }
 ```
