@@ -40,7 +40,7 @@ function collect(value: string, previous: string[]): string[] {
 const BUILTIN_COMMANDS = [
     'login', 'logout', 'profile', 'config', 'workspace', 'version',
     'help', 'ls', 'list', 'get', 'create', 'update', 'delete', 'do', 'autocomplete',
-    'mcp', // 保留命令
+    'mcp', 'add-mcp', 'add-skill', // 保留命令
 ];
 
 /** 根据内置模块注册表为每个业务模块注册 `zentao <module> ...` 子命令 */

@@ -7,6 +7,7 @@ import { registerWorkspaceCommand } from './workspace.js';
 import { registerVersionCommand } from './version.js';
 import { registerAutocompleteCommand } from './autocomplete.js';
 import { registerAddSkillCommand } from './add-skill.js';
+import { registerAddMcpCommand } from './add-mcp.js';
 import { registerCrudCommands } from './crud.js';
 import { registerModuleCommands } from './register-modules.js';
 import { registerMcpCommand } from './mcp.js';
@@ -21,6 +22,7 @@ export function registerAllCommands(program: Command): void {
     registerVersionCommand(program);
     registerAutocompleteCommand(program);
     registerAddSkillCommand(program);
+    registerAddMcpCommand(program);
     registerMcpCommand(program);
     registerCrudCommands(program);
     registerModuleCommands(program);
