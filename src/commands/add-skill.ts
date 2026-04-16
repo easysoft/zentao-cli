@@ -16,6 +16,7 @@ const SKILL_NAME = 'zentao-cli';
 const AGENT_TARGETS: Record<string, AgentTarget> = {
     'claude-code': { label: 'Claude Code', dir: join(homedir(), '.claude', 'skills', SKILL_NAME) },
     'cursor':      { label: 'Cursor',      dir: join(homedir(), '.cursor', 'skills', SKILL_NAME) },
+    'cherry-studio': { label: 'Cherry Studio', dir: join(homedir(), '.cherrystudio', 'skills', SKILL_NAME) },
     'codex':       { label: 'Codex',       dir: join(homedir(), '.agents', 'skills', SKILL_NAME) },
     'opencode':    { label: 'OpenCode',    dir: join(homedir(), '.config', 'opencode', 'skills', SKILL_NAME) },
     'vscode':      { label: 'VS Code',     dir: join(homedir(), '.copilot', 'skills', SKILL_NAME) },
