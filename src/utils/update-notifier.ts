@@ -125,12 +125,8 @@ export function showUpdateNotification(result: UpdateCheckResult) {
     const bgYellow = '\x1b[43m\x1b[30m';
     
     const lines = [
-        `╭─ 更新提醒 ──────────────────────────────────╮`,
-        `│                                             │`,
-        `│  发现新版本：${dim}${result.current}${reset} → ${yellow}${bold}${result.latest}${reset}       │`,
-        `│  执行 ${cyan}zentao upgrade${reset} 升级到最新版本  │`,
-        `│                                             │`,
-        `╰─────────────────────────────────────────────╯`
+        `更新提醒：发现新版本 ${dim}${result.current}${reset} → ${yellow}${bold}${result.latest}${reset}`,
+        `执行 ${cyan}zentao upgrade${reset} 升级到最新版本`
     ];
 
     process.stderr.write('\n' + lines.join('\n') + '\n\n');
