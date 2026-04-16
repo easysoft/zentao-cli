@@ -62,7 +62,7 @@ export function resolveModuleCommand(
     }
 
     // 解析操作 ID
-    const rawID = +String(params.id ?? opts.id);
+    const rawID = +String(params.id ?? params[`${module.name}ID`] ?? opts.id);
     const id = Number.isNaN(rawID) ? undefined : rawID;
 
     // --- 解析路径参数 ---
@@ -116,9 +116,15 @@ export function resolveModuleCommand(
     const path = resolveActionUrl(action, pathValues);
 
     // --- 构建查询参数 ---
-    let query: Record<string, string | number> | undefined;
+    const query: Record<string, string | number> = {};
     if (action.params?.length) {
-        query = Object.fromEntries(action.params.map(param => [param.name, params[param.name] ?? param.defaultValue ?? param.options?.[0]?.value]) as [string, string | number][]);
+        for (const param of action.params) {
+            const value = params[param.name] ?? param.defaultValue ?? param.options?.[0]?.value;
+            if (param.required && value === undefined) {
+                throw new ZentaoError('E2009', { option: param.name, reason: '必须提供参数值' });
+            }
+            query[param.name] = value as string | number;
+        }
     }
 
     // --- 解析请求数据 ---
@@ -133,6 +139,25 @@ export function resolveModuleCommand(
                 data = opts.data;
             }
         }
+    }
+
+    if (action.requestBody?.schema?.type === 'object' && (!data || typeof data !== 'object')) {
+        if (!data) {
+            data = {};
+        }
+        const schema = action.requestBody.schema as {
+            required?: string[];
+            properties?: Record<string, {description: string, defaultValue: unknown, required?: boolean}>;
+        };
+        const requiredSet = new Set((schema.required ?? []) as string[]);
+        Object.keys(schema.properties ?? {}).forEach(key => {
+            const prop = schema.properties![key];
+            const value = params[key] ?? prop.defaultValue;
+            if (value === undefined && (prop.required ?? requiredSet.has(key))) {
+                throw new ZentaoError('E2009', { option: key, reason: '必须提供参数值' });
+            }
+            (data as Record<string, unknown>)[key] = value;
+        });
     }
 
     return { module: module.name, action, params, path, query, data, id };
@@ -185,71 +210,6 @@ export function resolveActionUrl(
         }
         return String(val);
     });
-}
-
-/**
- * 为 list action 解析路径参数：从显式 CLI 选项和 workspace 上下文中推断 scope/scopeID 等参数。
- * 返回 pathValues 字典，用于 resolveActionUrl。
- */
-export function resolveListPathParams(
-    action: ModuleAction,
-    workspace: Workspace,
-    explicitParams: Record<string, number>,
-): Record<string, string | number> {
-    const pathValues: Record<string, string | number> = {};
-
-    if (!action.pathParams) return pathValues;
-
-    const pathParamNames = Object.keys(action.pathParams);
-    const hasScope = pathParamNames.includes('scope');
-
-    if (hasScope) {
-        let scopeType: string | undefined;
-        let scopeId: number | undefined;
-
-        for (const [key, plural] of Object.entries(SCOPE_MAP)) {
-            if (explicitParams[key]) {
-                scopeType = plural;
-                scopeId = explicitParams[key];
-                break;
-            }
-        }
-
-        if (!scopeType && workspace) {
-            if (workspace.execution?.id) {
-                scopeType = 'executions';
-                scopeId = workspace.execution.id;
-            } else if (workspace.project?.id) {
-                scopeType = 'projects';
-                scopeId = workspace.project.id;
-            } else if (workspace.product?.id) {
-                scopeType = 'products';
-                scopeId = workspace.product.id;
-            }
-        }
-
-        if (scopeType && scopeId) {
-            pathValues.scope = scopeType;
-            pathValues.scopeID = scopeId;
-        }
-    }
-
-    for (const key of pathParamNames) {
-        if (key === 'scope' || key === 'scopeID') continue;
-        if (pathValues[key] !== undefined) continue;
-
-        const singularKey = key.replace(/ID$/, '').toLowerCase();
-        if (explicitParams[singularKey]) {
-            pathValues[key] = explicitParams[singularKey];
-        } else {
-            const wsRef = (workspace as unknown as Record<string, unknown>)[singularKey];
-            if (wsRef && typeof wsRef === 'object' && 'id' in (wsRef as object)) {
-                pathValues[key] = (wsRef as { id: number }).id;
-            }
-        }
-    }
-
-    return pathValues;
 }
 
 /** 根据 action.resultGetter 从 API 原始响应中提取结果数据 */

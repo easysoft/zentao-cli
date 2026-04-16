@@ -91,7 +91,7 @@ export function registerModuleCommands(program: Command): void {
                 await handleModuleCommand(client, mod, action as ModuleActionName, args,profile, options);
             } catch (error) {
                 if (error instanceof ZentaoError) {
-                    renderError(error, options.format ?? 'markdown');
+                    console.log(renderError(error, options.format ?? 'markdown'));
                     process.exit(1);
                 }
                 throw error;

@@ -7,7 +7,8 @@ import { filterData, sortData, searchData, pickFields, pickFieldsSingle } from '
 import { formatOutput } from '../utils/format.js';
 import type { ModuleActionOptions } from '../types/index.js';
 import { createInterface } from 'node:readline';
-import { renderError } from '../utils/render.js';
+import { renderError, renderObject } from '../utils/render.js';
+import { ZentaoError } from '../errors.js';
 
 
 /** JSON/raw 模式下跳过交互确认，便于脚本化调用 */
@@ -79,8 +80,7 @@ async function handleGetCommand(client: ZentaoClient, module: ModuleDefinition, 
         data = pickFieldsSingle(data, fields);
     }
 
-    const output = formatOutput(data, { format, isList: false, fields: options.pick?.split(','), jsonPretty: config.jsonPretty });
-
+    const output = renderObject(data, format, { fields });
     if (output) console.log(output);
 }
 
@@ -90,10 +90,14 @@ async function handleActionCommand(client: ZentaoClient, module: ModuleDefinitio
     const format = options.format ?? config.defaultOutputFormat ?? 'markdown';
     const silent = options.silent ?? config.silent ?? false;
 
-    if (action.type === 'delete') {
+    if (action.type === 'delete' && !options.yes) {
         if (!await confirmDelete(format, options.id?.length ?? 0)) {
             return;
         }
+    }
+
+    if (!command.id && (action.type === 'delete' || action.type === 'update' || action.type === 'action')) {
+        throw new ZentaoError('E2009', { option: 'id', reason: '必须提供要操作的对象 ID' });
     }
 
     const result = await client.request(action.method, path, { query, body });

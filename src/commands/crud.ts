@@ -14,7 +14,8 @@ export function registerCrudCommands(program: Command): void {
         .command('ls')
         .alias('list')
         .description('获取对象列表')
-        .argument('<module>', '模块名称，例如 bug');
+        .argument('<module>', '模块名称，例如 bug')
+        .argument('[args...]', '参数');
     addDataOptions(lsCmd);
     lsCmd.allowUnknownOption(true);
     lsCmd.action(async (moduleName: string, opts: ModuleActionOptions) => {
@@ -38,12 +39,12 @@ export function registerCrudCommands(program: Command): void {
     const createCmd = program
         .command('create')
         .description('创建对象')
-        .argument('<module>', '模块名称，例如 bug');
+        .argument('<module>', '模块名称，例如 bug')
+        .argument('[args...]', '参数');
     addDataOptions(createCmd);
     createCmd.allowUnknownOption(true);
-    createCmd.action(async (moduleName: string, opts: ModuleActionOptions, cmd: Command) => {
-        const extraArgs = cmd.args.slice(1);
-        await runCrudCommand(program, moduleName, 'create', opts, extraArgs);
+    createCmd.action(async (moduleName: string, args: string[], opts: ModuleActionOptions) => {
+        await runCrudCommand(program, moduleName, 'create', opts, args);
     });
 
     // zentao update <module> [id]
@@ -51,12 +52,11 @@ export function registerCrudCommands(program: Command): void {
         .command('update')
         .description('更新对象')
         .argument('<module>', '模块名称，例如 bug')
-        .argument('[ids]', '对象 ID（多个用逗号分隔）');
+        .argument('[args...]', '--id 和其他参数');
     addDataOptions(updateCmd);
     updateCmd.allowUnknownOption(true);
-    updateCmd.action(async (moduleName: string, ids: string | undefined, opts: ModuleActionOptions, cmd: Command) => {
-        const extraArgs = cmd.args.slice(ids ? 2 : 1);
-        await runCrudCommand(program, moduleName, 'update', {id: ids, ...opts}, extraArgs);
+    updateCmd.action(async (moduleName: string, args: string[], opts: ModuleActionOptions) => {
+        await runCrudCommand(program, moduleName, 'update', opts, args);
     });
 
     // zentao delete <module> <ids>
@@ -64,12 +64,11 @@ export function registerCrudCommands(program: Command): void {
         .command('delete')
         .description('删除对象')
         .argument('<module>', '模块名称，例如 bug')
-        .argument('[ids]', '对象 ID（多个用逗号分隔）');
+        .argument('[args...]', '--id 和其他参数');
     addDataOptions(deleteCmd);
     updateCmd.allowUnknownOption(true);
-    deleteCmd.action(async (moduleName: string, ids: string, opts: ModuleActionOptions, cmd: Command) => {
-        const extraArgs = cmd.args.slice(ids ? 2 : 1);
-        await runCrudCommand(program, moduleName, 'delete', { id: ids, ...opts }, extraArgs);
+    deleteCmd.action(async (moduleName: string, args: string[], opts: ModuleActionOptions) => {
+        await runCrudCommand(program, moduleName, 'delete', opts, args);
     });
 
     // zentao do <module> <action> <id>
@@ -78,12 +77,11 @@ export function registerCrudCommands(program: Command): void {
         .description('执行对象操作')
         .argument('<module>', '模块名称，例如 bug')
         .argument('<action>', '操作名称，例如 resolve')
-        .argument('[ids]', '对象 ID，例如 1（多个用逗号分隔）');
+        .argument('[args...]', '--id 和其他参数');
     addDataOptions(doCmd);
     doCmd.allowUnknownOption(true);
-    doCmd.action(async (moduleName: string, action: string, ids: string, opts: ModuleActionOptions, cmd: Command) => {
-        const extraArgs = cmd.args.slice(ids ? 3 : 2);
-        await runCrudCommand(program, moduleName, action, {id: ids, ...opts}, extraArgs);
+    doCmd.action(async (moduleName: string, action: string, args: string[], opts: ModuleActionOptions) => {
+        await runCrudCommand(program, moduleName, action, opts, args);
     });
 }
 
@@ -93,7 +91,7 @@ async function runCrudCommand(
     moduleName: ModuleName,
     actionName: ModuleActionName,
     opts: ModuleActionOptions,
-    extraArgs: string[] = [],
+    args: string[] = [],
 ): Promise<void> {
     const mod = getModule(moduleName);
     if (!mod) {
@@ -108,10 +106,16 @@ async function runCrudCommand(
             timeout: globalOpts.timeout,
         });
 
-        await handleModuleCommand(client, mod, actionName, extraArgs, profile, options);
+        const firstArg = args[0];
+        if (firstArg && !isNaN(Number(firstArg))) {
+            options.id = firstArg;
+            args.shift();
+        }
+
+        await handleModuleCommand(client, mod, actionName, args, profile, options);
     } catch (error) {
         if (error instanceof ZentaoError) {
-            renderError(error, options.format ?? 'markdown');
+            console.log(renderError(error, options.format ?? 'markdown'));
             process.exit(1);
         }
         throw error;
