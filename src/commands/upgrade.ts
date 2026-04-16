@@ -122,7 +122,7 @@ async function confirmUpgrade(current: string, latest: string): Promise<boolean>
 /* ── Command Registration ── */
 
 /** 注册 `zentao upgrade`：从 npm 检查并升级到最新版本 */
-export function registerUpdateCommand(program: Command): void {
+export function registerUpgradeCommand(program: Command): void {
     program
         .command('upgrade')
         .description('检查并升级 CLI 到最新版本')
