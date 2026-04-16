@@ -49,7 +49,7 @@ zentao login -s https://zentao.example.com -u admin -p 123456
 | 动作 | `zentao <module> <action> <id>` |
 | 帮助 | `zentao <module> help` |
 
-也支持 `--data='JSON'` 传入 JSON 数据；JSON 为数组时可批量创建/更新。
+也支持 `--data='JSON'` 传入 JSON 数据。
 
 ## 模块与操作速查
 
@@ -204,12 +204,6 @@ zentao task start 100
 zentao task finish 100 --consumed=4
 ```
 
-### 批量创建
-
-```bash
-zentao bug create --data='[{"product":1,"title":"Bug1","severity":2},{"product":1,"title":"Bug2","severity":3}]'
-```
-
 ### 查看帮助
 
 ```bash
@@ -260,6 +254,5 @@ zentao help              # 查看所有命令
 
 - 不确定模块参数时，先执行 `zentao <module> help` 查看帮助
 - `browseType` 常用值：`all`（全部）、`doing`（进行中）、`closed`（已关闭）
-- 批量操作默认跳过失败项继续执行；加 `--batch-fail-fast` 可在出错时立即停止
 - 静默模式：`--silent` 只输出错误信息
 - 多账号切换：`zentao profile` 查看和切换账号
