@@ -8,6 +8,7 @@ import { convertHtmlFields, convertHtmlFieldsInArray } from '../utils/html.js';
 import { filterData, sortData, searchData, pickFields, pickFieldsSingle } from '../utils/data.js';
 import { ZentaoError } from '../errors.js';
 import type { AuthProvider } from './server.js';
+import { getCurrentProfile } from '../config/store.js';
 
 function buildToolDescription(mod: ModuleDefinition): string {
     const actions = mod.actions.map(a => a.name);
@@ -75,6 +76,30 @@ interface ToolInput {
     searchFields?: string;
     page?: number;
     recPerPage?: number;
+}
+
+async function handleProfileTool(auth: AuthProvider): Promise<CallToolResult> {
+    const client = await auth.getClient();
+    const profile = getCurrentProfile();
+    const account = profile?.account;
+
+    const usersResp = await client.get('/users', {
+        browseType: 'inside',
+        recPerPage: 100,
+    });
+
+    const usersRaw = (usersResp as Record<string, unknown>).users;
+    const users = Array.isArray(usersRaw) ? usersRaw as Array<Record<string, unknown>> : [];
+    const user = account
+        ? users.find((item) => String(item.account ?? '') === account)
+        : undefined;
+
+    return {
+        content: [{
+            type: 'text',
+            text: JSON.stringify(user ?? profile?.user ?? {}, null, 2),
+        }],
+    };
 }
 
 async function handleModuleTool(
@@ -162,6 +187,29 @@ function toolAnnotations(action: ModuleAction) {
 }
 
 export function registerModuleTools(server: McpServer, auth: AuthProvider): void {
+    server.tool(
+        'zentao_profile',
+        '获取当前登录禅道账号信息',
+        {},
+        { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
+        async () => {
+            try {
+                return await handleProfileTool(auth);
+            } catch (error) {
+                if (error instanceof ZentaoError) {
+                    return {
+                        isError: true,
+                        content: [{ type: 'text', text: `E${error.code}: ${error.message}` }],
+                    };
+                }
+                return {
+                    isError: true,
+                    content: [{ type: 'text', text: (error as Error).message ?? String(error) }],
+                };
+            }
+        },
+    );
+
     for (const mod of MODULES) {
         const name = `zentao_${mod.name}`;
         const description = buildToolDescription(mod);

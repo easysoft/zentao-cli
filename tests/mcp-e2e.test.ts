@@ -9,7 +9,7 @@ const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 describe('MCP server (stdio e2e smoke)', () => {
     test(
-        'listTools returns one tool per registry module',
+        'listTools returns module tools plus profile tool',
         async () => {
             const transport = new StdioClientTransport({
                 command: 'bun',
@@ -22,8 +22,9 @@ describe('MCP server (stdio e2e smoke)', () => {
                 await client.connect(transport);
                 const { tools } = await client.listTools();
 
-                expect(tools.length).toBe(MODULES.length);
+                expect(tools.length).toBe(MODULES.length + 1);
                 const names = new Set(tools.map(t => t.name));
+                expect(names.has('zentao_profile')).toBe(true);
                 for (const mod of MODULES) {
                     expect(names.has(`zentao_${mod.name}`)).toBe(true);
                 }
