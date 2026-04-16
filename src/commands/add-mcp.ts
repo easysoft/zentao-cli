@@ -45,7 +45,7 @@ const AGENT_TARGETS: Record<string, McpAgentTarget> = {
     'windsurf':       { label: 'Windsurf',        configPath: join(home, '.codeium', 'windsurf', 'mcp_config.json'),               format: 'mcpServers' },
     'cline':          { label: 'Cline',           configPath: join(home, '.cline', 'data', 'settings', 'cline_mcp_settings.json'), format: 'mcpServers' },
     'trae':           { label: 'Trae',            configPath: join(home, '.trae', 'mcp.json'),                                     format: 'mcpServers' },
-    'vscode':         { label: 'VS Code',         configPath: platformAppData('Code', 'User', 'settings.json'),                    format: 'vscode' },
+    'vscode':         { label: 'VS Code',         configPath: platformAppData('Code', 'User', 'mcp.json'),                         format: 'vscode' },
     'cherry-studio':  { label: 'Cherry Studio',   configPath: '',                                                                  format: 'cherry-studio' },
     'opencode':       { label: 'OpenCode',        configPath: join(home, '.config', 'opencode', 'opencode.json'),                  format: 'opencode' },
     'codex':          { label: 'Codex',           configPath: join(home, '.codex', 'config.toml'),                                 format: 'codex' },
@@ -229,7 +229,7 @@ function writeMcpServersConfig(configPath: string, creds: McpCredentials): void 
 
 function writeVscodeConfig(configPath: string, creds: McpCredentials): void {
     const config = readJsonFile(configPath, true);
-    deepSet(config, ['mcp', 'servers', MCP_NAME], {
+    deepSet(config, ['servers', MCP_NAME], {
         type: 'stdio',
         ...buildStandardEntry(creds),
     });
