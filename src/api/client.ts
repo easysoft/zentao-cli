@@ -1,5 +1,5 @@
-import type { ApiResponse, RequestOptions, ServerConfig } from '../types/index.js';
 import { ZentaoError } from '../errors.js';
+import type { ApiResponse, RequestOptions, ServerConfig } from '../types/index.js';
 
 /** 创建 {@link ZentaoClient} 时的可选行为（TLS、超时等） */
 export interface ClientOptions {
@@ -85,7 +85,7 @@ export class ZentaoClient {
 
             const data = await response.json() as T;
             if (data.status === 'fail') {
-                throw new ZentaoError('E2008', undefined, data);
+                throw new ZentaoError('E2008', { url: response.url, status: response.status, statusText: response.statusText, serverResponse: JSON.stringify(data.message || data) });
             }
             return data;
         } catch (error) {
