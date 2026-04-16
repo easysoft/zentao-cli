@@ -1,16 +1,27 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-/** 从当前工作目录的 `package.json` 读取 CLI 版本（开发与本地运行场景） */
+/** 从 `package.json` 读取 CLI 版本，兼容 dev（src/utils/）和 production（dist/ 或 dist/utils/）布局 */
 export function getCliVersion(): string {
     const thisFile = fileURLToPath(import.meta.url);
     const thisDir = dirname(thisFile);
-    const packageJsonPath = join(thisDir, '..', 'package.json');
-    try {
-        const pkg = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
-        return pkg.version ?? 'unknown';
-    } catch {
-        return 'unknown';
+    // 从当前文件位置向上逐层查找 package.json
+    const candidates = [
+        join(thisDir, '..', 'package.json'),       // dist/ 场景：dist/utils/ -> dist/ -> package.json
+        join(thisDir, '..', '..', 'package.json'), // src/utils/ 开发场景 或 dist/utils/ -> package.json
+        join(thisDir, '..', '..', '..', 'package.json'), // node_modules 安装场景
+    ];
+    for (const candidate of candidates) {
+        try {
+            if (!existsSync(candidate)) continue;
+            const pkg = JSON.parse(readFileSync(candidate, 'utf-8'));
+            if (typeof pkg.version === 'string' && pkg.name === 'zentao-cli') {
+                return pkg.version;
+            }
+        } catch {
+            // 继续尝试下一个
+        }
     }
+    return 'unknown';
 }

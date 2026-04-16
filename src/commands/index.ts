@@ -11,6 +11,7 @@ import { registerAddMcpCommand } from './add-mcp.js';
 import { registerCrudCommands } from './crud.js';
 import { registerModuleCommands } from './register-modules.js';
 import { registerMcpCommand } from './mcp.js';
+import { registerUpdateCommand } from './update.js';
 
 /** 注册内置子命令与各动态模块子命令 */
 export function registerAllCommands(program: Command): void {
@@ -26,4 +27,5 @@ export function registerAllCommands(program: Command): void {
     registerMcpCommand(program);
     registerCrudCommands(program);
     registerModuleCommands(program);
+    registerUpdateCommand(program);
 }
