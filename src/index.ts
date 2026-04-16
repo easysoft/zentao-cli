@@ -4,7 +4,8 @@
 import { Command, CommanderError } from 'commander';
 import { registerAllCommands } from './commands/index.js';
 import { ZentaoError, formatError } from './errors.js';
-import { getAllProfiles } from './config/store.js';
+import { getAllProfiles, getUpdateCheckData, setUpdateCheckData } from './config/store.js';
+import { asyncCheckForUpdate, showUpdateNotification, type UpdateCheckResult } from './utils/update-notifier.js';
 
 declare const BUILD_VERSION: string | undefined;
 
@@ -46,7 +47,41 @@ program.exitOverride((err) => {
     process.exit(exitCode);
 });
 
-program.parseAsync(process.argv).catch((error) => {
+const EXCLUDED_COMMANDS = ['upgrade', 'version', 'mcp', 'autocomplete', 'help', '-h', '--help'];
+
+const rawArgs = process.argv.slice(2);
+const firstArg = rawArgs[0];
+const isExcluded = !firstArg || EXCLUDED_COMMANDS.includes(firstArg);
+
+let updateCheckPromise: Promise<UpdateCheckResult | null> | null = null;
+
+if (!isExcluded) {
+    const updateData = getUpdateCheckData();
+    const now = Date.now();
+    const lastCheck = updateData?.lastCheck ? new Date(updateData.lastCheck).getTime() : 0;
+    
+    // 24小时(86400000ms)检查一次
+    if (now - lastCheck > 86400000) {
+        updateCheckPromise = asyncCheckForUpdate();
+    }
+}
+
+program.parseAsync(process.argv).then(async () => {
+    if (updateCheckPromise && !program.opts().machineReadable && !program.opts().silent && program.opts().format !== 'json' && program.opts().format !== 'raw') {
+        const result = await Promise.race([
+            updateCheckPromise,
+            new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000)) // 3秒超时防止卡住
+        ]);
+        
+        if (result) {
+            setUpdateCheckData({
+                lastCheck: new Date().toISOString(),
+                latestVersion: result.latest
+            });
+            showUpdateNotification(result);
+        }
+    }
+}).catch((error) => {
     if (error instanceof ZentaoError) {
         console.error(formatError(error, program.opts().format ?? 'markdown'));
         process.exit(1);

@@ -171,3 +171,20 @@ export function buildProfile(server: string, account: string, token: string, ser
         serverConfig: oldProfile?.serverConfig ?? serverConfig,
     };
 }
+
+/** 获取版本更新检查数据 */
+export function getUpdateCheckData(): { lastCheck?: string; latestVersion?: string } | undefined {
+    try {
+        const s = getStore();
+        return s.get('updateCheck') as { lastCheck?: string; latestVersion?: string } | undefined;
+    } catch {
+        return undefined;
+    }
+}
+
+/** 设置版本更新检查数据 */
+export function setUpdateCheckData(data: { lastCheck: string; latestVersion: string }): void {
+    const s = getStore();
+    s.set('updateCheck', data);
+    enforcePermissions();
+}

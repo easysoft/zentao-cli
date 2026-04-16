@@ -93,12 +93,19 @@ export interface Profile {
     serverConfig?: ServerConfig;
 }
 
+export interface UpdateCheckData {
+    lastCheck: string;
+    latestVersion: string;
+}
+
 /** 顶层配置数据结构，对应 ~/.config/zentao/zentao.json 文件 */
 export interface ConfigData {
     /** 当前使用的 Profile 标识，格式为 account@server */
     currentProfile?: string;
     /** 所有已登录的用户配置列表 */
     profiles?: Profile[];
+    /** 版本更新检查结果 */
+    updateCheck?: UpdateCheckData;
 }
 
 /** 支持的输出格式 */

@@ -1,92 +1,16 @@
 import { Command } from 'commander';
-import { spawnSync } from 'node:child_process';
 import { createInterface } from 'node:readline';
 import type { GlobalOptions } from '../types/index.js';
 import { getCliVersion } from '../utils/version.js';
-
-const PACKAGE_NAME = 'zentao-cli';
-const REGISTRY_URL = `https://registry.npmjs.org/${PACKAGE_NAME}/latest`;
-
-/* ── Semver Comparison ── */
-
-interface SemVer {
-    major: number;
-    minor: number;
-    patch: number;
-    prerelease: string;
-}
-
-function parseSemver(version: string): SemVer | null {
-    const match = version.trim().replace(/^v/, '').match(
-        /^(\d+)\.(\d+)\.(\d+)(?:-(.+))?$/,
-    );
-    if (!match) return null;
-    return {
-        major: Number(match[1]),
-        minor: Number(match[2]),
-        patch: Number(match[3]),
-        prerelease: match[4] ?? '',
-    };
-}
-
-/**
- * 返回值：
- *  1  => a > b（本地版本更新）
- * -1  => a < b（有新版本）
- *  0  => 相同
- */
-function compareSemver(a: SemVer, b: SemVer): number {
-    for (const key of ['major', 'minor', 'patch'] as const) {
-        if (a[key] !== b[key]) return a[key] > b[key] ? 1 : -1;
-    }
-    // 无 prerelease > 有 prerelease（正式版 > beta 版）
-    if (!a.prerelease && b.prerelease) return 1;
-    if (a.prerelease && !b.prerelease) return -1;
-    if (a.prerelease !== b.prerelease) return a.prerelease > b.prerelease ? 1 : -1;
-    return 0;
-}
-
-/* ── NPM Registry ── */
-
-async function fetchLatestVersion(): Promise<string> {
-    let response: Response;
-    try {
-        response = await fetch(REGISTRY_URL, {
-            headers: { Accept: 'application/json' },
-            signal: AbortSignal.timeout(10_000),
-        });
-    } catch (err) {
-        throw new Error(`无法连接到 npm registry: ${(err as Error).message}`);
-    }
-
-    if (!response.ok) {
-        throw new Error(`npm registry 返回错误: ${response.status} ${response.statusText}`);
-    }
-
-    const data = (await response.json()) as { version?: unknown };
-    if (typeof data.version !== 'string' || !data.version) {
-        throw new Error('npm registry 返回数据格式异常');
-    }
-    return data.version;
-}
-
-/* ── Install Strategy ── */
-
-type PackageManager = 'bun' | 'npm';
-
-function detectPackageManager(): PackageManager {
-    // 检测 bun 是否可用
-    const result = spawnSync('bun', ['--version'], { encoding: 'utf-8' });
-    if (result.status === 0) return 'bun';
-    return 'npm';
-}
-
-function buildInstallCommand(pm: PackageManager): { cmd: string; args: string[] } {
-    if (pm === 'bun') {
-        return { cmd: 'bun', args: ['add', '-g', `${PACKAGE_NAME}@latest`] };
-    }
-    return { cmd: 'npm', args: ['install', '-g', `${PACKAGE_NAME}@latest`] };
-}
+import { 
+    parseSemver, 
+    compareSemver, 
+    fetchLatestVersion, 
+    detectPackageManager, 
+    buildInstallCommand, 
+    type PackageManager 
+} from '../utils/update-notifier.js';
+import { spawnSync } from 'node:child_process';
 
 function runInstall(pm: PackageManager): boolean {
     const { cmd, args } = buildInstallCommand(pm);
