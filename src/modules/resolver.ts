@@ -72,20 +72,17 @@ export function resolveModuleCommand(
         const pathParamNames = Object.keys(action.pathParams);
 
         if (pathParamNames.includes('scope')) {
-            for (const [key, plural] of Object.entries(SCOPE_MAP)) {
-                const val = (opts as Record<string, unknown>)[key] ?? params[key];
-                if (val) {
-                    pathValues.scope = plural;
-                    pathValues.scopeID = Number(val);
-                    break;
-                }
-            }
-            if (!pathValues.scope) {
+            const scopePick = pickScopeFromSource(
+                (key) => (opts as Record<string, unknown>)[key] ?? params[key],
+            );
+            if (!scopePick) {
                 throw new ZentaoError('E2003', {
                     fields: 'product/project/execution',
                     module: module.name,
                 });
             }
+            pathValues.scope = scopePick.scope;
+            pathValues.scopeID = scopePick.scopeID;
         }
 
         const idParamName = pathParamNames.find(k => k.endsWith('ID') && k !== 'scopeID');
@@ -192,6 +189,64 @@ const SCOPE_MAP: Record<string, string> = {
     project: 'projects',
     execution: 'executions',
 };
+
+/** 解析 scope 时优先使用更具体的上下文：执行 > 项目 > 产品 */
+const SCOPE_KEY_ORDER = ['execution', 'project', 'product'] as const;
+
+type ScopeKey = (typeof SCOPE_KEY_ORDER)[number];
+
+function pickScopeFromSource(get: (key: ScopeKey) => unknown): { scope: string; scopeID: number } | undefined {
+    for (const key of SCOPE_KEY_ORDER) {
+        const val = get(key);
+        if (val === undefined || val === '' || val === null) continue;
+        const num = Number(val);
+        if (Number.isNaN(num)) continue;
+        return { scope: SCOPE_MAP[key], scopeID: num };
+    }
+    return undefined;
+}
+
+/**
+ * 根据工作区与显式参数解析 list 类 action 的路径参数（含 `{scope}/{scopeID}`）。
+ * 显式传入的 `product` / `project` / `execution` 会覆盖工作区；多者同时显式存在时按执行 > 项目 > 产品优先。
+ * 仅工作区有值时同样按执行 > 项目 > 产品选取。
+ */
+export function resolveListPathParams(
+    action: ModuleAction,
+    workspace: Workspace,
+    explicit: Partial<Record<'product' | 'project' | 'execution' | 'program', number>>,
+): Record<string, string | number> {
+    const pathValues: Record<string, string | number> = {};
+    const pathParamNames = action.pathParams ? Object.keys(action.pathParams) : [];
+    if (!pathParamNames.includes('scope')) {
+        return pathValues;
+    }
+
+    const fromExplicit = pickScopeFromSource((key) =>
+        Object.prototype.hasOwnProperty.call(explicit, key) ? explicit[key] : undefined,
+    );
+    if (fromExplicit) {
+        pathValues.scope = fromExplicit.scope;
+        pathValues.scopeID = fromExplicit.scopeID;
+        return pathValues;
+    }
+
+    const fromWorkspace = pickScopeFromSource((key) => {
+        if (key === 'execution') return workspace.execution?.id;
+        if (key === 'project') return workspace.project?.id;
+        return workspace.product?.id;
+    });
+    if (fromWorkspace) {
+        pathValues.scope = fromWorkspace.scope;
+        pathValues.scopeID = fromWorkspace.scopeID;
+        return pathValues;
+    }
+
+    throw new ZentaoError('E2003', {
+        fields: 'product/project/execution',
+        module: '',
+    });
+}
 
 /**
  * 将 action.path 模板中的 `{param}` 替换为实际值。
