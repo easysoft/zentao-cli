@@ -50,7 +50,7 @@ function buildInputSchema(mod: ModuleDefinition) {
         product: z.number().optional().describe('产品 ID（范围参数）'),
         project: z.number().optional().describe('项目 ID（范围参数）'),
         execution: z.number().optional().describe('执行 ID（范围参数）'),
-        params: z.record(z.unknown()).optional().describe('API 参数键值对，用于传递操作所需字段（如 title, severity 等）'),
+        params: z.record(z.string(), z.unknown()).optional().describe('API 参数键值对，用于传递操作所需字段（如 title, severity 等）'),
         pick: z.string().optional().describe('摘取字段（逗号分隔）'),
         filter: z.array(z.string()).optional().describe('过滤条件（如 status:active, severity<=2）'),
         sort: z.string().optional().describe('排序（如 pri_asc, severity_desc）'),
