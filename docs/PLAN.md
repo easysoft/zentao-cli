@@ -46,3 +46,71 @@ function writeConfig(path: string, data: object) {
 ## 本地缓存机制
 
 在 ~/.config/zentao/ 下增加一个极简的缓存机制（带过期时间），用于存储变动不频繁的数据（如产品列表、项目列表），提升命令行响应速度。
+
+## 工作区管理
+
+`zentao-cli` 支持记住用户上次访问的产品、项目和执行信息，这样在调用相关 API 时可以自动使用上次的上下文参数，方便快速访问和操作禅道数据。可以通过如下命令管理工作区：
+
+* `zentao workspace`：查看当前工作区信息
+* `zentao workspace ls`：查看所有工作区信息
+* `zentao workspace <id>`：查看指定 ID 的工作区信息
+* `zentao workspace set <id>`：将指定 ID 的工作区设为当前工作区
+* `zentao workspace set --product=<id>`：自动设置产品所属的工作区
+* `zentao workspace set --project=<id>`：自动设置项目所属的工作区
+* `zentao workspace set --execution=<id>`：自动设置执行所属的工作区
+
+```bash
+# 查看当前工作区信息
+$ zentao workspace
+
+* ID: 1
+* 产品: #12 产品1
+* 项目: #5 项目1
+* 执行: #4 执行1
+
+# 查看所有工作区信息
+$ zentao workspace ls
+
+| ID | 产品 | 项目 | 执行 | 使用中 |
+| --- | --- | --- | --- | --- |
+| 1 | #12 产品1 | #5 项目1 | #4 执行1 | 否 |
+| 2 | #12 产品1 | #5 项目1 | #4 执行1 | 否 |
+| 3 | #12 产品1 | #5 项目1 | #4 执行1 | 是 |
+
+# 设置当前工作区为指定 ID 的工作区
+$ zentao workspace set 2
+
+* ID: 2
+* 产品: #12 产品1
+* 项目: #5 项目1
+* 执行: #4 执行1
+
+# 自动设置执行所属的项目和产品
+$ zentao workspace --execution=2
+
+# 设置工作区后，调用部分 API 时可省略相关参数
+$ zentao bug ls # ← 无需指定 --product 参数
+
+# 输出略
+```
+
+用户的工作区信息及相关设置保存在 `~/.config/zentao/zentao.json` 文件中。
+
+如果启用了 `autoSetWorkspace` 选项，则在调用相关操作时会**自动设置工作区**，具体包括：
+
+* 获取单个产品详情、创建新产品、更新产品等操作时，会自动将工作区设置为该产品所属的工作区
+* 获取单个项目详情、创建新项目、更新项目等操作时，会自动将工作区设置为该项目所属的工作区
+* 获取单个执行详情、创建新执行、更新执行等操作时，会自动将工作区设置为该执行所属的工作区
+
+下面是自动设置工作区后的输出示例：
+
+```bash
+# 获取禅道产品 #1 信息
+$ zentao product 1
+
+* id: 1
+* name: 产品1
+* ...
+
+已设置工作区
+```
