@@ -6,6 +6,7 @@ import { registerConfigCommand } from './config.js';
 import { registerWorkspaceCommand } from './workspace.js';
 import { registerVersionCommand } from './version.js';
 import { registerAutocompleteCommand } from './autocomplete.js';
+import { registerAddSkillCommand } from './add-skill.js';
 import { registerCrudCommands } from './crud.js';
 import { registerModuleCommands } from './register-modules.js';
 
@@ -18,6 +19,7 @@ export function registerAllCommands(program: Command): void {
     registerWorkspaceCommand(program);
     registerVersionCommand(program);
     registerAutocompleteCommand(program);
+    registerAddSkillCommand(program);
     registerCrudCommands(program);
     registerModuleCommands(program);
 }

@@ -7,7 +7,7 @@ import { getModuleNames } from '../modules/index.js';
 
 const ROOT_COMMANDS = [
     'login', 'logout', 'profile', 'config', 'workspace', 'version',
-    'ls', 'get', 'create', 'update', 'delete', 'do', 'autocomplete',
+    'ls', 'get', 'create', 'update', 'delete', 'do', 'autocomplete', 'add-skill',
 ];
 
 const CONFIG_SUBCOMMANDS = ['get', 'set'];
@@ -53,6 +53,9 @@ _${command}_completion() {
     autocomplete)
       COMPREPLY=( $(compgen -W "bash zsh fish" -- "\${cur}") )
       ;;
+    add-skill)
+      COMPREPLY=( $(compgen -W "claude-code cursor codex opencode vscode all" -- "\${cur}") )
+      ;;
     *)
       COMPREPLY=( $(compgen -W "\${common_options}" -- "\${cur}") )
       ;;
@@ -96,6 +99,9 @@ _${command}() {
     autocomplete)
       _values 'shell' 'bash' 'zsh' 'fish'
       ;;
+    add-skill)
+      _values 'agent' 'claude-code' 'cursor' 'codex' 'opencode' 'vscode' 'all'
+      ;;
     *)
       _describe 'option' common_opts
       ;;
@@ -119,6 +125,7 @@ complete -c ${command} -n "__fish_use_subcommand" -a "$__${command}_cmds"
 complete -c ${command} -n "__fish_seen_subcommand_from config" -a "${CONFIG_SUBCOMMANDS.join(' ')}"
 complete -c ${command} -n "__fish_seen_subcommand_from workspace" -a "${WORKSPACE_SUBCOMMANDS.join(' ')}"
 complete -c ${command} -n "__fish_seen_subcommand_from autocomplete" -a "bash zsh fish"
+complete -c ${command} -n "__fish_seen_subcommand_from add-skill" -a "claude-code cursor codex opencode vscode all"
 complete -c ${command} -n "__fish_seen_subcommand_from ls get create update delete do; and test (count (commandline -opc)) -eq 2" -a "$__${command}_mods"
 `;
 }

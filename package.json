@@ -21,7 +21,8 @@
   "main": "./dist/index.js",
   "files": [
     "bin",
-    "dist"
+    "dist",
+    "skills"
   ],
   "scripts": {
     "dev": "bun run src/index.ts",
