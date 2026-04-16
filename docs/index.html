@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zentao CLI | 在终端与 AI Agent 中访问禅道</title>
+    <meta
+        name="description"
+        content="Zentao CLI 是面向终端与 AI Agent 的禅道命令行工具，支持直接命令行使用、通过技能接入，以及通过 MCP 服务接入。"
+    >
+    <meta name="color-scheme" content="light">
+    <style>
+        :root {
+            --bg: #f4efe4;
+            --panel: rgba(255, 251, 244, 0.78);
+            --panel-strong: rgba(255, 248, 237, 0.94);
+            --ink: #132238;
+            --muted: #526173;
+            --line: rgba(19, 34, 56, 0.12);
+            --accent: #e46c2f;
+            --accent-soft: rgba(228, 108, 47, 0.14);
+            --accent-strong: #c64f17;
+            --signal: #0b7f86;
+            --signal-soft: rgba(11, 127, 134, 0.14);
+            --night: #101822;
+            --night-soft: #1a2431;
+            --terminal-line: rgba(255, 255, 255, 0.12);
+            --shadow: 0 24px 70px rgba(29, 37, 54, 0.14);
+            --radius-xl: 28px;
+            --radius-lg: 22px;
+            --radius-md: 16px;
+            --radius-sm: 12px;
+            --font-display: "Bebas Neue", "Oswald", "Avenir Next Condensed", sans-serif;
+            --font-sans: "IBM Plex Sans SC", "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+            --font-mono: "JetBrains Mono", "SFMono-Regular", "Menlo", monospace;
+            --max-width: 1180px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            margin: 0;
+            font-family: var(--font-sans);
+            color: var(--ink);
+            background:
+                radial-gradient(circle at top left, rgba(228, 108, 47, 0.18), transparent 28%),
+                radial-gradient(circle at 85% 20%, rgba(11, 127, 134, 0.16), transparent 26%),
+                linear-gradient(180deg, #f8f2e8 0%, #f4efe4 28%, #efe6d7 100%);
+            min-height: 100vh;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            opacity: 0.36;
+            background-image:
+                linear-gradient(rgba(19, 34, 56, 0.035) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(19, 34, 56, 0.035) 1px, transparent 1px);
+            background-size: 38px 38px;
+            mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.95), rgba(0, 0, 0, 0.45));
+            z-index: -1;
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        img {
+            max-width: 100%;
+            display: block;
+        }
+
+        .shell {
+            width: min(var(--max-width), calc(100vw - 32px));
+            margin: 0 auto;
+        }
+
+        .topbar {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            backdrop-filter: blur(12px);
+            background: rgba(244, 239, 228, 0.72);
+            border-bottom: 1px solid rgba(19, 34, 56, 0.08);
+        }
+
+        .topbar-inner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            padding: 18px 0;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+        }
+
+        .brand-mark {
+            width: 44px;
+            height: 44px;
+            border-radius: 14px;
+            display: grid;
+            place-items: center;
+            color: #fff8f0;
+            font-family: var(--font-display);
+            font-size: 1.5rem;
+            background:
+                linear-gradient(135deg, #f18a42 0%, #cb4f1c 60%, #8e2d0f 100%);
+            box-shadow: 0 14px 28px rgba(198, 79, 23, 0.22);
+        }
+
+        .brand-copy {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .brand-copy strong {
+            font-size: 1rem;
+        }
+
+        .brand-copy span {
+            color: var(--muted);
+            font-size: 0.85rem;
+        }
+
+        .nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .nav a {
+            padding: 10px 14px;
+            border-radius: 999px;
+            color: var(--muted);
+            font-size: 0.92rem;
+            transition: background-color 180ms ease, color 180ms ease, transform 180ms ease;
+        }
+
+        .nav a:hover,
+        .nav a:focus-visible {
+            background: rgba(19, 34, 56, 0.06);
+            color: var(--ink);
+            transform: translateY(-1px);
+        }
+
+        main {
+            padding: 28px 0 56px;
+        }
+
+        section {
+            margin: 32px 0;
+        }
+
+        .hero {
+            display: grid;
+            grid-template-columns: minmax(0, 1.1fr) minmax(340px, 0.9fr);
+            gap: 28px;
+            align-items: stretch;
+        }
+
+        .panel {
+            position: relative;
+            overflow: hidden;
+            border-radius: var(--radius-xl);
+            background: var(--panel);
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            box-shadow: var(--shadow);
+        }
+
+        .panel::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background: linear-gradient(140deg, rgba(255, 255, 255, 0.48), transparent 42%);
+        }
+
+        .hero-copy {
+            padding: 42px 36px 34px;
+        }
+
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 18px;
+            padding: 10px 14px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.72);
+            border: 1px solid rgba(19, 34, 56, 0.08);
+            color: var(--muted);
+            font-size: 0.88rem;
+        }
+
+        .eyebrow strong {
+            color: var(--accent-strong);
+            font-weight: 700;
+        }
+
+        h1,
+        h2,
+        h3 {
+            margin: 0;
+            font-weight: 700;
+        }
+
+        h1 {
+            font-family: var(--font-display);
+            font-size: clamp(4rem, 8vw, 6.7rem);
+            line-height: 0.9;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+        }
+
+        .hero-subtitle {
+            max-width: 18ch;
+            margin: 18px 0 18px;
+            font-size: clamp(1.25rem, 2.7vw, 1.95rem);
+            line-height: 1.25;
+        }
+
+        .hero-subtitle strong {
+            color: var(--accent-strong);
+        }
+
+        .hero-copy p {
+            margin: 0;
+            max-width: 58ch;
+            color: var(--muted);
+            font-size: 1rem;
+            line-height: 1.8;
+        }
+
+        .hero-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            margin-top: 26px;
+        }
+
+        .button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            min-height: 48px;
+            padding: 0 18px;
+            border-radius: 999px;
+            font-weight: 700;
+            transition: transform 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+        }
+
+        .button:hover,
+        .button:focus-visible {
+            transform: translateY(-2px);
+        }
+
+        .button-primary {
+            background: linear-gradient(135deg, #ee8440 0%, #d55b21 100%);
+            color: #fff8f0;
+            box-shadow: 0 14px 30px rgba(198, 79, 23, 0.24);
+        }
+
+        .button-secondary {
+            background: rgba(255, 255, 255, 0.72);
+            border: 1px solid rgba(19, 34, 56, 0.08);
+            color: var(--ink);
+        }
+
+        .hero-metrics {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 14px;
+            margin-top: 28px;
+        }
+
+        .metric {
+            padding: 16px;
+            border-radius: var(--radius-md);
+            background: rgba(255, 255, 255, 0.66);
+            border: 1px solid rgba(19, 34, 56, 0.08);
+        }
+
+        .metric strong {
+            display: block;
+            margin-bottom: 6px;
+            font-family: var(--font-display);
+            font-size: 1.9rem;
+            color: var(--accent-strong);
+            letter-spacing: 0.05em;
+        }
+
+        .metric span {
+            color: var(--muted);
+            font-size: 0.92rem;
+            line-height: 1.5;
+        }
+
+        .hero-terminal {
+            display: flex;
+            flex-direction: column;
+            min-height: 100%;
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent),
+                linear-gradient(160deg, #182130 0%, #111722 100%);
+            color: #edf4ff;
+        }
+
+        .terminal-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            padding: 18px 22px;
+            border-bottom: 1px solid var(--terminal-line);
+        }
+
+        .terminal-dots {
+            display: flex;
+            gap: 8px;
+        }
+
+        .terminal-dots span {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .terminal-dots span:nth-child(1) {
+            background: #ff7a6a;
+        }
+
+        .terminal-dots span:nth-child(2) {
+            background: #f7c857;
+        }
+
+        .terminal-dots span:nth-child(3) {
+            background: #5ed090;
+        }
+
+        .terminal-top code {
+            color: rgba(237, 244, 255, 0.64);
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+        }
+
+        .terminal-body {
+            display: grid;
+            gap: 18px;
+            padding: 24px 22px 22px;
+            font-family: var(--font-mono);
+            flex: 1;
+        }
+
+        .terminal-card {
+            padding: 18px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--terminal-line);
+            background: rgba(255, 255, 255, 0.03);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+
+        .terminal-card strong {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 12px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #ffffff;
+        }
+
+        .terminal-card span {
+            font-size: 0.75rem;
+            color: #7adbe1;
+        }
+
+        .terminal-card pre {
+            margin: 0;
+            white-space: pre-wrap;
+            line-height: 1.7;
+            font-size: 0.86rem;
+            color: rgba(237, 244, 255, 0.88);
+        }
+
+        .section-heading {
+            display: flex;
+            align-items: end;
+            justify-content: space-between;
+            gap: 18px;
+            margin-bottom: 18px;
+        }
+
+        .section-heading h2 {
+            font-family: var(--font-display);
+            font-size: clamp(2.4rem, 4vw, 3.4rem);
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .section-heading p {
+            margin: 0;
+            max-width: 48ch;
+            color: var(--muted);
+            line-height: 1.7;
+        }
+
+        .feature-grid,
+        .path-grid,
+        .value-grid {
+            display: grid;
+            gap: 18px;
+        }
+
+        .feature-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .feature-card {
+            padding: 24px;
+            border-radius: var(--radius-lg);
+            background: var(--panel-strong);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: var(--shadow);
+        }
+
+        .feature-card .kicker {
+            display: inline-flex;
+            padding: 7px 12px;
+            border-radius: 999px;
+            margin-bottom: 14px;
+            background: var(--accent-soft);
+            color: var(--accent-strong);
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+        }
+
+        .feature-card:nth-child(3n + 2) .kicker,
+        .value-card:nth-child(even) .value-index {
+            background: var(--signal-soft);
+            color: var(--signal);
+        }
+
+        .feature-card h3,
+        .path-card h3,
+        .value-card h3 {
+            margin-bottom: 12px;
+            font-size: 1.2rem;
+        }
+
+        .feature-card p,
+        .path-card p,
+        .value-card p {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.75;
+        }
+
+        .path-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .path-card {
+            padding: 26px;
+            border-radius: var(--radius-xl);
+            background: linear-gradient(180deg, rgba(255, 251, 244, 0.92), rgba(255, 247, 235, 0.96));
+            border: 1px solid rgba(255, 255, 255, 0.82);
+            box-shadow: var(--shadow);
+        }
+
+        .path-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            margin-bottom: 16px;
+        }
+
+        .path-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 54px;
+            height: 54px;
+            border-radius: 18px;
+            background: var(--accent-soft);
+            color: var(--accent-strong);
+            font-family: var(--font-display);
+            font-size: 1.6rem;
+        }
+
+        .path-card:nth-child(2) .path-badge {
+            background: var(--signal-soft);
+            color: var(--signal);
+        }
+
+        .path-card:nth-child(3) .path-badge {
+            background: rgba(19, 34, 56, 0.08);
+            color: var(--ink);
+        }
+
+        .path-label {
+            display: inline-flex;
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: rgba(19, 34, 56, 0.06);
+            color: var(--muted);
+            font-size: 0.82rem;
+        }
+
+        .path-list,
+        .workflow-list,
+        .bullet-list {
+            margin: 18px 0 0;
+            padding: 0;
+            list-style: none;
+            display: grid;
+            gap: 12px;
+        }
+
+        .path-list li,
+        .workflow-item,
+        .bullet-list li {
+            position: relative;
+            padding-left: 18px;
+            color: var(--muted);
+            line-height: 1.7;
+        }
+
+        .path-list li::before,
+        .workflow-item::before,
+        .bullet-list li::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 0.78em;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent);
+        }
+
+        .path-card:nth-child(2) .path-list li::before,
+        .value-card:nth-child(even) .bullet-list li::before {
+            background: var(--signal);
+        }
+
+        .path-card:nth-child(3) .path-list li::before {
+            background: var(--ink);
+        }
+
+        .experience {
+            display: grid;
+            grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+            gap: 20px;
+        }
+
+        .experience-overview,
+        .experience-console {
+            padding: 28px;
+        }
+
+        .overview-stats {
+            display: grid;
+            gap: 14px;
+            margin-top: 22px;
+        }
+
+        .overview-stats .metric {
+            background: rgba(255, 255, 255, 0.6);
+        }
+
+        .tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .tab-button {
+            appearance: none;
+            border: 0;
+            cursor: pointer;
+            padding: 12px 16px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.08);
+            color: rgba(237, 244, 255, 0.74);
+            font-weight: 700;
+            font-family: var(--font-sans);
+            transition: transform 180ms ease, background-color 180ms ease, color 180ms ease;
+        }
+
+        .tab-button:hover,
+        .tab-button:focus-visible {
+            transform: translateY(-1px);
+            color: #ffffff;
+        }
+
+        .tab-button[aria-selected="true"] {
+            background: rgba(122, 219, 225, 0.18);
+            color: #ffffff;
+        }
+
+        .console-shell {
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--terminal-line);
+            background: rgba(10, 17, 25, 0.66);
+            overflow: hidden;
+        }
+
+        .console-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--terminal-line);
+            color: rgba(237, 244, 255, 0.7);
+            font-family: var(--font-mono);
+            font-size: 0.84rem;
+        }
+
+        .tab-panel {
+            display: none;
+            padding: 18px;
+            font-family: var(--font-mono);
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        .tab-panel pre {
+            margin: 0;
+            white-space: pre-wrap;
+            color: #edf4ff;
+            line-height: 1.7;
+            font-size: 0.88rem;
+        }
+
+        .workflow-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 16px;
+        }
+
+        .workflow-item {
+            padding: 24px 22px 22px 26px;
+            border-radius: var(--radius-lg);
+            background: rgba(255, 251, 244, 0.84);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: var(--shadow);
+        }
+
+        .workflow-item::before {
+            top: 28px;
+        }
+
+        .workflow-step {
+            display: block;
+            margin-bottom: 12px;
+            font-family: var(--font-display);
+            font-size: 2rem;
+            line-height: 1;
+            color: var(--accent-strong);
+            letter-spacing: 0.06em;
+        }
+
+        .workflow-item h3 {
+            margin-bottom: 10px;
+            font-size: 1.06rem;
+        }
+
+        .workflow-item p {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.7;
+        }
+
+        .value-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .value-card {
+            padding: 24px;
+            border-radius: var(--radius-lg);
+            background: rgba(255, 251, 244, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.82);
+            box-shadow: var(--shadow);
+        }
+
+        .value-index {
+            display: inline-flex;
+            padding: 8px 12px;
+            border-radius: 999px;
+            margin-bottom: 14px;
+            background: var(--accent-soft);
+            color: var(--accent-strong);
+            font-weight: 700;
+            font-size: 0.78rem;
+            letter-spacing: 0.04em;
+        }
+
+        .cta {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(280px, 0.46fr);
+            gap: 22px;
+            align-items: stretch;
+            padding: 30px;
+            background:
+                linear-gradient(120deg, rgba(228, 108, 47, 0.12), transparent 40%),
+                linear-gradient(180deg, rgba(255, 251, 244, 0.94), rgba(255, 248, 240, 0.96));
+        }
+
+        .cta h2 {
+            margin-bottom: 12px;
+        }
+
+        .cta p {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.8;
+        }
+
+        .command-block {
+            padding: 20px;
+            border-radius: var(--radius-lg);
+            background: var(--night);
+            color: #edf4ff;
+            font-family: var(--font-mono);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        }
+
+        .command-block pre {
+            margin: 0;
+            white-space: pre-wrap;
+            line-height: 1.7;
+            font-size: 0.9rem;
+        }
+
+        footer {
+            padding: 6px 0 40px;
+            color: var(--muted);
+            font-size: 0.92rem;
+        }
+
+        @media (max-width: 1120px) {
+            .hero,
+            .experience,
+            .cta {
+                grid-template-columns: 1fr;
+            }
+
+            .feature-grid,
+            .path-grid,
+            .workflow-grid,
+            .value-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 760px) {
+            .topbar-inner,
+            .section-heading {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            main {
+                padding-top: 18px;
+            }
+
+            .hero-copy,
+            .experience-overview,
+            .experience-console,
+            .cta,
+            .feature-card,
+            .path-card,
+            .value-card {
+                padding: 22px;
+            }
+
+            h1 {
+                font-size: clamp(3.4rem, 18vw, 4.8rem);
+            }
+
+            .hero-metrics,
+            .feature-grid,
+            .path-grid,
+            .workflow-grid,
+            .value-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .nav {
+                width: 100%;
+                justify-content: flex-start;
+            }
+
+            .terminal-top,
+            .terminal-body,
+            .console-title,
+            .tab-panel {
+                padding-left: 16px;
+                padding-right: 16px;
+            }
+
+            .workflow-item {
+                padding-right: 18px;
+            }
+        }
+
+        @media (prefers-reduced-motion: no-preference) {
+            .panel,
+            .feature-card,
+            .path-card,
+            .workflow-item,
+            .value-card {
+                animation: rise 650ms ease both;
+            }
+
+            .feature-card:nth-child(2),
+            .path-card:nth-child(2),
+            .workflow-item:nth-child(2),
+            .value-card:nth-child(2) {
+                animation-delay: 90ms;
+            }
+
+            .feature-card:nth-child(3),
+            .path-card:nth-child(3),
+            .workflow-item:nth-child(3),
+            .value-card:nth-child(3) {
+                animation-delay: 180ms;
+            }
+
+            .workflow-item:nth-child(4),
+            .value-card:nth-child(4) {
+                animation-delay: 270ms;
+            }
+        }
+
+        @keyframes rise {
+            from {
+                opacity: 0;
+                transform: translateY(22px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="topbar">
+        <div class="shell topbar-inner">
+            <a class="brand" href="#top">
+                <span class="brand-mark">Z</span>
+                <span class="brand-copy">
+                    <strong>Zentao CLI</strong>
+                    <span>终端可用，AI 可接，禅道可直达</span>
+                </span>
+            </a>
+            <nav class="nav" aria-label="页面导航">
+                <a href="#features">特色</a>
+                <a href="#paths">使用方式</a>
+                <a href="#experience">示例面板</a>
+                <a href="#workflow">工作流</a>
+                <a href="#value">Agent 价值</a>
+            </nav>
+        </div>
+    </header>
+
+    <main id="top">
+        <div class="shell">
+            <section class="hero">
+                <article class="panel hero-copy">
+                    <div class="eyebrow">
+                        <span>面向终端与 Agent 的禅道入口</span>
+                        <strong>CLI / Skill / MCP</strong>
+                    </div>
+                    <h1>Zentao CLI</h1>
+                    <div class="hero-subtitle">
+                        把禅道能力带进终端，也带进 <strong>AI Agent 的工作流</strong>。
+                    </div>
+                    <p>
+                        Zentao CLI 基于最新的禅道 RESTful API 2.0 实现，既能作为你日常使用的命令行工具，也能通过技能和 MCP
+                        方式接入 Claude Code、Cursor、Codex、VS Code 等 Agent 工具，让查询、更新、筛选、批量处理和自动化协作都更顺手。
+                    </p>
+                    <div class="hero-actions">
+                        <a class="button button-primary" href="#paths">查看三种使用方式</a>
+                        <a class="button button-secondary" href="#experience">直接看命令示例</a>
+                    </div>
+                    <div class="hero-metrics">
+                        <div class="metric">
+                            <strong>0</strong>
+                            <span>支持免安装启动，`npx zentao-cli` 即可开始。</span>
+                        </div>
+                        <div class="metric">
+                            <strong>3</strong>
+                            <span>同一套能力同时支持 CLI、Skill、MCP 三种接入路径。</span>
+                        </div>
+                        <div class="metric">
+                            <strong>AI</strong>
+                            <span>帮助信息、Markdown 输出与配置方式都更适合 Agent 调用。</span>
+                        </div>
+                    </div>
+                </article>
+
+                <aside class="panel hero-terminal">
+                    <div class="terminal-top">
+                        <div class="terminal-dots" aria-hidden="true">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                        <code>terminal://zentao-cli/live-demo</code>
+                    </div>
+                    <div class="terminal-body">
+                        <div class="terminal-card">
+                            <strong>
+                                直接命令行
+                                <span>Product / Story / Bug / Task</span>
+                            </strong>
+                            <pre>$ zentao login -s https://zentao.example.com -u admin -p ******
+$ zentao product --pick=id,name --sort=name_asc
+$ zentao bug --filter 'severity>=3' --format=json</pre>
+                        </div>
+                        <div class="terminal-card">
+                            <strong>
+                                作为技能
+                                <span>add-skill</span>
+                            </strong>
+                            <pre>$ zentao add-skill
+# 一键安装到 Claude Code / Cursor / Codex / VS Code
+用户提问：产品 XXX 有哪些研发中的需求？</pre>
+                        </div>
+                        <div class="terminal-card">
+                            <strong>
+                                作为 MCP 服务
+                                <span>npx -y zentao-cli mcp</span>
+                            </strong>
+                            <pre>{
+  "mcpServers": {
+    "zentao-cli": {
+      "command": "npx",
+      "args": ["-y", "zentao-cli", "mcp"]
+    }
+  }
+}</pre>
+                        </div>
+                    </div>
+                </aside>
+            </section>
+
+            <section id="features">
+                <div class="section-heading">
+                    <h2>Key Features</h2>
+                    <p>
+                        这不是一个只会“列列表”的薄封装，而是一套为日常操作和 AI 协作同时设计的禅道入口：更好装、更好登、更好筛、更好接入。
+                    </p>
+                </div>
+                <div class="feature-grid">
+                    <article class="feature-card">
+                        <span class="kicker">API 2.0</span>
+                        <h3>基于最新 RESTful API 2.0</h3>
+                        <p>围绕禅道开放接口组织能力，适合长期维护与扩展，也方便对模块能力做统一封装。</p>
+                    </article>
+                    <article class="feature-card">
+                        <span class="kicker">Zero Setup</span>
+                        <h3>可安装，也可免安装运行</h3>
+                        <p>支持 `npm install -g zentao-cli` 长期使用，也支持 `npx zentao-cli`、`pnpm dlx zentao-cli` 快速试跑。</p>
+                    </article>
+                    <article class="feature-card">
+                        <span class="kicker">Profiles</span>
+                        <h3>安全认证与多账号切换</h3>
+                        <p>支持登录多个禅道服务和账号，登录后保存 Token，不保存密码，并可用 `zentao profile` 快速切换。</p>
+                    </article>
+                    <article class="feature-card">
+                        <span class="kicker">Data Ops</span>
+                        <h3>筛选、排序、摘取字段更顺手</h3>
+                        <p>通过 `--pick`、`--filter`、`--sort`、`--search`、`--limit` 等参数，把返回结果压缩成真正想要的数据。</p>
+                    </article>
+                    <article class="feature-card">
+                        <span class="kicker">AI Friendly</span>
+                        <h3>支持 Markdown 输出与 HTML 转换</h3>
+                        <p>默认输出更适合阅读和粘贴给 Agent；同时会自动将 HTML 字段转换为 Markdown，降低二次处理成本。</p>
+                    </article>
+                    <article class="feature-card">
+                        <span class="kicker">Modern Stack</span>
+                        <h3>Bun + TypeScript + 测试覆盖</h3>
+                        <p>使用现代工具链实现，具备类型安全与测试保障，既适合作为 CLI 工具，也适合接入自动化场景。</p>
+                    </article>
+                </div>
+            </section>
+
+            <section id="paths">
+                <div class="section-heading">
+                    <h2>Three Paths</h2>
+                    <p>
+                        同一套禅道能力，可以按你的工作方式来用。你可以在终端手动执行，也可以让 Agent 通过 Skill 或 MCP 来调用。
+                    </p>
+                </div>
+                <div class="path-grid">
+                    <article class="path-card">
+                        <div class="path-header">
+                            <span class="path-badge">01</span>
+                            <span class="path-label">作为命令行工具</span>
+                        </div>
+                        <h3>适合开发者、测试、实施、项目经理直接上手</h3>
+                        <p>如果你平时就习惯在终端里做查询、更新和批量处理，这条路径是最直接的。登录一次后，日常用 `zentao` 即可。</p>
+                        <ul class="path-list">
+                            <li>支持列表、详情、创建、更新、删除，以及模块动作调用。</li>
+                            <li>支持简写方式 `zentao product`，也支持原始方式 `zentao ls product`。</li>
+                            <li>适合脚本集成、终端操作、CI 辅助任务。</li>
+                        </ul>
+                    </article>
+                    <article class="path-card">
+                        <div class="path-header">
+                            <span class="path-badge">02</span>
+                            <span class="path-label">作为 Agent 技能</span>
+                        </div>
+                        <h3>适合让 AI 直接理解你的业务问题</h3>
+                        <p>通过 `zentao add-skill` 可以一键把能力装进 Agent 工具，让 AI 按自然语言访问禅道数据，而不是你手动组织复杂命令。</p>
+                        <ul class="path-list">
+                            <li>目前支持 Claude Code、Cursor、Cherry Studio、Codex、OpenCode、VS Code 等工具。</li>
+                            <li>安装后可以直接提问，例如“产品 XXX 有哪些研发中的需求？”</li>
+                            <li>适合调研、汇总、问答和让 Agent 协助分析项目状态。</li>
+                        </ul>
+                    </article>
+                    <article class="path-card">
+                        <div class="path-header">
+                            <span class="path-badge">03</span>
+                            <span class="path-label">作为 MCP 服务</span>
+                        </div>
+                        <h3>适合标准化接入多种 AI 客户端</h3>
+                        <p>通过 `zentao add-mcp` 可一键生成配置，也支持统一用 `npx -y zentao-cli mcp` 手动启动服务，接入支持 MCP 的客户端。</p>
+                        <ul class="path-list">
+                            <li>客户端无需预装 zentao-cli，本地只要能执行 `npx` 即可。</li>
+                            <li>通过环境变量传入 URL、账号和密码即可完成运行时认证。</li>
+                            <li>适合桌面 Agent、统一团队配置和更通用的工具集成方式。</li>
+                        </ul>
+                    </article>
+                </div>
+            </section>
+
+            <section id="experience" class="experience">
+                <article class="panel experience-overview">
+                    <div class="section-heading">
+                        <h2>Choose Your Flow</h2>
+                        <p>同样的能力，不同的接入方式。左边先给你决策建议，右边直接看 README 里的典型命令和配置示例。</p>
+                    </div>
+                    <div class="overview-stats">
+                        <div class="metric">
+                            <strong>CLI</strong>
+                            <span>你想自己执行命令、写脚本、做批量处理时，用它最快。</span>
+                        </div>
+                        <div class="metric">
+                            <strong>Skill</strong>
+                            <span>你想让 Agent 通过自然语言帮你查和总结禅道信息时，用它最轻。</span>
+                        </div>
+                        <div class="metric">
+                            <strong>MCP</strong>
+                            <span>你想把禅道能力标准化地接到多个客户端里时，用它最稳。</span>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="panel hero-terminal experience-console">
+                    <div class="tabs" role="tablist" aria-label="使用方式切换">
+                        <button class="tab-button" type="button" role="tab" aria-selected="true" aria-controls="panel-cli" id="tab-cli" data-tab="cli">直接 CLI</button>
+                        <button class="tab-button" type="button" role="tab" aria-selected="false" aria-controls="panel-skill" id="tab-skill" data-tab="skill">通过 Skill</button>
+                        <button class="tab-button" type="button" role="tab" aria-selected="false" aria-controls="panel-mcp" id="tab-mcp" data-tab="mcp">通过 MCP</button>
+                    </div>
+                    <div class="console-shell">
+                        <div class="console-title">
+                            <span>README 示例节选</span>
+                            <span>可复制到你的终端 / 客户端配置</span>
+                        </div>
+                        <div class="tab-panel active" role="tabpanel" id="panel-cli" aria-labelledby="tab-cli">
+                            <pre># 安装或免安装运行
+npm install -g zentao-cli
+# 或：npx zentao-cli
+
+# 首次登录
+zentao login -s https://zentao.example.com -u admin -p 123456
+
+# 查看产品
+zentao product
+
+# 摘取字段、筛选、排序
+zentao product --pick=id,name
+zentao product --filter 'name~平台'
+zentao product --sort=name_asc
+
+# JSON 输出，适合程序消费
+zentao bug --format=json</pre>
+                        </div>
+                        <div class="tab-panel" role="tabpanel" id="panel-skill" aria-labelledby="tab-skill">
+                            <pre># 一键安装到 AI Agent
+zentao add-skill
+
+# 也可以指定目标
+zentao add-skill claude-code
+
+# 从零开始的一键流程
+pnpm install -g zentao-cli &amp;&amp; zentao login &amp;&amp; zentao add-skill --all
+
+# 安装完成后，在 Agent 中可以直接这样提问：
+禅道中有哪些产品？
+产品 XXX 有哪些研发中的需求？
+需求 XXX 有哪些风险？</pre>
+                        </div>
+                        <div class="tab-panel" role="tabpanel" id="panel-mcp" aria-labelledby="tab-mcp">
+                            <pre># 一键配置 MCP
+zentao add-mcp
+
+# 手动启动服务
+npx -y zentao-cli mcp
+
+{
+  "mcpServers": {
+    "zentao-cli": {
+      "command": "npx",
+      "args": ["-y", "zentao-cli", "mcp"],
+      "env": {
+        "ZENTAO_URL": "https://zentao.example.com",
+        "ZENTAO_ACCOUNT": "admin",
+        "ZENTAO_PASSWORD": "123456"
+      }
+    }
+  }
+}</pre>
+                        </div>
+                    </div>
+                </article>
+            </section>
+
+            <section id="workflow">
+                <div class="section-heading">
+                    <h2>Typical Workflow</h2>
+                    <p>不管你选择哪条路径，Zentao CLI 的核心节奏都很清晰：连接禅道、抽取数据、交给人或 Agent 消化、再把结果回写。</p>
+                </div>
+                <div class="workflow-grid">
+                    <article class="workflow-item">
+                        <span class="workflow-step">01</span>
+                        <h3>登录与建档</h3>
+                        <p>首次运行可交互式登录，也支持命令参数或环境变量登录，且能保存多套账号配置。</p>
+                    </article>
+                    <article class="workflow-item">
+                        <span class="workflow-step">02</span>
+                        <h3>查询与筛选</h3>
+                        <p>通过模块命令获取列表或详情，并用 `--pick`、`--filter`、`--sort` 压缩出有价值的信息。</p>
+                    </article>
+                    <article class="workflow-item">
+                        <span class="workflow-step">03</span>
+                        <h3>分析与协作</h3>
+                        <p>结果可直接在终端阅读，也可输出 JSON、Markdown 供脚本或 Agent 继续处理与总结。</p>
+                    </article>
+                    <article class="workflow-item">
+                        <span class="workflow-step">04</span>
+                        <h3>更新与自动化</h3>
+                        <p>继续用创建、更新、删除、动作命令回写禅道，或借助 Skill / MCP 融入更长链路的自动化流程。</p>
+                    </article>
+                </div>
+            </section>
+
+            <section id="value">
+                <div class="section-heading">
+                    <h2>Why Agents Like It</h2>
+                    <p>
+                        Zentao CLI 并不是“顺带能给 Agent 用”，而是有意识地把输出、帮助、接入方式都做成了适合 AI 消费的形态。
+                    </p>
+                </div>
+                <div class="value-grid">
+                    <article class="value-card">
+                        <span class="value-index">Readable Output</span>
+                        <h3>输出天然适合二次理解</h3>
+                        <p>默认 Markdown 更适合人读，也更适合 Agent 复制、总结和继续生成结构化结论。</p>
+                        <ul class="bullet-list">
+                            <li>HTML 字段自动转 Markdown，减少清洗工作。</li>
+                            <li>支持 `json` 和 `raw`，方便程序链路处理。</li>
+                        </ul>
+                    </article>
+                    <article class="value-card">
+                        <span class="value-index">Explicit Help</span>
+                        <h3>帮助信息更完整，减少试错</h3>
+                        <p>Agent 不需要猜测命令结构，可以从帮助信息中稳定找到模块、参数和使用方式。</p>
+                        <ul class="bullet-list">
+                            <li>支持 `zentao help` 与 `zentao &lt;module&gt; help`。</li>
+                            <li>同时支持简写和原始调用方式，兼顾人和工具。</li>
+                        </ul>
+                    </article>
+                    <article class="value-card">
+                        <span class="value-index">One-Click Install</span>
+                        <h3>接入 Agent 的门槛足够低</h3>
+                        <p>通过 `add-skill` 与 `add-mcp` 把繁琐配置压缩成可执行命令，让个人和团队都更容易落地。</p>
+                        <ul class="bullet-list">
+                            <li>支持多个常见 Agent 平台。</li>
+                            <li>可从零开始完成安装、登录与接入。</li>
+                        </ul>
+                    </article>
+                    <article class="value-card">
+                        <span class="value-index">Composable</span>
+                        <h3>适合被放进更长的自动化链路</h3>
+                        <p>CLI、Skill、MCP 三种模式共享同一能力底座，既适合手工使用，也适合持续接入自动化任务。</p>
+                        <ul class="bullet-list">
+                            <li>本地终端、桌面客户端、开发工具都能接入。</li>
+                            <li>既能查，也能改，适合闭环工作流。</li>
+                        </ul>
+                    </article>
+                </div>
+            </section>
+
+            <section>
+                <div class="panel cta">
+                    <div>
+                        <div class="section-heading">
+                            <h2>Start Fast</h2>
+                            <p>如果你想先把它跑起来，再决定要不要接给 Agent，这条命令已经足够开始。</p>
+                        </div>
+                        <p>
+                            长期使用建议全局安装；只想快速试一下，则直接用 `npx`。后续如果你希望让 Agent 代劳，再继续执行
+                            `zentao add-skill` 或 `zentao add-mcp` 即可。
+                        </p>
+                    </div>
+                    <div class="command-block">
+                        <pre># 先安装或直接试跑
+npm install -g zentao-cli
+# 或：npx zentao-cli
+
+# 登录后开始查询
+zentao login
+zentao help
+zentao product</pre>
+                    </div>
+                </div>
+            </section>
+
+            <footer>
+                如有问题请联系 @sunhao
+            </footer>
+        </div>
+    </main>
+
+    <script>
+        const buttons = document.querySelectorAll(".tab-button");
+        const panels = document.querySelectorAll(".tab-panel");
+
+        buttons.forEach((button) => {
+            button.addEventListener("click", () => {
+                const target = button.dataset.tab;
+
+                buttons.forEach((item) => {
+                    item.setAttribute("aria-selected", String(item === button));
+                });
+
+                panels.forEach((panel) => {
+                    panel.classList.toggle("active", panel.id === `panel-${target}`);
+                });
+            });
+        });
+    </script>
+</body>
+</html>
