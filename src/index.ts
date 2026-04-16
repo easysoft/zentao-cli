@@ -4,6 +4,7 @@
 import { Command, CommanderError } from 'commander';
 import { registerAllCommands } from './commands/index.js';
 import { ZentaoError, formatError } from './errors.js';
+import { getAllProfiles } from './config/store.js';
 
 declare const BUILD_VERSION: string | undefined;
 
@@ -20,6 +21,17 @@ program
     .option('--machine-readable', '启用机器可读模式，简化格式，禁用颜色输出');
 
 registerAllCommands(program);
+
+program.addHelpText('after', () => {
+    try {
+        if (getAllProfiles().length === 0) {
+            return '\n提示：尚未登录禅道服务，请先执行以下命令登录：\n\n  zentao login -s <zentao_url> -u <account> -p <password>\n';
+        }
+    } catch {
+        // 配置文件不可读时静默忽略，不影响帮助输出
+    }
+    return '';
+});
 
 /**
  * Commander 在「仅有子命令、未指定子命令且无根级 action」时会 `help({ error: true })`，并以码 1 退出。
