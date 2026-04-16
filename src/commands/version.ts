@@ -1,23 +1,18 @@
 import { Command } from 'commander';
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { getCurrentProfile, getProfileConfig, profileKey } from '../config/store.js';
 import type { GlobalOptions } from '../types/index.js';
+import { fileURLToPath } from 'node:url';
 
 /** 从当前工作目录的 `package.json` 读取 CLI 版本（开发与本地运行场景） */
 function getCliVersion(): string {
+    const thisFile = fileURLToPath(import.meta.url);
+    const thisDir = dirname(thisFile);
+    const packageJsonPath = join(thisDir, '..', 'package.json');
     try {
-        // Try multiple paths for development vs built mode
-        const paths = [
-            join(process.cwd(), 'package.json'),
-        ];
-        for (const p of paths) {
-            try {
-                const pkg = JSON.parse(readFileSync(p, 'utf-8'));
-                return pkg.version ?? 'unknown';
-            } catch { continue; }
-        }
-        return 'unknown';
+        const pkg = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
+        return pkg.version ?? 'unknown';
     } catch {
         return 'unknown';
     }
