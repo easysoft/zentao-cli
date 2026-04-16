@@ -49,7 +49,7 @@ zentao help
 
 首次执行 `zentao` 时，会提示输入禅道 URL、用户名和密码完成登录。登录成功后会记住用户信息（包括禅道 URL、账号和 Token，不包括密码），方便后续使用。
 
-也可以通过 `zentao login` 命令登录，支持使用 `-s <zentao_url>`、`-u <account>`、`-p <password>` 参数指定禅道 URL、用户名和密码，例如：
+也可以通过 `zentao login` 命令登录，支持使用 `-s <zentao_url> -u <account> -p <password>` 参数指定禅道 URL、用户名和密码，例如：
 
 ```bash
 # 登录禅道
