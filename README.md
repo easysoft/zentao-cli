@@ -52,7 +52,7 @@ zentao add-skill
 
 ### 通过 Zentao CLI 技能使用
 
-支持通过 `zentao-cli` 技能访问和操作禅道数据。安装技能可以通过 `zentao add-skill` 一键安装技能到 AI Agent，目前支持 Claude Code、Cursor、Codex、OpenCode、VS Code 等 AI Agent。
+支持通过 `zentao-cli` 技能访问和操作禅道数据。安装技能可以通过 `zentao add-skill` 一键安装技能到 AI Agent，目前支持 Claude Code、Cursor、Cherry Studio、Codex、OpenCode、VS Code 等 AI Agent。
 
 ```bash
 # 安装 zentao-cli 技能
@@ -100,13 +100,19 @@ $ zentao add-mcp
 请输入用户名: admin
 请输入密码: 123456
 
-请选择要安装的 AI Agent:
-  1) Claude Code
-  2) Cursor
-  3) Codex
-  4) OpenCode
-  5) VS Code
-  6) 全部安装
+请选择要配置的 AI Agent:
+   1) Cursor
+   2) Claude Desktop
+   3) Claude Code
+   4) Windsurf
+   5) Cline
+   6) Trae
+   7) VS Code
+   8) Cherry Studio
+   9) OpenCode
+  10) Codex
+  11) 全部配置
+请输入编号 (1-11): 7
 ```
 
 如果还未安装 zentao-cli，可以通过下面的命令，一键安装、登录和配置 MCP 服务：
