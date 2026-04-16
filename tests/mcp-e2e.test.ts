@@ -9,7 +9,7 @@ const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 describe('MCP server (stdio e2e smoke)', () => {
     test(
-        'listTools returns module tools plus profile tool',
+        'listTools returns module tools plus profile tools',
         async () => {
             const transport = new StdioClientTransport({
                 command: 'bun',
@@ -22,9 +22,10 @@ describe('MCP server (stdio e2e smoke)', () => {
                 await client.connect(transport);
                 const { tools } = await client.listTools();
 
-                expect(tools.length).toBe(MODULES.length + 1);
+                expect(tools.length).toBe(MODULES.length + 2);
                 const names = new Set(tools.map(t => t.name));
                 expect(names.has('zentao_profile')).toBe(true);
+                expect(names.has('zentao_switch_profile')).toBe(true);
                 for (const mod of MODULES) {
                     expect(names.has(`zentao_${mod.name}`)).toBe(true);
                 }

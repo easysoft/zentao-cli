@@ -7,6 +7,7 @@ import { getCliVersion } from '../utils/version.js';
 
 export interface AuthProvider {
     getClient(): Promise<ZentaoClient>;
+    resetClient(): void;
 }
 
 function createAuthProvider(options?: { insecure?: boolean; timeout?: number }): AuthProvider {
@@ -19,6 +20,9 @@ function createAuthProvider(options?: { insecure?: boolean; timeout?: number }):
             const auth = await ensureAuth(options);
             client = auth.client;
             return client;
+        },
+        resetClient(): void {
+            client = null;
         },
     };
 }

@@ -8,7 +8,7 @@ import { convertHtmlFields, convertHtmlFieldsInArray } from '../utils/html.js';
 import { filterData, sortData, searchData, pickFields, pickFieldsSingle } from '../utils/data.js';
 import { ZentaoError } from '../errors.js';
 import type { AuthProvider } from './server.js';
-import { getCurrentProfile } from '../config/store.js';
+import { getCurrentProfile, setCurrentProfile, profileKey } from '../config/store.js';
 
 function buildToolDescription(mod: ModuleDefinition): string {
     const actions = mod.actions.map(a => a.name);
@@ -98,6 +98,32 @@ async function handleProfileTool(auth: AuthProvider): Promise<CallToolResult> {
         content: [{
             type: 'text',
             text: JSON.stringify(user ?? profile?.user ?? {}, null, 2),
+        }],
+    };
+}
+
+interface SwitchProfileInput {
+    profileKey: string;
+}
+
+async function handleSwitchProfileTool(input: SwitchProfileInput, auth: AuthProvider): Promise<CallToolResult> {
+    const success = setCurrentProfile(input.profileKey);
+    if (!success) {
+        throw new ZentaoError('E1007');
+    }
+
+    auth.resetClient();
+    await auth.getClient();
+
+    const current = getCurrentProfile();
+    const currentKey = current ? profileKey(current.account, current.server) : input.profileKey;
+    return {
+        content: [{
+            type: 'text',
+            text: JSON.stringify({
+                status: 'success',
+                currentProfile: currentKey,
+            }, null, 2),
         }],
     };
 }
@@ -195,6 +221,31 @@ export function registerModuleTools(server: McpServer, auth: AuthProvider): void
         async () => {
             try {
                 return await handleProfileTool(auth);
+            } catch (error) {
+                if (error instanceof ZentaoError) {
+                    return {
+                        isError: true,
+                        content: [{ type: 'text', text: `E${error.code}: ${error.message}` }],
+                    };
+                }
+                return {
+                    isError: true,
+                    content: [{ type: 'text', text: (error as Error).message ?? String(error) }],
+                };
+            }
+        },
+    );
+
+    server.tool(
+        'zentao_switch_profile',
+        '切换当前登录账号（等价于 switch-profile）',
+        {
+            profileKey: z.string().describe('目标用户配置标识，支持 account@server、account 或 account@hostname'),
+        },
+        { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+        async (input) => {
+            try {
+                return await handleSwitchProfileTool(input as SwitchProfileInput, auth);
             } catch (error) {
                 if (error instanceof ZentaoError) {
                     return {
