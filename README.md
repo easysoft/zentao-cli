@@ -5,11 +5,12 @@
 ## 主要特性
 
 * 基于最新的禅道 RESTful API 2.0 实现
+* 使用便捷，可通过 `npx zentao-cli` 立即运行
 * 安全的用户认证管理，支持多用户切换
-* 支持工作区切换，可记住当前产品、项目、执行等信息，简化操作
 * 支持对数据进行摘取、过滤、排序等处理，并自动将 HTML 转换为 Markdown
 * 对 AI Agents 友好，帮助信息完善，支持输出 Markdown
-* 使用便捷，可通过 `npx zentao-cli` 立即运行
+* 支持以 AI 技能点方式使用，支持通过 `zentao add-skill` 一键安装技能到 AI Agent
+* 支持 MCP 服务，使用 `npx zentao-cli mcp` 启动 MCP 服务
 * 使用现代的 bun 与 TypeScript 开发，具备类型安全
 * 提供完善的测试覆盖，保障代码质量
 
@@ -42,6 +43,40 @@ zentao product update --id=1 --name=产品1
 
 # 更多功能可通过 help 查看
 zentao help
+
+# 安装 zentao-cli 技能
+zentao add-skill
+```
+
+## 在 AI 中使用
+
+支持通过 `zentao-cli` 技能访问和操作禅道数据。安装技能可以通过 `zentao add-skill` 一键安装技能到 AI Agent，目前支持 Claude Code、Cursor、Codex、OpenCode、VS Code 等 AI Agent。
+
+```bash
+# 安装 zentao-cli 技能
+$ zentao add-skill
+
+请选择要安装的 AI Agent:
+  1) Claude Code
+  2) Cursor
+  3) Codex
+  4) OpenCode
+  5) VS Code
+  6) 全部安装
+请输入编号 (1-6):6
+
+# 安装技能到 Claude Code
+$ zentao add-skill claude-code
+```
+
+安装技能后即可在对应 Agent 工具中使用禅道 CLI 技能。
+
+```txt
+禅道中有哪些产品？
+
+产品 xxx 有哪些研发中的需求？
+
+需求 xxx 有哪些风险？
 ```
 
 ## 核心功能
@@ -739,28 +774,6 @@ $ zentao autocomplete bash
 # 生成 fish 自动补全脚本
 $ zentao autocomplete fish
 ```
-
-## 在 AI 中使用
-
-### 在 AI Agents 中使用
-
-可以提示 AI Agent 先让用户安装 `zentao-cli`，再调用该工具访问和操作禅道数据。下面是参考提示词：
-
-提示安装 `zentao-cli` 工具：
-
-```prompt
-通过 npm 全局安装 zentao-cli 工具。
-```
-
-安装完成后，即可提示调用 `zentao-cli` 获取禅道产品信息：
-
-```prompt
-通过 zentao-cli 工具，获取禅道产品信息。
-```
-
-### 通过 zentao-api Skill 使用
-
-[禅道 API 技能](https://github.com/easysoft/zentao-skills) 已经封装了 `zentao-cli` 的使用方式，推荐通过该技能访问和操作禅道数据。具体使用方法可参考其[文档](https://github.com/easysoft/zentao-skills)。
 
 ## 开发指引
 
