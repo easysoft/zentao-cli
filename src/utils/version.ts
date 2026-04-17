@@ -16,7 +16,8 @@ export function getCliVersion(): string {
         try {
             if (!existsSync(candidate)) continue;
             const pkg = JSON.parse(readFileSync(candidate, 'utf-8'));
-            if (typeof pkg.version === 'string' && pkg.name === 'zentao-cli') {
+            if (typeof pkg.version === 'string' && typeof pkg.name === 'string' && pkg.bin) {
+                // 只认取到的是 CLI 自己的 package.json（带 bin 字段），避免匹配到无关 package.json
                 return pkg.version;
             }
         } catch {
