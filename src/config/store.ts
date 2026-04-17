@@ -2,7 +2,7 @@ import Configstore from 'configstore';
 import { chmodSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
-import type { ConfigData, Profile, ServerConfig, UserConfig } from '../types/index.js';
+import type { ConfigData, Profile, ServerConfig, UpdateCheckData, UserConfig } from '../types/index.js';
 import { ZentaoError } from '../errors.js';
 import { DEFAULT_CONFIG } from './defaults.js';
 
@@ -173,17 +173,17 @@ export function buildProfile(server: string, account: string, token: string, ser
 }
 
 /** 获取版本更新检查数据 */
-export function getUpdateCheckData(): { lastCheck?: string; latestVersion?: string } | undefined {
+export function getUpdateCheckData(): UpdateCheckData | undefined {
     try {
         const s = getStore();
-        return s.get('updateCheck') as { lastCheck?: string; latestVersion?: string } | undefined;
+        return s.get('updateCheck') as UpdateCheckData | undefined;
     } catch {
         return undefined;
     }
 }
 
 /** 设置版本更新检查数据 */
-export function setUpdateCheckData(data: { lastCheck: string; latestVersion: string }): void {
+export function setUpdateCheckData(data: UpdateCheckData): void {
     const s = getStore();
     s.set('updateCheck', data);
     enforcePermissions();
