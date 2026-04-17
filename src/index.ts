@@ -47,41 +47,112 @@ program.exitOverride((err) => {
     process.exit(exitCode);
 });
 
-const EXCLUDED_COMMANDS = ['upgrade', 'version', 'mcp', 'autocomplete', 'help', '-h', '--help'];
+/** 不触发更新检查的子命令集合 */
+const EXCLUDED_COMMANDS = new Set([
+    'upgrade',
+    'version',
+    'mcp',
+    'autocomplete',
+    'completion',
+    'help',
+    '-h',
+    '--help',
+    '-V',
+    '--version-flag',
+]);
 
-const rawArgs = process.argv.slice(2);
-const firstArg = rawArgs[0];
-const isExcluded = !firstArg || EXCLUDED_COMMANDS.includes(firstArg);
+/** 扫描 argv，找到第一个看起来像子命令的非选项参数 */
+function findSubcommand(argv: readonly string[]): string | undefined {
+    for (let i = 0; i < argv.length; i++) {
+        const arg = argv[i];
+        if (!arg.startsWith('-')) return arg;
+        // 跳过带参数的全局选项
+        if (arg === '--format' || arg === '--timeout') {
+            i++;
+        }
+    }
+    return undefined;
+}
+
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+/** 失败时短退避，避免网络不通时每次运行都重连 */
+const FAILURE_BACKOFF_MS = 60 * 60 * 1000;
+
+const subcommand = findSubcommand(process.argv.slice(2));
+const shouldCheckUpdate = !subcommand || !EXCLUDED_COMMANDS.has(subcommand);
 
 let updateCheckPromise: Promise<UpdateCheckResult | null> | null = null;
+let updateAbortController: AbortController | null = null;
 
-if (!isExcluded) {
+if (shouldCheckUpdate) {
     const updateData = getUpdateCheckData();
     const now = Date.now();
     const lastCheck = updateData?.lastCheck ? new Date(updateData.lastCheck).getTime() : 0;
-    
-    // 24小时(86400000ms)检查一次
-    if (now - lastCheck > 86400000) {
-        updateCheckPromise = asyncCheckForUpdate();
+    const lastCheckFailed = updateData?.latestVersion === '';
+    const interval = lastCheckFailed ? FAILURE_BACKOFF_MS : ONE_DAY_MS;
+
+    if (now - lastCheck > interval) {
+        updateAbortController = new AbortController();
+        updateCheckPromise = asyncCheckForUpdate(updateAbortController.signal);
+    }
+}
+
+function canShowNotification(): boolean {
+    const opts = program.opts();
+    if (opts.silent) return false;
+    if (opts.machineReadable) return false;
+    if (opts.format === 'json' || opts.format === 'raw') return false;
+    if (!process.stderr.isTTY) return false;
+    return true;
+}
+
+/** 带超时竞速，但到期后主动 abort 正在进行的 fetch 并 unref 定时器，避免拖延进程退出 */
+async function raceWithTimeout<T>(
+    promise: Promise<T>,
+    timeoutMs: number,
+    onTimeout: () => void,
+): Promise<T | null> {
+    let timer: NodeJS.Timeout | undefined;
+    const timeoutPromise = new Promise<null>((resolve) => {
+        timer = setTimeout(() => {
+            onTimeout();
+            resolve(null);
+        }, timeoutMs);
+        timer.unref?.();
+    });
+    try {
+        return await Promise.race([promise, timeoutPromise]);
+    } finally {
+        if (timer) clearTimeout(timer);
     }
 }
 
 program.parseAsync(process.argv).then(async () => {
-    if (updateCheckPromise && !program.opts().machineReadable && !program.opts().silent && program.opts().format !== 'json' && program.opts().format !== 'raw') {
-        const result = await Promise.race([
-            updateCheckPromise,
-            new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000)) // 3秒超时防止卡住
-        ]);
-        
-        if (result) {
-            setUpdateCheckData({
-                lastCheck: new Date().toISOString(),
-                latestVersion: result.latest
-            });
-            showUpdateNotification(result);
-        }
+    if (!updateCheckPromise || !updateAbortController) return;
+
+    if (!canShowNotification()) {
+        updateAbortController.abort();
+        return;
+    }
+
+    const controller = updateAbortController;
+    const result = await raceWithTimeout(updateCheckPromise, 3000, () => controller.abort());
+
+    // 无论成功失败都记录时间戳：成功写入真实 latest，失败写入空字符串作为退避标记
+    try {
+        setUpdateCheckData({
+            lastCheck: new Date().toISOString(),
+            latestVersion: result?.latest ?? '',
+        });
+    } catch {
+        // 配置写入失败不影响主流程
+    }
+
+    if (result) {
+        showUpdateNotification(result);
     }
 }).catch((error) => {
+    updateAbortController?.abort();
     if (error instanceof ZentaoError) {
         console.error(formatError(error, program.opts().format ?? 'markdown'));
         process.exit(1);

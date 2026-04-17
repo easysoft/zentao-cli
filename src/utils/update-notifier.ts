@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { getCliVersion } from './version.js';
 
 export const PACKAGE_NAME = 'zentao-cli';
@@ -25,6 +26,35 @@ export function parseSemver(version: string): SemVer | null {
 }
 
 /**
+ * 按 semver 2.0 规则比较 prerelease 标识。
+ * 以 `.` 切分后，每段：全数字用数值比较，否则用字典序比较；段更短者（全匹配前提下）更小。
+ */
+function comparePrerelease(a: string, b: string): number {
+    const aParts = a.split('.');
+    const bParts = b.split('.');
+    const len = Math.max(aParts.length, bParts.length);
+    for (let i = 0; i < len; i++) {
+        const ap = aParts[i];
+        const bp = bParts[i];
+        if (ap === undefined) return -1;
+        if (bp === undefined) return 1;
+        const aNum = /^\d+$/.test(ap);
+        const bNum = /^\d+$/.test(bp);
+        if (aNum && bNum) {
+            const na = Number(ap);
+            const nb = Number(bp);
+            if (na !== nb) return na > nb ? 1 : -1;
+        } else if (aNum !== bNum) {
+            // 数字段优先级低于字母段
+            return aNum ? -1 : 1;
+        } else if (ap !== bp) {
+            return ap > bp ? 1 : -1;
+        }
+    }
+    return 0;
+}
+
+/**
  * 返回值：
  *  1  => a > b（本地版本更新）
  * -1  => a < b（有新版本）
@@ -37,16 +67,16 @@ export function compareSemver(a: SemVer, b: SemVer): number {
     // 无 prerelease > 有 prerelease（正式版 > beta 版）
     if (!a.prerelease && b.prerelease) return 1;
     if (a.prerelease && !b.prerelease) return -1;
-    if (a.prerelease !== b.prerelease) return a.prerelease > b.prerelease ? 1 : -1;
-    return 0;
+    if (a.prerelease === b.prerelease) return 0;
+    return comparePrerelease(a.prerelease, b.prerelease);
 }
 
-export async function fetchLatestVersion(): Promise<string> {
+export async function fetchLatestVersion(signal?: AbortSignal): Promise<string> {
     let response: Response;
     try {
         response = await fetch(REGISTRY_URL, {
             headers: { Accept: 'application/json' },
-            signal: AbortSignal.timeout(10_000),
+            signal: signal ?? AbortSignal.timeout(10_000),
         });
     } catch (err) {
         throw new Error(`无法连接到 npm registry: ${(err as Error).message}`);
@@ -65,10 +95,19 @@ export async function fetchLatestVersion(): Promise<string> {
 
 export type PackageManager = 'bun' | 'npm';
 
+/**
+ * 根据「当前 CLI 实际被加载的路径」判断包管理器，避免"本机装了 bun 就用 bun"的误判。
+ * 路径中包含 `.bun` 段视为 bun 安装；否则一律按 npm 处理。
+ */
 export function detectPackageManager(): PackageManager {
-    // 检测 bun 是否可用
-    const result = spawnSync('bun', ['--version'], { encoding: 'utf-8' });
-    if (result.status === 0) return 'bun';
+    let installPath = '';
+    try {
+        installPath = fileURLToPath(import.meta.url);
+    } catch {
+        installPath = process.argv[1] ?? '';
+    }
+    const normalized = installPath.replace(/\\/g, '/');
+    if (/\/\.bun\/|\/bun\/install\//.test(normalized)) return 'bun';
     return 'npm';
 }
 
@@ -86,14 +125,15 @@ export interface UpdateCheckResult {
 }
 
 /** 异步检查是否有版本更新，忽略所有异常 */
-export async function asyncCheckForUpdate(): Promise<UpdateCheckResult | null> {
+export async function asyncCheckForUpdate(signal?: AbortSignal): Promise<UpdateCheckResult | null> {
     try {
         const currentVersion = getCliVersion();
-        if (currentVersion === 'unknown' || currentVersion.includes('dev')) {
+        // 仅过滤 getCliVersion 的降级哨兵 `0.0.0-dev`，避免误伤 `1.0.0-develop.1` 之类真实版本
+        if (currentVersion === 'unknown' || currentVersion === '0.0.0-dev') {
             return null;
         }
 
-        const latestVersion = await fetchLatestVersion();
+        const latestVersion = await fetchLatestVersion(signal);
         const current = parseSemver(currentVersion);
         const latest = parseSemver(latestVersion);
 
@@ -103,31 +143,42 @@ export async function asyncCheckForUpdate(): Promise<UpdateCheckResult | null> {
         return {
             hasUpdate,
             current: currentVersion,
-            latest: latestVersion
+            latest: latestVersion,
         };
     } catch {
-        return null; // 错误静默忽略
+        return null;
     }
 }
 
-/** 显示升级提示信息 */
-export function showUpdateNotification(result: UpdateCheckResult) {
+/** 显示升级提示信息，仅在 stderr 为 TTY 时输出彩色文案 */
+export function showUpdateNotification(result: UpdateCheckResult): void {
     if (!result.hasUpdate) return;
-    
-    const termWidth = process.stdout.columns || 80;
-    
-    // 使用简单的 ANSI 颜色，不引入新依赖
+    if (!process.stderr.isTTY) return;
+
     const reset = '\x1b[0m';
     const yellow = '\x1b[33m';
     const cyan = '\x1b[36m';
     const dim = '\x1b[2m';
     const bold = '\x1b[1m';
-    const bgYellow = '\x1b[43m\x1b[30m';
-    
+
     const lines = [
         `更新提醒：发现新版本 ${dim}${result.current}${reset} → ${yellow}${bold}${result.latest}${reset}`,
-        `执行 ${cyan}zentao upgrade${reset} 升级到最新版本`
+        `执行 ${cyan}zentao upgrade${reset} 升级到最新版本`,
     ];
 
     process.stderr.write('\n' + lines.join('\n') + '\n\n');
+}
+
+/**
+ * 以 `spawnSync` 在 Windows 兼容地运行 install 命令。
+ * Windows 上 `bun`/`npm` 是 `.cmd`，必须通过 shell 才能 spawn。
+ */
+export function runInstall(pm: PackageManager): { status: number | null; cmd: string; args: string[] } {
+    const { cmd, args } = buildInstallCommand(pm);
+    const result = spawnSync(cmd, args, {
+        stdio: 'inherit',
+        encoding: 'utf-8',
+        shell: process.platform === 'win32',
+    });
+    return { status: result.status, cmd, args };
 }
