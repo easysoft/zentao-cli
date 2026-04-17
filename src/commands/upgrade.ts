@@ -1,49 +1,36 @@
 import { Command } from 'commander';
-import { createInterface } from 'node:readline';
+import { createInterface, type Interface } from 'node:readline';
 import type { GlobalOptions } from '../types/index.js';
 import { getCliVersion } from '../utils/version.js';
-import { 
-    parseSemver, 
-    compareSemver, 
-    fetchLatestVersion, 
-    detectPackageManager, 
-    buildInstallCommand, 
-    type PackageManager 
+import {
+    parseSemver,
+    compareSemver,
+    fetchLatestVersion,
+    detectPackageManager,
+    buildInstallCommand,
+    runInstall,
 } from '../utils/update-notifier.js';
-import { spawnSync } from 'node:child_process';
 
-function runInstall(pm: PackageManager): boolean {
-    const { cmd, args } = buildInstallCommand(pm);
-    console.log(`\n执行: ${cmd} ${args.join(' ')}\n`);
-
-    const result = spawnSync(cmd, args, {
-        stdio: 'inherit',
-        encoding: 'utf-8',
+function ask(rl: Interface, question: string): Promise<string> {
+    return new Promise((resolve) => {
+        rl.question(question, (answer) => resolve(answer));
     });
-
-    return result.status === 0;
 }
-
-/* ── Confirmation Prompt ── */
 
 async function confirmUpgrade(current: string, latest: string): Promise<boolean> {
     if (!process.stdin.isTTY || !process.stderr.isTTY) {
-        throw new Error('非交互模式下请使用 --yes 跳过确认');
+        console.error('非交互模式下请使用 --yes 跳过确认。');
+        process.exit(2);
     }
 
     const rl = createInterface({ input: process.stdin, output: process.stderr });
-    return new Promise((resolve) => {
-        rl.question(
-            `发现新版本 ${current} → ${latest}，是否立即升级？[y/N] `,
-            (answer) => {
-                rl.close();
-                resolve(answer.trim().toLowerCase() === 'y');
-            },
-        );
-    });
+    try {
+        const answer = await ask(rl, `发现新版本 ${current} → ${latest}，是否立即升级？[y/N] `);
+        return answer.trim().toLowerCase() === 'y';
+    } finally {
+        rl.close();
+    }
 }
-
-/* ── Command Registration ── */
 
 /** 注册 `zentao upgrade`：从 npm 检查并升级到最新版本 */
 export function registerUpgradeCommand(program: Command): void {
@@ -70,14 +57,11 @@ export function registerUpgradeCommand(program: Command): void {
                     );
                 }
 
-                const cmp = compareSemver(current, latest);
-
-                if (cmp >= 0) {
+                if (compareSemver(current, latest) >= 0) {
                     console.log(`当前已是最新版本 ${currentVersion}，无需升级。`);
                     return;
                 }
 
-                // 有新版本
                 const shouldUpgrade =
                     opts.yes || (await confirmUpgrade(currentVersion, latestVersion));
 
@@ -87,13 +71,15 @@ export function registerUpgradeCommand(program: Command): void {
                 }
 
                 const pm = detectPackageManager();
-                const success = runInstall(pm);
+                const { cmd, args } = buildInstallCommand(pm);
+                console.log(`\n执行: ${cmd} ${args.join(' ')}\n`);
 
-                if (success) {
+                const { status } = runInstall(pm);
+
+                if (status === 0) {
                     console.log(`\n升级成功！${currentVersion} → ${latestVersion}`);
                 } else {
                     console.error('\n升级失败，请手动运行:');
-                    const { cmd, args } = buildInstallCommand(pm);
                     console.error(`  ${cmd} ${args.join(' ')}`);
                     process.exit(1);
                 }
