@@ -121,6 +121,23 @@
 }
 ```
 
+## 自定义配置文件
+
+用户可以通过全局选项 `--config <config_file>` 指定自定义配置文件路径，并执行后续流程。
+当有自定义配置文件时，则不使用默认的 `~/.config/zentao/zentao.json` 文件。
+
+路径解析规则：
+
+- 支持 `~` 展开，`~/foo/zt.json` 会被展开为用户家目录下的 `foo/zt.json`；
+- 相对路径基于当前工作目录解析为绝对路径；
+- 若自定义文件不存在，会按默认流程由 configstore 自动创建；首次写入后同样会把权限收紧为 `600`。
+
+除了 `--config` 选项，也可以通过环境变量 `ZENTAO_CONFIG_FILE` 指定自定义配置文件路径。当二者同时存在时，`--config` 选项优先。三者优先级从高到低为：
+
+1. 全局选项 `--config <config_file>`
+2. 环境变量 `ZENTAO_CONFIG_FILE`
+3. 默认路径 `~/.config/zentao/zentao.json`
+
 ## 用户验证过程
 
 调用禅道 API 需要在请求头中增加 `token` 字段，其值为获取到的 TOKEN。获取 TOKEN 的过程如下：
@@ -136,7 +153,7 @@
 
 下面说明常见的 API 调用方式。
 
-#### 获取用户 Token
+### 获取用户 Token
 
 请求地址：`POST $BASE_URL/users/login`，请求体：
 

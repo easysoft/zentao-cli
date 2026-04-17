@@ -198,6 +198,20 @@ $ zentao logout
 $ zentao logout dev1@https://zentao.example.com
 ```
 
+#### 自定义配置文件
+
+默认情况下，zentao-cli 会将用户配置保存在 `~/.config/zentao/zentao.json`。也可以通过全局选项 `--config <config_file>` 或环境变量 `ZENTAO_CONFIG_FILE` 指定自定义配置文件路径；此时所有读写均作用于该文件，不再使用默认路径。
+
+```bash
+# 通过 --config 选项使用自定义配置文件
+$ zentao --config /path/to/zt.json profile
+
+# 通过环境变量指定（便于在 shell 中持久设置）
+$ ZENTAO_CONFIG_FILE=~/work/zt.json zentao product
+```
+
+路径支持 `~` 展开与相对路径（相对当前工作目录）。当 `--config` 与 `ZENTAO_CONFIG_FILE` 同时存在时，`--config` 优先。
+
 ### 禅道数据访问和操作
 
 #### 命令调用方式

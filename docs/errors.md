@@ -13,7 +13,7 @@
 | 1002 | 所提供的禅道服务地址 xxx 无法访问 |
 | 1003 | 当前用户名和密码不正确 |
 | 1004 | 所提供的 Token 已失效，请提供密码重新登录，或提供新的 TOKEN |
-| 1005 | 配置文件损坏或无法读取，请检查 `~/.config/zentao/zentao.json` |
+| 1005 | 配置文件损坏或无法读取，请检查 {path}（默认路径为 `~/.config/zentao/zentao.json`，可能被 `--config` 或 `ZENTAO_CONFIG_FILE` 覆盖） |
 | 1006 | 未找到指定的用户配置，请先使用 `zentao login -s <zentao_url> -u <account> -p <password> -t <token>` 登录 |
 | 1007 | 指定的用户配置不存在，请通过 `zentao profile` 查看可用配置 |
 | 1008 | 当前禅道版本不受支持，请使用禅道 22.0 及以上版本 |
