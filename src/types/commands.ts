@@ -14,6 +14,9 @@ export interface GlobalOptions {
     /** 请求超时时间（毫秒） */
     timeout?: number;
 
+    /** 自定义配置文件路径，覆盖默认的 ~/.config/zentao/zentao.json */
+    config?: string;
+
     /** 是否启用机器可读模式，简化格式，禁用颜色输出 */
     machineReadable?: boolean;
 }

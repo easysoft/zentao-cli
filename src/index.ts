@@ -4,10 +4,41 @@
 import { Command, CommanderError } from 'commander';
 import { registerAllCommands } from './commands/index.js';
 import { ZentaoError, formatError } from './errors.js';
-import { getAllProfiles, getUpdateCheckData, setUpdateCheckData } from './config/store.js';
+import { getAllProfiles, getUpdateCheckData, setConfigPath, setUpdateCheckData } from './config/store.js';
 import { asyncCheckForUpdate, showUpdateNotification, type UpdateCheckResult } from './utils/update-notifier.js';
 
 declare const BUILD_VERSION: string | undefined;
+
+/**
+ * 在 Commander 正式解析之前，手动扫描 argv 查找 `--config`，
+ * 若未命中则回退到 `ZENTAO_CONFIG_FILE` 环境变量。
+ * 必须在任何 store 访问（如 getUpdateCheckData）之前调用。
+ */
+function resolveCustomConfigPath(argv: readonly string[], env: NodeJS.ProcessEnv): void {
+    let customPath: string | undefined;
+    for (let i = 0; i < argv.length; i++) {
+        const arg = argv[i];
+        if (arg === '--config') {
+            customPath = argv[i + 1];
+            break;
+        }
+        if (arg.startsWith('--config=')) {
+            customPath = arg.slice('--config='.length);
+            break;
+        }
+    }
+    if (!customPath) {
+        const envPath = env.ZENTAO_CONFIG_FILE;
+        if (envPath && envPath.trim() !== '') {
+            customPath = envPath;
+        }
+    }
+    if (customPath && customPath.trim() !== '') {
+        setConfigPath(customPath);
+    }
+}
+
+resolveCustomConfigPath(process.argv.slice(2), process.env);
 
 const program = new Command();
 
@@ -19,6 +50,7 @@ program
     .option('--silent', '静默模式')
     .option('--insecure', '跳过 SSL/TLS 证书验证')
     .option('--timeout <ms>', '请求超时时间（毫秒）', parseInt)
+    .option('--config <config_file>', '指定自定义配置文件路径（亦可通过 ZENTAO_CONFIG_FILE 环境变量设置）')
     .option('--machine-readable', '启用机器可读模式，简化格式，禁用颜色输出');
 
 registerAllCommands(program);
@@ -67,7 +99,7 @@ function findSubcommand(argv: readonly string[]): string | undefined {
         const arg = argv[i];
         if (!arg.startsWith('-')) return arg;
         // 跳过带参数的全局选项
-        if (arg === '--format' || arg === '--timeout') {
+        if (arg === '--format' || arg === '--timeout' || arg === '--config') {
             i++;
         }
     }

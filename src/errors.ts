@@ -8,7 +8,7 @@ export const ERROR_CODES = {
     E1002: '所提供的禅道服务地址 {url} 无法访问',
     E1003: '当前用户名和密码不正确',
     E1004: '所提供的 Token 已失效，请提供密码重新登录，或提供新的 TOKEN',
-    E1005: '配置文件损坏或无法读取，请检查 ~/.config/zentao/zentao.json',
+    E1005: '配置文件损坏或无法读取，请检查 {path}',
     E1006: '未找到指定的用户配置，请先使用 `zentao login -s <zentao_url> -u <account> -p <password> -t <token>` 登录',
     E1007: '指定的用户配置不存在，请通过 `zentao profile` 查看可用配置',
     E1008: '当前禅道版本不受支持，请使用禅道 22.0 及以上版本',

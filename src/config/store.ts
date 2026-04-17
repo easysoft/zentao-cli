@@ -1,19 +1,25 @@
 import Configstore from 'configstore';
 import { chmodSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { isAbsolute, join, resolve } from 'node:path';
 import { homedir } from 'node:os';
 import type { ConfigData, Profile, ServerConfig, UpdateCheckData, UserConfig } from '../types/index.js';
 import { ZentaoError } from '../errors.js';
 import { DEFAULT_CONFIG } from './defaults.js';
 
-const CONFIG_PATH = join(homedir(), '.config', 'zentao', 'zentao.json');
+/** 默认配置文件路径：~/.config/zentao/zentao.json */
+function defaultConfigPath(): string {
+    return join(homedir(), '.config', 'zentao', 'zentao.json');
+}
+
+/** 当前生效的配置文件路径，可通过 setConfigPath 在首次使用前覆盖 */
+let configPath: string = defaultConfigPath();
 
 /** 惰性初始化的 Configstore，避免在仅引用常量的场景下触碰磁盘 */
 let store: Configstore | null = null;
 
 function getStore(): Configstore {
     if (!store) {
-        store = new Configstore('zentao-cli', {}, { configPath: CONFIG_PATH });
+        store = new Configstore('zentao-cli', {}, { configPath });
         enforcePermissions();
     }
     return store;
@@ -22,12 +28,50 @@ function getStore(): Configstore {
 /** 将配置文件权限收紧为仅当前用户可读（平台不支持 chmod 时静默忽略） */
 function enforcePermissions(): void {
     try {
-        if (existsSync(CONFIG_PATH)) {
-            chmodSync(CONFIG_PATH, 0o600);
+        if (existsSync(configPath)) {
+            chmodSync(configPath, 0o600);
         }
     } catch {
         // Ignore permission errors on platforms that don't support chmod
     }
+}
+
+/** 将路径中的首段 `~` 展开为当前用户家目录 */
+function expandHome(p: string): string {
+    if (p === '~') return homedir();
+    if (p.startsWith('~/') || p.startsWith('~\\')) {
+        return join(homedir(), p.slice(2));
+    }
+    return p;
+}
+
+/**
+ * 覆盖默认的配置文件路径。必须在首次访问 store 之前调用。
+ * - 支持 `~` 展开；
+ * - 相对路径基于当前工作目录解析为绝对路径；
+ * - 若 store 已初始化且新路径与当前路径不同，则抛错以防止运行期内状态不一致。
+ */
+export function setConfigPath(p: string): void {
+    if (typeof p !== 'string' || p.trim() === '') {
+        throw new Error('setConfigPath: path must be a non-empty string');
+    }
+    const expanded = expandHome(p);
+    const absolute = isAbsolute(expanded) ? expanded : resolve(expanded);
+    if (store && absolute !== configPath) {
+        throw new Error('setConfigPath: cannot change config path after store has been initialized');
+    }
+    configPath = absolute;
+}
+
+/** 返回默认的配置文件路径（不受 setConfigPath 影响） */
+export function getDefaultConfigPath(): string {
+    return defaultConfigPath();
+}
+
+/** 仅供测试使用：重置模块内部状态（store 与 configPath） */
+export function __resetConfigStoreForTests(): void {
+    store = null;
+    configPath = defaultConfigPath();
 }
 
 /** 读取完整配置数据，读取失败时抛出 E1005 */
@@ -39,7 +83,7 @@ export function getConfigData(): ConfigData {
             profiles: s.get('profiles') as Profile[] | undefined,
         };
     } catch {
-        throw new ZentaoError('E1005');
+        throw new ZentaoError('E1005', { path: configPath });
     }
 }
 
@@ -146,9 +190,9 @@ export function updateProfile(profile: Profile, updates: Partial<Profile>): void
     saveProfile(profile);
 }
 
-/** 返回配置文件的绝对路径 */
+/** 返回配置文件的绝对路径（若通过 setConfigPath 覆盖，则返回覆盖后的路径） */
 export function getConfigPath(): string {
-    return CONFIG_PATH;
+    return configPath;
 }
 
 /**
