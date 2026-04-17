@@ -1,5 +1,15 @@
-import { describe, test, expect } from 'bun:test';
+import { describe, test, expect, beforeEach, afterEach } from 'bun:test';
+import { homedir, tmpdir } from 'node:os';
+import { isAbsolute, join, resolve } from 'node:path';
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { DEFAULT_CONFIG, VALID_CONFIG_KEYS } from '../src/config/defaults';
+import {
+    __resetConfigStoreForTests,
+    getConfigPath,
+    getDefaultConfigPath,
+    saveProfile,
+    setConfigPath,
+} from '../src/config/store';
 import type { UserConfig, Workspace, Profile } from '../src/types/config';
 
 describe('DEFAULT_CONFIG', () => {
@@ -81,5 +91,89 @@ describe('Profile type validation', () => {
         expect(profile.currentWorkspace).toBe(1);
         expect(profile.workspaces?.length).toBe(1);
         expect(profile.config?.defaultOutputFormat).toBe('json');
+    });
+});
+
+describe('setConfigPath', () => {
+    let tempDir: string;
+
+    beforeEach(() => {
+        __resetConfigStoreForTests();
+        tempDir = mkdtempSync(join(tmpdir(), 'zentao-cli-test-'));
+    });
+
+    afterEach(() => {
+        __resetConfigStoreForTests();
+        if (tempDir && existsSync(tempDir)) {
+            rmSync(tempDir, { recursive: true, force: true });
+        }
+    });
+
+    test('默认路径为 ~/.config/zentao/zentao.json', () => {
+        expect(getDefaultConfigPath()).toBe(join(homedir(), '.config', 'zentao', 'zentao.json'));
+        expect(getConfigPath()).toBe(getDefaultConfigPath());
+    });
+
+    test('展开路径中首段的 ~ 为家目录', () => {
+        setConfigPath('~/custom/zt.json');
+        expect(getConfigPath()).toBe(join(homedir(), 'custom', 'zt.json'));
+    });
+
+    test('单独的 ~ 展开为家目录自身', () => {
+        setConfigPath('~');
+        expect(getConfigPath()).toBe(homedir());
+    });
+
+    test('相对路径基于 CWD 解析为绝对路径', () => {
+        setConfigPath('./relative/zt.json');
+        const got = getConfigPath();
+        expect(isAbsolute(got)).toBe(true);
+        expect(got).toBe(resolve('./relative/zt.json'));
+    });
+
+    test('绝对路径原样保留', () => {
+        const abs = join(tempDir, 'zt.json');
+        setConfigPath(abs);
+        expect(getConfigPath()).toBe(abs);
+    });
+
+    test('空字符串或非法输入抛错', () => {
+        expect(() => setConfigPath('')).toThrow();
+        expect(() => setConfigPath('   ')).toThrow();
+        // @ts-expect-error: 故意传入非字符串以验证运行时校验
+        expect(() => setConfigPath(undefined)).toThrow();
+    });
+
+    test('store 初始化后再次设置为不同路径应抛错', () => {
+        const first = join(tempDir, 'first.json');
+        const second = join(tempDir, 'second.json');
+        setConfigPath(first);
+
+        saveProfile({
+            server: 'https://zentao.example.com',
+            account: 'admin',
+            token: 'test-token',
+            loginTime: '2026-04-10T10:00:00Z',
+            lastUsedTime: '2026-04-10T10:00:00Z',
+        });
+
+        expect(existsSync(first)).toBe(true);
+        expect(() => setConfigPath(second)).toThrow();
+    });
+
+    test('store 初始化后使用相同路径再次设置应幂等', () => {
+        const abs = join(tempDir, 'idempotent.json');
+        setConfigPath(abs);
+
+        saveProfile({
+            server: 'https://zentao.example.com',
+            account: 'admin',
+            token: 'test-token',
+            loginTime: '2026-04-10T10:00:00Z',
+            lastUsedTime: '2026-04-10T10:00:00Z',
+        });
+
+        expect(() => setConfigPath(abs)).not.toThrow();
+        expect(getConfigPath()).toBe(abs);
     });
 });
