@@ -1,4 +1,4 @@
-# zentao-cli
+# Zentao CLI
 
 禅道命令行工具，支持在你喜爱的终端里访问和操作禅道数据，对 AI Agents 友好。
 
@@ -36,12 +36,11 @@ npm install -g zentao-cli
 # npx zentao-cli             # ← 通过 npx 免安装运行
 # pnpm dlx zentao-cli        # ← 通过 pnpm 免安装运行
 
-# 首次执行时会提示输入禅道 URL、用户名和密码完成登录
-# 登录成功后会记住用户信息，方便后续使用
-zentao
-
-# 手动进行登录
+# 首次使用需要进行登录
 zentao login -s https://zentao.example.com -u admin -p 123456
+
+# 直接执行获取可用命令帮助
+zentao
 
 # 查看禅道产品
 zentao product
@@ -54,6 +53,9 @@ zentao product update --id=1 --name=产品1
 
 # 更多功能可通过 help 查看
 zentao help
+
+# 查看禅道产品帮助
+zentao product help
 
 # 安装 zentao-cli 技能
 zentao add-skill
