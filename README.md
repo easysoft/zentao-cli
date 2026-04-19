@@ -4,15 +4,24 @@
 
 ## 主要特性
 
-* 基于最新的禅道 RESTful API 2.0 实现
-* 使用便捷，可通过 `npx zentao-cli` 立即运行
-* 安全的用户认证管理，支持多用户切换
-* 支持对数据进行摘取、过滤、排序等处理，并自动将 HTML 转换为 Markdown
-* 对 AI Agents 友好，帮助信息完善，支持输出 Markdown
-* 支持以 AI 技能点方式使用，支持通过 `zentao add-skill` 一键安装技能到 AI Agent
-* 支持 MCP 服务，使用 `npx zentao-cli mcp` 启动 MCP 服务
-* 使用现代的 bun 与 TypeScript 开发，具备类型安全
-* 提供完善的测试覆盖，保障代码质量
+* ✅ 基于最新的禅道 RESTful API 2.0 实现
+* ✅ 使用便捷，可通过 `npx zentao-cli` 立即运行
+* ✅ 安全的用户认证管理，支持多用户切换
+* ✅ 支持对数据进行摘取、过滤、排序等处理，并自动将 HTML 转换为 Markdown
+* ✅ 对 AI Agents 友好，帮助信息完善，支持输出 Markdown
+* ✅ 支持以 AI 技能点方式使用，支持通过 `zentao add-skill` 一键安装技能到 AI Agent
+* ✅ 支持 MCP 服务，使用 `npx zentao-cli mcp` 启动 MCP 服务
+* ✅ 使用现代的 bun 与 TypeScript 开发，具备类型安全
+* ✅ 提供完善的测试覆盖，保障代码质量
+
+待实现特性：
+
+* [ ] 支持工作区管理，支持记住用户上次访问的产品、项目和执行信息
+* [ ] 支持批量创建和更新操作
+* [ ] Markdown 输出渲染，提供适合人阅读的终端渲染模式，为 Markdown 内容应用多彩格式，代码块支持高亮
+* [ ] 支持适合开发者手动使用的极客版，有友好的 TUI 界面，支持在一个界面提供交互式操作
+* [ ] 一键安装脚本，支持自动根据用户环境选择安装方式
+* [ ] 多级别日志功能
 
 ## 快速使用
 
@@ -403,14 +412,11 @@ $ zentao delete product 1,2
 $ zentao product create --name=产品1
 ```
 
-也可以通过 `--data='JSON_STRING'` 指定创建对象所需的 JSON 数据；如果 JSON 数据是对象数组，则可进行批量创建。
+也可以通过 `--data='JSON_STRING'` 指定创建对象所需的 JSON 数据。
 
 ```bash
 # 创建禅道产品，并指定 JSON 数据
 $ zentao product create --data='{"name": "产品1"}'
-
-# 创建禅道产品，并指定 JSON 数据，进行批量创建
-$ zentao product create --data='[{"name": "产品1"}, {"name": "产品2"}]'
 ```
 
 <details>
@@ -423,14 +429,11 @@ $ zentao product create --data='[{"name": "产品1"}, {"name": "产品2"}]'
 $ zentao create product --name=产品1
 ```
 
-也可以通过 `--data='JSON_STRING'` 指定创建对象所需的 JSON 数据；如果 JSON 数据是对象数组，则可进行批量创建。
+也可以通过 `--data='JSON_STRING'` 指定创建对象所需的 JSON 数据。
 
 ```bash
 # 创建禅道产品，并指定 JSON 数据
 $ zentao create product --data='{"name": "产品1"}'
-
-# 创建禅道产品，并指定 JSON 数据，进行批量创建
-$ zentao create product --data='[{"name": "产品1"}, {"name": "产品2"}]'
 ```
 
 </details>
@@ -444,14 +447,11 @@ $ zentao create product --data='[{"name": "产品1"}, {"name": "产品2"}]'
 $ zentao product update 1 --name=产品1
 ```
 
-也可以通过 `--data='JSON_STRING'` 指定更新对象所需的 JSON 数据；如果 JSON 数据是对象数组，则可进行批量更新。
+也可以通过 `--data='JSON_STRING'` 指定更新对象所需的 JSON 数据。
 
 ```bash
 # 更新禅道产品 #1，并指定 JSON 数据
 $ zentao product update 1 --data='{"name": "产品1"}'
-
-# 更新禅道产品 #1 和 #2，并指定 JSON 数据，进行批量更新
-$ zentao product update --data='[{"id": 1, "name": "产品1"}, {"id": 2, "name": "产品2"}]'
 ```
 
 <details>
@@ -464,14 +464,11 @@ $ zentao product update --data='[{"id": 1, "name": "产品1"}, {"id": 2, "name":
 $ zentao update product 1 --name=产品1
 ```
 
-也可以通过 `--data='JSON_STRING'` 指定更新对象所需的 JSON 数据；如果 JSON 数据是对象数组，则可进行批量更新。
+也可以通过 `--data='JSON_STRING'` 指定更新对象所需的 JSON 数据。
 
 ```bash
 # 更新禅道产品 #1，并指定 JSON 数据
 $ zentao update product 1 --data='{"name": "产品1"}'
-
-# 更新禅道产品 #1 和 #2，并指定 JSON 数据，进行批量更新
-$ zentao update product --data='[{"id": 1, "name": "产品1"}, {"id": 2, "name": "产品2"}]'
 ```
 
 </details>
@@ -855,4 +852,3 @@ $ zentao autocomplete fish
 * [开发指引](./docs/development.md) - 关于技术选型、目录解构以及扩展测试的开发帮助说明
 * [技术方案与实现细节](./docs/implementation.md) - 详解内部接口调用规则、验证机制与持久化配置
 * [常见错误排查与参考手册](./docs/errors.md) - 使用命令遇到错误（格式：Exxxx）时进行查阅
-
