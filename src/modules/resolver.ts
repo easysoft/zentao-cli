@@ -129,9 +129,7 @@ export function resolveModuleCommand(
         for (const param of action.params) {
             let value = params[param.name];
             if (value === undefined) {
-                if (param.name === 'orderBy' && params.order) {
-                    value = params.order;
-                } else if (param.name === 'pageID' && params.page) {
+                if (param.name === 'pageID' && params.page) {
                     value = params.page;
                 }
             }
