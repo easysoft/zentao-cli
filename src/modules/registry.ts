@@ -903,7 +903,8 @@ export const MODULES: ModuleDefinition[] = [
                             "project",
                             "name",
                             "begin",
-                            "end"
+                            "end",
+                            "products"
                         ]
                     },
                 },
