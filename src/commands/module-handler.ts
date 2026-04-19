@@ -155,7 +155,6 @@ export async function handleModuleCommand(
     }
 
     const command = resolveModuleCommand(module, actionName, options, args);
-    console.log('> handleActionCommand', module.name, command.action.name, {options, args, path: command.path, query: command.query, params: command.params, data: command.data})
     switch (command.action.type) {
         case 'list': {
             await handleListCommand(client, module, command, options, config);
