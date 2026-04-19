@@ -9,7 +9,7 @@
 * ✅ 安全的用户认证管理，支持多用户切换
 * ✅ 支持对数据进行摘取、过滤、排序等处理，并自动将 HTML 转换为 Markdown
 * ✅ 对 AI Agents 友好，帮助信息完善，支持输出 Markdown
-* ✅ 支持以 AI 技能点方式使用，支持通过 `zentao add-skill` 一键安装技能到 AI Agent
+* ✅ 支持以 AI 技能的方式使用，支持通过 `zentao add-skill` 一键安装技能到 AI Agent
 * ✅ 支持 MCP 服务，使用 `npx zentao-cli mcp` 启动 MCP 服务
 * ✅ 使用现代的 bun 与 TypeScript 开发，具备类型安全
 * ✅ 提供完善的测试覆盖，保障代码质量
