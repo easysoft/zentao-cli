@@ -41,7 +41,7 @@ export function resolveModuleCommand(
         extraArgs.shift();
     }
 
-    const params: Record<string, unknown> = {...opts, param: undefined, data: undefined};
+    const params: Record<string, unknown> = {...opts};
     let positionalID: string | undefined;
 
     if (extraArgs.length > 0 && !extraArgs[0].startsWith('-')) {
@@ -51,6 +51,12 @@ export function resolveModuleCommand(
         if (isNumericID) {
             positionalID = candidateID;
             extraArgs.shift();
+        } else if (params.data === undefined && extraArgs[0].startsWith('{') && extraArgs[0].endsWith('}')) {
+            try {
+                params.data = JSON.parse(extraArgs[0]);
+            } catch {
+                // ignore error, will be handled by data option
+            }
         }
     }
     if (opts.params) {
@@ -145,15 +151,11 @@ export function resolveModuleCommand(
 
     // --- 解析请求数据 ---
     let data: string | Record<string, unknown> | undefined;
-    if (opts.data) {
-        if (typeof opts.data === 'string') {
-            data = opts.data;
-        } else if (typeof opts.data === 'object') {
-            try {
-                data = JSON.parse(opts.data);
-            } catch {
-                data = opts.data;
-            }
+    if (params.data) {
+        try {
+            data = typeof params.data === 'string' ? JSON.parse(params.data) : params.data;
+        } catch {
+            data = params.data as string | Record<string, unknown>;
         }
     }
 
