@@ -40,6 +40,9 @@ export function formatJson(data: unknown, pretty = true): string {
 /** 在 Markdown 列表末尾追加人类可读的分页摘要 */
 export function formatPagerInfo(pager: Pager | undefined, shownCount: number): string {
     if (!pager) return '';
+    if (!shownCount && !pager.recTotal) {
+        return '没有数据';
+    }
     return `\n\n已显示 ${shownCount} 项，共 ${pager.recTotal} 项，当前第 ${pager.pageID} 页，每页 ${pager.recPerPage} 条`;
 }
 
