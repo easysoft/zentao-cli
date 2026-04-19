@@ -127,8 +127,18 @@ export function resolveModuleCommand(
     const query: Record<string, string | number> = {};
     if (action.params?.length) {
         for (const param of action.params) {
-            const value = params[param.name] ?? param.defaultValue ?? param.options?.[0]?.value;
-            if (param.required && value === undefined) {
+            let value = params[param.name];
+            if (value === undefined) {
+                if (param.name === 'orderBy' && params.order) {
+                    value = params.order;
+                } else if (param.name === 'pageID' && params.page) {
+                    value = params.page;
+                }
+            }
+            if (value === undefined) {
+                value = param.defaultValue ?? param.options?.[0]?.value;
+            }
+            if (value === undefined && param.required) {
                 throw new ZentaoError('E2009', { option: param.name, reason: '必须提供参数值' });
             }
             query[param.name] = value as string | number;
