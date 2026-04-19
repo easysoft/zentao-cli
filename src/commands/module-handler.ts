@@ -1,5 +1,5 @@
 import type { ZentaoClient } from '../api/client.js';
-import type { ModuleDefinition, ModuleAction, Profile, ModuleActionName, ResolvedModuleCommand, UserConfig } from '../types/index.js';
+import type { ModuleDefinition, ModuleAction, ModuleActionType, Profile, ModuleActionName, ResolvedModuleCommand, UserConfig } from '../types/index.js';
 import { findAction, getAvailableActions, extractResult, extractPager, hasActionType, resolveModuleCommand } from '../modules/resolver.js';
 import { getProfileConfig } from '../config/store.js';
 import { convertHtmlFields, convertHtmlFieldsInArray } from '../utils/html.js';
@@ -46,6 +46,10 @@ async function handleListCommand(client: ZentaoClient, module: ModuleDefinition,
     }
     if (options.sort) {
         processed = sortData(processed, options.sort);
+    }
+
+    if (options.limit && Number(options.limit) < processed.length) {
+        processed = processed.slice(0, Number(options.limit));
     }
 
     const fields = options.pick?.split(',');
@@ -151,6 +155,7 @@ export async function handleModuleCommand(
     }
 
     const command = resolveModuleCommand(module, actionName, options, args);
+    console.log('> handleActionCommand', module.name, command.action.name, {options, args, path: command.path, query: command.query, params: command.params, data: command.data})
     switch (command.action.type) {
         case 'list': {
             await handleListCommand(client, module, command, options, config);
@@ -411,6 +416,32 @@ export function showModuleActionHelp(mod: ModuleDefinition, action: ModuleAction
 
     console.log('\n公共选项:');
     printParamEntries(commonOpts);
+}
+
+const MODULE_HELP_CRUD_ORDER: ModuleActionType[] = ['list', 'get', 'create', 'update', 'delete'];
+
+/**
+ * 依次输出模块各内建操作与扩展操作的详细参数说明（供 `zentao help <module>` 使用，内部对每种操作调用 {@link showModuleActionHelp}）。
+ */
+export function showModuleAllActionsHelp(mod: ModuleDefinition): void {
+    let first = true;
+    for (const type of MODULE_HELP_CRUD_ORDER) {
+        const action = findAction(mod, type);
+        if (!action) continue;
+        if (!first) console.log(`\n${'─'.repeat(56)}\n`);
+        first = false;
+        showModuleActionHelp(mod, action);
+    }
+    for (const extName of getAvailableActions(mod)) {
+        const action = findAction(mod, 'action', extName);
+        if (!action) continue;
+        if (!first) console.log(`\n${'─'.repeat(56)}\n`);
+        first = false;
+        showModuleActionHelp(mod, action);
+    }
+    if (first) {
+        showModuleHelp(mod);
+    }
 }
 
 type ParamEntry = {

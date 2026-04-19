@@ -41,7 +41,7 @@ export function resolveModuleCommand(
         extraArgs.shift();
     }
 
-    const params: Record<string, unknown> = {};
+    const params: Record<string, unknown> = {...opts, param: undefined, data: undefined};
     let positionalID: string | undefined;
 
     if (extraArgs.length > 0 && !extraArgs[0].startsWith('-')) {
@@ -84,7 +84,7 @@ export function resolveModuleCommand(
 
         if (pathParamNames.includes('scope')) {
             const scopePick = pickScopeFromSource(
-                (key) => (opts as Record<string, unknown>)[key] ?? params[key],
+                (key) => params[key],
             );
             if (!scopePick) {
                 throw new ZentaoError('E2003', {

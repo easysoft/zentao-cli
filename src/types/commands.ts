@@ -47,8 +47,8 @@ export interface ModuleActionOptions extends GlobalOptions {
     // /** 获取全部数据，适用于 resultType 为 list 的模块操作 */
     // all?: boolean;
 
-    // /** 限制获取数量，适用于 resultType 为 list 的模块操作 */
-    // limit?: string;
+    /** 限制获取数量，适用于 resultType 为 list 的模块操作 */
+    limit?: string;
 
     /** 用于提交的 JSON 数据，适用于 actionType 为 create、update 和 action 操作 */
     data?: string;
