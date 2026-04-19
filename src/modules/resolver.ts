@@ -216,9 +216,9 @@ const SCOPE_KEY_ORDER = ['execution', 'project', 'product'] as const;
 
 type ScopeKey = (typeof SCOPE_KEY_ORDER)[number];
 
-function pickScopeFromSource(get: (key: ScopeKey) => unknown): { scope: string; scopeID: number } | undefined {
+function pickScopeFromSource(get: (key: ScopeKey | `${ScopeKey}ID`) => unknown): { scope: string; scopeID: number } | undefined {
     for (const key of SCOPE_KEY_ORDER) {
-        const val = get(key);
+        const val = get(key) ?? get(`${key}ID`);
         if (val === undefined || val === '' || val === null) continue;
         const num = Number(val);
         if (Number.isNaN(num)) continue;

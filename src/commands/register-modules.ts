@@ -84,8 +84,8 @@ export function registerModuleCommands(program: Command): void {
                 } else if (action === undefined) {
                     action = 'list';
                 } else if (action.startsWith('-')) {
-                    action = 'list';
                     args.unshift(action);
+                    action = 'list';
                 }
 
                 if (args[0] === 'help') {
