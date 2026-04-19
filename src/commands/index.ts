@@ -1,4 +1,5 @@
 import type { Command } from 'commander';
+import { registerHelpCommand } from './help.js';
 import { registerLoginCommand } from './login.js';
 import { registerLogoutCommand } from './logout.js';
 import { registerProfileCommand } from './profile.js';
@@ -15,6 +16,7 @@ import { registerUpgradeCommand } from './upgrade.js';
 
 /** 注册内置子命令与各动态模块子命令 */
 export function registerAllCommands(program: Command): void {
+    registerHelpCommand(program);
     registerLoginCommand(program);
     registerLogoutCommand(program);
     registerProfileCommand(program);
