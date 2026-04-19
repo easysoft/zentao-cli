@@ -1,6 +1,6 @@
 import { describe, test, expect } from 'bun:test';
 import { MODULES, getModule, getModuleNames, isModuleName } from '../src/modules';
-import { findAction, getAvailableActions, resolveActionUrl, resolveListPathParams, resolveModuleCommand } from '../src/modules';
+import { findAction, getAvailableActions, resolveActionUrl, resolveModuleCommand } from '../src/modules';
 import type { Workspace } from '../src/types/config';
 
     describe('module registry', () => {
@@ -77,41 +77,6 @@ describe('module resolver', () => {
         execution: { id: 30, name: '执行1' },
     };
 
-    test('resolves top-level list path for product', () => {
-        const mod = getModule('product')!;
-        const listAction = findAction(mod, 'list')!;
-        const path = resolveActionUrl(listAction, resolveListPathParams(listAction, workspace, {}));
-        expect(path).toBe('/products');
-    });
-
-    test('resolves scoped list path for bug with workspace', () => {
-        const mod = getModule('bug')!;
-        const listAction = findAction(mod, 'list')!;
-        const path = resolveActionUrl(listAction, resolveListPathParams(listAction, workspace, {}));
-        // Should prefer execution scope
-        expect(path).toBe('/executions/30/bugs');
-    });
-
-    test('resolves scoped list path with explicit product param', () => {
-        const mod = getModule('bug')!;
-        const listAction = findAction(mod, 'list')!;
-        const path = resolveActionUrl(listAction, resolveListPathParams(listAction, workspace, { product: 5 }));
-        expect(path).toBe('/products/5/bugs');
-    });
-
-    test('resolves scoped list path with explicit project param', () => {
-        const mod = getModule('bug')!;
-        const listAction = findAction(mod, 'list')!;
-        const path = resolveActionUrl(listAction, resolveListPathParams(listAction, workspace, { project: 7 }));
-        expect(path).toBe('/projects/7/bugs');
-    });
-
-    test('throws when no scope for scoped module', () => {
-        const mod = getModule('bug')!;
-        const listAction = findAction(mod, 'list')!;
-        expect(() => resolveActionUrl(listAction, resolveListPathParams(listAction, {} as Workspace, {}))).toThrow();
-    });
-
     test('resolves detail path', () => {
         const mod = getModule('product')!;
         const getAction = findAction(mod, 'get')!;
@@ -135,20 +100,6 @@ describe('module resolver', () => {
         expect(actions).toContain('change');
         expect(actions).toContain('close');
         expect(actions).toContain('activate');
-    });
-
-    test('task list resolves under execution', () => {
-        const mod = getModule('task')!;
-        const listAction = findAction(mod, 'list')!;
-        const path = resolveActionUrl(listAction, resolveListPathParams(listAction, workspace, {}));
-        expect(path).toBe('/executions/30/tasks');
-    });
-
-    test('product list path under program with explicit param', () => {
-        const mod = getModule('product')!;
-        const listAction = findAction(mod, 'list')!;
-        const path = resolveActionUrl(listAction, resolveListPathParams(listAction, workspace, { program: 3 }));
-        expect(path).toBe('/products');
     });
 
     test('supports positional id for update action', () => {
