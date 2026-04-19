@@ -34,6 +34,7 @@ function shouldValidateToken(lastUsedTime?: string): boolean {
  */
 export async function ensureAuth(options?: { insecure?: boolean; timeout?: number }): Promise<AuthContext> {
     const currentProfile = getCurrentProfile();
+    let tokenExpired = false;
     if (currentProfile?.token) {
         const config = getProfileConfig(currentProfile);
         const clientOpts = {
@@ -50,35 +51,43 @@ export async function ensureAuth(options?: { insecure?: boolean; timeout?: numbe
                 profile: currentProfile,
             };
         }
+        if (needValidateToken) {
+            tokenExpired = true;
+        }
     }
 
     const env = getEnvCredentials();
+    if (env.url && env.account && (!currentProfile || (currentProfile.account === env.account && currentProfile.server === env.url))) {
+        if (env.token) {
+            const clientOpts = { insecure: options?.insecure, timeout: options?.timeout };
+            const normalizedServer = env.url.replace(/\/+$/, '');
+            const existingProfile = getProfile(env.account, normalizedServer);
+            const needValidateToken = shouldValidateToken(existingProfile?.lastUsedTime);
 
-    if (env.url && env.account && env.token) {
-        const clientOpts = { insecure: options?.insecure, timeout: options?.timeout };
-        const normalizedServer = env.url.replace(/\/+$/, '');
-        const existingProfile = getProfile(env.account, normalizedServer);
-        const needValidateToken = shouldValidateToken(existingProfile?.lastUsedTime);
+            if (!needValidateToken || (await validateToken(env.url, env.token, clientOpts))) {
+                const profile = buildProfile(env.url, env.account, env.token, undefined, undefined, existingProfile);
+                saveProfile(profile);
+                return {
+                    client: new ZentaoClient(env.url, env.token, clientOpts),
+                    profile,
+                };
+            }
+        }
 
-        if (!needValidateToken || (await validateToken(env.url, env.token, clientOpts))) {
-            const profile = buildProfile(env.url, env.account, env.token, undefined, undefined, existingProfile);
+        if (env.password) {
+            const clientOpts = { insecure: options?.insecure, timeout: options?.timeout };
+            const result = await login(env.url, env.account, env.password, clientOpts);
+            const profile = buildProfile(env.url, env.account, result.token, undefined, result.user);
             saveProfile(profile);
             return {
-                client: new ZentaoClient(env.url, env.token, clientOpts),
+                client: new ZentaoClient(env.url, result.token, clientOpts),
                 profile,
             };
         }
     }
 
-    if (env.url && env.account && env.password) {
-        const clientOpts = { insecure: options?.insecure, timeout: options?.timeout };
-        const result = await login(env.url, env.account, env.password, clientOpts);
-        const profile = buildProfile(env.url, env.account, result.token, undefined, result.user);
-        saveProfile(profile);
-        return {
-            client: new ZentaoClient(env.url, result.token, clientOpts),
-            profile,
-        };
+    if (tokenExpired) {
+        throw new ZentaoError('E1004');
     }
 
     throw new ZentaoError('E1006');

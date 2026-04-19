@@ -83,7 +83,13 @@ export class ZentaoClient {
                 return this.handleHttpError(response);
             }
 
-            const data = await response.json() as T;
+            const responseText = await response.text();
+            let data: T | undefined;
+            try {
+                data = JSON.parse(responseText) as T;
+            } catch (error) {
+                throw new ZentaoError('E2008', { url: response.url, status: response.status.toString(), statusText: response.statusText, serverResponse: responseText });
+            }
             if (data.status === 'fail') {
                 throw new ZentaoError('E2008', { url: response.url, status: response.status.toString(), statusText: response.statusText, serverResponse: JSON.stringify(data.message || data) });
             }
