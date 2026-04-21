@@ -75,6 +75,9 @@ export type ModuleActionResultRender = (result: unknown, type: ModuleActionResul
 
 /** 模块操作定义 */
 export interface ModuleAction {
+    /** 操作 API 版本 */
+    // apiVersion?: 'v1' | 'v2' | 'legacy';
+
     /** 操作名称，用于命令路由和 URL 拼接 */
     name: ModuleActionName;
 

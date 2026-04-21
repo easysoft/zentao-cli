@@ -138,3 +138,10 @@ $ zentao product 1
 ## 支持容器化与原生体分发 (Docker and Binary Builds)
 
 在项目中提供一份 `Dockerfile` 并维护相应镜像版本，以便仅使用 Docker 的运维人员直连使用。或者考虑完全利用 Bun 构建系统特性发布无需安装任何 Runtime 依赖便能直接运行的 Native Binary 可执行文件。
+
+## 支持 v1 接口 fallback
+
+1. 登录时，自动同步调用 v1 接口获取 sessionID，并将其保存到用户 profile，方便后续访问 v1 接口。
+2. 在 api registry 中，每个 action 可标记支持的 API 版本。
+3. zentao client 根据 action 的 API 版本，自动选择并实现对 v1 接口的调用逻辑。
+4. 对外输出格式保持统一，无论采用 v1 还是 v2，用户体验一致。
