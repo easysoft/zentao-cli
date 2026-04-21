@@ -179,7 +179,7 @@ zentao login -s https://zentao.example.com -u admin -p 123456
 * `ZENTAO_URL`：禅道服务地址
 * `ZENTAO_ACCOUNT`：用户账号
 * `ZENTAO_PASSWORD`：密码
-* `ZENTAO_TOKEN`：TOKEN。当未提供密码时，可通过该环境变量读取 TOKEN
+* `ZENTAO_TOKEN`：TOKEN，当未提供密码时，可通过该环境变量读取 TOKEN
 
 #### 账户切换
 
