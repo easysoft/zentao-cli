@@ -90,24 +90,6 @@ export async function login(
     }
 }
 
-/**
- * 通过一次轻量 GET（用户列表，仅取 1 条）探测 Token 是否仍然有效。
- * 任意异常均返回 `false`，由调用方决定是否回退到环境变量或交互登录。
- */
-export async function validateToken(
-    serverUrl: string,
-    token: string,
-    options?: { insecure?: boolean; timeout?: number },
-): Promise<boolean> {
-    try {
-        const client = new ZentaoClient(serverUrl, token, options);
-        await client.get('/users', { browseType: 'inside', recPerPage: 1 });
-        return true;
-    } catch {
-        return false;
-    }
-}
-
 /** 读取 `ZENTAO_URL` / `ZENTAO_ACCOUNT` / `ZENTAO_PASSWORD` / `ZENTAO_TOKEN` */
 export function getEnvCredentials(): EnvCredentials {
     return {
