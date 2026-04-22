@@ -6,8 +6,7 @@ import { registerAllCommands } from './commands/index.js';
 import { ZentaoError, formatError } from './errors.js';
 import { getAllProfiles, getUpdateCheckData, setConfigPath, setUpdateCheckData } from './config/store.js';
 import { asyncCheckForUpdate, showUpdateNotification, type UpdateCheckResult } from './utils/update-notifier.js';
-
-declare const BUILD_VERSION: string | undefined;
+import { getCliVersion } from './utils/version.js';
 
 /**
  * 在 Commander 正式解析之前，手动扫描 argv 查找 `--config`，
@@ -45,7 +44,7 @@ const program = new Command();
 program
     .name('zentao')
     .description('禅道命令行工具，支持在你喜爱的终端里访问和操作禅道数据')
-    .version(typeof BUILD_VERSION !== 'undefined' ? BUILD_VERSION : '0.0.0-dev', '-V, --version-flag')
+    .version(getCliVersion(), '-V, --version-flag')
     .option('--format <format>', '输出格式 (markdown|json|raw)')
     .option('--silent', '静默模式')
     .option('--insecure', '跳过 SSL/TLS 证书验证')
