@@ -159,7 +159,7 @@ export function resolveModuleCommand(
         }
     }
 
-    if (action.requestBody?.schema?.type === 'object' && (!data || typeof data !== 'object')) {
+    if (action.requestBody?.schema?.type === 'object' && (!data || typeof data === 'object')) {
         if (!data) {
             data = {};
         }
