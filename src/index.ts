@@ -41,10 +41,24 @@ resolveCustomConfigPath(process.argv.slice(2), process.env);
 
 const program = new Command();
 
+function localizeHelpOutput(text: string): string {
+    return text
+        .replace(/^Usage:/gm, '用法:')
+        .replace(/^Options:/gm, '选项:')
+        .replace(/^Commands:/gm, '命令:')
+        .replace(/display help for command/g, '显示命令帮助');
+}
+
+program.configureOutput({
+    writeOut: (str) => process.stdout.write(localizeHelpOutput(str)),
+    writeErr: (str) => process.stderr.write(localizeHelpOutput(str)),
+});
+
 program
     .name('zentao')
     .description('禅道命令行工具，支持在你喜爱的终端里访问和操作禅道数据')
-    .version(getCliVersion(), '-V, --version-flag')
+    .version(getCliVersion(), '-V, --version-flag', '显示版本号')
+    .helpOption('-h, --help', '显示命令帮助')
     .option('--format <format>', '输出格式 (markdown|json|raw)')
     .option('--silent', '静默模式')
     .option('--insecure', '跳过 SSL/TLS 证书验证')

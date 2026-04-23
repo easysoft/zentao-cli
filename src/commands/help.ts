@@ -10,7 +10,7 @@ function findSubcommand(program: Command, token: string): Command | undefined {
 export function registerHelpCommand(program: Command): void {
     program
         .command('help')
-        .description('display help for command')
+        .description('显示命令帮助')
         .argument('[command]', '子命令或模块名')
         .action((commandName?: string) => {
             if (!commandName) {
