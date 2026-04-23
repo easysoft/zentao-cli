@@ -55,7 +55,7 @@ export function registerModuleCommands(program: Command): void {
 
         const cmd = program
             .command(name)
-            .description(`${mod.display ?? name} 模块${actionDesc}`)
+            .description(`${mod.display ?? name}模块${actionDesc}`)
             .argument('[args...]', '参数')
             .allowUnknownOption(true);
 
