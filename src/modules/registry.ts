@@ -1398,15 +1398,19 @@ export const MODULES: ModuleDefinition[] = [
                                 "description": "父需求",
                                 "format": "int32"
                             },
+                            "plan": {
+                                "type": "integer",
+                                "description": "所属计划",
+                                "format": "int32"
+                            },
                             "estimate": {
                                 "type": "number",
                                 "description": "预计工时",
                                 "format": "float"
                             },
                             "category": {
-                                "type": "integer",
-                                "description": "类别(feature 功能 | interface 接口 | performance 性能 | safe 安全 | experience 体验 | improve 改进 | other 其他)",
-                                "format": "int32"
+                                "type": "string",
+                                "description": "类别(feature 功能 | interface 接口 | performance 性能 | safe 安全 | experience 体验 | improve 改进 | other 其他)"
                             },
                             "source": {
                                 "type": "string",
