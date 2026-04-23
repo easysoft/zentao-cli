@@ -165,14 +165,31 @@ export function resolveModuleCommand(
         }
         const schema = action.requestBody.schema as {
             required?: string[];
-            properties?: Record<string, {description: string, defaultValue: unknown, required?: boolean}>;
+            properties?: Record<string, {description: string, defaultValue: unknown, required?: boolean, type?: string}>;
+        };
+        const getScopeID = (key: string) => {
+            if (SCOPE_KEY_ORDER.includes(key as ScopeKey) && params[key] !== undefined) {
+                return params[key];
+            }
+            if (key.endsWith('ID') && SCOPE_KEY_ORDER.includes(key.slice(0, -2) as ScopeKey)) {
+                return params[key.slice(0, -2)];
+            }
+            return undefined;
         };
         const requiredSet = new Set((schema.required ?? []) as string[]);
         Object.keys(schema.properties ?? {}).forEach(key => {
             const prop = schema.properties![key];
-            const value = params[key] ?? prop.defaultValue;
-            if (value === undefined && (prop.required ?? requiredSet.has(key))) {
+            let value = (data as Record<string, unknown>)[key] ?? params[key] ?? getScopeID(key) ?? prop.defaultValue;
+            const required = prop.required ?? requiredSet.has(key);
+            if (value === undefined && required) {
                 throw new ZentaoError('E2009', { option: key, reason: '必须提供参数值' });
+            }
+            if (prop.type === 'number' || prop.type === 'integer') {
+                const actualType = typeof value;
+                value = Number(value);
+                if (Number.isNaN(value) && actualType !== 'undefined') {
+                    throw new ZentaoError('E2010', { option: key, type: prop.type, actualType });
+                }
             }
             (data as Record<string, unknown>)[key] = value;
         });
