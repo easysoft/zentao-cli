@@ -4,7 +4,7 @@ import { findAction, getAvailableActions} from '../modules/resolver.js';
 import { ensureAuth } from '../auth/flow.js';
 import { handleModuleCommand, showModuleActionHelp, showModuleHelp } from './module-handler.js';
 import { ZentaoError } from '../errors.js';
-import type { GlobalOptions, ModuleActionName, ModuleActionOptions } from '../types/index.js';
+import type { GlobalOptions, ModuleActionName, ModuleActionOptions, ModuleActionType } from '../types/index.js';
 import { renderError } from '../utils/render.js';
 
 /** 为命令挂载数据查询、分页、过滤及父子上下文等通用选项 */
@@ -89,7 +89,17 @@ export function registerModuleCommands(program: Command): void {
                 }
 
                 if (args[0] === 'help') {
-                    showModuleActionHelp(mod, findAction(mod, 'action', action as ModuleActionName)!);
+                    const crudAliases: Record<string, string> = { ls: 'list' };
+                    const normalizedAction = crudAliases[action as string] ?? (action as string);
+                    const crudTypes = new Set(['list', 'get', 'create', 'update', 'delete']);
+                    const resolvedAction = crudTypes.has(normalizedAction)
+                        ? findAction(mod, normalizedAction as ModuleActionType)
+                        : findAction(mod, 'action', action as ModuleActionName);
+                    if (resolvedAction) {
+                        showModuleActionHelp(mod, resolvedAction);
+                        return;
+                    }
+                    showModuleHelp(mod);
                     return;
                 }
 
