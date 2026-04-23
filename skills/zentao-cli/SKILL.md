@@ -6,7 +6,7 @@ metadata:
   author: Sun Hao <sunhao@chandao.com>
   repository: https://github.com/easysoft/zentao-cli.git
   keywords: [zentao, 禅道, cli, project-management]
-  version: 0.1.2-beta.7
+  version: 0.1.2-beta.8
 ---
 
 # 禅道 CLI
@@ -208,6 +208,7 @@ zentao task finish 100 --consumed=4
 
 ```bash
 zentao bug help          # 查看 Bug 模块的参数和操作
+zentao story update help # 查看需求更新操作的参数和操作
 zentao help              # 查看所有命令
 ```
 
