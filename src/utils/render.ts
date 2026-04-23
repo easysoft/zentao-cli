@@ -1,12 +1,7 @@
 import { formatError, ZentaoError } from "../errors";
 import { ListPagerInfo, OutputFormat } from "../types";
+import { bunMarkdownEnable } from "./env";
 import { formatJson, formatList, formatTable } from "./format";
-
-/** 是否在 Bun 环境中 */
-const isBun = typeof Bun !== 'undefined';
-
-/** Bun 环境是否支持 Markdown ANSI 渲染 */
-const bunMarkdownEnable = isBun && typeof Bun.markdown.ansi === 'function';
 
 /** 渲染字符串 */
 export function renderString(content: string, format: OutputFormat = 'markdown'): string {
