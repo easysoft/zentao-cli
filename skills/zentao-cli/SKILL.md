@@ -182,10 +182,11 @@ zentao project --filter='status:doing' --pick=id,name,status
 zentao execution --project=5 --pick=id,name,status
 ```
 
-### 创建需求
+### 创建需求并关联计划
 
 ```bash
 zentao story create --product=1 --title="需求标题" --assignedTo=admin --pri=3
+zentao story update 11 --title="需求标题" --plan=1
 ```
 
 ### 创建并解决 Bug
