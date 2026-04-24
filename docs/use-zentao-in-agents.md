@@ -125,6 +125,12 @@ $ zentao upgrade
 $ zentao add-skill
 ```
 
+也可以要求 Agent 帮你升级：
+
+```txt
+请帮我升级 zentao-cli，并通过 zentao add-skill 命令重新安装最新的技能。
+```
+
 ## FAQ
 
 ### 与之前发布的 [zentao-api](https://github.com/easysoft/zentao-skills/tree/main/skills/zentao-api) 技能有何不同？我该用哪个？
