@@ -67,6 +67,8 @@ zentao add-skill
 
 支持通过 `zentao-cli` 技能访问和操作禅道数据。安装技能可以通过 `zentao add-skill` 一键安装技能到 AI Agent，目前支持 Claude Code、Cursor、Cherry Studio、Codex、OpenCode、VS Code 等 AI Agent。
 
+详细使用可以参考：[在 Agents 中使用禅道](docs/use-zentao-in-agents.md)，下面简单介绍。
+
 ```bash
 # 安装 zentao-cli 技能
 $ zentao add-skill
@@ -74,11 +76,14 @@ $ zentao add-skill
 请选择要安装的 AI Agent:
   1) Claude Code
   2) Cursor
-  3) Codex
-  4) OpenCode
-  5) VS Code
-  6) 全部安装
-请输入编号 (1-6):6
+  3) Cherry Studio
+  4) Codex
+  5) OpenCode
+  6) VS Code
+  7) Antigravity
+  8) Gemini
+  9) 全部安装
+请输入编号 (1-9):9
 
 # 安装技能到 Claude Code
 $ zentao add-skill claude-code
