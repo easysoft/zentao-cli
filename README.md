@@ -88,7 +88,7 @@ $ zentao add-skill claude-code
 
 ```bash
 # 一键安装、登录和配置 Skill
-$ pnpm install -g zentao-cli && zentao login && zentao add-skill --all
+$ pnpm install -g zentao-cli && zentao login && zentao add-skill all
 ```
 
 安装技能后即可在对应 Agent 工具中使用禅道 CLI 技能。
