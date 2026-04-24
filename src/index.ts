@@ -4,7 +4,7 @@
 import { Command, CommanderError } from 'commander';
 import { registerAllCommands } from './commands/index.js';
 import { ZentaoError, formatError } from './errors.js';
-import { getAllProfiles, getUpdateCheckData, setConfigPath, setUpdateCheckData } from './config/store.js';
+import { getAllProfiles, getCurrentProfile, getUpdateCheckData, setConfigPath, setUpdateCheckData } from './config/store.js';
 import { asyncCheckForUpdate, showUpdateNotification, type UpdateCheckResult } from './utils/update-notifier.js';
 import { getCliVersion } from './utils/version.js';
 
@@ -38,6 +38,40 @@ function resolveCustomConfigPath(argv: readonly string[], env: NodeJS.ProcessEnv
 }
 
 resolveCustomConfigPath(process.argv.slice(2), process.env);
+
+/**
+ * 支持 `zentao --version` 作为 `zentao version` 的别名。
+ * 在 Commander 解析前手动检测，避免与内置 `--version` 行为冲突。
+ */
+function showVersionAndExit(argv: readonly string[]): boolean {
+    if (!argv.includes('--version')) return false;
+
+    const version = getCliVersion();
+    let format: string | undefined;
+    for (let i = 0; i < argv.length; i++) {
+        if (argv[i] === '--format' && i + 1 < argv.length) { format = argv[i + 1]; break; }
+        if (argv[i].startsWith('--format=')) { format = argv[i].slice('--format='.length); break; }
+    }
+
+    if (format === 'json' || format === 'raw') {
+        const result: Record<string, unknown> = { cli: `zentao-cli ${version}` };
+        const profile = getCurrentProfile();
+        if (profile) {
+            result.server = profile.server;
+        }
+        console.log(JSON.stringify(result, null, 4));
+    } else {
+        console.log(`Zentao CLI: ${version}`);
+        const profile = getCurrentProfile();
+        if (profile) {
+            console.log(`Zentao Server: ${profile.serverConfig?.version ? profile.serverConfig.version.toUpperCase() : 'Unknown'} (${profile.server})`);
+        }
+    }
+
+    process.exit(0);
+}
+
+showVersionAndExit(process.argv.slice(2));
 
 const program = new Command();
 
