@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -11,29 +11,29 @@ interface AgentTarget {
     dir: string;
 }
 
-const SKILL_NAME = 'zentao-cli';
+const SKILL_NAMES = ['zentao-cli', 'zentao-tour'] as const;
 
 const AGENT_TARGETS: Record<string, AgentTarget> = {
-    'claude-code': { label: 'Claude Code', dir: join(homedir(), '.claude', 'skills', SKILL_NAME) },
-    'cursor':      { label: 'Cursor',      dir: join(homedir(), '.cursor', 'skills', SKILL_NAME) },
-    'cherry-studio': { label: 'Cherry Studio', dir: join(homedir(), '.cherrystudio', 'skills', SKILL_NAME) },
-    'codex':       { label: 'Codex',       dir: join(homedir(), '.agents', 'skills', SKILL_NAME) },
-    'opencode':    { label: 'OpenCode',    dir: join(homedir(), '.config', 'opencode', 'skills', SKILL_NAME) },
-    'vscode':      { label: 'VS Code',     dir: join(homedir(), '.copilot', 'skills', SKILL_NAME) },
-    'antigravity': { label: 'Antigravity', dir: join(homedir(), '.gemini', 'antigravity', 'skills', SKILL_NAME) },
-    'gemini':      { label: 'Gemini',      dir: join(homedir(), '.gemini', 'skills', SKILL_NAME) },
+    'claude-code': { label: 'Claude Code', dir: join(homedir(), '.claude', 'skills') },
+    'cursor':      { label: 'Cursor',      dir: join(homedir(), '.cursor', 'skills') },
+    'cherry-studio': { label: 'Cherry Studio', dir: join(homedir(), '.cherrystudio', 'skills') },
+    'codex':       { label: 'Codex',       dir: join(homedir(), '.agents', 'skills') },
+    'opencode':    { label: 'OpenCode',    dir: join(homedir(), '.config', 'opencode', 'skills') },
+    'vscode':      { label: 'VS Code',     dir: join(homedir(), '.copilot', 'skills') },
+    'antigravity': { label: 'Antigravity', dir: join(homedir(), '.gemini', 'antigravity', 'skills') },
+    'gemini':      { label: 'Gemini',      dir: join(homedir(), '.gemini', 'skills') },
 };
 
 const AGENT_NAMES = Object.keys(AGENT_TARGETS);
 
-function resolveSkillSource(): string {
+function resolveSkillSource(skillName: string): string {
     const thisFile = fileURLToPath(import.meta.url);
     const thisDir = dirname(thisFile);
 
     const candidates = [
-        join(thisDir, '..', '..', 'skills', SKILL_NAME, 'SKILL.md'),       // from src/commands/
-        join(thisDir, '..', 'skills', SKILL_NAME, 'SKILL.md'),             // from dist/
-        join(thisDir, '..', '..', '..', 'skills', SKILL_NAME, 'SKILL.md'), // from dist/ in node_modules
+        join(thisDir, '..', '..', 'skills', skillName),       // from src/commands/
+        join(thisDir, '..', 'skills', skillName),             // from dist/
+        join(thisDir, '..', '..', '..', 'skills', skillName), // from dist/ in node_modules
     ];
 
     for (const candidate of candidates) {
@@ -41,7 +41,7 @@ function resolveSkillSource(): string {
     }
 
     throw new Error(
-        `找不到 SKILL.md 源文件，已尝试路径:\n${candidates.map((p) => `  - ${p}`).join('\n')}\n` +
+        `找不到技能源目录，已尝试路径:\n${candidates.map((p) => `  - ${p}`).join('\n')}\n` +
         '请确认 zentao-cli 安装完整，或从源码目录运行。',
     );
 }
@@ -94,15 +94,28 @@ function resolveAgents(agent: string): string[] {
     );
 }
 
-function installSkill(agent: string, content: string, silent: boolean): void {
-    const target = AGENT_TARGETS[agent];
-    const destFile = join(target.dir, 'SKILL.md');
+function copySkillDir(srcDir: string, destDir: string): void {
+    mkdirSync(destDir, { recursive: true });
+    for (const entry of readdirSync(srcDir)) {
+        const srcPath = join(srcDir, entry);
+        const destPath = join(destDir, entry);
+        if (statSync(srcPath).isDirectory()) {
+            copySkillDir(srcPath, destPath);
+        } else {
+            writeFileSync(destPath, readFileSync(srcPath));
+        }
+    }
+}
 
-    mkdirSync(target.dir, { recursive: true });
-    writeFileSync(destFile, content, 'utf-8');
+function installSkill(agent: string, skillName: string, silent: boolean): void {
+    const target = AGENT_TARGETS[agent];
+    const sourcePath = resolveSkillSource(skillName);
+    const destDir = join(target.dir, skillName);
+
+    copySkillDir(sourcePath, destDir);
 
     if (!silent) {
-        console.log(`已安装禅道 CLI 技能到 ${target.label}: ${tildeDisplay(destFile)}`);
+        console.log(`已安装 ${skillName} 技能到 ${target.label}: ${tildeDisplay(destDir)}`);
     }
 }
 
@@ -117,12 +130,12 @@ export function registerAddSkillCommand(program: Command): void {
             const silent = !!globalOpts.silent;
 
             try {
-                const sourcePath = resolveSkillSource();
-                const content = readFileSync(sourcePath, 'utf-8');
                 const agents = agent ? resolveAgents(agent) : await promptAgentSelection();
 
                 for (const a of agents) {
-                    installSkill(a, content, silent);
+                    for (const skillName of SKILL_NAMES) {
+                        installSkill(a, skillName, silent);
+                    }
                 }
             } catch (error) {
                 console.error(String((error as Error).message ?? error));
