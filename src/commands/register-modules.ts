@@ -43,6 +43,11 @@ const BUILTIN_COMMANDS = [
     'mcp', 'add-mcp', 'add-skill', // 保留命令
 ];
 
+/** 模块命令别名，例如 `zentao plan` -> `zentao productplan` */
+const MODULE_COMMAND_ALIASES: Record<string, string> = {
+    productplan: 'plan',
+};
+
 /** 根据内置模块注册表为每个业务模块注册 `zentao <module> ...` 子命令 */
 export function registerModuleCommands(program: Command): void {
     for (const name of getModuleNames()) {
@@ -58,6 +63,14 @@ export function registerModuleCommands(program: Command): void {
             .description(`${mod.display ?? name}模块${actionDesc}`)
             .argument('[args...]', '参数')
             .allowUnknownOption(true);
+
+        const alias = MODULE_COMMAND_ALIASES[name];
+        if (alias) {
+            if (BUILTIN_COMMANDS.includes(alias)) {
+                throw new Error(`Alias "${alias}" for module "${name}" conflicts with a built-in command`);
+            }
+            cmd.alias(alias);
+        }
 
         addDataOptions(cmd);
 
