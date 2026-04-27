@@ -467,7 +467,8 @@ export const MODULES: ModuleDefinition[] = [
                             },
                             "acl": {
                                 "type": "string",
-                                "description": "访问控制(open 公开 | private 私有)"
+                                "description": "访问控制(open 公开 | private 私有)",
+                                defaultValue: "open"
                             }
                         },
                         "required": [
@@ -548,7 +549,8 @@ export const MODULES: ModuleDefinition[] = [
                             },
                             "acl": {
                                 "type": "string",
-                                "description": "访问控制(open 公开 | private 私有)"
+                                "description": "访问控制(open 公开 | private 私有)",
+                                defaultValue: "open"
                             }
                         },
                         "required": [
@@ -896,7 +898,8 @@ export const MODULES: ModuleDefinition[] = [
                             },
                             "acl": {
                                 "type": "string",
-                                "description": "访问控制(open 公开 | private 私有)"
+                                "description": "访问控制(open 公开 | private 私有)",
+                                defaultValue: "open"
                             }
                         },
                         "required": [
@@ -993,7 +996,8 @@ export const MODULES: ModuleDefinition[] = [
                             },
                             "acl": {
                                 "type": "string",
-                                "description": "访问控制(open 公开 | private 私有)"
+                                "description": "访问控制(open 公开 | private 私有)",
+                                defaultValue: "open"
                             }
                         },
                         "required": [
