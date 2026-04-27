@@ -165,7 +165,7 @@ export function resolveModuleCommand(
         }
         const schema = action.requestBody.schema as {
             required?: string[];
-            properties?: Record<string, {description: string, defaultValue: unknown, required?: boolean, type?: string}>;
+            properties?: Record<string, {description: string, defaultValue: unknown, required?: boolean, type?: string, items?: {type: string}}>;
         };
         const getScopeID = (key: string) => {
             if (SCOPE_KEY_ORDER.includes(key as ScopeKey) && params[key] !== undefined) {
@@ -187,8 +187,31 @@ export function resolveModuleCommand(
             if (prop.type === 'number' || prop.type === 'integer') {
                 const actualType = typeof value;
                 value = Number(value);
-                if (Number.isNaN(value) && actualType !== 'undefined') {
-                    throw new ZentaoError('E2010', { option: key, type: prop.type, actualType });
+                if (Number.isNaN(value)) {
+                    if (actualType !== 'undefined') {
+                        throw new ZentaoError('E2010', { option: key, type: prop.type, actualType });
+                    } else {
+                        value = undefined;
+                    }
+                }
+            }
+            if (prop.type === 'array') {
+                if (!Array.isArray(value)) {
+                    if (typeof value === 'string') {
+                        value = value.startsWith('[') && value.endsWith(']') ? JSON.parse(value) : value.split(',');
+                    } else if (value !== undefined && value !== null) {
+                        value = [value];
+                    }
+                }
+                if (Array.isArray(value)) {
+                    value = value.map(item => {
+                        if (typeof item !== 'string' && prop.items?.type === 'string') {
+                            item = String(item ?? '');
+                        } else if (typeof item !== 'number' && prop.items?.type === 'number') {
+                            item = Number(item ?? 0);
+                        }
+                        return item;
+                    });
                 }
             }
             (data as Record<string, unknown>)[key] = value;
