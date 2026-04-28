@@ -2752,13 +2752,12 @@ export const MODULES: ModuleDefinition[] = [
                 display: '获取任务列表，支持获取执行下的任务',
                 type: 'list',
                 method: 'get',
-                path: '/{scope}/{scopeID}/tasks',
+                path: '/executions/{executionID}/tasks',
                 resultType: 'list',
                 pagerGetter: 'pager',
                 resultGetter: 'tasks',
                 pathParams: {
-                    scope: {description: '任务范围', options: [{value: 'executions', label: '执行'}]},
-                    scopeID: '范围ID',
+                    executionID: '执行ID',
                 },
                 params: [
                     {

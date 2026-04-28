@@ -16,9 +16,9 @@ export const ERROR_CODES = {
     // API 调用 (20xx)
     E2001: '未找到指定的模块 {module}，请通过 `zentao help` 查看支持的模块',
     E2002: '未找到指定的对象 {object}，请检查对象 ID 是否正确',
-    E2003: '缺少必要参数 {fields}，请通过 `zentao {module} --help` 查看必要参数',
+    E2003: '缺少必要参数 {fields}，请通过 `zentao {module} help` 查看必要参数',
     E2004: '{field} 参数值 {value} 无效，请检查参数格式是否正确',
-    E2005: '不支持的操作，请通过 `zentao {module} --help` 查看支持的操作',
+    E2005: '不支持的操作，请通过 `zentao {module} help` 查看支持的操作',
     E2006: '当前用户没有权限执行此操作',
     E2007: '`--data` 参数中的 JSON 数据格式无效',
     E2008: '禅道服务端返回错误（Url：{url}，Status：{status}），请查看详细错误信息：{serverResponse}',
