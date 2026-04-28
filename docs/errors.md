@@ -20,9 +20,9 @@
 | **API 调用 (20xx)** | |
 | 2001 | 未找到指定的模块（moduleName），请通过 `zentao help` 查看支持的模块 |
 | 2002 | 未找到指定的对象（objectType #id），请检查对象 ID 是否正确 |
-| 2003 | 缺少必要参数 field1,field2,...，请通过 `zentao <moduleName> --help` 查看必要参数 |
+| 2003 | 缺少必要参数 field1,field2,...，请通过 `zentao <moduleName> help` 查看必要参数 |
 | 2004 | field1 参数值 field1Value 无效，请检查参数格式是否正确 |
-| 2005 | 不支持的操作，请通过 `zentao <moduleName> --help` 查看支持的操作 |
+| 2005 | 不支持的操作，请通过 `zentao <moduleName> help` 查看支持的操作 |
 | 2006 | 当前用户没有权限执行此操作 |
 | 2007 | `--data` 参数中的 JSON 数据格式无效 |
 | 2008 | 禅道服务端返回错误（Url：{url}，Status：{status}），请查看详细错误信息：{serverResponse} |

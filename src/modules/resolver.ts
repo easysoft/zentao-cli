@@ -121,7 +121,7 @@ export function resolveModuleCommand(
                     }
                 }
                 if (pathValues[key] === undefined) {
-                    throw new ZentaoError('E2004', { field: key, module: module.name });
+                    throw new ZentaoError('E2003', { fields: key, module: [module.name, action.name].join(' ') });
                 }
             }
         }
