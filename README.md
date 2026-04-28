@@ -491,7 +491,7 @@ $ zentao update product 1 --data='{"name": "产品1"}'
 $ zentao bug resolve 1 --comment "已解决"
 ```
 
-不同对象支持的操作不同，具体可通过 `zentao <moduleName> --help` 查看对应模块支持的操作。
+不同对象支持的操作不同，具体可通过 `zentao <moduleName> <action> help` 查看对应模块支持的操作。
 
 <details>
 <summary>原始方式</summary>
@@ -503,7 +503,7 @@ $ zentao bug resolve 1 --comment "已解决"
 $ zentao do bug resolve 1 --comment "已解决"
 ```
 
-不同对象支持的操作不同，具体可通过 `zentao do <moduleName> --help` 查看对应模块支持的操作。
+不同对象支持的操作不同，具体可通过 `zentao do <moduleName> help` 查看对应模块支持的操作。
 
 </details>
 
@@ -585,14 +585,14 @@ $ zentao config set silent true
 
 ### 获取帮助
 
-支持通过 `zentao help` 获取所有一级命令的帮助信息，也支持通过 `zentao <command> --help` 获取指定命令的帮助信息。
+支持通过 `zentao help` 获取所有一级命令的帮助信息，也支持通过 `zentao <command> help` 获取指定命令的帮助信息。
 
 ```bash
 # 获取所有一级命令帮助信息
 $ zentao help
 
 # 获取指定命令的帮助信息
-$ zentao <command> --help
+$ zentao <command> help
 ```
 
 ### 输出格式
