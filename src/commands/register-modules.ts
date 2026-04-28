@@ -62,7 +62,8 @@ export function registerModuleCommands(program: Command): void {
             .command(name)
             .description(`${mod.display ?? name}模块${actionDesc}`)
             .argument('[args...]', '参数')
-            .allowUnknownOption(true);
+            .allowUnknownOption(true)
+            .helpOption(false);
 
         const alias = MODULE_COMMAND_ALIASES[name];
         if (alias) {
@@ -78,6 +79,32 @@ export function registerModuleCommands(program: Command): void {
             const globalOpts = program.opts() as GlobalOptions;
             const options = {...globalOpts, ...opts};
             try {
+                // 处理 --help / -h：等同于 help 子命令
+                const helpFlagIndex = args.findIndex((a) => a === '--help' || a === '-h');
+                if (helpFlagIndex !== -1) {
+                    args.splice(helpFlagIndex, 1);
+                    const positionalArgs = args.filter((a) => !a.startsWith('-'));
+
+                    if (positionalArgs.length === 0) {
+                        showModuleHelp(mod);
+                        return;
+                    }
+
+                    const action = positionalArgs[0];
+                    const crudAliases: Record<string, string> = { ls: 'list' };
+                    const normalizedAction = crudAliases[action] ?? action;
+                    const crudTypes = new Set(['list', 'get', 'create', 'update', 'delete']);
+                    const resolvedAction = crudTypes.has(normalizedAction)
+                        ? findAction(mod, normalizedAction as ModuleActionType)
+                        : findAction(mod, 'action', action as ModuleActionName);
+                    if (resolvedAction) {
+                        showModuleActionHelp(mod, resolvedAction);
+                        return;
+                    }
+                    showModuleHelp(mod);
+                    return;
+                }
+
                 const { client, profile } = await ensureAuth({
                     insecure: options.insecure,
                     timeout: options.timeout,
