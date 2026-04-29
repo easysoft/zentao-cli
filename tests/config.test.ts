@@ -4,13 +4,26 @@ import { isAbsolute, join, resolve } from 'node:path';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { DEFAULT_CONFIG, VALID_CONFIG_KEYS } from '../src/config/defaults';
 import {
-    __resetConfigStoreForTests,
     getConfigPath,
     getDefaultConfigPath,
     saveProfile,
     setConfigPath,
+    getCurrentProfile,
+    getProfile,
+    findProfileByKey,
+    getAllProfiles,
+    removeProfile,
+    setCurrentProfile,
+    getProfileConfig,
+    setProfileConfig,
+    updateProfile,
+    buildProfile,
+    getUpdateCheckData,
+    setUpdateCheckData,
+    profileKey,
 } from '../src/config/store';
 import type { UserConfig, Workspace, Profile } from '../src/types/config';
+import { mockProfile, resetConfigStore } from './helpers';
 
 describe('DEFAULT_CONFIG', () => {
     test('has correct default values', () => {
@@ -98,12 +111,12 @@ describe('setConfigPath', () => {
     let tempDir: string;
 
     beforeEach(() => {
-        __resetConfigStoreForTests();
+        resetConfigStore();
         tempDir = mkdtempSync(join(tmpdir(), 'zentao-cli-test-'));
     });
 
     afterEach(() => {
-        __resetConfigStoreForTests();
+        resetConfigStore();
         if (tempDir && existsSync(tempDir)) {
             rmSync(tempDir, { recursive: true, force: true });
         }
@@ -149,13 +162,7 @@ describe('setConfigPath', () => {
         const second = join(tempDir, 'second.json');
         setConfigPath(first);
 
-        saveProfile({
-            server: 'https://zentao.example.com',
-            account: 'admin',
-            token: 'test-token',
-            loginTime: '2026-04-10T10:00:00Z',
-            lastUsedTime: '2026-04-10T10:00:00Z',
-        });
+        saveProfile(mockProfile);
 
         expect(existsSync(first)).toBe(true);
         expect(() => setConfigPath(second)).toThrow();
@@ -165,15 +172,251 @@ describe('setConfigPath', () => {
         const abs = join(tempDir, 'idempotent.json');
         setConfigPath(abs);
 
-        saveProfile({
-            server: 'https://zentao.example.com',
-            account: 'admin',
-            token: 'test-token',
-            loginTime: '2026-04-10T10:00:00Z',
-            lastUsedTime: '2026-04-10T10:00:00Z',
-        });
+        saveProfile(mockProfile);
 
         expect(() => setConfigPath(abs)).not.toThrow();
         expect(getConfigPath()).toBe(abs);
+    });
+});
+
+describe('profileKey', () => {
+    test('generates account@server key', () => {
+        expect(profileKey('admin', 'https://zentao.example.com')).toBe('admin@https://zentao.example.com');
+    });
+});
+
+describe('profile management', () => {
+    let tempDir: string;
+
+    beforeEach(() => {
+        resetConfigStore();
+        tempDir = mkdtempSync(join(tmpdir(), 'zentao-cli-test-'));
+        setConfigPath(join(tempDir, 'config.json'));
+    });
+
+    afterEach(() => {
+        resetConfigStore();
+        if (tempDir && existsSync(tempDir)) {
+            rmSync(tempDir, { recursive: true, force: true });
+        }
+    });
+
+    test('saveProfile and getCurrentProfile', () => {
+        saveProfile(mockProfile);
+        const current = getCurrentProfile();
+        expect(current).toBeDefined();
+        expect(current!.account).toBe('admin');
+        expect(current!.server).toBe('https://zentao.example.com');
+    });
+
+    test('getAllProfiles returns all saved profiles', () => {
+        saveProfile(mockProfile);
+        saveProfile({
+            ...mockProfile,
+            account: 'dev1',
+            server: 'https://zentao2.example.com',
+        });
+        const profiles = getAllProfiles();
+        expect(profiles.length).toBe(2);
+    });
+
+    test('getProfile finds by account and server', () => {
+        saveProfile(mockProfile);
+        const found = getProfile('admin', 'https://zentao.example.com');
+        expect(found).toBeDefined();
+        expect(found!.token).toBe('test-token');
+    });
+
+    test('getProfile returns undefined for nonexistent', () => {
+        saveProfile(mockProfile);
+        const found = getProfile('nobody', 'https://example.com');
+        expect(found).toBeUndefined();
+    });
+
+    test('findProfileByKey by full key', () => {
+        saveProfile(mockProfile);
+        const found = findProfileByKey('admin@https://zentao.example.com');
+        expect(found).toBeDefined();
+        expect(found!.account).toBe('admin');
+    });
+
+    test('findProfileByKey by account only', () => {
+        saveProfile(mockProfile);
+        const found = findProfileByKey('admin');
+        expect(found).toBeDefined();
+        expect(found!.account).toBe('admin');
+    });
+
+    test('findProfileByKey by account@hostname', () => {
+        saveProfile(mockProfile);
+        const found = findProfileByKey('admin@zentao.example.com');
+        expect(found).toBeDefined();
+        expect(found!.account).toBe('admin');
+    });
+
+    test('removeProfile removes existing profile', () => {
+        saveProfile(mockProfile);
+        expect(getAllProfiles().length).toBe(1);
+        const removed = removeProfile('admin@https://zentao.example.com');
+        expect(removed).toBe(true);
+        expect(getAllProfiles().length).toBe(0);
+    });
+
+    test('removeProfile returns false for nonexistent', () => {
+        saveProfile(mockProfile);
+        const removed = removeProfile('nobody@https://example.com');
+        expect(removed).toBe(false);
+        expect(getAllProfiles().length).toBe(1);
+    });
+
+    test('removeProfile auto-switches to first remaining profile', () => {
+        const profile2: Profile = {
+            ...mockProfile,
+            account: 'dev1',
+            server: 'https://zentao2.example.com',
+        };
+        saveProfile(mockProfile);
+        saveProfile(profile2);
+        expect(getCurrentProfile()!.account).toBe('dev1');
+
+        removeProfile('dev1@https://zentao2.example.com');
+        expect(getCurrentProfile()!.account).toBe('admin');
+    });
+
+    test('setCurrentProfile switches active profile', () => {
+        const profile2: Profile = {
+            ...mockProfile,
+            account: 'dev1',
+            server: 'https://zentao2.example.com',
+        };
+        saveProfile(mockProfile);
+        saveProfile(profile2);
+        expect(getCurrentProfile()!.account).toBe('dev1');
+
+        const switched = setCurrentProfile('admin@https://zentao.example.com');
+        expect(switched).toBe(true);
+        expect(getCurrentProfile()!.account).toBe('admin');
+    });
+
+    test('setCurrentProfile returns false for nonexistent key', () => {
+        saveProfile(mockProfile);
+        const switched = setCurrentProfile('nobody@https://example.com');
+        expect(switched).toBe(false);
+    });
+
+    test('saveProfile updates existing profile', () => {
+        saveProfile(mockProfile);
+        saveProfile({ ...mockProfile, token: 'new-token' });
+        expect(getAllProfiles().length).toBe(1);
+        expect(getCurrentProfile()!.token).toBe('new-token');
+    });
+});
+
+describe('profile config', () => {
+    let tempDir: string;
+
+    beforeEach(() => {
+        resetConfigStore();
+        tempDir = mkdtempSync(join(tmpdir(), 'zentao-cli-test-'));
+        setConfigPath(join(tempDir, 'config.json'));
+    });
+
+    afterEach(() => {
+        resetConfigStore();
+        if (tempDir && existsSync(tempDir)) {
+            rmSync(tempDir, { recursive: true, force: true });
+        }
+    });
+
+    test('getProfileConfig returns defaults when no config set', () => {
+        const config = getProfileConfig(mockProfile);
+        expect(config.defaultOutputFormat).toBe(DEFAULT_CONFIG.defaultOutputFormat);
+        expect(config.lang).toBe(DEFAULT_CONFIG.lang);
+    });
+
+    test('getProfileConfig merges profile config with defaults', () => {
+        const profile: Profile = { ...mockProfile, config: { defaultOutputFormat: 'json' } };
+        const config = getProfileConfig(profile);
+        expect(config.defaultOutputFormat).toBe('json');
+        expect(config.lang).toBe(DEFAULT_CONFIG.lang);
+    });
+
+    test('setProfileConfig persists config to profile', () => {
+        saveProfile(mockProfile);
+        setProfileConfig(mockProfile, 'defaultOutputFormat', 'json');
+        const current = getCurrentProfile();
+        expect(current!.config?.defaultOutputFormat).toBe('json');
+    });
+
+    test('updateProfile merges fields and persists', () => {
+        saveProfile(mockProfile);
+        updateProfile(mockProfile, { token: 'updated-token' });
+        const current = getCurrentProfile();
+        expect(current!.token).toBe('updated-token');
+        expect(current!.account).toBe('admin');
+    });
+});
+
+describe('buildProfile', () => {
+    test('builds profile from scratch', () => {
+        const profile = buildProfile('https://zentao.example.com', 'admin', 'tok123');
+        expect(profile.server).toBe('https://zentao.example.com');
+        expect(profile.account).toBe('admin');
+        expect(profile.token).toBe('tok123');
+        expect(profile.loginTime).toBeDefined();
+        expect(profile.lastUsedTime).toBeDefined();
+    });
+
+    test('strips trailing slashes from server', () => {
+        const profile = buildProfile('https://zentao.example.com/', 'admin', 'tok');
+        expect(profile.server).toBe('https://zentao.example.com');
+    });
+
+    test('merges with oldProfile preserving workspaces', () => {
+        const old: Profile = {
+            ...mockProfile,
+            workspaces: [{ id: 1, product: { id: 1, name: 'P1' } }],
+            config: { defaultOutputFormat: 'json' },
+        };
+        const profile = buildProfile('https://zentao.example.com', 'admin', 'new-tok', undefined, undefined, old);
+        expect(profile.workspaces).toEqual(old.workspaces);
+        expect(profile.config).toEqual(old.config);
+        expect(profile.token).toBe('new-tok');
+    });
+
+    test('merges user info from oldProfile', () => {
+        const old: Profile = {
+            ...mockProfile,
+            user: { id: 1, realname: 'Admin' },
+        };
+        const profile = buildProfile('https://zentao.example.com', 'admin', 'tok', undefined, { realname: 'Super Admin' }, old);
+        expect(profile.user).toEqual({ id: 1, realname: 'Super Admin' });
+    });
+});
+
+describe('update check data', () => {
+    let tempDir: string;
+
+    beforeEach(() => {
+        resetConfigStore();
+        tempDir = mkdtempSync(join(tmpdir(), 'zentao-cli-test-'));
+        setConfigPath(join(tempDir, 'config.json'));
+    });
+
+    afterEach(() => {
+        resetConfigStore();
+        if (tempDir && existsSync(tempDir)) {
+            rmSync(tempDir, { recursive: true, force: true });
+        }
+    });
+
+    test('returns undefined when no update check data set', () => {
+        expect(getUpdateCheckData()).toBeUndefined();
+    });
+
+    test('setUpdateCheckData and getUpdateCheckData', () => {
+        const data = { lastCheck: '2026-04-29T00:00:00Z', latestVersion: '0.2.0' };
+        setUpdateCheckData(data);
+        expect(getUpdateCheckData()).toEqual(data);
     });
 });

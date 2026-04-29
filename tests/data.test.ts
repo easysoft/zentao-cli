@@ -28,6 +28,17 @@ describe('pickFields', () => {
         const result = pickFields(sampleData, ['id', 'nonexistent']);
         expect(result[0]).toEqual({ id: 1, nonexistent: undefined });
     });
+
+    test('picks deeply nested fields', () => {
+        const deepData = [{ id: 1, a: { b: { c: { d: 'deep' } } } }];
+        const result = pickFields(deepData, ['id', 'a.b.c.d']);
+        expect(result[0]).toEqual({ id: 1, 'a.b.c.d': 'deep' });
+    });
+
+    test('returns undefined for partially missing nested path', () => {
+        const result = pickFields(sampleData, ['id', 'owner.missing']);
+        expect(result[0]).toEqual({ id: 1, 'owner.missing': undefined });
+    });
 });
 
 describe('filterData', () => {
@@ -93,6 +104,28 @@ describe('filterData', () => {
         const result = filterData(sampleData, ['name:"产品1,产品2"']);
         expect(result.length).toBe(0); // No item has the literal name "产品1,产品2"
     });
+
+    test('filters with numeric string values', () => {
+        const result = filterData(sampleData, ['id:2']);
+        expect(result.length).toBe(1);
+        expect(result[0].id).toBe(2);
+    });
+
+    test('filters with empty string value', () => {
+        const data = [
+            { id: 1, name: 'test' },
+            { id: 2, name: '' },
+        ];
+        const result = filterData(data, ['name:']);
+        expect(result.length).toBe(1);
+        expect(result[0].id).toBe(2);
+    });
+
+    test('filters with nested field', () => {
+        const result = filterData(sampleData, ['owner.name:admin']);
+        expect(result.length).toBe(2);
+        expect(result.every((r) => r.owner.name === 'admin')).toBe(true);
+    });
 });
 
 describe('sortData', () => {
@@ -123,6 +156,26 @@ describe('sortData', () => {
         const original = [...sampleData];
         sortData(sampleData, 'priority_desc');
         expect(sampleData).toEqual(original);
+    });
+
+    test('maintains stable order for equal values', () => {
+        const data = [
+            { id: 1, name: 'A', status: 'normal' },
+            { id: 2, name: 'B', status: 'normal' },
+            { id: 3, name: 'C', status: 'normal' },
+        ];
+        const result = sortData(data, 'status_asc');
+        expect(result.map((r) => r.id)).toEqual([1, 2, 3]);
+    });
+
+    test('sorts by nested field', () => {
+        const data = [
+            { id: 1, owner: { name: 'C' } },
+            { id: 2, owner: { name: 'A' } },
+            { id: 3, owner: { name: 'B' } },
+        ];
+        const result = sortData(data, 'owner.name_asc');
+        expect(result.map((r) => r.owner.name)).toEqual(['A', 'B', 'C']);
     });
 });
 
@@ -162,5 +215,22 @@ describe('searchData', () => {
     test('empty search returns all data', () => {
         const result = searchData(sampleData, []);
         expect(result.length).toBe(4);
+    });
+
+    test('handles regex special characters in search', () => {
+        const data = [
+            { id: 1, name: 'test(1)' },
+            { id: 2, name: 'test[2]' },
+            { id: 3, name: 'test.3' },
+            { id: 4, name: 'test*4' },
+        ];
+        const result = searchData(data, ['test(1)'], ['name']);
+        expect(result.length).toBe(1);
+        expect(result[0].id).toBe(1);
+    });
+
+    test('search with no matching fields returns empty', () => {
+        const result = searchData(sampleData, ['admin'], ['id']);
+        expect(result.length).toBe(0);
     });
 });
