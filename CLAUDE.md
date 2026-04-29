@@ -158,3 +158,4 @@ Each `ModuleDefinition` declares a module name, display info, and an array of `M
 - **Error handling**: All domain errors use `ZentaoError` with structured error codes from `src/errors.ts`. Never throw raw strings.
 - **Imports**: Use `.js` extension in import paths (ESM requirement): `import { foo } from './bar.js'`.
 - **Module definitions**: Follow `ModuleDefinition` type from `src/types/module.ts`. Use `registry-example.ts` as the reference.
+- **Commit message format**: first line must use */+/- prefix, no emoji, `*` = changes to existing functionality; `+` = new features or modules; `-` = removal of existing features/modules.
