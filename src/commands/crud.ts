@@ -66,7 +66,7 @@ export function registerCrudCommands(program: Command): void {
         .argument('<module>', '模块名称，例如 bug')
         .argument('[args...]', '--id 和其他参数');
     addDataOptions(deleteCmd);
-    updateCmd.allowUnknownOption(true);
+    deleteCmd.allowUnknownOption(true);
     deleteCmd.action(async (moduleName: string, args: string[], opts: ModuleActionOptions) => {
         await runCrudCommand(program, moduleName, 'delete', opts, args);
     });

@@ -57,7 +57,7 @@ function nextWorkspaceId(profile: Profile): number {
 }
 
 /** 创建新工作区并设为当前工作区，自动分配递增 ID */
-export function createWorkspace(
+function createWorkspace(
     profile: Profile,
     params: { product?: WorkspaceRef; project?: WorkspaceRef; execution?: WorkspaceRef },
 ): Workspace {
@@ -74,40 +74,3 @@ export function createWorkspace(
     return ws;
 }
 
-/**
- * 查找匹配的工作区，不存在则创建。
- * 匹配规则：对传入的每一层引用（product/project/execution），若调用方提供了该层，则要求与工作区中对应层的 ID 一致；未提供的层不参与比较。
- */
-export function findOrCreateWorkspace(
-    profile: Profile,
-    params: { product?: WorkspaceRef; project?: WorkspaceRef; execution?: WorkspaceRef },
-): Workspace {
-    const existing = profile.workspaces?.find((w) => {
-        if (params.product && w.product?.id !== params.product.id) return false;
-        if (params.project && w.project?.id !== params.project.id) return false;
-        if (params.execution && w.execution?.id !== params.execution.id) return false;
-        return true;
-    });
-    if (existing) {
-        profile.currentWorkspace = existing.id;
-        saveProfile(profile);
-        return existing;
-    }
-    return createWorkspace(profile, params);
-}
-
-/**
- * 按 ID 更新工作区中的产品/项目/执行引用，并写回磁盘。
- * @returns 更新后的工作区；ID 不存在时返回 `undefined`
- */
-export function updateWorkspace(
-    profile: Profile,
-    id: number,
-    updates: Partial<Omit<Workspace, 'id'>>,
-): Workspace | undefined {
-    const ws = getWorkspaceById(profile, id);
-    if (!ws) return undefined;
-    Object.assign(ws, updates);
-    saveProfile(profile);
-    return ws;
-}

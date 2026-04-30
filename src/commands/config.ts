@@ -40,7 +40,7 @@ export function registerConfigCommand(program: Command): void {
                     console.log(formatJson(config));
                 } else {
                     for (const [k, v] of Object.entries(config)) {
-                        console.log(`${k}: ${typeof v === 'object' ? JSON.stringify(v) : JSON.stringify(v)}`);
+                        console.log(`${k}: ${JSON.stringify(v)}`);
                     }
                 }
             } catch (error) {

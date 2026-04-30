@@ -1,7 +1,6 @@
 import {getProperty} from 'dot-prop';
 import type { ModuleDefinition, ModuleAction, ModuleActionType, ListPagerInfo, Workspace, ModuleActionName, ModuleActionOptions, ResolvedModuleCommand, OutputFormat } from '../types/index.js';
 import { ZentaoError } from '../errors.js';
-import { moduleActionResultRenders } from './renders.js';
 
 const ACTION_NAME_ALIASES: Record<string, string> = {
     ls: 'list',
@@ -240,10 +239,7 @@ export function getAvailableActions(mod: ModuleDefinition): string[] {
         .map(a => a.name);
 }
 
-/** 判断模块是否支持某种操作类型 */
-export function hasActionType(mod: ModuleDefinition, type: ModuleActionType): boolean {
-    return mod.actions.some(a => a.type === type);
-}
+
 
 const SCOPE_MAP: Record<string, string> = {
     product: 'products',
@@ -334,26 +330,4 @@ export function extractPager(action: ModuleAction, response: Record<string, unkn
     return undefined;
 }
 
-/** 解析 action 的 render 配置，返回可调用的渲染函数（如果有） */
-export function resolveRender(
-    action: ModuleAction,
-    format: OutputFormat,
-): ((result: unknown) => string) | undefined {
-    const { render } = action;
-    if (!render) return undefined;
 
-    if (typeof render === 'function') {
-        return (result: unknown) => render(result, format, action);
-    }
-    if (typeof render === 'string') {
-        const fn = moduleActionResultRenders[render];
-        if (fn) return (result: unknown) => fn(result, format, action);
-        return undefined;
-    }
-    if (typeof render === 'object') {
-        const fn = render[format];
-        if (fn) return (result: unknown) => fn(result, format, action);
-        return undefined;
-    }
-    return undefined;
-}

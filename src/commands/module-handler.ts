@@ -1,6 +1,6 @@
 import type { ZentaoClient } from '../api/client.js';
 import type { ModuleDefinition, ModuleAction, ModuleActionType, Profile, ModuleActionName, ResolvedModuleCommand, UserConfig } from '../types/index.js';
-import { findAction, getAvailableActions, extractResult, extractPager, hasActionType, resolveModuleCommand } from '../modules/resolver.js';
+import { findAction, getAvailableActions, extractResult, extractPager, resolveModuleCommand } from '../modules/resolver.js';
 import { getProfileConfig } from '../config/store.js';
 import { convertHtmlFields, convertHtmlFieldsInArray } from '../utils/html.js';
 import { filterData, sortData, searchData, pickFields, pickFieldsSingle } from '../utils/data.js';
@@ -135,17 +135,17 @@ export async function handleModuleCommand(
     if (Array.isArray(options.id)) {
         if (options.id.length > 1) {
             for (const id of options.id) {
-                let error: Error | undefined;
+                let caughtError: Error | undefined;
                 try {
                     await handleModuleCommand(client, module, actionName, args, profile, { ...options, id });
                 } catch (error) {
-                    error = error as Error;
+                    caughtError = error as Error;
                 }
-                if (error) {
+                if (caughtError) {
                     if (batchFailFast) {
-                        throw error;
+                        throw caughtError;
                     }
-                    console.error(renderError(error, format));
+                    console.error(renderError(caughtError, format));
                 }
             }
 
