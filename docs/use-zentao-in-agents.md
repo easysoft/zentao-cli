@@ -2,17 +2,7 @@
 
 你是否希望在 AI Agents 中使用禅道？没问题，可以通过安装禅道 CLI 技能来实现。CLI 技能会利用 [zentao-cli](https://github.com/easysoft/zentao-cli) 工具来访问和操作禅道数据。
 
-## Zentao CLI 特色
-
-* ✅ 基于最新的禅道 RESTful API 2.0 实现
-* ✅ 使用便捷，可通过 `npx zentao-cli` 立即运行
-* ✅ 安全的用户认证管理，支持多用户切换
-* ✅ 支持对数据进行摘取、过滤、排序等处理，并自动将 HTML 转换为 Markdown
-* ✅ 对 AI Agents 友好，帮助信息完善，支持输出 Markdown
-* ✅ 支持以 AI 技能的方式使用，支持通过 `zentao add-skill` 一键安装技能到 AI Agent
-* ✅ 支持 MCP 服务，使用 `npx zentao-cli mcp` 启动 MCP 服务
-* ✅ 使用现代的 bun 与 TypeScript 开发，具备类型安全
-* ✅ 提供完善的测试覆盖，保障代码质量
+关于 zentao-cli 的主要特性，请参考 [README](../README.md#主要特性)。
 
 ## 支持的 Agents 工具
 

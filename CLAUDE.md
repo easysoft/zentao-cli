@@ -4,7 +4,7 @@
 
 zentao-cli is a CLI tool for ZenTao (禅道) project management system. It wraps ZenTao's RESTful API v2, providing command-line access to products, projects, bugs, tasks, stories, test cases, and other modules. It is also AI-agent-friendly and can run as an MCP server.
 
-For user-facing documentation see [README.md](./README.md) and [docs/](./docs/).
+For user-facing documentation see [README.md](./README.md), [CLI 核心功能](./docs/cli-usage.md), and [docs/](./docs/).
 
 ## Commands
 
