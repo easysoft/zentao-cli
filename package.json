@@ -29,7 +29,10 @@
     "build": "bun run scripts/build.ts --minify",
     "build:sf": "bun run scripts/build.ts --compile --minify",
     "update-registry": "bun run scripts/update-registry.ts",
+    "typecheck": "tsc --noEmit",
     "test": "bun test",
+    "coverage": "bun test --coverage",
+    "ci": "bun install --frozen-lockfile && bun run typecheck && bun run coverage && bun run build",
     "prepublishOnly": "bun run build"
   },
   "dependencies": {
