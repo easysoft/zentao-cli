@@ -33,6 +33,10 @@ describe('MCP server (stdio e2e smoke)', () => {
                     expect(t.inputSchema).toBeDefined();
                     expect(t.inputSchema?.type).toBe('object');
                 }
+
+                const bugTool = tools.find(t => t.name === 'zentao_bug');
+                expect(bugTool?.annotations?.readOnlyHint).toBe(false);
+                expect(bugTool?.annotations?.destructiveHint).toBe(true);
             } finally {
                 await client.close();
             }

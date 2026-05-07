@@ -203,11 +203,12 @@ async function handleModuleTool(
     return { content: [{ type: 'text', text: JSON.stringify(data ?? result, null, 2) }] };
 }
 
-function toolAnnotations(action: ModuleAction) {
-    const readOnly = action.type === 'list' || action.type === 'get';
+function toolAnnotations(actions: ModuleAction[]) {
+    const readOnly = actions.every(action => action.type === 'list' || action.type === 'get');
+    const destructive = actions.some(action => action.type === 'delete');
     return {
         readOnlyHint: readOnly,
-        destructiveHint: action.type === 'delete',
+        destructiveHint: destructive,
         openWorldHint: true,
     };
 }
@@ -266,8 +267,7 @@ export function registerModuleTools(server: McpServer, auth: AuthProvider): void
         const description = buildToolDescription(mod);
         const inputSchema = buildInputSchema(mod);
 
-        const representativeAction = mod.actions[0];
-        const annotations = toolAnnotations(representativeAction);
+        const annotations = toolAnnotations(mod.actions);
 
         server.tool(name, description, inputSchema, annotations, async (input) => {
             try {
