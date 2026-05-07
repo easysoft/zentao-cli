@@ -1,5 +1,24 @@
 # Changes
 
+## 0.1.5
+
+### 🚀 优化与重构 (Refactor)
+
+- **批量 ID 处理**: 新增 `splitNumericIds` 与 `pickBatchIds` 工具函数，支持模块命令中批量 ID 的解析与处理；增强删除操作的交互确认逻辑以适配批量场景。
+- **模块命令执行重构**: 引入 `renderModuleExecution` 统一管理命令执行与输出格式化，精简冗余函数，提升代码可读性与可维护性。
+- **死代码清理**: 移除各模块及命令逻辑中未使用的工具函数导出与冗余代码。
+- **依赖升级**: 升级 `@types/bun` 和 `bun-types` 至 1.3.13；新增类型检查、覆盖率及 CI 自动化脚本。
+
+### ✅ 测试 (Test)
+
+- **单元测试扩展**: 新增共享测试辅助模块 `tests/helpers.ts`；`api.test.ts` 从 4 项扩展至 21 项测试（含 mock 服务、Token、HTTP 错误、超时等场景）；新增 `config.test.ts` 共 24 项配置管理测试；`data.test.ts` 与 `mcp-schema.test.ts` 补充多项边界用例。
+- **MCP 端到端测试增强**: 为 `zentao_bug` 工具新增 `readOnlyHint` 与 `destructiveHint` 注解属性断言。
+
+### 📝 文档 (Docs)
+
+- **CLAUDE.md**: 新建并持续优化 AI 辅助开发参考文档，涵盖项目概览、命令用法、架构细节、提交规范与测试指南。
+- **文档结构重组**: 集中整理文档目录，移除遗留的静态引导页 `index.html`。
+
 ## 0.1.4
 
 ### ✨ 新特性 (Feat)
