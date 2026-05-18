@@ -1,5 +1,11 @@
 # Changes
 
+## 0.1.6
+
+### 🤸 技能更新（Skill）
+
+- **凭证安全**: 新增凭证安全提示，严禁主动读取本地保存的禅道密码和 Token，包括环境变量 `ZENTAO_PASSWORD` 和 `ZENTAO_TOKEN`，以及配置文件 `~/.config/zentao/zentao.json` 中的数据，一切数据都通过 `zentao` 命令获取。
+
 ## 0.1.5
 
 ### 🚀 优化与重构 (Refactor)
