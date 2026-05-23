@@ -112,7 +112,8 @@ describe('module resolver', () => {
         );
         expect(command.id).toBe(1);
         expect(command.path).toBe('/products/1');
-        expect(command.data).toMatchObject({ name: '产品1', acl: 'open' });
+        expect(command.data).toMatchObject({ name: '产品1' });
+        expect(command.data).not.toHaveProperty('acl');
     });
 
     test('supports positional id for delete action', () => {

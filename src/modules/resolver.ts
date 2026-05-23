@@ -176,12 +176,21 @@ export function resolveModuleCommand(
             return undefined;
         };
         const requiredSet = new Set((schema.required ?? []) as string[]);
+        // Update commands may omit fields; required check and default fallback are deferred
+        // until executeResolvedModuleCommand fills them from the current object.
+        const isUpdate = action.type === 'update';
         Object.keys(schema.properties ?? {}).forEach(key => {
             const prop = schema.properties![key];
-            let value = (data as Record<string, unknown>)[key] ?? params[key] ?? getScopeID(key) ?? prop.defaultValue;
+            let value = (data as Record<string, unknown>)[key] ?? params[key] ?? getScopeID(key);
+            if (value === undefined && !isUpdate) {
+                value = prop.defaultValue;
+            }
             const required = prop.required ?? requiredSet.has(key);
-            if (value === undefined && required) {
-                throw new ZentaoError('E2009', { option: key, reason: '必须提供参数值' });
+            if (value === undefined) {
+                if (isUpdate) return; // Leave missing update fields out so executor can preserve current values.
+                if (required) {
+                    throw new ZentaoError('E2009', { option: key, reason: '必须提供参数值' });
+                }
             }
             if (prop.type === 'number' || prop.type === 'integer') {
                 const actualType = typeof value;
@@ -329,5 +338,3 @@ export function extractPager(action: ModuleAction, response: Record<string, unkn
     }
     return undefined;
 }
-
-
