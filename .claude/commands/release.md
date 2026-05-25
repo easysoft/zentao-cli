@@ -51,13 +51,31 @@ node -e "console.log(require('./package.json').version)"
 
 ### 第三步：更新 `package.json` 版本号
 
+使用 StrReplace 工具修改 `package.json` 中的 `"version"` 字段为新版本号。
+
+### 第四步：检查并更新技能版本号
+
+检查 `skills/` 目录下所有技能在本次发布范围内是否有文件变动：
+
 ```bash
-# 将 package.json 中的 version 字段更新为新版本号
+LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+if [ -n "$LAST_TAG" ]; then
+  git diff --name-only ${LAST_TAG}..HEAD -- skills/
+else
+  git diff --name-only HEAD -- skills/
+fi
 ```
 
-使用 StrReplace 工具修改 `package.json` 中的 `"version"` 字段。
+对于每个**有变动**的技能目录，将其 `SKILL.md` frontmatter 中的 `metadata.version` 字段更新为新版本号：
 
-### 第四步：更新 `CHANGES.md`
+```yaml
+metadata:
+  version: <新版本号>   # 将此处更新
+```
+
+使用 StrReplace 工具逐个修改，不要批量替换以避免误改无变动的技能。
+
+### 第五步：更新 `CHANGES.md`
 
 在 `CHANGES.md` 文件顶部（`# Changes` 标题之后）插入本次变更内容，格式如下：
 
@@ -83,22 +101,32 @@ node -e "console.log(require('./package.json').version)"
 ### 📝 文档 (Docs)
 
 - ...
+
+### 🤸 技能更新（Skill）
+
+- **<技能名称>**:
+  - <本次更新内容描述>
+  - ...
+- **<技能名称>**:
+  - <本次更新内容描述>
+  - ...
 ```
 
 **注意**：
 
 - 只保留有实际内容的分类，空分类直接省略
+- 「技能更新」分类中每个有变动的技能单独一条，技能名称加粗；如果本次无任何技能变动则省略该分类
 - 每条变更描述用中文撰写，简洁清晰，突出对用户的影响
 - 参考 `CHANGES.md` 中已有条目的表述风格保持一致
 
-### 第五步：提交变更
+### 第六步：提交变更
 
 ```bash
-git add CHANGES.md package.json
+git add CHANGES.md package.json skills/
 git commit -m "* release v<新版本号>"
 ```
 
-### 第六步：打 git tag
+### 第七步：打 git tag
 
 ```bash
 git tag v<新版本号>
@@ -108,5 +136,6 @@ git tag v<新版本号>
 
 - 新版本号
 - CHANGES.md 已更新的内容摘要
+- 有版本号变动的技能列表（如有）
 - 已创建的 tag 名称
 - 提示用户执行 `git push && git push --tags` 将变更推送到远端
