@@ -74,5 +74,5 @@ To prepare a new release (bump version, update CHANGES.md, tag), follow the step
 - **Error handling**: All domain errors use `ZentaoError` with structured codes from `src/errors.ts`. Never throw raw strings.
 - **Imports**: Use `.js` extension in import paths (ESM): `import { foo } from './bar.js'`.
 - **Module definitions**: Follow `ModuleDefinition` type. Use `registry-example.ts` as reference.
-- **Commit messages**: First line uses `*`/`+`/`-` prefix, no emoji. `*` = change; `+` = addition; `-` = removal.
+- **Commit messages**: Must be in English. First line uses `*`/`+`/`-` prefix, no emoji. `*` = change; `+` = addition; `-` = removal.
 - **Config file env var**: `ZENTAO_CONFIG_FILE` — custom config file path (alternative to `--config` flag).
