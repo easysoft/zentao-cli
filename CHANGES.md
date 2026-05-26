@@ -1,5 +1,20 @@
 # Changes
 
+## 0.1.8
+
+### 🚀 优化与重构 (Refactor)
+
+- **登录模块拆分**: 将 token 校验逻辑抽取为独立的 `verifyToken`，并将环境变量读取逻辑抽取为 `getEnvCredentials`，提升可复用性与可测试性，外部行为保持不变。
+
+### ✅ 测试 (Test)
+
+- **auth 单元测试**: 新增 `tests/auth.test.ts`，基于本地 mock 服务覆盖 `verifyToken` 的关键分支（用户命中/未命中、`/users` 401、空列表、缺失字段、`/server/config` 5xx、Token 头与查询参数）以及 `getEnvCredentials` 在环境变量缺失/设置下的读取行为。
+
+### 📝 文档 (Docs)
+
+- **release 工作流**: 在 `/release` 斜杠命令中新增可选的 npm 发布步骤，统一发布 CLI 包到 npm 的操作流程。
+- **提交规范**: AGENTS.md 明确要求提交信息必须使用英文，统一项目协作规范。
+
 ## 0.1.7
 
 ### ✨ 新特性 (Feat)
