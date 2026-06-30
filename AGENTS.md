@@ -15,36 +15,45 @@ bun run build:sf       # Build current-platform standalone binary → release/
 bun run build:sf -- --targets=all  # Build mainstream standalone binaries → release/
 bun test               # Run all tests
 bun test tests/<file>  # Run a single test file
-bun run update-registry  # Regenerate module registry from OpenAPI spec
 ```
 
 ## Architecture
 
-### Core Abstraction: Module Registry
+### Core Abstraction: zentao-api SDK
 
-The entire CLI is driven by a **module registry** pattern — each ZenTao API endpoint is described as a `ModuleDefinition` (defined in `src/types/module.ts`).
+The ZenTao API layer (HTTP client, module registry, request resolution, response
+extraction, data utilities, error types) lives in the external [`zentao-api`](https://github.com/easysoft/zentao-api)
+package. The CLI consumes it and focuses on CLI/MCP concerns (argv parsing,
+rendering, help, config/workspace, auth flow).
 
-- `src/modules/registry.ts` — **Auto-generated** from `data/zentao-openapi.json` by `scripts/update-registry.ts`. **Never edit manually.**
-- `src/modules/registry-example.ts` — Reference pattern for module definitions.
-- `src/modules/resolver.ts` — Resolves CLI argv into `ResolvedModuleCommand`.
-- `src/modules/renders.ts` — Result rendering functions referenced by module definitions.
-- `src/modules/helper.ts` — Help text generation from module definitions.
+- `zentao-api` — `ZentaoClient`, high-level `request()`, built-in module registry
+  (`getModule`/`getModuleNames`/`getModuleAction`), data utils and `ZentaoError`.
+- `src/modules/helper.ts` — Thin wrappers over the SDK registry accessors plus
+  action lookup helpers (`getModule`, `getAllModules`, `findAction`, `getAction`).
+- `src/modules/args.ts` — Parses CLI argv/options into an SDK `request()` params object.
+- `src/modules/executor.ts` — Calls SDK `request()` (autoFill/throwOnFail), then
+  applies CLI-side HTML→Markdown and client filter/search/sort/limit/pick.
+- `src/errors.ts` — CLI `ZentaoError`/`formatError` plus `mapSdkError` to map SDK
+  errors (string codes) to CLI E-codes (Chinese messages).
+- `src/api/index.ts` — Re-exports the SDK `ZentaoClient` and adds `createClient`
+  (positional-arg wrapper) and `getServerConfig` helper.
 
 ### Key Source Layout
 
 ```
 src/
 ├── index.ts               # CLI entry (Commander)
-├── errors.ts              # ZentaoError codes
+├── errors.ts              # CLI ZentaoError codes + mapSdkError
 ├── commands/              # Subcommand registrations & handlers
 │   ├── register-modules.ts  # Dynamic module→subcommand mapping
-│   ├── module-handler.ts    # Execute resolved module commands
+│   ├── module-handler.ts    # Execute module commands & render output
 │   └── ...                  # login, config, mcp, crud, etc.
-├── api/client.ts          # ZentaoClient (fetch wrapper, token, TLS, errors)
+├── api/index.ts           # SDK ZentaoClient re-export + createClient/getServerConfig
+├── modules/               # SDK wrappers: helper, args, executor
 ├── auth/                  # Login flow & credential prompting
 ├── config/                # Persistent config (configstore) & workspace state
 ├── mcp/                   # MCP server (tools + lifecycle)
-├── types/                 # Shared TS types (module, api, commands, config)
+├── types/                 # Shared TS types (re-export SDK types + CLI config/commands)
 └── utils/                 # Formatting, rendering, data processing, HTML→MD, etc.
 ```
 
@@ -73,6 +82,6 @@ To prepare a new release (bump version, update CHANGES.md, tag), follow the step
 - **Language**: Code and comments in English; user-facing CLI strings in Chinese (简体中文).
 - **Error handling**: All domain errors use `ZentaoError` with structured codes from `src/errors.ts`. Never throw raw strings.
 - **Imports**: Use `.js` extension in import paths (ESM): `import { foo } from './bar.js'`.
-- **Module definitions**: Follow `ModuleDefinition` type. Use `registry-example.ts` as reference.
+- **Module definitions**: Provided by `zentao-api`. To add/override a module or action at runtime, use the SDK's `defineModules`/`defineModuleActions`/`extendModuleAction`.
 - **Commit messages**: Must be in English. First line uses `*`/`+`/`-` prefix, no emoji. `*` = change; `+` = addition; `-` = removal.
 - **Config file env var**: `ZENTAO_CONFIG_FILE` — custom config file path (alternative to `--config` flag).

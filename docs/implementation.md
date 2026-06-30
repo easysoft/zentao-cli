@@ -149,7 +149,7 @@
 
 ## 禅道 API 调用
 
-禅道 API 2.0 的基础路径 `$BASE_URL` 为 `$ZENTAO_URL/api.php/v2`。仓库中的 [zentao-openapi.json](../data/zentao-openapi.json) 文件保存了禅道 API 2.0 的 OpenAPI 规范，可据此了解 API 详情。
+禅道 API 2.0 的基础路径 `$BASE_URL` 为 `$ZENTAO_URL/api.php/v2`。禅道 API 2.0 的封装由 [`zentao-api`](https://github.com/easysoft/zentao-api) SDK 提供，可参考其文档与内置模块定义了解 API 详情。
 
 下面说明常见的 API 调用方式。
 

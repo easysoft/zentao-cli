@@ -27,8 +27,6 @@ zentao-cli/
 ├── bin/                    # CLI 入口
 ├── docs/                   # 文档
 ├── scripts/                # 脚本
-├── data/                   # 数据文件
-│   └── zentao-openapi.json # 禅道 API 2.0 规范
 └── package.json
 ```
 
