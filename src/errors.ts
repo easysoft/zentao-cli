@@ -72,6 +72,94 @@ export class ZentaoError extends Error {
     }
 }
 
+/** zentao-api SDK 抛出的错误形态（结构性鸭子类型，避免直接 instanceof 跨实例问题） */
+interface SdkErrorLike {
+    name?: string;
+    code?: string;
+    message?: string;
+    details?: unknown;
+}
+
+function isSdkError(error: unknown): error is SdkErrorLike {
+    if (!error || typeof error !== 'object') return false;
+    const code = (error as SdkErrorLike).code;
+    return typeof code === 'string' && code.startsWith('E_');
+}
+
+function tail(message: string | undefined, marker: string): string {
+    if (!message) return '';
+    const idx = message.indexOf(marker);
+    return idx >= 0 ? message.slice(idx + marker.length).trim() : message;
+}
+
+/**
+ * 将 `zentao-api` SDK 抛出的 {@link import('zentao-api').ZentaoError}（字符串错误码）
+ * 映射为 CLI 自身的 {@link ZentaoError}（E-codes，中文消息）。
+ *
+ * - 已经是 CLI `ZentaoError` 的直接返回；
+ * - 非 SDK 错误原样返回，交由上层兜底处理。
+ */
+export function mapSdkError(error: unknown): unknown {
+    if (error instanceof ZentaoError) return error;
+    if (!isSdkError(error)) return error;
+
+    const { code, message, details } = error;
+    const d = (details && typeof details === 'object' ? details : {}) as Record<string, unknown>;
+
+    switch (code) {
+        case 'E_HTTP_ERROR': {
+            const status = Number(d.status);
+            const url = typeof d.url === 'string' ? d.url : '';
+            if (status === 401) return new ZentaoError('E1004', undefined, details);
+            if (status === 403) return new ZentaoError('E2006', undefined, details);
+            if (status === 404) return new ZentaoError('E2002', { object: url }, details);
+            return new ZentaoError('E2008', {
+                url,
+                status: String(d.status ?? ''),
+                serverResponse: typeof d.body === 'string' ? d.body : String(d.body ?? ''),
+            }, details);
+        }
+        case 'E_TIMEOUT':
+            return new ZentaoError('E5001', undefined, details);
+        case 'E_NETWORK_ERROR': {
+            const msg = (typeof (d as { message?: unknown }).message === 'string'
+                ? (d as { message: string }).message
+                : message) ?? '';
+            if (msg.includes('SSL') || msg.includes('TLS') || msg.includes('certificate')) {
+                return new ZentaoError('E5002', undefined, details);
+            }
+            return new ZentaoError('E1002', { url: '' }, details);
+        }
+        case 'E_API_FAILED':
+            return new ZentaoError('E2008', {
+                url: '',
+                status: '',
+                serverResponse: tail(message, 'failure:') || (message ?? ''),
+            }, details);
+        case 'E_LOGIN_FAILED':
+            return new ZentaoError('E1003', undefined, details);
+        case 'E_MISSING_PARAM':
+            return new ZentaoError('E2003', { fields: tail(message, 'parameter:'), module: '' }, details);
+        case 'E_INVALID_PARAM': {
+            const rest = tail(message, 'parameter ');
+            const [field, value] = rest.split(':').map((s) => s.trim());
+            return new ZentaoError('E2004', { field: field ?? '', value: value ?? '' }, details);
+        }
+        case 'E_INVALID_MODULE':
+            return new ZentaoError('E2001', { module: tail(message, 'module:') }, details);
+        case 'E_INVALID_ACTION':
+        case 'E_INVALID_REQUEST_NAME':
+            return new ZentaoError('E2005', { module: '' }, details);
+        case 'E_NO_PROFILE':
+        case 'E_NO_GLOBAL_CLIENT':
+            return new ZentaoError('E1006', undefined, details);
+        case 'E_PROFILE_NOT_FOUND':
+            return new ZentaoError('E1007', undefined, details);
+        default:
+            return new ZentaoError('E2008', { url: '', status: '', serverResponse: message ?? String(code) }, details);
+    }
+}
+
 /** 将 ZentaoError 格式化为用户可读的字符串（Markdown 或 JSON） */
 export function formatError(error: ZentaoError, format: string): string {
     if (format === 'json' || format === 'raw') {
