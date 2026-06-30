@@ -1,7 +1,8 @@
-import type { ZentaoClient } from '../api/client.js';
-import type { ModuleDefinition, ModuleAction, ModuleActionType, Profile, ModuleActionName, ResolvedModuleCommand, UserConfig } from '../types/index.js';
-import { findAction, getAvailableActions, resolveModuleCommand } from '../modules/resolver.js';
-import { executeResolvedModuleCommand } from '../modules/executor.js';
+import type { ZentaoClient } from '../api/index.js';
+import type { ModuleDefinition, ModuleAction, ModuleActionType, Profile, ModuleActionName, UserConfig } from '../types/index.js';
+import { findAction, getAction, getAvailableActions } from '../modules/helper.js';
+import { buildParams } from '../modules/args.js';
+import { executeModuleCommand } from '../modules/executor.js';
 import { getProfileConfig } from '../config/store.js';
 import { formatOutput } from '../utils/format.js';
 import type { ModuleActionOptions } from '../types/index.js';
@@ -52,14 +53,16 @@ function pickBatchIds(args: string[], options: ModuleActionOptions): { ids: stri
 
 async function renderModuleExecution(
     client: ZentaoClient,
-    command: ResolvedModuleCommand,
+    module: ModuleDefinition,
+    actionName: ModuleActionName,
+    args: string[],
     options: ModuleActionOptions,
     config: UserConfig,
 ): Promise<void> {
     const format = options.format ?? config.defaultOutputFormat ?? 'markdown';
     const silent = options.silent ?? config.silent ?? false;
 
-    const execution = await executeResolvedModuleCommand(client, command, options, config);
+    const execution = await executeModuleCommand(client, module, actionName, args, options, config);
     if (silent) {
         return;
     }
@@ -77,7 +80,7 @@ async function renderModuleExecution(
         return;
     }
 
-    if (command.action.type === 'list') {
+    if (execution.action.type === 'list') {
         const output = formatOutput(execution.data, {
             format,
             isList: true,
@@ -89,7 +92,7 @@ async function renderModuleExecution(
         return;
     }
 
-    if (command.action.type === 'get') {
+    if (execution.action.type === 'get') {
         const output = renderObject(execution.data as Record<string, unknown>, format, { fields: execution.fields });
         if (output) console.log(output);
         return;
@@ -153,19 +156,25 @@ export async function handleModuleCommand(
         return;
     }
 
-    const command = resolveModuleCommand(module, actionName, options, args);
+    const action = getAction(module, actionName);
+    if (!action) {
+        throw new ZentaoError('E2005', { module: module.name });
+    }
 
-    if (command.action.type === 'delete' && !options.yes) {
-        if (!await confirmDelete(format, command.id !== undefined ? 1 : 0)) {
+    const params = buildParams(options, actionName, args);
+    const hasId = params.id !== undefined && params.id !== '';
+
+    if (action.type === 'delete' && !options.yes) {
+        if (!await confirmDelete(format, hasId ? 1 : 0)) {
             return;
         }
     }
 
-    if (!command.id && (command.action.type === 'delete' || command.action.type === 'update' || command.action.type === 'action')) {
+    if (!hasId && (action.type === 'delete' || action.type === 'update' || action.type === 'action')) {
         throw new ZentaoError('E2009', { option: 'id', reason: '必须提供要操作的对象 ID' });
     }
 
-    await renderModuleExecution(client, command, options, config);
+    await renderModuleExecution(client, module, actionName, args, options, config);
 }
 
 /**
@@ -293,7 +302,7 @@ export function showModuleActionHelp(mod: ModuleDefinition, action: ModuleAction
     if (action.description && action.description !== action.display) {
         console.log(`描述: ${action.description}`);
     }
-    console.log(`HTTP: ${action.method.toUpperCase()} ${action.path}`);
+    console.log(`HTTP: ${(action.method ?? 'GET').toUpperCase()} ${action.path}`);
 
     const apiParams: ParamEntry[] = [];
 
@@ -443,7 +452,7 @@ type ParamEntry = {
     description: string;
     required?: boolean;
     defaultValue?: unknown;
-    options?: { value: unknown; label: string }[];
+    options?: readonly { value: unknown; label: string }[];
 };
 
 function typePlaceholder(type: string, itemsType?: string): string | undefined {

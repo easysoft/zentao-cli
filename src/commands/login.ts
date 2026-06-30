@@ -5,7 +5,7 @@ import { saveProfile, profileKey, getProfile, buildProfile } from '../config/sto
 import { ZentaoError, formatError } from '../errors.js';
 import type { Profile } from '../types/index.js';
 import type { GlobalOptions } from '../types/index.js';
-import { ZentaoClient } from '../api/client.js';
+import { createClient } from '../api/index.js';
 
 /** 注册 `zentao login`：支持参数、环境变量与交互式提示 */
 export function registerLoginCommand(program: Command): void {
@@ -55,7 +55,7 @@ export function registerLoginCommand(program: Command): void {
                 let profile: Profile;
                 if (token) {
                     // 检查 token 是否有效
-                    const client = new ZentaoClient(server, token, {
+                    const client = createClient(server, token, {
                         insecure: globalOpts.insecure,
                         timeout: globalOpts.timeout,
                     });

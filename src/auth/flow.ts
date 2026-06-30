@@ -1,5 +1,5 @@
 import type { Profile } from '../types/index.js';
-import { ZentaoClient } from '../api/client.js';
+import { ZentaoClient, createClient } from '../api/index.js';
 import { ZentaoError } from '../errors.js';
 import { getCurrentProfile, getProfile, saveProfile, getProfileConfig, buildProfile } from '../config/store.js';
 import { login, getEnvCredentials } from './login.js';
@@ -29,7 +29,7 @@ export async function ensureAuth(options?: { insecure?: boolean; timeout?: numbe
         currentProfile.lastUsedTime = new Date().toISOString();
         saveProfile(currentProfile);
         return {
-            client: new ZentaoClient(currentProfile.server, currentProfile.token, clientOpts),
+            client: createClient(currentProfile.server, currentProfile.token, clientOpts),
             profile: currentProfile,
         };
     }
@@ -43,7 +43,7 @@ export async function ensureAuth(options?: { insecure?: boolean; timeout?: numbe
             const profile = buildProfile(env.url, env.account, env.token, undefined, undefined, existingProfile);
             saveProfile(profile);
             return {
-                client: new ZentaoClient(env.url, env.token, clientOpts),
+                client: createClient(env.url, env.token, clientOpts),
                 profile,
             };
         }
@@ -54,7 +54,7 @@ export async function ensureAuth(options?: { insecure?: boolean; timeout?: numbe
             const profile = buildProfile(env.url, env.account, result.token, undefined, result.user);
             saveProfile(profile);
             return {
-                client: new ZentaoClient(env.url, result.token, clientOpts),
+                client: createClient(env.url, result.token, clientOpts),
                 profile,
             };
         }

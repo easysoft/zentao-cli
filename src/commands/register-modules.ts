@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import { getModuleNames, getModule } from '../modules/index.js';
-import { findAction, getAvailableActions} from '../modules/resolver.js';
+import { findAction, getAvailableActions } from '../modules/helper.js';
 import { ensureAuth } from '../auth/flow.js';
 import { handleModuleCommand, showModuleActionHelp, showModuleHelp } from './module-handler.js';
 import { ZentaoError } from '../errors.js';

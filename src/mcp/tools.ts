@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import { MODULES } from '../modules/registry.js';
+import { getAllModules } from '../modules/helper.js';
 import type { ModuleDefinition, ModuleAction, ModuleActionOptions } from '../types/index.js';
 import { executeModuleCommand } from '../modules/executor.js';
 import { ZentaoError } from '../errors.js';
@@ -82,9 +82,8 @@ async function handleProfileTool(auth: AuthProvider): Promise<CallToolResult> {
     const profile = getCurrentProfile();
     const account = profile?.account;
 
-    const usersResp = await client.get('/users', {
-        browseType: 'inside',
-        recPerPage: 100,
+    const usersResp = await client.get<Record<string, unknown>>('/users', {
+        query: { browseType: 'inside', recPerPage: 100 },
     });
 
     const usersRaw = (usersResp as Record<string, unknown>).users;
@@ -156,13 +155,13 @@ async function handleModuleTool(
 
     const execution = await executeModuleCommand(client, mod, actionName, [], opts, config);
 
-    if (execution.command.action.type === 'list') {
+    if (execution.action.type === 'list') {
         const response: Record<string, unknown> = { data: execution.data };
         if (execution.pager) response.pager = execution.pager;
         return { content: [{ type: 'text', text: JSON.stringify(response, null, 2) }] };
     }
 
-    if (execution.command.action.type === 'get') {
+    if (execution.action.type === 'get') {
         return { content: [{ type: 'text', text: JSON.stringify(execution.data, null, 2) }] };
     }
 
@@ -170,7 +169,7 @@ async function handleModuleTool(
     return { content: [{ type: 'text', text: JSON.stringify(execution.data ?? execution.rawResponse, null, 2) }] };
 }
 
-function toolAnnotations(actions: ModuleAction[]) {
+function toolAnnotations(actions: readonly ModuleAction[]) {
     const readOnly = actions.every(action => action.type === 'list' || action.type === 'get');
     const destructive = actions.some(action => action.type === 'delete');
     return {
@@ -229,7 +228,7 @@ export function registerModuleTools(server: McpServer, auth: AuthProvider): void
         },
     );
 
-    for (const mod of MODULES) {
+    for (const mod of getAllModules()) {
         const name = `zentao_${mod.name}`;
         const description = buildToolDescription(mod);
         const inputSchema = buildInputSchema(mod);

@@ -1,6 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { ZentaoClient } from '../api/client.js';
+import { ZentaoClient } from '../api/index.js';
 import { ensureAuth } from '../auth/flow.js';
 import { registerModuleTools } from './tools.js';
 import { getCliVersion } from '../utils/version.js';
