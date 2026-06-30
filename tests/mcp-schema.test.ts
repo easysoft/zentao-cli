@@ -33,23 +33,18 @@ describe('MCP tool input JSON Schema', () => {
         expect(json.properties && 'params' in json.properties).toBe(true);
     });
 
-    test('z.record(z.unknown()) breaks Zod 4 JSON Schema conversion (regression guard)', () => {
+    test('explicit string-key record is preferred over z.record(z.unknown())', () => {
+        // 历史上 z.record(z.unknown()) 会破坏 Zod 4 的 JSON Schema 转换，因此
+        // buildInputSchema 统一使用 z.record(z.string(), z.unknown())。当前依赖版本
+        // 下两种写法均可转换，这里保留断言以确保显式 string-key 写法持续可用。
         const actionEnum = ['list', 'get'] as [string, ...string[]];
-        const shape = {
+        const json = convertShape({
             action: z.enum(actionEnum),
-            params: z.record(z.unknown()).optional(),
-        };
+            params: z.record(z.string(), z.unknown()).optional(),
+        });
 
-        const wrapped = objectFromShape(shape);
-        const norm = normalizeObjectSchema(wrapped);
-        expect(norm).toBeDefined();
-
-        expect(() =>
-            toJsonSchemaCompat(norm!, {
-                strictUnions: true,
-                pipeStrategy: 'input',
-            }),
-        ).toThrow();
+        expect(json.type).toBe('object');
+        expect(json.properties && 'params' in json.properties).toBe(true);
     });
 
     test('converts simple string and number fields', () => {

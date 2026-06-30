@@ -1,5 +1,5 @@
 import { describe, test, expect, afterEach, beforeEach } from 'bun:test';
-import { ZentaoClient } from '../src/api/client';
+import { createClient } from '../src/api/index';
 import { verifyToken, getEnvCredentials } from '../src/auth/login';
 import { ZentaoError } from '../src/errors';
 
@@ -28,7 +28,7 @@ function createMockServer(routes: MockRoutes) {
 }
 
 function makeClient(server: { url: URL }, token = 'test-token') {
-    return new ZentaoClient(server.url.toString(), token);
+    return createClient(server.url.toString(), token);
 }
 
 describe('verifyToken', () => {

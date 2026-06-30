@@ -1,9 +1,9 @@
 import { describe, test, expect } from 'bun:test';
-import { MODULES, getModule, getModuleNames, isModuleName } from '../src/modules';
-import { findAction, getAvailableActions, resolveActionUrl, resolveModuleCommand } from '../src/modules';
-import type { Workspace } from '../src/types/config';
+import { getModule, getModuleNames, isModuleName, getAllModules } from '../src/modules';
+import { findAction, getAvailableActions, getAction } from '../src/modules';
+import { buildParams } from '../src/modules/args';
 
-    describe('module registry', () => {
+describe('module registry (zentao-api)', () => {
     test('contains expected modules', () => {
         const names = getModuleNames();
         expect(names).toContain('product');
@@ -12,6 +12,10 @@ import type { Workspace } from '../src/types/config';
         expect(names).toContain('story');
         expect(names).toContain('user');
         expect(names.length).toBe(19);
+    });
+
+    test('getAllModules returns every registered module', () => {
+        expect(getAllModules().length).toBe(getModuleNames().length);
     });
 
     test('getModule returns module by name', () => {
@@ -61,7 +65,7 @@ import type { Workspace } from '../src/types/config';
         expect(listAction!.name).toBe('list');
     });
 
-    test('bug module has no top-level list', () => {
+    test('bug module has no top-level list (scoped list)', () => {
         const bug = getModule('bug')!;
         const listAction = findAction(bug, 'list');
         expect(listAction).toBeDefined();
@@ -69,29 +73,21 @@ import type { Workspace } from '../src/types/config';
     });
 });
 
-describe('module resolver', () => {
-    const workspace: Workspace = {
-        id: 1,
-        product: { id: 10, name: '产品1' },
-        project: { id: 20, name: '项目1' },
-        execution: { id: 30, name: '执行1' },
-    };
-
-    test('resolves detail path', () => {
+describe('action lookup', () => {
+    test('getAction resolves ls alias to list', () => {
         const mod = getModule('product')!;
-        const getAction = findAction(mod, 'get')!;
-        expect(resolveActionUrl(getAction, { productID: 1 })).toBe('/products/1');
+        expect(getAction(mod, 'ls')?.type).toBe('list');
+        expect(getAction(mod, 'list')?.type).toBe('list');
     });
 
-    test('resolves action path', () => {
+    test('getAction resolves extension actions', () => {
         const mod = getModule('bug')!;
-        const action = findAction(mod, 'action', 'resolve')!;
-        expect(resolveActionUrl(action, { bugID: 5 })).toBe('/bugs/5/resolve');
+        expect(getAction(mod, 'resolve')?.name).toBe('resolve');
     });
 
-    test('throws for unknown action', () => {
+    test('getAction returns undefined for unknown action', () => {
         const mod = getModule('bug')!;
-        expect(findAction(mod, 'action', 'nonexistent')).toBeUndefined();
+        expect(getAction(mod, 'nonexistent')).toBeUndefined();
     });
 
     test('getAvailableActions returns action names', () => {
@@ -101,30 +97,34 @@ describe('module resolver', () => {
         expect(actions).toContain('close');
         expect(actions).toContain('activate');
     });
+});
 
-    test('supports positional id for update action', () => {
-        const mod = getModule('product')!;
-        const command = resolveModuleCommand(
-            mod,
-            'update',
-            {},
-            ['1', '--name=产品1'],
-        );
-        expect(command.id).toBe(1);
-        expect(command.path).toBe('/products/1');
-        expect(command.data).toMatchObject({ name: '产品1' });
-        expect(command.data).not.toHaveProperty('acl');
+describe('buildParams (argv parsing)', () => {
+    test('positional numeric id becomes params.id', () => {
+        const params = buildParams({}, 'update', ['1', '--name=产品1']);
+        expect(params.id).toBe('1');
+        expect(params.name).toBe('产品1');
     });
 
-    test('supports positional id for delete action', () => {
-        const mod = getModule('product')!;
-        const command = resolveModuleCommand(
-            mod,
-            'delete',
-            {},
-            ['1'],
-        );
-        expect(command.id).toBe(1);
-        expect(command.path).toBe('/products/1');
+    test('positional id for delete', () => {
+        const params = buildParams({}, 'delete', ['1']);
+        expect(params.id).toBe('1');
+    });
+
+    test('positional JSON object becomes params.data', () => {
+        const params = buildParams({}, 'create', ['{"title":"hi"}']);
+        expect(params.data).toBe('{"title":"hi"}');
+    });
+
+    test('--params JSON is merged', () => {
+        const params = buildParams({ params: '{"severity":2}' }, 'create', []);
+        expect(params.severity).toBe(2);
+    });
+
+    test('--key=value coerces basic types', () => {
+        const params = buildParams({}, 'create', ['--num=3', '--flag=true', '--name=foo']);
+        expect(params.num).toBe(3);
+        expect(params.flag).toBe(true);
+        expect(params.name).toBe('foo');
     });
 });

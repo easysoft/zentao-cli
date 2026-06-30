@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { ZentaoClient } from '../src/api/client';
+import type { ZentaoClient } from '../src/api/index';
 import { handleModuleCommand } from '../src/commands/module-handler';
 import { getModule } from '../src/modules';
 import type { ModuleActionName, ModuleActionOptions } from '../src/types';
@@ -26,8 +26,8 @@ describe('handleModuleCommand batch ids', () => {
     async function runDelete(args: string[], options: ModuleActionOptions = {}) {
         const requests: Array<{ method: string; path: string }> = [];
         const client = {
-            request: async (method: string, path: string) => {
-                requests.push({ method, path });
+            request: async (path: string, opts: { method?: string }) => {
+                requests.push({ method: (opts.method ?? 'GET').toLowerCase(), path });
                 return { status: 'success' };
             },
         } as unknown as ZentaoClient;
@@ -112,14 +112,14 @@ describe('delete confirmation prompt', () => {
 });
 
 describe('handleModuleCommand raw output', () => {
-    test('prints raw API response for list commands', async () => {
-        const rawResponse = {
-            status: 'success',
-            products: [{ id: 1, name: '产品1' }],
-            pager: { recTotal: 1, recPerPage: 20, pageID: 1 },
-        };
+    // 重构后 raw 输出为 zentao-api 归一化后的 ResponseData（status/data/pager）。
+    test('prints normalized response for list commands', async () => {
         const client = {
-            request: async () => rawResponse,
+            request: async () => ({
+                status: 'success',
+                products: [{ id: 1, name: '产品1' }],
+                pager: { recTotal: 1, recPerPage: 20, pageID: 1 },
+            }),
         } as unknown as ZentaoClient;
 
         const output = await captureConsoleLog(async () => {
@@ -133,17 +133,19 @@ describe('handleModuleCommand raw output', () => {
             );
         });
 
-        expect(output).toEqual([JSON.stringify(rawResponse, null, 4)]);
+        const parsed = JSON.parse(output[0]);
+        expect(parsed.status).toBe('success');
+        expect(parsed.data).toEqual([{ id: 1, name: '产品1' }]);
+        expect(parsed.pager).toEqual({ total: 1, page: 1, recPerPage: 20 });
     });
 
-    test('prints raw API response for get commands', async () => {
-        const rawResponse = {
-            status: 'success',
-            user: { id: 1, realname: 'Admin' },
-            serverTime: '2026-05-07T10:00:00Z',
-        };
+    test('prints normalized response for get commands', async () => {
         const client = {
-            request: async () => rawResponse,
+            request: async () => ({
+                status: 'success',
+                user: { id: 1, realname: 'Admin' },
+                serverTime: '2026-05-07T10:00:00Z',
+            }),
         } as unknown as ZentaoClient;
 
         const output = await captureConsoleLog(async () => {
@@ -157,17 +159,14 @@ describe('handleModuleCommand raw output', () => {
             );
         });
 
-        expect(output).toEqual([JSON.stringify(rawResponse, null, 4)]);
+        const parsed = JSON.parse(output[0]);
+        expect(parsed.status).toBe('success');
+        expect(parsed.data).toEqual({ id: 1, realname: 'Admin' });
     });
 
-    test('prints raw API response for write commands', async () => {
-        const rawResponse = {
-            status: 'success',
-            id: 7,
-            message: 'created',
-        };
+    test('prints normalized response for write commands', async () => {
         const client = {
-            request: async () => rawResponse,
+            request: async () => ({ status: 'success', id: 7, message: 'created' }),
         } as unknown as ZentaoClient;
 
         const output = await captureConsoleLog(async () => {
@@ -186,6 +185,8 @@ describe('handleModuleCommand raw output', () => {
             );
         });
 
-        expect(output).toEqual([JSON.stringify(rawResponse, null, 4)]);
+        const parsed = JSON.parse(output[0]);
+        expect(parsed.status).toBe('success');
+        expect(parsed.data.id).toBe(7);
     });
 });

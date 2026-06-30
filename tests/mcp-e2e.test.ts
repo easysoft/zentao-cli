@@ -3,9 +3,10 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import { MODULES } from '../src/modules';
+import { getAllModules } from '../src/modules';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
+const MODULES = getAllModules();
 
 describe('MCP server (stdio e2e smoke)', () => {
     test(
