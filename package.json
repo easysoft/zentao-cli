@@ -29,7 +29,6 @@
     "build": "bun run scripts/build.ts --minify",
     "build:sf": "bun run scripts/build.ts --compile --minify",
     "build:sf:all": "bun run scripts/build.ts --compile --minify --targets=all",
-    "update-registry": "bun run scripts/update-registry.ts",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
     "coverage": "bun test --coverage",
@@ -40,9 +39,9 @@
     "@modelcontextprotocol/sdk": "^1.29.0",
     "commander": "^13.0.0",
     "configstore": "^7.0.0",
-    "dot-prop": "^9.0.0",
     "turndown": "^7.2.0",
-    "zod": "^4.3.6"
+    "zod": "^4.3.6",
+    "zentao-api": "^0.3.3"
   },
   "devDependencies": {
     "@types/bun": "^1.3.13",
