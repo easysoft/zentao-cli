@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { getCliVersion } from './version.js';
 
 export const PACKAGE_NAME = 'zentao-cli';
-const REGISTRY_URL = `https://registry.npmjs.org/${PACKAGE_NAME}/latest`;
+const REGISTRY_URL = `https://registry.npmjs.org/${PACKAGE_NAME}`;
 
 export interface SemVer {
     major: number;
@@ -71,6 +71,27 @@ export function compareSemver(a: SemVer, b: SemVer): number {
     return comparePrerelease(a.prerelease, b.prerelease);
 }
 
+export function isStableVersion(version: string): boolean {
+    const semver = parseSemver(version);
+    return !!semver && semver.prerelease === '';
+}
+
+function pickLatestStableVersion(versions: string[]): string | null {
+    let latestVersion: string | null = null;
+    let latestSemver: SemVer | null = null;
+
+    for (const version of versions) {
+        const semver = parseSemver(version);
+        if (!semver || semver.prerelease) continue;
+        if (!latestSemver || compareSemver(semver, latestSemver) > 0) {
+            latestVersion = version;
+            latestSemver = semver;
+        }
+    }
+
+    return latestVersion;
+}
+
 export async function fetchLatestVersion(signal?: AbortSignal): Promise<string> {
     let response: Response;
     try {
@@ -86,11 +107,21 @@ export async function fetchLatestVersion(signal?: AbortSignal): Promise<string> 
         throw new Error(`npm registry 返回错误: ${response.status} ${response.statusText}`);
     }
 
-    const data = (await response.json()) as { version?: unknown };
-    if (typeof data.version !== 'string' || !data.version) {
+    const data = (await response.json()) as { version?: unknown; versions?: unknown };
+    if (data.versions && typeof data.versions === 'object' && !Array.isArray(data.versions)) {
+        const latestStable = pickLatestStableVersion(Object.keys(data.versions));
+        if (latestStable) return latestStable;
+    }
+
+    if (typeof data.version === 'string' && isStableVersion(data.version)) {
+        return data.version;
+    }
+
+    if (typeof data.version !== 'string' && !data.versions) {
         throw new Error('npm registry 返回数据格式异常');
     }
-    return data.version;
+
+    throw new Error('npm registry 未找到正式版本');
 }
 
 export type PackageManager = 'bun' | 'npm';
@@ -111,11 +142,12 @@ export function detectPackageManager(): PackageManager {
     return 'npm';
 }
 
-export function buildInstallCommand(pm: PackageManager): { cmd: string; args: string[] } {
+export function buildInstallCommand(pm: PackageManager, version = 'latest'): { cmd: string; args: string[] } {
+    const packageSpec = `${PACKAGE_NAME}@${version}`;
     if (pm === 'bun') {
-        return { cmd: 'bun', args: ['add', '-g', `${PACKAGE_NAME}@latest`] };
+        return { cmd: 'bun', args: ['add', '-g', packageSpec] };
     }
-    return { cmd: 'npm', args: ['install', '-g', `${PACKAGE_NAME}@latest`] };
+    return { cmd: 'npm', args: ['install', '-g', packageSpec] };
 }
 
 export interface UpdateCheckResult {
@@ -153,6 +185,7 @@ export async function asyncCheckForUpdate(signal?: AbortSignal): Promise<UpdateC
 /** 显示升级提示信息，仅在 stderr 为 TTY 时输出彩色文案 */
 export function showUpdateNotification(result: UpdateCheckResult): void {
     if (!result.hasUpdate) return;
+    if (!isStableVersion(result.latest)) return;
     if (!process.stderr.isTTY) return;
 
     const reset = '\x1b[0m';
@@ -173,8 +206,8 @@ export function showUpdateNotification(result: UpdateCheckResult): void {
  * 以 `spawnSync` 在 Windows 兼容地运行 install 命令。
  * Windows 上 `bun`/`npm` 是 `.cmd`，必须通过 shell 才能 spawn。
  */
-export function runInstall(pm: PackageManager): { status: number | null; cmd: string; args: string[] } {
-    const { cmd, args } = buildInstallCommand(pm);
+export function runInstall(pm: PackageManager, version = 'latest'): { status: number | null; cmd: string; args: string[] } {
+    const { cmd, args } = buildInstallCommand(pm, version);
     const result = spawnSync(cmd, args, {
         stdio: 'inherit',
         encoding: 'utf-8',

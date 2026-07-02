@@ -1,10 +1,25 @@
-import { describe, test, expect } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
 import {
     parseSemver,
     compareSemver,
     buildInstallCommand,
+    fetchLatestVersion,
+    isStableVersion,
     PACKAGE_NAME,
 } from '../src/utils/update-notifier';
+
+const originalFetch = globalThis.fetch;
+
+function mockRegistryResponse(body: unknown, status = 200): void {
+    globalThis.fetch = (async () => new Response(JSON.stringify(body), {
+        status,
+        statusText: status === 200 ? 'OK' : 'Error',
+    })) as typeof fetch;
+}
+
+afterEach(() => {
+    globalThis.fetch = originalFetch;
+});
 
 describe('parseSemver', () => {
     test('parses basic semver', () => {
@@ -68,6 +83,43 @@ describe('compareSemver', () => {
     });
 });
 
+describe('isStableVersion', () => {
+    test('accepts release versions only', () => {
+        expect(isStableVersion('1.2.3')).toBe(true);
+        expect(isStableVersion('1.2.3-alpha.1')).toBe(false);
+        expect(isStableVersion('1.2.3-beta.1')).toBe(false);
+        expect(isStableVersion('not-a-version')).toBe(false);
+    });
+});
+
+describe('fetchLatestVersion', () => {
+    test('returns highest stable version and skips prereleases', async () => {
+        mockRegistryResponse({
+            'dist-tags': { latest: '0.2.0-beta.1' },
+            versions: {
+                '0.1.8': {},
+                '0.1.9-alpha.1': {},
+                '0.1.9': {},
+                '0.2.0-beta.1': {},
+            },
+        });
+
+        await expect(fetchLatestVersion()).resolves.toBe('0.1.9');
+    });
+
+    test('falls back to package document version when it is stable', async () => {
+        mockRegistryResponse({ version: '0.1.9' });
+
+        await expect(fetchLatestVersion()).resolves.toBe('0.1.9');
+    });
+
+    test('rejects package document version when it is prerelease', async () => {
+        mockRegistryResponse({ version: '0.2.0-beta.1' });
+
+        await expect(fetchLatestVersion()).rejects.toThrow('npm registry 未找到正式版本');
+    });
+});
+
 describe('buildInstallCommand', () => {
     test('returns bun command', () => {
         const { cmd, args } = buildInstallCommand('bun');
@@ -79,5 +131,11 @@ describe('buildInstallCommand', () => {
         const { cmd, args } = buildInstallCommand('npm');
         expect(cmd).toBe('npm');
         expect(args).toEqual(['install', '-g', `${PACKAGE_NAME}@latest`]);
+    });
+
+    test('can target a concrete stable version', () => {
+        const { cmd, args } = buildInstallCommand('npm', '0.1.9');
+        expect(cmd).toBe('npm');
+        expect(args).toEqual(['install', '-g', `${PACKAGE_NAME}@0.1.9`]);
     });
 });

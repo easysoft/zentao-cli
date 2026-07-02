@@ -71,10 +71,10 @@ export function registerUpgradeCommand(program: Command): void {
                 }
 
                 const pm = detectPackageManager();
-                const { cmd, args } = buildInstallCommand(pm);
+                const { cmd, args } = buildInstallCommand(pm, latestVersion);
                 console.log(`\n执行: ${cmd} ${args.join(' ')}\n`);
 
-                const { status } = runInstall(pm);
+                const { status } = runInstall(pm, latestVersion);
 
                 if (status === 0) {
                     console.log(`\n升级成功！${currentVersion} → ${latestVersion}`);
