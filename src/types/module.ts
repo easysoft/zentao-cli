@@ -15,6 +15,5 @@ export type {
     ModuleAction,
     ModuleName,
     ModuleDefinition,
-    ResolvedModuleCommand,
     ListPagerInfo,
 } from 'zentao-api';

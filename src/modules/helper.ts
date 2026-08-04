@@ -27,7 +27,9 @@ export function isModuleName(name: string): boolean {
 
 /** 返回所有已注册模块定义 */
 export function getAllModules(): ModuleDefinition[] {
-    return sdkGetModuleNames().map((name) => sdkGetModule(name));
+    return sdkGetModuleNames()
+        .map((name) => sdkGetModule(name))
+        .filter((mod): mod is ModuleDefinition => mod !== undefined);
 }
 
 const ACTION_NAME_ALIASES: Record<string, string> = {

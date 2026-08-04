@@ -17,15 +17,12 @@ importers:
       configstore:
         specifier: ^7.0.0
         version: 7.1.0
-      dot-prop:
-        specifier: ^9.0.0
-        version: 9.0.0
       turndown:
         specifier: ^7.2.0
         version: 7.2.4
       zentao-api:
-        specifier: ^0.3.3
-        version: 0.3.3
+        specifier: ^0.4.1
+        version: 0.4.1
       zod:
         specifier: ^4.3.6
         version: 4.4.3
@@ -466,9 +463,9 @@ packages:
     resolution: {integrity: sha512-GCPAHLvrIH13+c0SuacwvRYj2SxJXQ4kaVTT5xgL3kPrz56XxkF21IGhjSE1+W0aw7gpBWRGXLCPnPby6lSpmQ==}
     engines: {node: '>=12'}
 
-  zentao-api@0.3.3:
-    resolution: {integrity: sha512-16IYS/avADbGX+/oIRgzbhaw68hi9j1hIvH7WamHddmFIOcohEXxv75Y+QBibB4mjwLfascRmXf2Jgyk8qRtcQ==}
-    engines: {node: '>=18'}
+  zentao-api@0.4.1:
+    resolution: {integrity: sha512-KjSs5rOzaQD9CcPGkXOHqCJPQGGJ4F8fWfp5MfCzyGk3I/GKatW3XfRo8QPFqSvXPGxBMKFKHpnPbaCFZTnHKA==}
+    engines: {bun: '>=1.0.0', node: '>=18'}
 
   zod-to-json-schema@3.25.2:
     resolution: {integrity: sha512-O/PgfnpT1xKSDeQYSCfRI5Gy3hPf91mKVDuYLUHZJMiDFptvP41MSnWofm8dnCm0256ZNfZIM7DSzuSMAFnjHA==}
@@ -924,7 +921,7 @@ snapshots:
 
   xdg-basedir@5.1.0: {}
 
-  zentao-api@0.3.3: {}
+  zentao-api@0.4.1: {}
 
   zod-to-json-schema@3.25.2(zod@4.4.3):
     dependencies:
