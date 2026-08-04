@@ -1,5 +1,25 @@
 # Changes
 
+## 0.2.0
+
+### 🐛 修复 (Fix)
+
+- **更新检查**: 修正版本更新检查逻辑，仅解析最新的稳定版本并跳过预发布版本，避免误提示升级到 beta/rc 版本。
+
+### 🚀 优化与重构 (Refactor)
+
+- **迁移至 zentao-api SDK**: 将禅道 API 层(HTTP 客户端、模块注册表、请求解析、响应提取、数据工具与错误类型)整体迁移到外部 [`zentao-api`](https://github.com/easysoft/zentao-api) 包,CLI 专注于命令行/MCP 相关职责(参数解析、渲染、帮助、配置/工作区、登录流程)。
+- **命令执行链路重构**: 认证、模块命令与 MCP 服务全面改由 zentao-api 客户端驱动;模块的解析与执行统一通过 SDK 的 `request()` 完成,CLI 侧仅保留 HTML→Markdown 转换与过滤/搜索/排序/裁剪等后处理。
+- **依赖精简**: 移除 `dot-prop` 依赖及 `update-registry` 脚本;升级 `zentao-api` 至 0.4.1。
+
+### ✅ 测试 (Test)
+
+- **测试套件适配**: 更新测试套件以匹配基于 zentao-api 的新架构。
+
+### 📝 文档 (Docs)
+
+- **架构文档更新**: 在项目文档中说明基于 zentao-api 的分层架构,并移除已废弃的 OpenAPI 相关描述。
+
 ## 0.1.8
 
 ### 🚀 优化与重构 (Refactor)
