@@ -14,6 +14,73 @@ import { convertHtmlFields, convertHtmlFieldsInArray } from '../utils/html.js';
 import { buildParams, normalizeActionName } from './args.js';
 import { getAction } from './helper.js';
 import { ZentaoError } from '../errors.js';
+import { processImagesInContent, hasImageMarkers } from '../utils/images.js';
+
+/** 支持图片标记的内容字段。 */
+const IMAGE_CONTENT_FIELDS: Record<string, string[]> = {
+    story: ['spec', 'verify'],
+    bug: ['steps'],
+};
+
+/**
+ * 在创建 story/bug 时，处理内容字段中的图片标记。
+ *
+ * 解析 `![alt](path)` 标记，上传本地图片到禅道，并将标记替换为禅道图片引用格式。
+ */
+async function processImagesForCreate(
+    client: ZentaoClient,
+    moduleName: string,
+    params: Record<string, unknown>,
+    options: ModuleActionOptions,
+): Promise<Record<string, unknown>> {
+    const fields = IMAGE_CONTENT_FIELDS[moduleName];
+    if (!fields) return params;
+
+    const dataObject = typeof params.data === 'string'
+        ? JSON.parse(params.data) as Record<string, unknown>
+        : (params.data as Record<string, unknown> | undefined);
+
+    const hasImages = fields.some((field) => {
+        const direct = params[field];
+        if (typeof direct === 'string' && hasImageMarkers(direct)) return true;
+        if (dataObject) {
+            const nested = dataObject[field];
+            return typeof nested === 'string' && hasImageMarkers(nested);
+        }
+        return false;
+    });
+    if (!hasImages) return params;
+
+    const result = { ...params };
+    let resultData = dataObject ? { ...dataObject } : undefined;
+    let dataChanged = false;
+
+    for (const field of fields) {
+        const direct = result[field];
+        if (typeof direct === 'string' && hasImageMarkers(direct)) {
+            result[field] = await processImagesInContent(client, direct, {
+                verbose: options.format !== 'json' && options.format !== 'raw',
+                objectType: moduleName,
+            });
+            continue;
+        }
+        if (resultData) {
+            const nested = resultData[field];
+            if (typeof nested === 'string' && hasImageMarkers(nested)) {
+                resultData[field] = await processImagesInContent(client, nested, {
+                    verbose: options.format !== 'json' && options.format !== 'raw',
+                    objectType: moduleName,
+                });
+                dataChanged = true;
+            }
+        }
+    }
+
+    if (dataChanged && resultData) {
+        result.data = JSON.stringify(resultData);
+    }
+    return result;
+}
 
 export interface ModuleExecutionResult {
     /** 解析到的动作定义 */
@@ -56,13 +123,19 @@ export async function executeModuleCommand(
     }
 
     const params = buildParams(options, actionName, args);
-    const requestName = `${module.name}/${normalizeActionName(actionName)}`;
+    const normalizedActionName = normalizeActionName(actionName);
+    const requestName = `${module.name}/${normalizedActionName}`;
+
+    // 创建 story/bug 时，处理内容字段中的图片标记
+    const processedParams = normalizedActionName === 'create'
+        ? await processImagesForCreate(client, module.name, params, options)
+        : params;
 
     let response;
     try {
         // 注意：不向 request() 传递 filter/search/sort/limit/pick，
         // 以保留 CLI 自身的数据处理语义（在下方本地后处理）。
-        response = await request(requestName, params, {
+        response = await request(requestName, processedParams, {
             client,
             autoFill: action.type === 'update',
             throwOnFail: true,
