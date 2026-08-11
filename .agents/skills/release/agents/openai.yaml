@@ -1,0 +1,4 @@
+interface:
+  display_name: "发布 zentao-cli"
+  short_description: "检查变更、升级版本、更新日志并创建发布提交和 Git 标签"
+  default_prompt: "使用 $release 为 zentao-cli 准备新版本并创建发布提交与标签。"
