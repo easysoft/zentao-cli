@@ -22,7 +22,7 @@ function mockClient(handler: (req: CapturedRequest) => unknown) {
 }
 
 describe('module executor (zentao-api request pipeline)', () => {
-    test('executes list commands and applies CLI-side processing', async () => {
+    test('executes list commands and applies SDK-side processing', async () => {
         const { client, requests } = mockClient(() => ({
             status: 'success',
             products: [
@@ -54,6 +54,38 @@ describe('module executor (zentao-api request pipeline)', () => {
         expect(result.fields).toEqual(['id', 'name', 'desc']);
         expect(result.pager).toEqual({ recTotal: 2, recPerPage: 20, pageID: 1 });
         expect(result.data).toEqual([{ id: 1, name: '保留', desc: 'Hello' }]);
+    });
+
+    test('uses unified filter/search groups, legacy sort syntax, and nested pick output', async () => {
+        const { client } = mockClient(() => ({
+            status: 'success',
+            products: [
+                { id: 1, name: '产品1', status: 'active', priority: 3, owner: { name: 'admin' } },
+                { id: 2, name: '产品2', status: 'closed', priority: 1, owner: { name: 'dev1' } },
+                { id: 3, name: '项目1', status: 'active', priority: 2, owner: { name: 'admin' } },
+                { id: 4, name: '项目2', status: 'closed', priority: 5, owner: { name: 'dev2' } },
+            ],
+        }));
+
+        const result = await executeModuleCommand(
+            client,
+            getModule('product')!,
+            'list',
+            [],
+            {
+                filter: ['status:active,priority>=2', 'owner.name=dev1'],
+                search: ['产品,1', '项目1'],
+                searchFields: 'name',
+                sort: 'priority_desc',
+                pick: 'id,owner.name',
+            },
+            DEFAULT_CONFIG,
+        );
+
+        expect(result.data).toEqual([
+            { id: 1, owner: { name: 'admin' } },
+            { id: 3, owner: { name: 'admin' } },
+        ]);
     });
 
     test('executes get commands with HTML conversion and pick', async () => {
@@ -95,6 +127,28 @@ describe('module executor (zentao-api request pipeline)', () => {
         );
 
         expect(result.data).toEqual([{ id: 1, desc: '<p>Hello</p>' }]);
+    });
+
+    test('returns the original API response in raw mode without local processing', async () => {
+        const { client } = mockClient(() => ({
+            status: 'success',
+            products: [{ id: 1, status: 'active', desc: '<p>Hello</p>' }],
+        }));
+
+        const result = await executeModuleCommand(
+            client,
+            getModule('product')!,
+            'list',
+            [],
+            { format: 'raw', filter: ['status=closed'], pick: 'id' },
+            DEFAULT_CONFIG,
+        );
+
+        expect(result.data).toEqual({
+            status: 'success',
+            products: [{ id: 1, status: 'active', desc: '<p>Hello</p>' }],
+        });
+        expect(result.rawResponse).toEqual(result.data);
     });
 
     test('executes create commands and retains the normalized response', async () => {

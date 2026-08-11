@@ -26,13 +26,13 @@ export interface ModuleActionOptions extends GlobalOptions {
     /** 摘取指定字段（逗号分隔），适用于 resultType 为 object 或 list 的模块操作 */
     pick?: string;
 
-    /** 过滤条件，适用于 resultType 为 list 的模块操作 */
+    /** 过滤表达式组：组内逗号分隔条件为 AND，多个参数为 OR */
     filter?: string[];
 
-    /** 排序条件，适用于 resultType 为 list 的模块操作 */
+    /** 排序条件，推荐 field:asc|desc，兼容 field_asc|desc */
     sort?: string;
 
-    /** 搜索关键词，适用于 resultType 为 list 的模块操作 */
+    /** 搜索关键词组：组内逗号分隔关键词为 AND，多个参数为 OR */
     search?: string[];
 
     /** 搜索字段（逗号分隔），适用于 resultType 为 list 的模块操作 */

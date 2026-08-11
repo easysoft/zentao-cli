@@ -280,9 +280,9 @@ export function showModuleHelp(mod: ModuleDefinition): void {
     console.log('\n公共选项:');
     printParamEntries([
         { name: 'pick', placeholder: 'fields', description: '摘取指定字段（逗号分隔），适用于 list/get 操作' },
-        { name: 'filter', placeholder: 'expr', description: '过滤条件，格式: field=value 或 field!=value，可多次指定，适用于 list 操作' },
-        { name: 'sort', placeholder: 'expr', description: '客户端排序，格式: field_asc 或 field_desc，适用于 list 操作' },
-        { name: 'search', placeholder: 'keywords', description: '搜索关键词，可多次指定，适用于 list 操作' },
+        { name: 'filter', placeholder: 'expr', description: '过滤条件，逗号分隔条件为 AND，多次指定为 OR，适用于 list 操作' },
+        { name: 'sort', placeholder: 'expr', description: '客户端排序，格式: field:asc 或 field:desc（兼容下划线写法），适用于 list 操作' },
+        { name: 'search', placeholder: 'keywords', description: '搜索关键词，逗号分隔关键词为 AND，多次指定为 OR，适用于 list 操作' },
         { name: 'search-fields', placeholder: 'fields', description: '搜索字段（逗号分隔），配合 --search 使用，适用于 list 操作' },
         { name: 'page', placeholder: 'number', description: '页码（等同于 API 的 pageID 参数），适用于 list 操作' },
         { name: 'recPerPage', placeholder: 'number', description: '每页条数，适用于 list 操作' },
@@ -363,9 +363,9 @@ export function showModuleActionHelp(mod: ModuleDefinition, action: ModuleAction
     if (action.resultType === 'list' || action.type === 'list') {
         commonOpts.push(
             { name: 'pick', placeholder: 'fields', description: '摘取指定字段（逗号分隔），仅输出指定的字段' },
-            { name: 'filter', placeholder: 'expr', description: '过滤条件，格式: field=value 或 field!=value，可多次指定' },
-            { name: 'sort', placeholder: 'expr', description: '客户端排序，格式: field_asc 或 field_desc' },
-            { name: 'search', placeholder: 'keywords', description: '搜索关键词，可多次指定' },
+            { name: 'filter', placeholder: 'expr', description: '过滤条件，逗号分隔条件为 AND，多次指定为 OR' },
+            { name: 'sort', placeholder: 'expr', description: '客户端排序，格式: field:asc 或 field:desc（兼容下划线写法）' },
+            { name: 'search', placeholder: 'keywords', description: '搜索关键词，逗号分隔关键词为 AND，多次指定为 OR' },
             { name: 'search-fields', placeholder: 'fields', description: '搜索字段（逗号分隔），配合 --search 使用' },
             { name: 'page', placeholder: 'number', description: '页码（等同于 API 的 pageID 参数）' },
             { name: 'recPerPage', placeholder: 'number', description: '每页条数' },

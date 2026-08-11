@@ -112,8 +112,7 @@ describe('delete confirmation prompt', () => {
 });
 
 describe('handleModuleCommand raw output', () => {
-    // 重构后 raw 输出为 zentao-api 归一化后的 ResponseData（status/data/pager）。
-    test('prints normalized response for list commands', async () => {
+    test('prints original API response for list commands', async () => {
         const client = {
             request: async () => ({
                 status: 'success',
@@ -135,11 +134,11 @@ describe('handleModuleCommand raw output', () => {
 
         const parsed = JSON.parse(output[0]);
         expect(parsed.status).toBe('success');
-        expect(parsed.data).toEqual([{ id: 1, name: '产品1' }]);
-        expect(parsed.pager).toEqual({ total: 1, page: 1, recPerPage: 20 });
+        expect(parsed.products).toEqual([{ id: 1, name: '产品1' }]);
+        expect(parsed.pager).toEqual({ recTotal: 1, recPerPage: 20, pageID: 1 });
     });
 
-    test('prints normalized response for get commands', async () => {
+    test('prints original API response for get commands', async () => {
         const client = {
             request: async () => ({
                 status: 'success',
@@ -161,10 +160,11 @@ describe('handleModuleCommand raw output', () => {
 
         const parsed = JSON.parse(output[0]);
         expect(parsed.status).toBe('success');
-        expect(parsed.data).toEqual({ id: 1, realname: 'Admin' });
+        expect(parsed.user).toEqual({ id: 1, realname: 'Admin' });
+        expect(parsed.serverTime).toBe('2026-05-07T10:00:00Z');
     });
 
-    test('prints normalized response for write commands', async () => {
+    test('prints original API response for write commands', async () => {
         const client = {
             request: async () => ({ status: 'success', id: 7, message: 'created' }),
         } as unknown as ZentaoClient;
@@ -187,6 +187,7 @@ describe('handleModuleCommand raw output', () => {
 
         const parsed = JSON.parse(output[0]);
         expect(parsed.status).toBe('success');
-        expect(parsed.data.id).toBe(7);
+        expect(parsed.id).toBe(7);
+        expect(parsed.message).toBe('created');
     });
 });

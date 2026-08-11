@@ -11,9 +11,9 @@ import { renderError } from '../utils/render.js';
 export function addDataOptions(cmd: Command): Command {
     return cmd
         .option('--pick <fields>', '摘取指定字段（逗号分隔）')
-        .option('--filter <expr>', '过滤条件', collect, [])
-        .option('--sort <expr>', '排序条件')
-        .option('--search <keywords>', '搜索关键词', collect, [])
+        .option('--filter <expr>', '过滤条件（组内 AND，多次指定为 OR）', collect, [])
+        .option('--sort <expr>', '排序条件（如 pri:desc,id:asc）')
+        .option('--search <keywords>', '搜索关键词（组内 AND，多次指定为 OR）', collect, [])
         .option('--search-fields <fields>', '搜索字段（逗号分隔）')
         .option('--page <number>', '页码')
         .option('--recPerPage <number>', '每页条数')

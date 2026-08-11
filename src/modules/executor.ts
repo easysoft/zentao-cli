@@ -9,7 +9,6 @@ import type {
     ModuleDefinition,
     UserConfig,
 } from '../types/index.js';
-import { filterData, pickFields, pickFieldsSingle, searchData, sortData } from '../utils/data.js';
 import { convertHtmlFields, convertHtmlFieldsInArray } from '../utils/html.js';
 import { buildParams, normalizeActionName } from './args.js';
 import { getAction } from './helper.js';
@@ -20,7 +19,7 @@ export interface ModuleExecutionResult {
     action: ModuleAction;
     /** 经提取与本地后处理后的业务数据 */
     data: unknown;
-    /** SDK 归一化后的完整响应（供 `--format raw` 使用） */
+    /** 完整响应；raw 模式为服务端原文，其他模式为 SDK 归一化响应 */
     rawResponse: unknown;
     /** 分页信息（CLI 字段命名） */
     pager?: ListPagerInfo;
@@ -39,8 +38,8 @@ function parseFields(fields?: string): string[] | undefined {
  * 执行模块级 CRUD 或扩展操作。
  *
  * 路径解析、查询/请求体组装、update 自动补全（autoFill）与响应提取均交由
- * `zentao-api` 的 {@link request} 处理；CLI 侧仅保留 HTML→Markdown 转换与
- * 客户端过滤/搜索/排序/限制/摘取（语义与既有用法保持一致）。
+ * `zentao-api` 的 {@link request} 处理；CLI 仅提供 HTML→Markdown 转换函数
+ * 与命令行选项适配。raw 输出不做归一化或本地数据处理，保留服务端响应原文。
  */
 export async function executeModuleCommand(
     client: ZentaoClient,
@@ -57,11 +56,14 @@ export async function executeModuleCommand(
 
     const params = buildParams(options, actionName, args);
     const requestName = `${module.name}/${normalizeActionName(actionName)}`;
+    const fields = parseFields(options.pick);
+    const rawOutput = (options.format ?? config.defaultOutputFormat ?? 'markdown') === 'raw';
+    const shouldProcess = !rawOutput;
+    const processList = shouldProcess && action.type === 'list';
+    const processSingle = shouldProcess && action.type === 'get';
 
     let response;
     try {
-        // 注意：不向 request() 传递 filter/search/sort/limit/pick，
-        // 以保留 CLI 自身的数据处理语义（在下方本地后处理）。
         response = await request(requestName, params, {
             client,
             autoFill: action.type === 'update',
@@ -69,12 +71,34 @@ export async function executeModuleCommand(
             recPerPage: options.recPerPage,
             timeout: options.timeout,
             insecure: options.insecure,
+            raw: rawOutput,
+            convert: processList && config.htmlToMarkdown !== false
+                ? convertHtmlFieldsInArray
+                : undefined,
+            convertSingle: processSingle && config.htmlToMarkdown !== false
+                ? convertHtmlFields
+                : undefined,
+            filter: processList ? options.filter : undefined,
+            search: processList ? options.search : undefined,
+            searchFields: processList ? parseFields(options.searchFields) : undefined,
+            sort: processList ? options.sort : undefined,
+            limit: processList ? options.limit : undefined,
+            pick: processList || processSingle ? fields : undefined,
         });
     } catch (error) {
         throw mapSdkError(error);
     }
 
-    const fields = parseFields(options.pick);
+    if (rawOutput) {
+        return {
+            action,
+            data: response,
+            rawResponse: response,
+            fields,
+            isList: action.type === 'list',
+        };
+    }
+
     const pager: ListPagerInfo | undefined = response.pager
         ? {
             pageID: response.pager.page,
@@ -84,39 +108,12 @@ export async function executeModuleCommand(
         : undefined;
 
     if (action.type === 'list') {
-        let data = (Array.isArray(response.data) ? response.data : []) as Record<string, unknown>[];
-
-        if (config.htmlToMarkdown !== false) {
-            data = convertHtmlFieldsInArray(data);
-        }
-        if (options.filter?.length) {
-            data = filterData(data, options.filter);
-        }
-        if (options.search?.length) {
-            data = searchData(data, options.search, options.searchFields?.split(','));
-        }
-        if (options.sort) {
-            data = sortData(data, options.sort);
-        }
-        if (options.limit && Number(options.limit) < data.length) {
-            data = data.slice(0, Number(options.limit));
-        }
-        if (fields) {
-            data = pickFields(data, fields);
-        }
-
+        const data = (Array.isArray(response.data) ? response.data : []) as Record<string, unknown>[];
         return { action, data, rawResponse: response, pager, fields, isList: true };
     }
 
     if (action.type === 'get') {
-        let data = (response.data ?? {}) as Record<string, unknown>;
-        if (config.htmlToMarkdown !== false) {
-            data = convertHtmlFields(data);
-        }
-        if (fields) {
-            data = pickFieldsSingle(data, fields);
-        }
-
+        const data = (response.data ?? {}) as Record<string, unknown>;
         return { action, data, rawResponse: response, fields, isList: false };
     }
 
