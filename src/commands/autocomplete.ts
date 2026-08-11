@@ -54,7 +54,11 @@ _${command}_completion() {
       COMPREPLY=( $(compgen -W "bash zsh fish" -- "\${cur}") )
       ;;
     add-skill)
-      COMPREPLY=( $(compgen -W "claude-code cursor codex opencode vscode all" -- "\${cur}") )
+      if [[ "\${prev}" == "--output" || "\${prev}" == "-o" ]]; then
+        COMPREPLY=( $(compgen -d -- "\${cur}") )
+      else
+        COMPREPLY=( $(compgen -W "claude-code cursor cherry-studio codex opencode vscode antigravity gemini all --output -o" -- "\${cur}") )
+      fi
       ;;
     add-mcp)
       COMPREPLY=( $(compgen -W "cursor claude-desktop claude-code windsurf cline trae vscode cherry-studio opencode codex all" -- "\${cur}") )
@@ -103,7 +107,9 @@ _${command}() {
       _values 'shell' 'bash' 'zsh' 'fish'
       ;;
     add-skill)
-      _values 'agent' 'claude-code' 'cursor' 'codex' 'opencode' 'vscode' 'all'
+      _arguments \\
+        '(-o --output)'{-o,--output}'[将所有内置技能导出到指定目录]:目录:_files -/' \\
+        '1:agent:(claude-code cursor cherry-studio codex opencode vscode antigravity gemini all)'
       ;;
     add-mcp)
       _values 'agent' 'cursor' 'claude-desktop' 'claude-code' 'windsurf' 'cline' 'trae' 'vscode' 'cherry-studio' 'opencode' 'codex' 'all'
@@ -131,7 +137,8 @@ complete -c ${command} -n "__fish_use_subcommand" -a "$__${command}_cmds"
 complete -c ${command} -n "__fish_seen_subcommand_from config" -a "${CONFIG_SUBCOMMANDS.join(' ')}"
 complete -c ${command} -n "__fish_seen_subcommand_from workspace" -a "${WORKSPACE_SUBCOMMANDS.join(' ')}"
 complete -c ${command} -n "__fish_seen_subcommand_from autocomplete" -a "bash zsh fish"
-complete -c ${command} -n "__fish_seen_subcommand_from add-skill" -a "claude-code cursor codex opencode vscode all"
+complete -c ${command} -n "__fish_seen_subcommand_from add-skill" -a "claude-code cursor cherry-studio codex opencode vscode antigravity gemini all"
+complete -c ${command} -n "__fish_seen_subcommand_from add-skill" -s o -l output -r -d "将所有内置技能导出到指定目录"
 complete -c ${command} -n "__fish_seen_subcommand_from add-mcp" -a "cursor claude-desktop claude-code windsurf cline trae vscode cherry-studio opencode codex all"
 complete -c ${command} -n "__fish_seen_subcommand_from ls get create update delete do; and test (count (commandline -opc)) -eq 2" -a "$__${command}_mods"
 `;

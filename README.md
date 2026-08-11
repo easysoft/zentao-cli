@@ -164,6 +164,9 @@ $ zentao add-skill
 
 # 安装技能到 Claude Code
 $ zentao add-skill claude-code
+
+# 将所有内置技能导出到指定目录
+$ zentao add-skill --output ./skills
 ```
 
 如果还未安装 zentao-cli，可以通过下面的命令，一键安装、登录和配置 Skill：

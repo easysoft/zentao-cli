@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createInterface } from 'node:readline';
 import type { GlobalOptions } from '../types/index.js';
@@ -9,6 +9,10 @@ import type { GlobalOptions } from '../types/index.js';
 interface AgentTarget {
     label: string;
     dir: string;
+}
+
+interface AddSkillOptions {
+    output?: string;
 }
 
 const SKILL_NAMES = ['zentao-cli', 'zentao-tour'] as const;
@@ -94,7 +98,24 @@ function resolveAgents(agent: string): string[] {
     );
 }
 
+function assertDestinationOutsideSource(srcDir: string, destDir: string): void {
+    const relativeDestination = relative(resolve(srcDir), resolve(destDir));
+    const parentPrefix = '..' + sep;
+    const destinationIsWithinSource = relativeDestination === ''
+        || (!isAbsolute(relativeDestination)
+            && relativeDestination !== '..'
+            && !relativeDestination.startsWith(parentPrefix));
+    if (destinationIsWithinSource) {
+        throw new Error('技能目标路径不能是技能源目录或其子目录: ' + destDir);
+    }
+}
+
 function copySkillDir(srcDir: string, destDir: string): void {
+    assertDestinationOutsideSource(srcDir, destDir);
+
+    if (existsSync(destDir) && !statSync(destDir).isDirectory()) {
+        throw new Error(`技能目标路径必须是目录: ${destDir}`);
+    }
     mkdirSync(destDir, { recursive: true });
     for (const entry of readdirSync(srcDir)) {
         const srcPath = join(srcDir, entry);
@@ -105,6 +126,24 @@ function copySkillDir(srcDir: string, destDir: string): void {
             writeFileSync(destPath, readFileSync(srcPath));
         }
     }
+}
+
+function resolveOutputDir(output: string): string {
+    const trimmed = output.trim();
+    if (!trimmed) {
+        throw new Error('导出路径不能为空');
+    }
+
+    const expanded = trimmed === '~'
+        ? homedir()
+        : trimmed.replace(/^~[\\/]/, `${homedir()}/`);
+    const outputDir = resolve(expanded);
+
+    if (existsSync(outputDir) && !statSync(outputDir).isDirectory()) {
+        throw new Error(`导出路径必须是目录: ${outputDir}`);
+    }
+
+    return outputDir;
 }
 
 function installSkill(agent: string, skillName: string, silent: boolean): void {
@@ -119,17 +158,47 @@ function installSkill(agent: string, skillName: string, silent: boolean): void {
     }
 }
 
+function exportSkills(output: string, silent: boolean): void {
+    const outputDir = resolveOutputDir(output);
+    const skills = SKILL_NAMES.map((skillName) => ({
+        skillName,
+        sourcePath: resolveSkillSource(skillName),
+        destDir: join(outputDir, skillName),
+    }));
+
+    for (const { sourcePath, destDir } of skills) {
+        assertDestinationOutsideSource(sourcePath, destDir);
+    }
+
+    for (const { skillName, sourcePath, destDir } of skills) {
+        copySkillDir(sourcePath, destDir);
+
+        if (!silent) {
+            console.log(`已导出 ${skillName} 技能到: ${tildeDisplay(destDir)}`);
+        }
+    }
+}
+
 /** 注册 `zentao add-skill`：安装禅道 CLI 技能到 AI Agent */
 export function registerAddSkillCommand(program: Command): void {
     program
         .command('add-skill')
-        .description('安装禅道 CLI 技能到 AI Agent')
+        .description('安装禅道 CLI 技能到 AI Agent，或导出至指定目录')
         .argument('[agent]', `目标 Agent (${AGENT_NAMES.join('|')}|all)`)
-        .action(async (agent?: string) => {
+        .option('-o, --output <path>', '将所有内置技能导出到指定目录')
+        .action(async (agent?: string, options: AddSkillOptions = {}) => {
             const globalOpts = program.opts() as GlobalOptions;
             const silent = !!globalOpts.silent;
 
             try {
+                if (options.output !== undefined) {
+                    if (agent) {
+                        throw new Error('不能同时指定 agent 和 --output；导出技能请使用: zentao add-skill --output <path>');
+                    }
+                    exportSkills(options.output, silent);
+                    return;
+                }
+
                 const agents = agent ? resolveAgents(agent) : await promptAgentSelection();
 
                 for (const a of agents) {

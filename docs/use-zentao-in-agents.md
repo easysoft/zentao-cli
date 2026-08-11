@@ -55,6 +55,16 @@ $ zentao add-skill
 请输入编号 (1-9):9
 ```
 
+如果需要将技能用于其他支持 Skills 的工具，也可以将所有内置技能导出到指定目录：
+
+```sh
+$ zentao add-skill --output ./skills
+
+# 将生成：
+# ./skills/zentao-cli/
+# ./skills/zentao-tour/
+```
+
 ## 账号登录
 
 安装完成后，需要进行一次登录，目前有如下方式：
