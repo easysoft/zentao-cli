@@ -1,4 +1,5 @@
 import type { ZentaoClient } from '../api/index.js';
+import { getModuleActionParams } from 'zentao-api';
 import type { ModuleDefinition, ModuleAction, ModuleActionType, Profile, ModuleActionName, UserConfig } from '../types/index.js';
 import { findAction, getAction, getAvailableActions } from '../modules/helper.js';
 import { buildParams } from '../modules/args.js';
@@ -294,7 +295,7 @@ export function showModuleHelp(mod: ModuleDefinition): void {
  * 打印模块级扩展操作帮助（与 `zentao <module> <action> help` 对应
  * 输出操作标题和参数，每个参数描述尽量详细，确保用户能够凭借说明进行操作而不会出错，其中参数包括两部分：
  *
- * 1. 根据 action 中的 params、pathParams 和 requestBody 定义生成 API 参数名称
+ * 1. 通过 zentao-api 的 getModuleActionParams 生成 API 参数名称
  * 2. ModuleActionOptions 中定义的公共参数，需要注意的是根据操作类型不同，有些选项可能不适用
  */
 export function showModuleActionHelp(mod: ModuleDefinition, action: ModuleAction): void {
@@ -303,66 +304,23 @@ export function showModuleActionHelp(mod: ModuleDefinition, action: ModuleAction
         console.log(`描述: ${action.description}`);
     }
 
-    const apiParams: ParamEntry[] = [];
-
-    if (action.pathParams) {
-        for (const [key, def] of Object.entries(action.pathParams)) {
-            if (key === 'scope' || key === 'scopeID') continue;
-            if (key.endsWith('ID')) {
-                apiParams.push({
-                    name: 'id',
-                    placeholder: 'number',
-                    description: typeof def === 'string' ? def : def.description ?? `${mod.display ?? mod.name} ID`,
-                    required: true,
-                });
-                continue;
-            }
-            const isObj = typeof def === 'object';
-            apiParams.push({
-                name: key,
-                placeholder: typePlaceholder(isObj && def.type ? def.type : 'string'),
-                description: typeof def === 'string' ? def : def.description ?? key,
-                required: isObj ? def.required : undefined,
-                defaultValue: isObj ? def.defaultValue : undefined,
-                options: isObj ? def.options : undefined,
-            });
-        }
-    }
-
-    if (action.params?.length) {
-        for (const param of action.params) {
-            apiParams.push({
-                name: param.name,
-                placeholder: typePlaceholder(param.type ?? 'string'),
-                description: param.description ?? param.name,
+    const actionParams = getModuleActionParams(mod.name, action.name);
+    const apiParams: ParamEntry[] = actionParams
+        .filter((param) => param.name !== 'scope' && param.name !== 'scopeID')
+        .map((param) => {
+            const isObjectId = param.role === 'path' && param.name.endsWith('ID');
+            return {
+                name: isObjectId ? 'id' : param.name,
+                placeholder: isObjectId ? 'number' : getParamPlaceholder(param),
+                description: param.description ?? (isObjectId ? `${mod.display ?? mod.name} ID` : param.name),
                 required: param.required,
                 defaultValue: param.defaultValue,
                 options: param.options,
-            });
-        }
-    }
-
-    if (action.requestBody?.schema) {
-        const schema = action.requestBody.schema as {
-            properties?: Record<string, { type?: string; description?: string; items?: { type?: string }; format?: string; defaultValue?: unknown }>;
-            required?: string[];
-        };
-        if (schema.properties) {
-            const requiredSet = new Set(schema.required ?? []);
-            for (const [key, prop] of Object.entries(schema.properties)) {
-                apiParams.push({
-                    name: key,
-                    placeholder: typePlaceholder(prop.type ?? 'string', prop.items?.type),
-                    description: prop.description ?? key,
-                    required: requiredSet.has(key),
-                    defaultValue: prop.defaultValue,
-                });
-            }
-        }
-    }
+            };
+        });
 
     const needsBody = action.type === 'create' || action.type === 'update' || action.type === 'action';
-    if (needsBody) {
+    if (needsBody && !actionParams.some((param) => param.role === 'body' && param.name === 'data')) {
         apiParams.push({ name: 'data', placeholder: 'json', description: '请求数据（完整 JSON 对象），可替代以上逐个字段传参' });
     }
     apiParams.push({ name: 'params', placeholder: 'json', description: 'API 调用参数（JSON 对象），可替代以上逐个 --key=value 传参' });
@@ -373,11 +331,11 @@ export function showModuleActionHelp(mod: ModuleDefinition, action: ModuleAction
         printParamEntries(apiParams);
     }
 
-    if (action.pathParams && ('scope' in action.pathParams)) {
-        const scopeDef = action.pathParams.scope;
+    const scopeParam = actionParams.find((param) => param.role === 'path' && param.name === 'scope');
+    if (scopeParam) {
         const contextEntries: ParamEntry[] = [];
-        if (typeof scopeDef === 'object' && scopeDef.options) {
-            for (const opt of scopeDef.options) {
+        if (scopeParam.options) {
+            for (const opt of scopeParam.options) {
                 const name = String(opt.value).replace(/s$/, '');
                 contextEntries.push({ name, placeholder: 'id', description: `按${opt.label}范围筛选，值为${opt.label} ID` });
             }
@@ -459,6 +417,10 @@ function typePlaceholder(type: string, itemsType?: string): string | undefined {
     if (type === 'boolean') return undefined;
     if (type === 'array') return itemsType ? `${itemsType}[]` : 'array';
     return 'string';
+}
+
+function getParamPlaceholder(param: { type?: string; items?: { type?: string } }): string | undefined {
+    return typePlaceholder(param.type ?? 'string', param.items?.type);
 }
 
 function printParamEntries(params: ParamEntry[]): void {
