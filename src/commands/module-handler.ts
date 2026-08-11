@@ -302,7 +302,6 @@ export function showModuleActionHelp(mod: ModuleDefinition, action: ModuleAction
     if (action.description && action.description !== action.display) {
         console.log(`描述: ${action.description}`);
     }
-    console.log(`HTTP: ${(action.method ?? 'GET').toUpperCase()} ${action.path}`);
 
     const apiParams: ParamEntry[] = [];
 
