@@ -58,6 +58,7 @@ zentao login -s https://zentao.example.com -u admin -p 123456
 |------|------|
 | 列表 | `zentao <module>` |
 | 详情 | `zentao <module> <id>` |
+| 属性定义 | `zentao <module> props` |
 | 创建 | `zentao <module> create --field=value` |
 | 更新 | `zentao <module> update <id> --field=value` |
 | 删除 | `zentao <module> delete <id>` |
@@ -134,6 +135,14 @@ zentao bug delete 1 --yes
 zentao product --pick=id,name           # 查看产品列表
 zentao bug --product=1 --pick=id,title  # 查看 Bug 列表
 zentao bug 42                           # 查看具体 Bug
+```
+
+### 不确定对象字段时
+
+先查询模块对应对象的属性定义，再按需摘取或传入字段：
+
+```bash
+zentao bug props --format=json
 ```
 
 ### 写操作前确认

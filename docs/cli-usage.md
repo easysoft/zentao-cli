@@ -94,6 +94,7 @@ $ ZENTAO_CONFIG_FILE=~/work/zt.json zentao product
 
 * `zentao <moduleName>`：获取对象列表
 * `zentao <moduleName> <objectID>`：获取单个对象
+* `zentao <moduleName> props`：获取对象属性定义
 * `zentao <moduleName> delete <objectID>`：删除对象
 * `zentao <moduleName> create [params]`：创建对象
 * `zentao <moduleName> update <objectID> [params]`：更新对象
@@ -161,6 +162,29 @@ $ zentao ls product --format=json
 ```
 
 </details>
+
+### 获取禅道对象属性定义
+
+使用 `zentao <moduleName> props` 获取模块对应对象的属性名及中文说明。属性定义来自本地 `zentao-api` 注册表，不会连接禅道服务，也不要求登录。
+
+```bash
+$ zentao product props
+
+* id: 编号
+* program: 所属项目集
+* name: 产品名称
+* code: 产品代号
+* ...
+
+$ zentao product props --format=json
+
+{
+    "id": "编号",
+    "program": "所属项目集",
+    "name": "产品名称",
+    "code": "产品代号"
+}
+```
 
 ### 获取禅道单个对象
 

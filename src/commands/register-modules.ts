@@ -2,7 +2,7 @@ import { Command } from 'commander';
 import { getModuleNames, getModule } from '../modules/index.js';
 import { findAction, getAvailableActions } from '../modules/helper.js';
 import { ensureAuth } from '../auth/flow.js';
-import { handleModuleCommand, showModuleActionHelp, showModuleHelp } from './module-handler.js';
+import { handleModuleCommand, showModuleActionHelp, showModuleHelp, showModuleProps } from './module-handler.js';
 import { ZentaoError } from '../errors.js';
 import type { GlobalOptions, ModuleActionName, ModuleActionOptions, ModuleActionType } from '../types/index.js';
 import { renderError } from '../utils/render.js';
@@ -102,6 +102,12 @@ export function registerModuleCommands(program: Command): void {
                         return;
                     }
                     showModuleHelp(mod);
+                    return;
+                }
+
+                // 属性定义来自本地 SDK 注册表，无需连接禅道或执行鉴权。
+                if (args[0] === 'props') {
+                    showModuleProps(mod, options);
                     return;
                 }
 

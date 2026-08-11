@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test';
-import { getModule, getModuleNames, isModuleName, getAllModules } from '../src/modules';
+import { getModule, getModuleNames, isModuleName, getAllModules, getObjectProps } from '../src/modules';
 import { findAction, getAvailableActions, getAction } from '../src/modules';
 import { buildParams } from '../src/modules/args';
 
@@ -34,6 +34,18 @@ describe('module registry (zentao-api)', () => {
 
     test('getModule returns undefined for unknown module', () => {
         expect(getModule('nonexistent')).toBeUndefined();
+    });
+
+    test('getObjectProps returns definitions for a module object', () => {
+        const props = getObjectProps('product');
+        expect(props.id).toBe('编号');
+        expect(props.name).toBe('产品名称');
+    });
+
+    test('every registered module has object property definitions', () => {
+        for (const name of getModuleNames()) {
+            expect(Object.keys(getObjectProps(name)).length).toBeGreaterThan(0);
+        }
     });
 
     test('isModuleName identifies valid modules', () => {

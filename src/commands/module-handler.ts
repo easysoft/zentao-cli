@@ -1,11 +1,11 @@
 import type { ZentaoClient } from '../api/index.js';
 import { getModuleActionParams } from 'zentao-api';
 import type { ModuleDefinition, ModuleAction, ModuleActionType, Profile, ModuleActionName, UserConfig } from '../types/index.js';
-import { findAction, getAction, getAvailableActions } from '../modules/helper.js';
+import { findAction, getAction, getAvailableActions, getObjectProps } from '../modules/helper.js';
 import { buildParams } from '../modules/args.js';
 import { executeModuleCommand } from '../modules/executor.js';
 import { getProfileConfig } from '../config/store.js';
-import { formatOutput } from '../utils/format.js';
+import { formatJson, formatOutput } from '../utils/format.js';
 import type { ModuleActionOptions } from '../types/index.js';
 import { createInterface } from 'node:readline';
 import { renderError, renderObject } from '../utils/render.js';
@@ -108,6 +108,16 @@ async function renderModuleExecution(
     if (output) console.log(output);
 }
 
+/** 输出模块对应对象的属性定义（与 `zentao <module> props` 对应） */
+export function showModuleProps(mod: ModuleDefinition, options: ModuleActionOptions): void {
+    if (options.silent) return;
+
+    const props = getObjectProps(mod.name);
+    const format = options.format ?? 'markdown';
+    const output = format === 'markdown' ? renderObject(props, format) : formatJson(props);
+    if (output) console.log(output);
+}
+
 
 /**
  * 执行模块级 CRUD 或扩展操作：负责拼路径、分页拉取、客户端过滤/排序、HTML 转 Markdown 及格式化输出。
@@ -201,6 +211,7 @@ export function showModuleHelp(mod: ModuleDefinition): void {
     if (getAction) {
         cmds.push({ cmd: `zentao ${n} <id> [选项]`, desc: getAction.display ?? '获取详情' });
     }
+    cmds.push({ cmd: `zentao ${n} props [选项]`, desc: '获取对象属性定义' });
     const createAction = findAction(mod, 'create');
     if (createAction) {
         cmds.push({ cmd: `zentao ${n} create [--key=value ...]`, desc: createAction.display ?? '创建' });

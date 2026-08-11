@@ -1,6 +1,7 @@
 import {
     getModule as sdkGetModule,
     getModuleNames as sdkGetModuleNames,
+    getObjectProps as sdkGetObjectProps,
 } from 'zentao-api';
 import type { ModuleDefinition, ModuleAction, ModuleActionType } from '../types/index.js';
 
@@ -30,6 +31,11 @@ export function getAllModules(): ModuleDefinition[] {
     return sdkGetModuleNames()
         .map((name) => sdkGetModule(name))
         .filter((mod): mod is ModuleDefinition => mod !== undefined);
+}
+
+/** 返回模块对应对象的属性名及中文说明 */
+export function getObjectProps(moduleName: string): Record<string, string> {
+    return sdkGetObjectProps(moduleName) ?? {};
 }
 
 const ACTION_NAME_ALIASES: Record<string, string> = {
