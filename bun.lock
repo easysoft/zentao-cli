@@ -8,8 +8,8 @@
         "@modelcontextprotocol/sdk": "^1.29.0",
         "commander": "^13.0.0",
         "configstore": "^7.0.0",
-        "dot-prop": "^9.0.0",
         "turndown": "^7.2.0",
+        "zentao-api": "^0.5.1",
         "zod": "^4.3.6",
       },
       "devDependencies": {
@@ -233,6 +233,8 @@
     "wrappy": ["wrappy@1.0.2", "", {}, "sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ=="],
 
     "xdg-basedir": ["xdg-basedir@5.1.0", "", {}, "sha512-GCPAHLvrIH13+c0SuacwvRYj2SxJXQ4kaVTT5xgL3kPrz56XxkF21IGhjSE1+W0aw7gpBWRGXLCPnPby6lSpmQ=="],
+
+    "zentao-api": ["zentao-api@0.5.1", "", {}, "sha512-cvg/spj97st3ax2Vu9JwTbQhMHAex4gmG1xpCfTLpxbmjCFezAiNkTiZh/BqpDnsrcT1WCQpxDdWO/s3vMDPMg=="],
 
     "zod": ["zod@4.3.6", "", {}, "sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg=="],
 
