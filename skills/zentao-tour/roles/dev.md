@@ -53,7 +53,7 @@ zentao task finish <id> --consumed=<实际小时>
 > "开发视角最常打的另一个交道就是 Bug。我们看看有没有分给你的。"
 
 ```bash
-zentao bug --product=<产品ID> --filter='assignedTo:<当前账号>,status:active' --pick=id,title,severity,pri
+zentao bug --product=<产品ID> --filter='assignedTo=<当前账号>,status=active' --pick=id,title,severity,pri
 ```
 
 挑一条看详情 `zentao bug <id>`，聊两句可能的原因，然后：
@@ -81,7 +81,7 @@ zentao bug resolve <id> --resolution=fixed
 | 改预估 | `zentao task update <id> --estimate=<小时>` |
 | 开干 | `zentao task start <id>` |
 | 交工 | `zentao task finish <id> --consumed=<小时>` |
-| 看我的 Bug | `zentao bug --product=<id> --filter='assignedTo:<账号>,status:active'` |
+| 看我的 Bug | `zentao bug --product=<id> --filter='assignedTo=<账号>,status=active'` |
 | 解决 Bug | `zentao bug resolve <id> --resolution=fixed` |
 
 > 本视角偏轻量，欢迎结合 Git / Build 联动等真实研发流程继续丰富。

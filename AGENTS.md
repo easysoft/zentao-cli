@@ -31,8 +31,8 @@ rendering, help, config/workspace, auth flow).
 - `src/modules/helper.ts` — Thin wrappers over the SDK registry accessors plus
   action lookup helpers (`getModule`, `getAllModules`, `findAction`, `getAction`).
 - `src/modules/args.ts` — Parses CLI argv/options into an SDK `request()` params object.
-- `src/modules/executor.ts` — Calls SDK `request()` (autoFill/throwOnFail), then
-  applies CLI-side HTML→Markdown and client filter/search/sort/limit/pick.
+- `src/modules/executor.ts` — Calls SDK `request()` (autoFill/throwOnFail) and
+  passes unified list/single processing options; CLI supplies HTML→Markdown converters.
 - `src/errors.ts` — CLI `ZentaoError`/`formatError` plus `mapSdkError` to map SDK
   errors (string codes) to CLI E-codes (Chinese messages).
 - `src/api/index.ts` — Re-exports the SDK `ZentaoClient` and adds `createClient`

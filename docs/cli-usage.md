@@ -526,7 +526,7 @@ $ zentao product --format=raw
 
 ### 摘取给定属性
 
-支持通过 `--pick=<field1>,<field2>,...` 参数指定需要输出的字段。多个字段用逗号分隔，支持通过 `.` 访问子字段。
+支持通过 `--pick=<field1>,<field2>,...` 参数指定需要输出的字段。多个字段用逗号分隔，支持通过 `.` 访问子字段；JSON 输出会保留嵌套对象结构，不存在的字段路径会被忽略。
 
 ```bash
 # 获取禅道产品信息，并摘取产品名称和 ID
@@ -542,13 +542,14 @@ $ zentao product --pick=id,name
 
 ### 过滤数据
 
-支持通过 `--filter=<field1><operator><value>,<field2><operator><value>,...` 参数指定过滤条件。多个条件用逗号分隔，字段名支持通过 `.` 访问子字段。当参数值中包含逗号时，需要使用引号包裹。
+支持通过 `--filter=<field1><operator><value>,<field2><operator><value>,...` 参数指定过滤条件。多个条件用逗号分隔，字段名支持通过 `.` 访问子字段。当参数值中包含逗号时，需要使用引号包裹；`[a,b]` 数组值中的逗号不会被拆分。
 
 在同一个 `--filter` 参数内使用逗号分隔多个条件时，会按 AND 逻辑进行过滤。如果需要 OR 逻辑，则可使用多个 `--filter` 参数。
 
 支持的运算符：
 
-* `:` 等于
+* `=` 等于（推荐）
+* `:` 等于（兼容旧写法）
 * `!=` 不等于
 * `>` 大于
 * `<` 小于
@@ -571,7 +572,7 @@ $ zentao product --filter 'name~产品'
 已显示 2 项，共 2 项，当前第 1 页，每页 100 条
 
 # 获取禅道产品信息，并过滤名称包含 "产品" 或名称为 "项目1" 的产品
-$ zentao product --filter 'name~产品' --filter 'name:项目1'
+$ zentao product --filter 'name~产品' --filter 'name=项目1'
 
 | id | name | ... |
 | --- | --- | --- |
@@ -583,16 +584,14 @@ $ zentao product --filter 'name~产品' --filter 'name:项目1'
 已显示 4 项，共 4 项，当前第 1 页，每页 100 条
 
 # 当参数值中包含逗号时，需要使用引号包裹，例如：
-$ zentao product --filter 'name~"产品1,产品2"'
+$ zentao product --filter 'name="产品1,产品2"'
 
 # 输出略
 ```
 
 ### 模糊搜索
 
-当输出结果为列表时，支持通过 `--search=<keyword>,<keyword>,...` 参数进行模糊搜索。多个关键词使用逗号分隔；通过 `--search-fields=<field1>,<field2>,...` 指定搜索字段，多个字段用逗号分隔，并支持通过 `.` 访问子字段。
-
-如果需要 OR 逻辑，则可以使用多个 `--search` 参数。
+当输出结果为列表时，支持通过 `--search=<keyword>,<keyword>,...` 参数进行大小写不敏感的模糊搜索。同一参数内多个关键词使用逗号分隔并按 AND 匹配；多个 `--search` 参数之间按 OR 匹配。通过 `--search-fields=<field1>,<field2>,...` 指定搜索字段，多个字段用逗号分隔并支持通过 `.` 访问子字段；未指定字段时会递归搜索嵌套对象和数组中的值。
 
 ```bash
 # 获取禅道产品信息，并搜索名称或描述中包含 "产品" 的产品
@@ -618,11 +617,11 @@ $ zentao product --search=产品1 --search=产品2
 
 ### 排序数据
 
-支持通过 `--sort=<field1>_asc,<field2>_desc,...` 参数指定排序条件。多个排序条件用逗号分隔，字段名支持通过 `.` 访问子字段。
+支持通过 `--sort=<field1>:asc,<field2>:desc,...` 参数指定排序条件。多个排序条件用逗号分隔，字段名支持通过 `.` 访问子字段；同时兼容原有的 `<field>_asc`、`<field>_desc` 写法。
 
 ```bash
 # 获取禅道产品信息，并按产品名称排序
-$ zentao ls product --sort=name_asc
+$ zentao ls product --sort=name:asc
 
 | id | name |
 | --- | --- |
@@ -639,7 +638,7 @@ $ zentao ls product --sort=name_asc
 * `--page=<pageNumber>`：指定页码，默认值为 1
 * `--recPerPage=<recPerPage>`：指定分页大小，默认值为 20
 * `--all`：获取全部数据，不分页
-* `--limit=<number>`：指定获取数据的数量
+* `--limit=<number>`：指定获取数据的数量；仅非负有限数值生效，小数向下取整
 
 ```bash
 # 获取禅道产品信息，并分页获取

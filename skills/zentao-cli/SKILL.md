@@ -164,23 +164,24 @@ zentao product --pick=id,name,status
 ### 过滤
 
 ```bash
-zentao bug --product=1 --filter='status:active'
+zentao bug --product=1 --filter='status=active'
 zentao bug --product=1 --filter='severity<=2,pri<=2'    # AND
-zentao bug --product=1 --filter='status:active' --filter='status:resolved'  # OR
+zentao bug --product=1 --filter='status=active' --filter='status=resolved'  # OR
 ```
 
-支持的运算符：`:` 等于、`!=` 不等于、`>` `<` `>=` `<=`、`~` 包含、`!~` 不包含。
+支持的运算符：`=` 等于（推荐）、`:` 等于（兼容）、`!=` 不等于、`>` `<` `>=` `<=`、`~` 包含、`!~` 不包含。
 
 ### 模糊搜索
 
 ```bash
 zentao bug --product=1 --search=登录 --search-fields=title,steps
+zentao bug --product=1 --search=登录,失败 --search=注册,超时  # 组内 AND，组间 OR
 ```
 
 ### 排序
 
 ```bash
-zentao bug --product=1 --sort=pri_asc,severity_asc
+zentao bug --product=1 --sort=pri:asc,severity:asc
 ```
 
 ### 分页

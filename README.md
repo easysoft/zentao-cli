@@ -114,13 +114,13 @@ zentao task create --name=实现登录功能 --execution=10
 zentao product --pick=id,name
 
 # 按条件过滤
-zentao bug --filter 'status:active'
+zentao bug --filter 'status=active'
 
 # 模糊搜索
 zentao story --search=登录 --search-fields=title
 
 # 按字段排序
-zentao bug --sort=id_desc
+zentao bug --sort=id:desc
 
 # JSON 格式输出（适合程序处理）
 zentao product --format=json
