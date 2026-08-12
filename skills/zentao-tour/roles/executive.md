@@ -22,17 +22,17 @@
 ## 如果他关心项目节奏
 
 ```bash
-zentao project --filter='status:doing' --pick=id,name,begin,end,progress
+zentao project --browseType=doing --pick=id,name,begin,end,progress
 ```
 
 让他扫一眼，问："有没有哪条看着不对劲？进度慢的、日期要到的？"——挑出一个深入看：
 
 ```bash
-zentao execution --project=<id> --pick=id,name,status
-zentao task --execution=<执行ID> --pick=id,status --format=json
+zentao execution --status=all --filter='project=<id>' --pick=id,name,status --page=<页码> --recPerPage=100
+zentao task --executionID=<执行ID> --status=all --pick=id,status --page=<页码> --recPerPage=100 --format=json
 ```
 
-后一条可以本地聚合一下"wait/doing/done 各多少"，用一句话汇报给用户。
+执行列表没有项目作用域，所以用 `--filter` 在当前页本地筛选；必须扫完全局执行列表的每一页，才能收集某项目的全部执行 ID。再对每个执行按任务 pager 逐页读取，本地聚合"wait/doing/done 各多少"，用一句话汇报给用户。
 
 ## 如果他关心产品健康度
 
@@ -43,16 +43,16 @@ zentao product --pick=id,name,status
 挑他在意的那个产品：
 
 ```bash
-zentao story --product=<id> --pick=id,pri,stage --format=json
-zentao bug --product=<id> --pick=id,severity,pri,status --format=json
+zentao story --product=<id> --browseType=allstory --pick=id,pri,stage,plan --page=<页码> --recPerPage=100 --format=json
+zentao bug --product=<id> --browseType=all --pick=id,severity,pri,status --page=<页码> --recPerPage=100 --format=json
 ```
 
-把 JSON 结果做个简单统计（高优先级未处理需求数、严重 Bug 数），用两句话告诉用户："《XXX》当前有 N 条高优需求还没排期，严重 Bug M 条——主要堆在这几个 severity 上。"
+根据 pager 逐页读完再做简单统计（高优先级未处理需求数、严重 Bug 数），用两句话告诉用户："《XXX》当前有 N 条高优需求还没排期，严重 Bug M 条——主要堆在这几个 severity 上。"
 
 ## 如果他关心发布与版本
 
 ```bash
-zentao release --product=<id> --pick=id,name,date,status
+zentao release --productID=<id> --pick=id,name,date,status
 zentao build --project=<projectID> --pick=id,name,date
 ```
 
@@ -61,8 +61,8 @@ zentao build --project=<projectID> --pick=id,name,date
 ## 如果他关心团队声音
 
 ```bash
-zentao feedback --product=<id> --pick=id,title,status,pri
-zentao ticket --product=<id> --pick=id,title,status,pri
+zentao feedback --productID=<id> --browseType=all --pick=id,title,status,pri
+zentao ticket --productID=<id> --browseType=all --pick=id,title,status,pri
 ```
 
 扫一下高频类别或未处理量，用一两句汇报热点。
@@ -84,14 +84,14 @@ zentao ticket --product=<id> --pick=id,title,status,pri
 
 | 关注点 | 命令 |
 |--------|------|
-| 进行中的项目 | `zentao project --filter='status:doing' --pick=id,name,progress,begin,end` |
-| 项目下的执行 | `zentao execution --project=<id> --pick=id,name,status`|
-| 任务状态聚合 | `zentao task --execution=<id> --pick=status --format=json` |
-| 产品下需求概览 | `zentao story --product=<id> --pick=id,pri,stage --format=json` |
-| 产品下 Bug 概览 | `zentao bug --product=<id> --pick=id,severity,pri,status --format=json` |
-| 即将 / 最近发布 | `zentao release --product=<id> --pick=id,name,date,status` |
+| 进行中的项目 | `zentao project --browseType=doing --pick=id,name,progress,begin,end` |
+| 项目下的执行 | `zentao execution --status=all --filter='project=<id>' --pick=id,name,status --page=<页码> --recPerPage=100`|
+| 任务状态聚合 | `zentao task --executionID=<id> --status=all --pick=status --page=<页码> --recPerPage=100 --format=json` |
+| 产品下需求概览 | `zentao story --product=<id> --browseType=allstory --pick=id,pri,stage,plan --page=<页码> --recPerPage=100 --format=json` |
+| 产品下 Bug 概览 | `zentao bug --product=<id> --browseType=all --pick=id,severity,pri,status --page=<页码> --recPerPage=100 --format=json` |
+| 即将 / 最近发布 | `zentao release --productID=<id> --pick=id,name,date,status` |
 | 版本 | `zentao build --project=<id> --pick=id,name,date` |
-| 用户反馈 | `zentao feedback --product=<id> --pick=id,title,status,pri` |
-| 工单 | `zentao ticket --product=<id> --pick=id,title,status,pri` |
+| 用户反馈 | `zentao feedback --productID=<id> --browseType=all --pick=id,title,status,pri` |
+| 工单 | `zentao ticket --productID=<id> --browseType=all --pick=id,title,status,pri` |
 
 > 本视角完全只读，不要触发任何 create / update / delete。

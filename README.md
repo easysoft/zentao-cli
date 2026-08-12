@@ -88,7 +88,7 @@ zentao product delete 1
 
 ```bash
 # 查看 Bug 列表
-zentao bug
+zentao bug --product=1
 
 # 查看 Bug 详情
 zentao bug 329
@@ -101,10 +101,10 @@ zentao bug resolve 329 --resolution=fixed
 
 ```bash
 # 查看需求列表
-zentao story
+zentao story --product=1
 
 # 创建任务
-zentao task create --name=实现登录功能 --execution=10
+zentao task create --name=实现登录功能 --executionID=10
 ```
 
 ### 数据筛选与搜索
@@ -114,13 +114,13 @@ zentao task create --name=实现登录功能 --execution=10
 zentao product --pick=id,name
 
 # 按条件过滤
-zentao bug --filter 'status=active'
+zentao bug --product=1 --filter 'status=active'
 
 # 模糊搜索
-zentao story --search=登录 --search-fields=title
+zentao story --product=1 --search=登录 --search-fields=title
 
 # 按字段排序
-zentao bug --sort=id:desc
+zentao bug --product=1 --sort=id:desc
 
 # JSON 格式输出（适合程序处理）
 zentao product --format=json
@@ -133,7 +133,7 @@ zentao product --format=json
 zentao help
 
 # 查看指定模块的帮助（可用操作与参数）
-zentao bug help
+zentao bug --help
 ```
 
 更多功能（环境变量、账户切换、批量操作、管道输入、分页控制等）请参考 [CLI 核心功能详解](docs/cli-usage.md)。

@@ -11,7 +11,7 @@ metadata:
 
 # 禅道 CLI
 
-通过 `zentao` 命令行工具查询和操作禅道数据。CLI 自动处理认证、分页，支持工作区上下文和数据过滤/排序。
+通过 `zentao` 命令行工具查询和操作禅道数据。CLI 自动处理认证，支持分页、数据过滤和排序。
 
 ## 前置准备
 
@@ -63,7 +63,7 @@ zentao login -s https://zentao.example.com -u admin -p 123456
 | 更新 | `zentao <module> update <id> --field=value` |
 | 删除 | `zentao <module> delete <id>` |
 | 动作 | `zentao <module> <action> <id>` |
-| 帮助 | `zentao <module> help` |
+| 帮助 | `zentao <module> --help` / `zentao <module> <action> --help` |
 
 也支持 `--data='JSON'` 传入 JSON 数据。
 
@@ -73,7 +73,7 @@ zentao login -s https://zentao.example.com -u admin -p 123456
 |--------|------|-----------|
 | program | 项目集 | CRUD |
 | product | 产品 | CRUD |
-| project | 项目 | CRUD |
+| project | 项目 | 列表 + CUD（无详情接口） |
 | execution | 执行/迭代 | CRUD |
 | story | 需求 | CRUD + activate / change / close |
 | epic | 业务需求 | CRUD + activate / change / close |
@@ -82,7 +82,7 @@ zentao login -s https://zentao.example.com -u admin -p 123456
 | task | 任务 | CRUD + activate / close / finish / start |
 | testcase | 测试用例 | CRUD |
 | testtask | 测试单 | CUD（按产品/项目/执行查列表） |
-| productplan | 产品计划 | CUD（按产品查列表） |
+| productplan | 产品计划 | CRUD（按产品查列表） |
 | build | 版本 | CUD（按项目/执行查列表） |
 | release | 发布 | CUD（按产品查列表） |
 | feedback | 反馈 | CRUD + activate / close |
@@ -91,7 +91,7 @@ zentao login -s https://zentao.example.com -u admin -p 123456
 | user | 用户 | CRUD |
 | file | 附件 | 编辑名称 + 删除 |
 
-> CRUD = 列表 + 详情 + 创建 + 更新 + 删除；CUD = 无独立列表接口，需指定所属范围
+> CRUD = 列表 + 详情 + 创建 + 更新 + 删除；CUD = 创建 + 更新 + 删除。“按范围查列表”表示列表命令必须携带所属范围。
 
 ### 列表范围参数
 
@@ -100,17 +100,16 @@ zentao login -s https://zentao.example.com -u admin -p 123456
 ```bash
 zentao story --product=1                # 产品 #1 的需求
 zentao bug --product=1                  # 产品 #1 的 Bug
-zentao task --execution=1               # 执行 #1 的任务
-zentao execution --project=5            # 项目 #5 的执行
+zentao task --executionID=1             # 执行 #1 的任务
+zentao execution --status=all --filter='project=5'  # 项目 #5 的执行（当前页客户端过滤）
 zentao build --project=5                # 项目 #5 的版本
 zentao testtask --product=1             # 产品 #1 的测试单
-zentao release --product=1              # 产品 #1 的发布
-zentao productplan --product=1          # 产品 #1 的计划
-zentao feedback --product=1             # 产品 #1 的反馈
-zentao ticket --product=1               # 产品 #1 的工单
+zentao release --productID=1            # 产品 #1 的发布
+zentao productplan --productID=1        # 产品 #1 的计划
+zentao feedback --productID=1           # 产品 #1 的反馈
+zentao ticket --productID=1             # 产品 #1 的工单
+zentao system --productID=1             # 产品 #1 的应用
 ```
-
-设置工作区后可省略这些参数（见下方工作区章节）。
 
 ## AI 使用策略
 
@@ -137,12 +136,13 @@ zentao bug --product=1 --pick=id,title  # 查看 Bug 列表
 zentao bug 42                           # 查看具体 Bug
 ```
 
-### 不确定对象字段时
+### 不确定字段时
 
-先查询模块对应对象的属性定义，再按需摘取或传入字段：
+查询返回对象可能包含哪些字段时用 `props`；查看创建、更新或状态流转能传哪些参数时，以该操作的 `--help` 为准。`props` 不是写入参数清单。
 
 ```bash
 zentao bug props --format=json
+zentao bug create --help
 ```
 
 ### 写操作前确认
@@ -188,65 +188,68 @@ zentao bug --product=1 --sort=pri:asc,severity:asc
 
 ```bash
 zentao bug --product=1 --page=1 --recPerPage=50
-zentao bug --product=1 --all            # 获取全部
-zentao bug --product=1 --limit=10       # 只取前 10 条
+zentao bug --product=1 --limit=10       # 只取当前返回页的前 10 条
 ```
+
+CLI 不会自动翻页。仅当该列表操作的 `--help` 显示 `--page` / `--recPerPage` 时才可使用这两个参数；部分列表接口不支持服务端分页参数。需要全量数据且返回了 pager 时，重复调整 `--page`，直到已读取条数覆盖总数。`--limit` 只在当前返回页上截取。
 
 ## 常用操作示例
 
 ### 查看进行中的项目和执行
 
 ```bash
-zentao project --filter='status:doing' --pick=id,name,status
-zentao execution --project=5 --pick=id,name,status
+zentao project --browseType=doing --pick=id,name,status
+zentao execution --status=all --filter='project=5' --pick=id,name,status
 ```
 
 ### 创建需求并关联计划
 
 ```bash
-zentao story create --product=1 --title="需求标题" --assignedTo=admin --pri=3
+zentao story create --productID=1 --title="需求标题" --assignedTo=admin --pri=3
 zentao story update 11 --title="需求标题" --plan=1
 ```
 
 ### 创建并解决 Bug
 
 ```bash
-zentao bug create --product=1 --title="Bug标题" --severity=2 --pri=2 --type=codeerror --openedBuild=trunk
-zentao bug resolve 42
+zentao bug create --productID=1 --title="Bug标题" --severity=2 --pri=2 --type=codeerror --openedBuild=trunk
+zentao bug resolve 42 --resolution=fixed
 ```
 
 ### 创建、启动并完成任务
 
 ```bash
-zentao task create --execution=1 --name="任务名" --type=devel --assignedTo=admin --estimate=4
-zentao task start 100
-zentao task finish 100 --consumed=4
+zentao task create --executionID=1 --name="任务名" --type=devel --assignedTo=admin --estimate=4
+zentao task start 100 --realStarted="<YYYY-MM-DD HH:mm:ss>"
+zentao task finish 100 --currentConsumed=4 --realStarted="<YYYY-MM-DD HH:mm:ss>" --finishedDate="<YYYY-MM-DD HH:mm:ss>"
 ```
 
 ### 查看帮助
 
 ```bash
-zentao bug help          # 查看 Bug 模块的参数和操作
-zentao story update help # 查看需求更新操作的参数和操作
-zentao help              # 查看所有命令
+zentao bug --help          # 查看 Bug 模块的参数和操作
+zentao story update --help # 查看需求更新操作的参数和操作
+zentao help                # 查看所有命令
 ```
 
 ## 意图识别
 
 | 用户意图 | CLI 命令 |
 |---------|---------|
-| 所有产品/项目/项目集 | `zentao product` / `zentao project` / `zentao program` |
-| 进行中的项目 | `zentao project --filter='status:doing'` |
+| 所有产品/项目/项目集 | `zentao product` / `zentao project --browseType=all` / `zentao program`，全量结果按 pager 逐页读取 |
+| 进行中的项目 | `zentao project --browseType=doing` |
 | 某产品的 Bug | `zentao bug --product=<id>` |
-| 某执行的任务 | `zentao task --execution=<id>` |
+| 某执行的任务 | `zentao task --executionID=<id>` |
 | 创建/新增 Bug | `zentao bug create ...` |
-| 解决 Bug | `zentao bug resolve <id>` |
+| 解决 Bug | `zentao bug resolve <id> --resolution=<解决方案>` |
 | 关闭 Bug | `zentao bug close <id>` |
 | 激活 Bug | `zentao bug activate <id>` |
 | 创建需求 | `zentao story create ...` |
-| 变更/关闭/激活需求 | `zentao story change/close/activate <id>` |
-| 业务需求 | `zentao epic ...`（同 story） |
-| 用户需求 | `zentao requirement ...`（同 story） |
+| 变更需求 | `zentao story change <id> --reviewer=<审评账号>` |
+| 关闭需求 | `zentao story close <id> --closedReason=<关闭原因>` |
+| 激活需求 | `zentao story activate <id>` |
+| 业务需求 | `zentao epic ...`，操作参数以 `zentao epic <action> --help` 为准 |
+| 用户需求 | `zentao requirement ...`，操作参数以 `zentao requirement <action> --help` 为准 |
 | 创建/启动/完成/关闭任务 | `zentao task create/start/finish/close ...` |
 | 测试用例 | `zentao testcase ...` |
 | 测试单 | `zentao testtask ...` |
@@ -266,12 +269,12 @@ zentao help              # 查看所有命令
 | E1004 | Token 失效 | 执行 `zentao login` 重新登录 |
 | E2001 | 模块不存在 | 执行 `zentao help` 查看可用模块 |
 | E2002 | 对象不存在 | 检查 ID 是否正确 |
-| E2003 | 缺少必要参数 | 执行 `zentao <module> help` 或 `zentao <module> <action> help` 查看操作参数 |
+| E2003 | 缺少必要参数 | 执行 `zentao <module> --help` 或 `zentao <module> <action> --help` 查看操作参数 |
 | E2006 | 无权限 | 提示用户检查权限 |
 | E5001 | 请求超时 | 检查网络或禅道服务状态 |
 
 ## 注意事项
 
-- 不确定模块参数时，先执行 `zentao <module> help` 查看帮助，不确定操作参数时，先执行 `zentao <module> <action> help` 查看帮助
+- 不确定模块参数时，先执行 `zentao <module> --help` 查看帮助，不确定操作参数时，先执行 `zentao <module> <action> --help` 查看帮助
 - `browseType` 常用值：`all`（全部）、`doing`（进行中）、`closed`（已关闭）
 - 多账号切换：`zentao profile` 查看和切换账号

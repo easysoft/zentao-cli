@@ -19,7 +19,7 @@ zentao profile
 ## 翻一翻"我的任务"
 
 ```bash
-zentao task --execution=<执行ID> --filter='assignedTo:<当前账号>,status:wait' --pick=id,name,estimate
+zentao task --executionID=<执行ID> --filter='assignedTo=<当前账号>,status=wait' --pick=id,name,estimate
 ```
 
 两种分支：
@@ -33,7 +33,7 @@ zentao task --execution=<执行ID> --filter='assignedTo:<当前账号>,status:wa
 
 ```bash
 zentao task update <id> --estimate=<小时>
-zentao task start <id>
+zentao task start <id> --realStarted="<YYYY-MM-DD HH:mm:ss>"
 ```
 
 口语化地说一句："现在状态就是 `doing` 了，同事在看板上能看到你接手了。"
@@ -43,10 +43,10 @@ zentao task start <id>
 聊一下"真做完 / 实际耗了多久"，然后：
 
 ```bash
-zentao task finish <id> --consumed=<实际小时>
+zentao task finish <id> --currentConsumed=<本次小时> --realStarted="<YYYY-MM-DD HH:mm:ss>" --finishedDate="<YYYY-MM-DD HH:mm:ss>"
 ```
 
-如果用户好奇差别，用一两句解释 estimate 是预估、consumed 是真实耗时，后者会影响项目的成本统计。
+如果用户好奇差别，用一两句解释 `estimate` 是预估、`currentConsumed` 是本次实际耗时，后者会计入项目的成本统计。
 
 ## 顺手捏一个 Bug 走完流程
 
@@ -76,11 +76,11 @@ zentao bug resolve <id> --resolution=fixed
 
 | 动作 | 命令 |
 |------|------|
-| 看我的任务 | `zentao task --execution=<id> --filter='assignedTo:<账号>,status:wait'` |
+| 看我的任务 | `zentao task --executionID=<id> --filter='assignedTo=<账号>,status=wait'` |
 | 认领任务 | `zentao task update <id> --assignedTo=<账号>` |
 | 改预估 | `zentao task update <id> --estimate=<小时>` |
-| 开干 | `zentao task start <id>` |
-| 交工 | `zentao task finish <id> --consumed=<小时>` |
+| 开干 | `zentao task start <id> --realStarted="<YYYY-MM-DD HH:mm:ss>"` |
+| 交工 | `zentao task finish <id> --currentConsumed=<本次小时> --realStarted="<YYYY-MM-DD HH:mm:ss>" --finishedDate="<YYYY-MM-DD HH:mm:ss>"` |
 | 看我的 Bug | `zentao bug --product=<id> --filter='assignedTo=<账号>,status=active'` |
 | 解决 Bug | `zentao bug resolve <id> --resolution=fixed` |
 

@@ -136,8 +136,8 @@ $ zentao product --format=json
     }
 }
 
-# 获取项目 #5 下的执行列表；如果省略 --project 参数，则使用当前工作区中的项目
-$ zentao execution --project=5
+# 执行列表没有项目作用域；以当前页返回值做客户端项目过滤
+$ zentao execution --status=all --filter='project=5'
 
 # 输出略
 ```
@@ -356,10 +356,10 @@ $ zentao update product 1 --data='{"name": "产品1"}'
 
 ```bash
 # 解决禅道 BUG #1
-$ zentao bug resolve 1 --comment "已解决"
+$ zentao bug resolve 1 --resolution=fixed --comment "已解决"
 ```
 
-不同对象支持的操作不同，具体可通过 `zentao <moduleName> <action> help` 查看对应模块支持的操作。
+不同对象支持的操作不同，具体可通过 `zentao <moduleName> <action> --help` 查看对应模块支持的操作。
 
 <details>
 <summary>原始方式</summary>
@@ -368,7 +368,7 @@ $ zentao bug resolve 1 --comment "已解决"
 
 ```bash
 # 解决禅道 BUG #1
-$ zentao do bug resolve 1 --comment "已解决"
+$ zentao do bug resolve 1 --resolution=fixed --comment "已解决"
 ```
 
 不同对象支持的操作不同，具体可通过 `zentao do <moduleName> help` 查看对应模块支持的操作。
@@ -637,8 +637,9 @@ $ zentao ls product --sort=name:asc
 
 * `--page=<pageNumber>`：指定页码，默认值为 1
 * `--recPerPage=<recPerPage>`：指定分页大小，默认值为 20
-* `--all`：获取全部数据，不分页
-* `--limit=<number>`：指定获取数据的数量；仅非负有限数值生效，小数向下取整
+* `--limit=<number>`：截取当前返回页的数据；仅非负有限数值生效，小数向下取整
+
+CLI 当前不会自动翻页。仅当该列表操作的 `--help` 显示 `--page` / `--recPerPage` 时才可使用这两个参数；需要全量数据且返回了 pager 时，重复调整 `--page`，直到已读取条数覆盖总数。
 
 ```bash
 # 获取禅道产品信息，并分页获取

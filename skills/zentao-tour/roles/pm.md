@@ -26,20 +26,19 @@
 用户给出点子后，不要立刻抛一堆字段问。挑用户最容易答的那一个切入：
 
 - 先问一句"它叫什么好呢"——让用户给个名字。
-- 顺手建议一个英文代号（`code`），说"禅道里需要一个英文简写，我建议 `xxx`，你觉得 OK 吗？"
 - 一句话描述（`desc`）可以直接拿用户开场时的那句话当种子，问："就用'<那句话>'当产品简介行不行？"
 
-凑齐三样之后，用日常口气征求同意，然后执行：
+凑齐名称和简介之后，用日常口气征求同意，然后执行：
 
 ```bash
-zentao product create --name="<名称>" --code="<代号>" --desc="<简介>"
+zentao product create --name="<名称>" --desc="<简介>"
 ```
 
 创建成功后**不要**正儿八经地"小结：产品已创建"。用**一句话回顾 + 一句话钩到下一段**，把总结和过渡糅在一起：
 
-> "好咧，《XXX》(#<id>) 落地了——名字、code、简介都齐活，后面聊的东西都会挂在它下面。光有壳子还不够有意思，我们往里面塞点灵魂？"
+> "好咧，《XXX》(#<id>) 落地了——名字、简介都齐活，后面聊的东西都会挂在它下面。光有壳子还不够有意思，我们往里面塞点灵魂？"
 
-如果用户第一次成功建东西，顺手点一句具体的鼓励（非肉麻），例如："code 你这个起得挺干脆，比一长串英文好记多了。"
+如果用户第一次成功建东西，顺手点一句具体的鼓励（非肉麻），例如："你这句简介把产品要解决的问题说清楚了。"
 
 ## 顺着往下问：它到底是给谁的
 
@@ -97,14 +96,16 @@ zentao productplan create --productID=<产品ID> --title="<计划名>" --begin=<
 然后把用户刚刚挑出来的那几条需求挂进去，一条一条来，每条前都顺口说一声要挂哪个：
 
 ```bash
-zentao story update <storyID> --title="<标题必填>" --plan=<计划ID>
+zentao story update <storyID> --plan=<计划ID>
 ```
 
 全部挂完后，顺手列一张表给用户看成果（**不要**加"小结"这种字眼）：
 
 ```bash
-zentao story --productID=<产品ID> --pick=id,title,pri,plan
+zentao story --product=<产品ID> --pick=id,title,pri,plan --page=<页码> --recPerPage=100
 ```
+
+根据 pager 逐页读完后，再给用户看完整结果。
 
 像朋友一样指着说："喏，你看这几条都绑在《MVP 首发》上了——从一个空白的点子到这张表，其实你已经走完了产品经理最核心的一条线：**产品 → 需求 → 计划**。研发同事打开禅道就能按这个打工。"
 
@@ -134,9 +135,9 @@ zentao story --productID=<产品ID> --pick=id,title,pri,plan
 
 | 动作 | 命令 |
 |------|------|
-| 建产品 | `zentao product create --name= --code= --desc=` |
-| 建需求 | `zentao story create --product= --title= --pri= --spec=` |
+| 建产品 | `zentao product create --name= --desc=` |
+| 建需求 | `zentao story create --productID= --title= --pri= --spec=` |
 | 改需求所属计划 | `zentao story update <id> --plan=<planID>` |
-| 建计划 | `zentao productplan create --product= --title= --begin= --end=` |
-| 查看产品下所有需求 | `zentao story --product=<id> --pick=id,title,pri,plan` |
-| 查看参数 | `zentao <module> help` |
+| 建计划 | `zentao productplan create --productID= --title= --begin= --end=` |
+| 查看产品下所有需求 | `zentao story --product=<id> --pick=id,title,pri,plan --page=<页码> --recPerPage=100`，按 pager 逐页读取 |
+| 查看参数 | `zentao <module> <action> --help` |

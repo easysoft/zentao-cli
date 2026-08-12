@@ -20,16 +20,18 @@ zentao product --pick=id,name --limit=10
 
 ## 拉起项目这件事，用最简几个字段就够
 
-和用户聊清三样就可以动手：
+和用户聊清这几样就可以动手：
 
 - 项目叫什么（`name`，建议与产品呼应，比如"XXX v1 研发"）
 - 起止日期（`begin` / `end`，给 4 周 / 8 周 / 12 周 三挡让他挑）
 - 绑定哪个产品（`products`）
+- 项目管理方式（`model`，不确定时可先用 `scrum`）
+- 项目流程（`workflowGroup`，开源版用 `0`，付费版使用实际流程 ID）
 
 征得同意后执行：
 
 ```bash
-zentao project create --name="..." --begin=<YYYY-MM-DD> --end=<YYYY-MM-DD> --products=<产品ID>
+zentao project create --name="..." --model=scrum --begin=<YYYY-MM-DD> --end=<YYYY-MM-DD> --products=<产品ID> --workflowGroup=0
 ```
 
 记下返回的项目 ID——后面 `zentao execution` 的 `--project` 要用。
@@ -41,10 +43,10 @@ zentao project create --name="..." --begin=<YYYY-MM-DD> --end=<YYYY-MM-DD> --pro
 用户答完周期后：
 
 ```bash
-zentao execution create --project=<项目ID> --name="Sprint 1" --begin=... --end=...
+zentao execution create --project=<项目ID> --name="Sprint 1" --begin=... --end=... --products=<产品ID>
 ```
 
-记下返回的执行 ID——后面 `zentao task create --execution=<执行ID>` 会一直用到。
+记下返回的执行 ID——后面 `zentao task create --executionID=<执行ID> --name="..."` 会一直用到。
 
 一句话过渡到下一段："Sprint 1 挂好了——空的 sprint 没啥意思，我们挑几条需求塞进来拆成任务？"
 
@@ -55,13 +57,13 @@ zentao execution create --project=<项目ID> --name="Sprint 1" --begin=... --end
 先看可以塞什么：
 
 ```bash
-zentao story --product=<产品ID> --filter='stage:wait' --pick=id,title,pri
+zentao story --product=<产品ID> --filter='stage=wait' --pick=id,title,pri
 ```
 
 和用户挑 2–3 条就够，别贪多。对每一条都问一句"你打算把它拆成几个任务？给谁做？预估几小时？"——用户给出一组就创建一个：
 
 ```bash
-zentao task create --execution=<执行ID> --name="..." --type=devel --assignedTo=<账号> --estimate=<小时>
+zentao task create --executionID=<执行ID> --story=<需求ID> --name="..." --type=devel --assignedTo=<账号> --estimate=<小时>
 ```
 
 拆到第三条的时候可以主动刹车："节奏差不多了，想不想看看现在已经排成什么样？"
@@ -69,14 +71,14 @@ zentao task create --execution=<执行ID> --name="..." --type=devel --assignedTo
 ## 让他看到"进度"是什么感觉
 
 ```bash
-zentao task --execution=<执行ID> --pick=id,name,status,assignedTo,estimate
+zentao task --executionID=<执行ID> --pick=id,name,status,assignedTo,estimate
 ```
 
 如果用户对流转感兴趣，顺手演示一个任务从开始到完成：
 
 ```bash
-zentao task start <id>
-zentao task finish <id> --consumed=<实际小时>
+zentao task start <id> --realStarted="<YYYY-MM-DD HH:mm:ss>"
+zentao task finish <id> --currentConsumed=<本次小时> --realStarted="<YYYY-MM-DD HH:mm:ss>" --finishedDate="<YYYY-MM-DD HH:mm:ss>"
 ```
 
 边演示边用一句话解释 status 从 `wait` → `doing` → `done` 的变化，就足够了。
@@ -95,11 +97,11 @@ zentao task finish <id> --consumed=<实际小时>
 
 | 动作 | 命令 |
 |------|------|
-| 建项目 | `zentao project create --name= --begin= --end= --products=<产品ID>` |
-| 建 Sprint | `zentao execution create --project= --name= --begin= --end=` |
-| 建任务 | `zentao task create --execution= --name= --type=devel --assignedTo= --estimate=` |
-| 启动任务 | `zentao task start <id>` |
-| 完成任务 | `zentao task finish <id> --consumed=<小时>` |
-| 查执行下任务 | `zentao task --execution=<id> --pick=id,name,status,assignedTo` |
+| 建项目 | `zentao project create --name= --model=scrum --begin= --end= --products=<产品ID> --workflowGroup=0` |
+| 建 Sprint | `zentao execution create --project= --name= --begin= --end= --products=<产品ID>` |
+| 建任务 | `zentao task create --executionID= --story= --name= --type=devel --assignedTo= --estimate=` |
+| 启动任务 | `zentao task start <id> --realStarted="<YYYY-MM-DD HH:mm:ss>"` |
+| 完成任务 | `zentao task finish <id> --currentConsumed=<本次小时> --realStarted="<YYYY-MM-DD HH:mm:ss>" --finishedDate="<YYYY-MM-DD HH:mm:ss>"` |
+| 查执行下任务 | `zentao task --executionID=<id> --pick=id,name,status,assignedTo` |
 
 > 本视角目前剧情比较轻，欢迎根据真实团队节奏补得更丰满。
