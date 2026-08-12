@@ -79,29 +79,33 @@ export function registerModuleCommands(program: Command): void {
             const globalOpts = program.opts() as GlobalOptions;
             const options = {...globalOpts, ...opts};
             try {
-                // 处理 --help / -h：等同于 help 子命令
-                const helpFlagIndex = args.findIndex((a) => a === '--help' || a === '-h');
-                if (helpFlagIndex !== -1) {
-                    args.splice(helpFlagIndex, 1);
-                    const positionalArgs = args.filter((a) => !a.startsWith('-'));
-
-                    if (positionalArgs.length === 0) {
+                const showRequestedHelp = (candidate?: string): void => {
+                    if (!candidate) {
                         showModuleHelp(mod);
                         return;
                     }
 
-                    const action = positionalArgs[0];
                     const crudAliases: Record<string, string> = { ls: 'list' };
-                    const normalizedAction = crudAliases[action] ?? action;
+                    const normalizedAction = /^\d+$/.test(candidate)
+                        ? 'get'
+                        : (crudAliases[candidate] ?? candidate);
                     const crudTypes = new Set(['list', 'get', 'create', 'update', 'delete']);
                     const resolvedAction = crudTypes.has(normalizedAction)
                         ? findAction(mod, normalizedAction as ModuleActionType)
-                        : findAction(mod, 'action', action as ModuleActionName);
+                        : findAction(mod, 'action', candidate as ModuleActionName);
                     if (resolvedAction) {
                         showModuleActionHelp(mod, resolvedAction);
                         return;
                     }
                     showModuleHelp(mod);
+                };
+
+                // 处理 --help / -h：等同于 help 子命令
+                const helpFlagIndex = args.findIndex((a) => a === '--help' || a === '-h');
+                if (helpFlagIndex !== -1) {
+                    args.splice(helpFlagIndex, 1);
+                    const positionalArgs = args.filter((a) => !a.startsWith('-'));
+                    showRequestedHelp(positionalArgs[0]);
                     return;
                 }
 
@@ -111,17 +115,22 @@ export function registerModuleCommands(program: Command): void {
                     return;
                 }
 
+                // Preserve suffix-help compatibility and keep all help paths auth-free.
+                if (args[0] === 'help') {
+                    showRequestedHelp();
+                    return;
+                }
+                if (args[1] === 'help') {
+                    showRequestedHelp(args[0]);
+                    return;
+                }
+
                 const { client, profile } = await ensureAuth({
                     insecure: options.insecure,
                     timeout: options.timeout,
                 });
 
                 const firstArg = args.shift();
-                if (firstArg === 'help') {
-                    showModuleHelp(mod);
-                    return;
-                }
-
                 let action = firstArg;
                 const ids = firstArg?.split(',').map((s) => +s.trim());
                 if (ids?.length && ids.every((id) => !isNaN(id))) {
@@ -132,21 +141,6 @@ export function registerModuleCommands(program: Command): void {
                 } else if (action.startsWith('-')) {
                     args.unshift(action);
                     action = 'list';
-                }
-
-                if (args[0] === 'help') {
-                    const crudAliases: Record<string, string> = { ls: 'list' };
-                    const normalizedAction = crudAliases[action as string] ?? (action as string);
-                    const crudTypes = new Set(['list', 'get', 'create', 'update', 'delete']);
-                    const resolvedAction = crudTypes.has(normalizedAction)
-                        ? findAction(mod, normalizedAction as ModuleActionType)
-                        : findAction(mod, 'action', action as ModuleActionName);
-                    if (resolvedAction) {
-                        showModuleActionHelp(mod, resolvedAction);
-                        return;
-                    }
-                    showModuleHelp(mod);
-                    return;
                 }
 
                 await handleModuleCommand(client, mod, action as ModuleActionName, args, profile, options);
