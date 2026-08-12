@@ -53,6 +53,12 @@ export async function executeModuleCommand(
     if (!action) {
         throw new ZentaoError('E2005', { module: module.name });
     }
+    if (options.all) {
+        throw new ZentaoError('E2009', {
+            option: 'all',
+            reason: '尚未支持自动翻页，请使用 --page 和 --recPerPage 逐页获取',
+        });
+    }
 
     const params = buildParams(options, actionName, args);
     const requestName = `${module.name}/${normalizeActionName(actionName)}`;

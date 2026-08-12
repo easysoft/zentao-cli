@@ -17,7 +17,7 @@ export function addDataOptions(cmd: Command): Command {
         .option('--search-fields <fields>', '搜索字段（逗号分隔）')
         .option('--page <number>', '页码')
         .option('--recPerPage <number>', '每页条数')
-        .option('--all', '获取全部数据')
+        .option('--all', '尚未支持自动翻页，请使用 --page 和 --recPerPage')
         .option('--limit <number>', '限制获取数量')
         .option('--data <json>', 'JSON 数据')
         .option('--params <json>', 'API 调用参数')

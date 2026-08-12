@@ -129,6 +129,23 @@ describe('module executor (zentao-api request pipeline)', () => {
         expect(result.data).toEqual([{ id: 1, desc: '<p>Hello</p>' }]);
     });
 
+    test('rejects the reserved --all option instead of silently returning one page', async () => {
+        const { client, requests } = mockClient(() => ({
+            status: 'success',
+            products: [{ id: 1 }],
+        }));
+
+        await expect(executeModuleCommand(
+            client,
+            getModule('product')!,
+            'list',
+            [],
+            { all: true },
+            DEFAULT_CONFIG,
+        )).rejects.toThrow('尚未支持自动翻页');
+        expect(requests).toHaveLength(0);
+    });
+
     test('returns the original API response in raw mode without local processing', async () => {
         const { client } = mockClient(() => ({
             status: 'success',

@@ -44,8 +44,8 @@ export interface ModuleActionOptions extends GlobalOptions {
     /** 每页条数，适用于 resultType 为 list 的模块操作 */
     recPerPage?: string;
 
-    // /** 获取全部数据，适用于 resultType 为 list 的模块操作 */
-    // all?: boolean;
+    /** Reserved option that currently fails explicitly instead of implying automatic pagination. */
+    all?: boolean;
 
     /** 限制获取数量，适用于 resultType 为 list 的模块操作 */
     limit?: string;
