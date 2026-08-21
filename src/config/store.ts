@@ -19,7 +19,9 @@ let store: Configstore | null = null;
 
 function getStore(): Configstore {
     if (!store) {
-        store = new Configstore('zentao-cli', {}, { configPath });
+        // Passing an empty defaults object makes Configstore rewrite the file in
+        // its constructor. Reads must remain usable in read-only environments.
+        store = new Configstore('zentao-cli', undefined, { configPath });
         enforcePermissions();
     }
     return store;

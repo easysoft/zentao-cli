@@ -1,7 +1,7 @@
 import { describe, test, expect, beforeEach, afterEach } from 'bun:test';
 import { homedir, tmpdir } from 'node:os';
 import { isAbsolute, join, resolve } from 'node:path';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { chmodSync, existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { DEFAULT_CONFIG, VALID_CONFIG_KEYS } from '../src/config/defaults';
 import {
     getConfigPath,
@@ -309,6 +309,36 @@ describe('profile management', () => {
         saveProfile({ ...mockProfile, token: 'new-token' });
         expect(getAllProfiles().length).toBe(1);
         expect(getCurrentProfile()!.token).toBe('new-token');
+    });
+});
+
+describe('read-only profile storage', () => {
+    let tempDir: string;
+    let configPath: string;
+
+    beforeEach(() => {
+        resetConfigStore();
+        tempDir = mkdtempSync(join(tmpdir(), 'zentao-cli-readonly-'));
+        configPath = join(tempDir, 'config.json');
+        writeFileSync(configPath, JSON.stringify({
+            currentProfile: profileKey(mockProfile.account, mockProfile.server),
+            profiles: [mockProfile],
+        }));
+        chmodSync(tempDir, 0o500);
+        setConfigPath(configPath);
+    });
+
+    afterEach(() => {
+        resetConfigStore();
+        chmodSync(tempDir, 0o700);
+        rmSync(tempDir, { recursive: true, force: true });
+    });
+
+    test('getCurrentProfile does not rewrite an existing config file', () => {
+        const current = getCurrentProfile();
+
+        expect(current?.account).toBe('admin');
+        expect(current?.token).toBe('test-token');
     });
 });
 
