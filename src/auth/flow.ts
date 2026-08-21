@@ -27,7 +27,12 @@ export async function ensureAuth(options?: { insecure?: boolean; timeout?: numbe
             timeout: options?.timeout ?? config.timeout,
         };
         currentProfile.lastUsedTime = new Date().toISOString();
-        saveProfile(currentProfile);
+        try {
+            saveProfile(currentProfile);
+        } catch {
+            // Updating usage metadata is best-effort and must not invalidate an
+            // otherwise usable token in a read-only environment.
+        }
         return {
             client: createClient(currentProfile.server, currentProfile.token, clientOpts),
             profile: currentProfile,
