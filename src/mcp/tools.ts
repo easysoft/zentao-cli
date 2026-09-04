@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import { getAllModules } from '../modules/helper.js';
+import { getAction, getAllModules } from '../modules/helper.js';
 import type { ModuleDefinition, ModuleAction, ModuleActionOptions } from '../types/index.js';
 import { executeModuleCommand } from '../modules/executor.js';
 import { ZentaoError } from '../errors.js';
@@ -18,6 +18,12 @@ function buildToolDescription(mod: ModuleDefinition): string {
         parts.push(`${mod.display ?? mod.name} 管理`);
     }
     parts.push(`支持操作: ${actions.join(', ')}`);
+    const batchActions = mod.actions
+        .filter(action => action.type === 'get' || action.type === 'update' || action.type === 'delete')
+        .map(action => action.name);
+    if (batchActions.length > 0) {
+        parts.push(`批量操作: ${batchActions.join(', ')} 可通过 ids 传入多个对象 ID`);
+    }
 
     const listAction = mod.actions.find(a => a.type === 'list');
     if (listAction?.pathParams && 'scope' in listAction.pathParams) {
@@ -42,11 +48,20 @@ function buildActionEnum(mod: ModuleDefinition): [string, ...string[]] {
 
 function buildInputSchema(mod: ModuleDefinition) {
     const actionEnum = buildActionEnum(mod);
+    const supportsBatch = mod.actions.some(action =>
+        action.type === 'get' || action.type === 'update' || action.type === 'delete'
+    );
     return {
         action: z.enum(actionEnum).describe('要执行的操作。' + mod.actions.map(a =>
             `${a.name}: ${a.display ?? a.name}`
         ).join('; ')),
         id: z.number().optional().describe('对象 ID（get/update/delete 及扩展操作必填）'),
+        ...(supportsBatch ? {
+            ids: z.array(z.number().int().positive()).min(1).optional()
+                .describe('批量对象 ID（仅支持 get/update/delete；不能与 id 同时使用）'),
+            batchFailFast: z.boolean().optional()
+                .describe('批量操作遇到错误时立即停止；默认使用当前用户配置'),
+        } : {}),
         product: z.number().optional().describe('产品 ID（范围参数）'),
         project: z.number().optional().describe('项目 ID（范围参数）'),
         execution: z.number().optional().describe('执行 ID（范围参数）'),
@@ -64,6 +79,8 @@ function buildInputSchema(mod: ModuleDefinition) {
 interface ToolInput {
     action: string;
     id?: number;
+    ids?: number[];
+    batchFailFast?: boolean;
     product?: number;
     project?: number;
     execution?: number;
@@ -75,6 +92,16 @@ interface ToolInput {
     searchFields?: string;
     page?: number;
     recPerPage?: number;
+}
+
+function serializeBatchError(error: unknown): Record<string, unknown> {
+    if (error instanceof ZentaoError) {
+        return {
+            code: `E${error.code}`,
+            message: error.message,
+        };
+    }
+    return { message: error instanceof Error ? error.message : String(error) };
 }
 
 async function handleProfileTool(auth: AuthProvider): Promise<CallToolResult> {
@@ -126,15 +153,41 @@ async function handleSwitchProfileTool(input: SwitchProfileInput, auth: AuthProv
     };
 }
 
-async function handleModuleTool(
+export async function handleModuleTool(
     mod: ModuleDefinition,
     input: ToolInput,
     auth: AuthProvider,
 ): Promise<CallToolResult> {
+    const actionName = input.action;
+    const action = getAction(mod, actionName);
+    if (!action) {
+        throw new ZentaoError('E2005', { module: mod.name });
+    }
+
+    if (input.ids !== undefined && (input.id !== undefined || input.params?.id !== undefined)) {
+        throw new ZentaoError('E2009', {
+            option: 'ids',
+            reason: '不能与 id 或 params.id 同时使用',
+        });
+    }
+    if (input.ids !== undefined) {
+        if (input.ids.length === 0 || !input.ids.every(id => Number.isInteger(id) && id > 0)) {
+            throw new ZentaoError('E2009', {
+                option: 'ids',
+                reason: '必须是非空的正整数数组',
+            });
+        }
+        if (action.type !== 'get' && action.type !== 'update' && action.type !== 'delete') {
+            throw new ZentaoError('E2009', {
+                option: 'ids',
+                reason: `操作 ${actionName} 不支持批量执行，仅 get/update/delete 支持 ids`,
+            });
+        }
+    }
+
     const client = await auth.getClient();
     const profile = getCurrentProfile();
     const config = profile ? getProfileConfig(profile) : DEFAULT_CONFIG;
-    const actionName = input.action;
 
     const opts: ModuleActionOptions = {
         id: input.id != null ? String(input.id) : undefined,
@@ -152,6 +205,42 @@ async function handleModuleTool(
         format: 'json',
         yes: true,
     };
+
+    if (input.ids !== undefined) {
+        const results: Array<{ id: number; data: unknown }> = [];
+        const errors: Array<{ id: number; error: Record<string, unknown> }> = [];
+        let skipped: number[] = [];
+        const failFast = input.batchFailFast ?? config.batchFailFast;
+
+        for (const [index, id] of input.ids.entries()) {
+            try {
+                const execution = await executeModuleCommand(
+                    client,
+                    mod,
+                    actionName,
+                    [],
+                    { ...opts, id: String(id) },
+                    config,
+                );
+                results.push({ id, data: execution.data ?? execution.rawResponse });
+            } catch (error) {
+                errors.push({ id, error: serializeBatchError(error) });
+                if (failFast) {
+                    skipped = input.ids.slice(index + 1);
+                    break;
+                }
+            }
+        }
+
+        const status = errors.length === 0 ? 'success' : results.length === 0 ? 'fail' : 'partial';
+        const response: Record<string, unknown> = { status, results };
+        if (errors.length > 0) response.errors = errors;
+        if (skipped.length > 0) response.skipped = skipped;
+        return {
+            ...(status === 'fail' ? { isError: true } : {}),
+            content: [{ type: 'text', text: JSON.stringify(response, null, 2) }],
+        };
+    }
 
     const execution = await executeModuleCommand(client, mod, actionName, [], opts, config);
 
