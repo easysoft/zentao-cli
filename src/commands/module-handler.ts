@@ -295,7 +295,11 @@ export function showModuleHelp(mod: ModuleDefinition): void {
         if (listParams.some((param) => param.name === 'recPerPage')) {
             commonOpts.push({ name: 'recPerPage', placeholder: 'number', description: '每页条数，适用于 list 操作' });
         }
-        commonOpts.push({ name: 'limit', placeholder: 'number', description: '限制当前返回结果数量，适用于 list 操作' });
+        if (listParams.some((param) => param.name === 'pageID')
+            && listParams.some((param) => param.name === 'recPerPage')) {
+            commonOpts.push({ name: 'all', description: '自动翻页获取全部数据，不可与 --page 或 --format=raw 同时使用' });
+        }
+        commonOpts.push({ name: 'limit', placeholder: 'number', description: '限制返回结果数量，适用于 list 操作' });
     }
     if (createAction || updateAction || actions.length > 0) {
         commonOpts.push({ name: 'data', placeholder: 'json', description: '请求数据（JSON 格式），适用于 create/update/状态流转操作' });
@@ -395,7 +399,11 @@ export function showModuleActionHelp(mod: ModuleDefinition, action: ModuleAction
         if (actionParams.some((param) => param.name === 'recPerPage')) {
             commonOpts.push({ name: 'recPerPage', placeholder: 'number', description: '每页条数' });
         }
-        commonOpts.push({ name: 'limit', placeholder: 'number', description: '限制当前返回结果数量' });
+        if (actionParams.some((param) => param.name === 'pageID')
+            && actionParams.some((param) => param.name === 'recPerPage')) {
+            commonOpts.push({ name: 'all', description: '自动翻页获取全部数据，不可与 --page 或 --format=raw 同时使用' });
+        }
+        commonOpts.push({ name: 'limit', placeholder: 'number', description: '限制返回结果数量' });
     } else if (action.type === 'get') {
         commonOpts.push(
             { name: 'pick', placeholder: 'fields', description: '摘取指定字段（逗号分隔），仅输出指定的字段' },

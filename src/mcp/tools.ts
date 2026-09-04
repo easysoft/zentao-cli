@@ -58,6 +58,7 @@ function buildInputSchema(mod: ModuleDefinition) {
         searchFields: z.string().optional().describe('搜索字段（逗号分隔），配合 search 使用'),
         page: z.number().optional().describe('页码'),
         recPerPage: z.number().optional().describe('每页条数'),
+        all: z.boolean().optional().describe('对支持分页的列表操作自动获取全部数据，不能与 page 同时使用'),
     };
 }
 
@@ -75,6 +76,7 @@ interface ToolInput {
     searchFields?: string;
     page?: number;
     recPerPage?: number;
+    all?: boolean;
 }
 
 async function handleProfileTool(auth: AuthProvider): Promise<CallToolResult> {
@@ -149,6 +151,7 @@ async function handleModuleTool(
         searchFields: input.searchFields,
         page: input.page != null ? String(input.page) : undefined,
         recPerPage: input.recPerPage != null ? String(input.recPerPage) : undefined,
+        all: input.all,
         format: 'json',
         yes: true,
     };

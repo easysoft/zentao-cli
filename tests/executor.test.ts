@@ -129,11 +129,133 @@ describe('module executor (zentao-api request pipeline)', () => {
         expect(result.data).toEqual([{ id: 1, desc: '<p>Hello</p>' }]);
     });
 
-    test('rejects the reserved --all option instead of silently returning one page', async () => {
+    test('fetches every page before applying list processing once', async () => {
+        const pages = [
+            [
+                { id: 1, status: 'active', pri: 1, desc: '<p>One</p>' },
+                { id: 2, status: 'closed', pri: 5, desc: '<p>Two</p>' },
+            ],
+            [
+                { id: 3, status: 'active', pri: 4, desc: '<p>Three</p>' },
+                { id: 4, status: 'active', pri: 2, desc: '<p>Four</p>' },
+            ],
+            [{ id: 5, status: 'active', pri: 3, desc: '<p>Five</p>' }],
+        ];
+        const { client, requests } = mockClient((req) => {
+            const query = req.options.query as Record<string, unknown>;
+            const pageID = Number(query.pageID);
+            return {
+                status: 'success',
+                products: pages[pageID - 1],
+                pager: { recTotal: 5, recPerPage: 2, pageID },
+            };
+        });
+
+        const result = await executeModuleCommand(
+            client,
+            getModule('product')!,
+            'list',
+            [],
+            {
+                all: true,
+                filter: ['status=active'],
+                sort: 'pri:desc',
+                limit: '2',
+                pick: 'id,desc',
+            },
+            DEFAULT_CONFIG,
+        );
+
+        expect(requests.map((req) => Number((req.options.query as Record<string, unknown>).pageID)))
+            .toEqual([1, 2, 3]);
+        expect(result.data).toEqual([
+            { id: 3, desc: 'Three' },
+            { id: 5, desc: 'Five' },
+        ]);
+        expect(result.pager).toEqual({ recTotal: 5, recPerPage: 5, pageID: 1 });
+    });
+
+    test('rejects --all with an explicit page before sending a request', async () => {
+        const { client, requests } = mockClient(() => ({ status: 'success' }));
+
+        await expect(executeModuleCommand(
+            client,
+            getModule('product')!,
+            'list',
+            [],
+            { all: true, page: '2' },
+            DEFAULT_CONFIG,
+        )).rejects.toThrow('不能与 --page 同时使用');
+        expect(requests).toHaveLength(0);
+    });
+
+    test('handles an empty paginated list without requesting another page', async () => {
         const { client, requests } = mockClient(() => ({
             status: 'success',
-            products: [{ id: 1 }],
+            products: [],
+            pager: { recTotal: 0, recPerPage: 20, pageID: 1 },
         }));
+
+        const result = await executeModuleCommand(
+            client,
+            getModule('product')!,
+            'list',
+            [],
+            { all: true },
+            DEFAULT_CONFIG,
+        );
+
+        expect(requests).toHaveLength(1);
+        expect(result.data).toEqual([]);
+        expect(result.pager).toEqual({ recTotal: 0, recPerPage: 20, pageID: 1 });
+    });
+
+    test('rejects --all in raw mode before sending a request', async () => {
+        const { client, requests } = mockClient(() => ({ status: 'success' }));
+
+        await expect(executeModuleCommand(
+            client,
+            getModule('product')!,
+            'list',
+            [],
+            { all: true, format: 'raw' },
+            DEFAULT_CONFIG,
+        )).rejects.toThrow('不能与 --format=raw 同时使用');
+        expect(requests).toHaveLength(0);
+    });
+
+    test('rejects --all for non-list and unpaged actions', async () => {
+        const { client, requests } = mockClient(() => ({ status: 'success' }));
+
+        await expect(executeModuleCommand(
+            client,
+            getModule('user')!,
+            'get',
+            ['1'],
+            { all: true },
+            DEFAULT_CONFIG,
+        )).rejects.toThrow('仅列表操作支持自动翻页');
+        await expect(executeModuleCommand(
+            client,
+            getModule('release')!,
+            'list',
+            [],
+            { all: true },
+            DEFAULT_CONFIG,
+        )).rejects.toThrow('当前列表操作不支持分页');
+        expect(requests).toHaveLength(0);
+    });
+
+    test('fails instead of returning partial data when a later page fails', async () => {
+        const { client, requests } = mockClient((req) => {
+            const pageID = Number((req.options.query as Record<string, unknown>).pageID);
+            if (pageID === 2) throw new Error('page 2 failed');
+            return {
+                status: 'success',
+                products: [{ id: 1 }],
+                pager: { recTotal: 2, recPerPage: 1, pageID },
+            };
+        });
 
         await expect(executeModuleCommand(
             client,
@@ -142,8 +264,70 @@ describe('module executor (zentao-api request pipeline)', () => {
             [],
             { all: true },
             DEFAULT_CONFIG,
-        )).rejects.toThrow('尚未支持自动翻页');
-        expect(requests).toHaveLength(0);
+        )).rejects.toThrow('page 2 failed');
+        expect(requests).toHaveLength(2);
+    });
+
+    test('rejects missing or stalled pagination metadata', async () => {
+        const missing = mockClient(() => ({ status: 'success', products: [{ id: 1 }] }));
+        await expect(executeModuleCommand(
+            missing.client,
+            getModule('product')!,
+            'list',
+            [],
+            { all: true },
+            DEFAULT_CONFIG,
+        )).rejects.toThrow('缺少有效的分页信息');
+
+        const stalled = mockClient((req) => {
+            const pageID = Number((req.options.query as Record<string, unknown>).pageID);
+            return {
+                status: 'success',
+                products: pageID === 1 ? [{ id: 1 }] : [],
+                pager: { recTotal: 2, recPerPage: 1, pageID },
+            };
+        });
+        await expect(executeModuleCommand(
+            stalled.client,
+            getModule('product')!,
+            'list',
+            [],
+            { all: true },
+            DEFAULT_CONFIG,
+        )).rejects.toThrow('第 2 页为空');
+    });
+
+    test('rejects pagination totals that change or do not match returned data', async () => {
+        const changing = mockClient((req) => {
+            const pageID = Number((req.options.query as Record<string, unknown>).pageID);
+            return {
+                status: 'success',
+                products: [{ id: pageID }],
+                pager: { recTotal: pageID === 1 ? 2 : 1, recPerPage: 1, pageID },
+            };
+        });
+        await expect(executeModuleCommand(
+            changing.client,
+            getModule('product')!,
+            'list',
+            [],
+            { all: true },
+            DEFAULT_CONFIG,
+        )).rejects.toThrow('分页总数或页大小发生变化');
+
+        const overflow = mockClient(() => ({
+            status: 'success',
+            products: [{ id: 1 }, { id: 2 }],
+            pager: { recTotal: 1, recPerPage: 2, pageID: 1 },
+        }));
+        await expect(executeModuleCommand(
+            overflow.client,
+            getModule('product')!,
+            'list',
+            [],
+            { all: true },
+            DEFAULT_CONFIG,
+        )).rejects.toThrow('记录数超过分页总数');
     });
 
     test('returns the original API response in raw mode without local processing', async () => {

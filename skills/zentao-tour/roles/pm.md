@@ -102,10 +102,10 @@ zentao story update <storyID> --plan=<计划ID>
 全部挂完后，顺手列一张表给用户看成果（**不要**加"小结"这种字眼）：
 
 ```bash
-zentao story --product=<产品ID> --pick=id,title,pri,plan --page=<页码> --recPerPage=100
+zentao story --product=<产品ID> --pick=id,title,pri,plan --all
 ```
 
-根据 pager 逐页读完后，再给用户看完整结果。
+获取全部结果后，再给用户看完整结果。
 
 像朋友一样指着说："喏，你看这几条都绑在《MVP 首发》上了——从一个空白的点子到这张表，其实你已经走完了产品经理最核心的一条线：**产品 → 需求 → 计划**。研发同事打开禅道就能按这个打工。"
 
@@ -139,5 +139,5 @@ zentao story --product=<产品ID> --pick=id,title,pri,plan --page=<页码> --rec
 | 建需求 | `zentao story create --productID= --title= --pri= --spec=` |
 | 改需求所属计划 | `zentao story update <id> --plan=<planID>` |
 | 建计划 | `zentao productplan create --productID= --title= --begin= --end=` |
-| 查看产品下所有需求 | `zentao story --product=<id> --pick=id,title,pri,plan --page=<页码> --recPerPage=100`，按 pager 逐页读取 |
+| 查看产品下所有需求 | `zentao story --product=<id> --pick=id,title,pri,plan --all` |
 | 查看参数 | `zentao <module> <action> --help` |

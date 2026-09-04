@@ -188,10 +188,11 @@ zentao bug --product=1 --sort=pri:asc,severity:asc
 
 ```bash
 zentao bug --product=1 --page=1 --recPerPage=50
-zentao bug --product=1 --limit=10       # 只取当前返回页的前 10 条
+zentao bug --product=1 --all            # 自动获取全部分页
+zentao bug --product=1 --all --limit=10 # 获取全部后只保留前 10 条
 ```
 
-CLI 不会自动翻页。仅当该列表操作的 `--help` 显示 `--page` / `--recPerPage` 时才可使用这两个参数；部分列表接口不支持服务端分页参数。需要全量数据且返回了 pager 时，重复调整 `--page`，直到已读取条数覆盖总数。`--limit` 只在当前返回页上截取。
+仅当列表操作的 `--help` 显示相应选项时，才可使用 `--page`、`--recPerPage` 或 `--all`。`--all` 会先聚合全部分页，再统一应用过滤、搜索、排序、`--limit` 和字段摘取；不能与 `--page` 或 `--format=raw` 同时使用。
 
 ## 常用操作示例
 
@@ -236,7 +237,7 @@ zentao help                # 查看所有命令
 
 | 用户意图 | CLI 命令 |
 |---------|---------|
-| 所有产品/项目/项目集 | `zentao product` / `zentao project --browseType=all` / `zentao program`，全量结果按 pager 逐页读取 |
+| 所有产品/项目/项目集 | `zentao product --all` / `zentao project --browseType=all --all` / `zentao program --all` |
 | 进行中的项目 | `zentao project --browseType=doing` |
 | 某产品的 Bug | `zentao bug --product=<id>` |
 | 某执行的任务 | `zentao task --executionID=<id>` |
