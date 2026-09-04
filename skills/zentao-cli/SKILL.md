@@ -101,7 +101,7 @@ zentao login -s https://zentao.example.com -u admin -p 123456
 zentao story --product=1                # 产品 #1 的需求
 zentao bug --product=1                  # 产品 #1 的 Bug
 zentao task --executionID=1             # 执行 #1 的任务
-zentao execution --status=all --filter='project=5'  # 项目 #5 的执行（当前页客户端过滤）
+zentao execution --browseType=all --filter='project=5'  # 项目 #5 的执行（当前页客户端过滤）
 zentao build --project=5                # 项目 #5 的版本
 zentao testtask --product=1             # 产品 #1 的测试单
 zentao release --productID=1            # 产品 #1 的发布
@@ -199,7 +199,7 @@ CLI 不会自动翻页。仅当该列表操作的 `--help` 显示 `--page` / `--
 
 ```bash
 zentao project --browseType=doing --pick=id,name,status
-zentao execution --status=all --filter='project=5' --pick=id,name,status
+zentao execution --browseType=all --filter='project=5' --pick=id,name,status
 ```
 
 ### 创建需求并关联计划

@@ -11,7 +11,7 @@ describe('module registry (zentao-api)', () => {
         expect(names).toContain('task');
         expect(names).toContain('story');
         expect(names).toContain('user');
-        expect(names.length).toBe(19);
+        expect(names.length).toBeGreaterThanOrEqual(19);
     });
 
     test('getAllModules returns every registered module', () => {

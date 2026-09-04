@@ -1,4 +1,5 @@
 import { request } from 'zentao-api';
+import type { ResponseData } from 'zentao-api';
 import type { ZentaoClient } from '../api/index.js';
 import { mapSdkError } from '../errors.js';
 import type {
@@ -105,23 +106,25 @@ export async function executeModuleCommand(
         };
     }
 
-    const pager: ListPagerInfo | undefined = response.pager
+    const normalized = response as ResponseData<unknown>;
+
+    const pager: ListPagerInfo | undefined = normalized.pager
         ? {
-            pageID: response.pager.page,
-            recPerPage: response.pager.recPerPage,
-            recTotal: response.pager.total,
+            pageID: normalized.pager.page,
+            recPerPage: normalized.pager.recPerPage,
+            recTotal: normalized.pager.total,
         }
         : undefined;
 
     if (action.type === 'list') {
-        const data = (Array.isArray(response.data) ? response.data : []) as Record<string, unknown>[];
+        const data = (Array.isArray(normalized.data) ? normalized.data : []) as Record<string, unknown>[];
         return { action, data, rawResponse: response, pager, fields, isList: true };
     }
 
     if (action.type === 'get') {
-        const data = (response.data ?? {}) as Record<string, unknown>;
+        const data = (normalized.data ?? {}) as Record<string, unknown>;
         return { action, data, rawResponse: response, fields, isList: false };
     }
 
-    return { action, data: response.data, rawResponse: response, fields, isList: false };
+    return { action, data: normalized.data, rawResponse: response, fields, isList: false };
 }
