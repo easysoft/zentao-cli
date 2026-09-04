@@ -28,11 +28,13 @@ export function registerCrudCommands(program: Command): void {
         .command('get')
         .description('获取单个对象')
         .argument('<module>', '模块名称，例如 bug')
-        .argument('<id>', '对象 ID');
+        .argument('<id>', '对象 ID')
+        .argument('[args...]', '参数');
     addDataOptions(getCmd);
-    getCmd.action(async (moduleName: string, id: string, opts: ModuleActionOptions) => {
+    getCmd.allowUnknownOption(true);
+    getCmd.action(async (moduleName: string, id: string, args: string[], opts: ModuleActionOptions) => {
         opts.id = id;
-        await runCrudCommand(program, moduleName, 'get', {id, ...opts});
+        await runCrudCommand(program, moduleName, 'get', {id, ...opts}, args);
     });
 
     // zentao create <module>
@@ -107,7 +109,7 @@ async function runCrudCommand(
         });
 
         const firstArg = args[0];
-        if (firstArg && !isNaN(Number(firstArg))) {
+        if (firstArg && /^\d+$/.test(firstArg)) {
             options.id = firstArg;
             args.shift();
         }

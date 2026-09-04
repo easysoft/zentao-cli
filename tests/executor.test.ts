@@ -191,6 +191,28 @@ describe('module executor (zentao-api request pipeline)', () => {
         expect((result.rawResponse as { status: string }).status).toBe('success');
     });
 
+    test('passes space-separated and repeated dynamic flags to the request body', async () => {
+        const { client, requests } = mockClient(() => ({ status: 'success', id: 8 }));
+
+        await executeModuleCommand(
+            client,
+            getModule('product')!,
+            'create',
+            [
+                '--name', 'Example product',
+                '--reviewer', 'reviewer-a',
+                '--reviewer=reviewer-b',
+            ],
+            {},
+            DEFAULT_CONFIG,
+        );
+
+        expect(requests[0].options.body).toMatchObject({
+            name: 'Example product',
+            reviewer: ['reviewer-a', 'reviewer-b'],
+        });
+    });
+
     test('throws when required write parameters are missing', async () => {
         const { client } = mockClient(() => {
             throw new Error('should not request');
