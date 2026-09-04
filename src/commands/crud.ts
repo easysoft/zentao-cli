@@ -6,6 +6,7 @@ import { handleModuleCommand } from './module-handler.js';
 import { addDataOptions } from './register-modules.js';
 import type { GlobalOptions, ModuleActionOptions, ModuleName, ModuleActionName } from '../types/index.js';
 import { renderError } from '../utils/render.js';
+import { applyOptionsJson } from '../utils/cli-options.js';
 
 /** 注册 `ls` / `get` / `create` / `update` / `delete` / `do` 等通用 CRUD 入口 */
 export function registerCrudCommands(program: Command): void {
@@ -99,11 +100,12 @@ async function runCrudCommand(
     }
 
     const globalOpts = program.opts() as GlobalOptions;
-    const options = {...globalOpts, ...opts};
+    let options = { ...globalOpts, ...opts } as ModuleActionOptions;
     try {
+        options = applyOptionsJson(options);
         const { client, profile } = await ensureAuth({
-            insecure: globalOpts.insecure,
-            timeout: globalOpts.timeout,
+            insecure: options.insecure,
+            timeout: options.timeout,
         });
 
         const firstArg = args[0];

@@ -104,6 +104,21 @@ $ ZENTAO_CONFIG_FILE=~/work/zt.json zentao product
 > [!TIP]
 > 推荐优先使用简写方式。当简写方式中的模块名与命令行一级命令冲突时，必须改用原始方式调用。
 
+公共 CLI 选项也可以通过 `--options` 一次传入一个 JSON 对象，两种调用方式都支持。例如：
+
+```bash
+zentao product --options='{"format":"json","page":"2","filter":["status=normal"]}'
+zentao ls product --options='{"format":"json","page":"2","filter":["status=normal"]}'
+```
+
+同时提供独立选项时，独立选项优先。例如，下面的命令最终使用 Markdown 输出：
+
+```bash
+zentao product --options='{"format":"json","limit":"50"}' --format=markdown
+```
+
+`--options` 必须是 JSON 对象；无效 JSON、数组和其他 JSON 值会返回 `E2009`。
+
 ### 获取禅道对象列表
 
 支持通过 `zentao <moduleName>` 的方式获取指定模块的对象列表。

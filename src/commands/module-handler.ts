@@ -302,7 +302,7 @@ export function showModuleHelp(mod: ModuleDefinition): void {
     }
     commonOpts.push(
         { name: 'params', placeholder: 'json', description: 'API 调用参数（JSON 对象），可替代单独的 --key=value 传参' },
-        { name: 'options', placeholder: 'json', description: 'CLI 调用选项（JSON 对象），可替代单独的公共选项' },
+        { name: 'options', placeholder: 'json', description: 'CLI 调用选项（JSON 对象）；显式公共选项优先' },
     );
     if (deleteAction) commonOpts.push({ name: 'yes', description: '跳过确认提示，适用于 delete 操作' });
     commonOpts.push({ name: 'silent', description: '静默模式，不输出任何结果' });
@@ -356,7 +356,7 @@ export function showModuleActionHelp(mod: ModuleDefinition, action: ModuleAction
         apiParams.push({ name: 'data', placeholder: 'json', description: '请求数据（完整 JSON 对象），可替代以上逐个字段传参' });
     }
     apiParams.push({ name: 'params', placeholder: 'json', description: 'API 调用参数（JSON 对象），可替代以上逐个 --key=value 传参' });
-    apiParams.push({ name: 'options', placeholder: 'json', description: 'CLI 调用选项（JSON 对象），可替代以下公共选项' });
+    apiParams.push({ name: 'options', placeholder: 'json', description: 'CLI 调用选项（JSON 对象）；显式公共选项优先' });
 
     if (apiParams.length > 0) {
         console.log('\nAPI 参数:');
