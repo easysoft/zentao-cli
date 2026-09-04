@@ -40,8 +40,9 @@ export async function login(
     let serverConfig: ServerConfig | undefined;
     try {
         ({ serverConfig, user } = await verifyToken(client, account));
-    } catch {
-        // Token valid but couldn't fetch user details - not fatal
+    } catch (error) {
+        // Authentication failure is fatal; enrichment failures remain best-effort.
+        if (error instanceof ZentaoError && error.code === '1004') throw error;
     }
 
     return { token, user, serverConfig };
@@ -50,7 +51,7 @@ export async function login(
 /**
  * 拉取服务器配置与用户列表，用于验证 Token 是否可用。
  * - 服务端配置失败抛 E1002（服务不可达）
- * - /users 401 由 SDK 映射为 E1004（Token 失效）
+ * - /users 401 或 HTTP 200 登录页映射为 E1004（Token 失效）
  * - /users 返回空列表也按 E1004 处理
  */
 export async function verifyToken(

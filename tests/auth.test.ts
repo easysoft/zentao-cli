@@ -1,6 +1,6 @@
 import { describe, test, expect, afterEach, beforeEach } from 'bun:test';
 import { createClient } from '../src/api/index';
-import { verifyToken, getEnvCredentials } from '../src/auth/login';
+import { login, verifyToken, getEnvCredentials } from '../src/auth/login';
 import { ZentaoError } from '../src/errors';
 
 type RouteHandler = (req: Request, url: URL) => Response | Promise<Response>;
@@ -30,6 +30,46 @@ function createMockServer(routes: MockRoutes) {
 function makeClient(server: { url: URL }, token = 'test-token') {
     return createClient(server.url.toString(), token);
 }
+
+describe('login', () => {
+    test('does not accept a token when post-login verification returns a login page', async () => {
+        const server = createMockServer({
+            users: () => new Response(
+                '<!DOCTYPE html><html><body><form id="loginForm"><input name="account"></form></body></html>',
+                { headers: { 'Content-Type': 'text/html' } },
+            ),
+            fallback: (_req, url) => url.pathname === '/api.php/v2/users/login'
+                ? Response.json({ status: 'success', token: 'immediately-invalid-token' })
+                : new Response('not found', { status: 404 }),
+        });
+
+        try {
+            await expect(login(server.url.toString(), 'admin', 'password'))
+                .rejects.toMatchObject({ code: '1004' });
+        } finally {
+            server.stop();
+        }
+    });
+
+    test('keeps user and server details best-effort after a valid login', async () => {
+        const server = createMockServer({
+            serverConfig: () => new Response('unavailable', { status: 503 }),
+            fallback: (_req, url) => url.pathname === '/api.php/v2/users/login'
+                ? Response.json({ status: 'success', token: 'valid-token' })
+                : new Response('not found', { status: 404 }),
+        });
+
+        try {
+            await expect(login(server.url.toString(), 'admin', 'password')).resolves.toEqual({
+                token: 'valid-token',
+                user: undefined,
+                serverConfig: undefined,
+            });
+        } finally {
+            server.stop();
+        }
+    });
+});
 
 describe('verifyToken', () => {
     test('返回 serverConfig 和匹配账号的 user', async () => {
