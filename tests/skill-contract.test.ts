@@ -158,6 +158,8 @@ function allowedOptions(module: ModuleDefinition, action: ModuleAction): Set<str
 
     if (params.some((param) => param.name === 'pageID')) allowed.add('page');
     if (params.some((param) => param.name === 'recPerPage')) allowed.add('recPerPage');
+    if (params.some((param) => param.name === 'pageID')
+        && params.some((param) => param.name === 'recPerPage')) allowed.add('all');
     if (params.some((param) => param.role === 'path' && param.name.endsWith('ID'))) allowed.add('id');
     if (params.some((param) => param.role === 'path' && param.name === 'scope')) {
         for (const scope of ['product', 'project', 'execution']) {
@@ -254,7 +256,7 @@ describe('bundled Skill command contracts', () => {
 
         expect(result.exitCode).toBe(0);
         expect(result.stdout).toContain('--limit <number>');
-        expect(result.stdout).not.toContain('--all');
+        expect(result.stdout).toContain('--all');
         expect(result.stdout).toContain('zentao bug <操作> --help');
 
         const unpaged = await runCliWithoutAuth(['release', '--help']);

@@ -28,11 +28,11 @@ zentao project --browseType=doing --pick=id,name,begin,end,progress
 让他扫一眼，问："有没有哪条看着不对劲？进度慢的、日期要到的？"——挑出一个深入看：
 
 ```bash
-zentao execution --status=all --filter='project=<id>' --pick=id,name,status --page=<页码> --recPerPage=100
-zentao task --executionID=<执行ID> --status=all --pick=id,status --page=<页码> --recPerPage=100 --format=json
+zentao execution --status=all --filter='project=<id>' --pick=id,name,status --all
+zentao task --executionID=<执行ID> --status=all --pick=id,status --all --format=json
 ```
 
-执行列表没有项目作用域，所以用 `--filter` 在当前页本地筛选；必须扫完全局执行列表的每一页，才能收集某项目的全部执行 ID。再对每个执行按任务 pager 逐页读取，本地聚合"wait/doing/done 各多少"，用一句话汇报给用户。
+执行列表没有项目作用域，所以用 `--all` 获取全部执行后再过滤，收集某项目的全部执行 ID。再对每个执行获取全部任务，本地聚合"wait/doing/done 各多少"，用一句话汇报给用户。
 
 ## 如果他关心产品健康度
 
@@ -43,11 +43,11 @@ zentao product --pick=id,name,status
 挑他在意的那个产品：
 
 ```bash
-zentao story --product=<id> --browseType=allstory --pick=id,pri,stage,plan --page=<页码> --recPerPage=100 --format=json
-zentao bug --product=<id> --browseType=all --pick=id,severity,pri,status --page=<页码> --recPerPage=100 --format=json
+zentao story --product=<id> --browseType=allstory --pick=id,pri,stage,plan --all --format=json
+zentao bug --product=<id> --browseType=all --pick=id,severity,pri,status --all --format=json
 ```
 
-根据 pager 逐页读完再做简单统计（高优先级未处理需求数、严重 Bug 数），用两句话告诉用户："《XXX》当前有 N 条高优需求还没排期，严重 Bug M 条——主要堆在这几个 severity 上。"
+获取全部结果后再做简单统计（高优先级未处理需求数、严重 Bug 数），用两句话告诉用户："《XXX》当前有 N 条高优需求还没排期，严重 Bug M 条——主要堆在这几个 severity 上。"
 
 ## 如果他关心发布与版本
 
@@ -85,10 +85,10 @@ zentao ticket --productID=<id> --browseType=all --pick=id,title,status,pri
 | 关注点 | 命令 |
 |--------|------|
 | 进行中的项目 | `zentao project --browseType=doing --pick=id,name,progress,begin,end` |
-| 项目下的执行 | `zentao execution --status=all --filter='project=<id>' --pick=id,name,status --page=<页码> --recPerPage=100`|
-| 任务状态聚合 | `zentao task --executionID=<id> --status=all --pick=status --page=<页码> --recPerPage=100 --format=json` |
-| 产品下需求概览 | `zentao story --product=<id> --browseType=allstory --pick=id,pri,stage,plan --page=<页码> --recPerPage=100 --format=json` |
-| 产品下 Bug 概览 | `zentao bug --product=<id> --browseType=all --pick=id,severity,pri,status --page=<页码> --recPerPage=100 --format=json` |
+| 项目下的执行 | `zentao execution --status=all --filter='project=<id>' --pick=id,name,status --all`|
+| 任务状态聚合 | `zentao task --executionID=<id> --status=all --pick=status --all --format=json` |
+| 产品下需求概览 | `zentao story --product=<id> --browseType=allstory --pick=id,pri,stage,plan --all --format=json` |
+| 产品下 Bug 概览 | `zentao bug --product=<id> --browseType=all --pick=id,severity,pri,status --all --format=json` |
 | 即将 / 最近发布 | `zentao release --productID=<id> --pick=id,name,date,status` |
 | 版本 | `zentao build --project=<id> --pick=id,name,date` |
 | 用户反馈 | `zentao feedback --productID=<id> --browseType=all --pick=id,title,status,pri` |

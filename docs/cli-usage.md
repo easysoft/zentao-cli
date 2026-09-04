@@ -637,9 +637,10 @@ $ zentao ls product --sort=name:asc
 
 * `--page=<pageNumber>`：指定页码，默认值为 1
 * `--recPerPage=<recPerPage>`：指定分页大小，默认值为 20
-* `--limit=<number>`：截取当前返回页的数据；仅非负有限数值生效，小数向下取整
+* `--all`：自动翻页获取全部数据；不能与 `--page` 或 `--format=raw` 同时使用
+* `--limit=<number>`：限制返回数量；仅非负有限数值生效，小数向下取整
 
-CLI 当前不会自动翻页。仅当该列表操作的 `--help` 显示 `--page` / `--recPerPage` 时才可使用这两个参数；需要全量数据且返回了 pager 时，重复调整 `--page`，直到已读取条数覆盖总数。
+仅当列表操作的 `--help` 显示相应选项时，才可使用 `--page`、`--recPerPage` 或 `--all`。使用 `--all` 时，CLI 会先聚合全部分页，再统一应用过滤、搜索、排序、`--limit` 和 `--pick`。
 
 ```bash
 # 获取禅道产品信息，并分页获取
@@ -651,6 +652,9 @@ $ zentao product --page=1 --recPerPage=100
 | 2 | 产品2 |
 
 已显示 2 项，共 2 项，当前第 1 页，每页 100 条
+
+# 自动获取全部产品，并在完整结果上排序和限制数量
+$ zentao product --all --sort=id:desc --limit=10
 ```
 
 ## 设置默认配置
