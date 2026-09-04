@@ -6,6 +6,7 @@ import { handleModuleCommand, showModuleActionHelp, showModuleHelp, showModulePr
 import { ZentaoError } from '../errors.js';
 import type { GlobalOptions, ModuleActionName, ModuleActionOptions, ModuleActionType } from '../types/index.js';
 import { renderError } from '../utils/render.js';
+import { applyOptionsJson } from '../utils/cli-options.js';
 
 /** 为命令挂载数据查询、分页、过滤及父子上下文等通用选项 */
 export function addDataOptions(cmd: Command): Command {
@@ -21,7 +22,7 @@ export function addDataOptions(cmd: Command): Command {
         .option('--limit <number>', '限制获取数量')
         .option('--data <json>', 'JSON 数据')
         .option('--params <json>', 'API 调用参数')
-        .option('--options <json>', 'API 调用选项')
+        .option('--options <json>', 'CLI 调用选项（JSON 对象，显式参数优先）')
         .option('--yes', '跳过确认')
         .option('--silent', '静默模式')
         .option('--batch-fail-fast', '批量操作出错时停止')
@@ -77,8 +78,9 @@ export function registerModuleCommands(program: Command): void {
 
         cmd.action(async (args: string[], opts: ModuleActionOptions) => {
             const globalOpts = program.opts() as GlobalOptions;
-            const options = {...globalOpts, ...opts};
+            let options = { ...globalOpts, ...opts } as ModuleActionOptions;
             try {
+                options = applyOptionsJson(options);
                 const showRequestedHelp = (candidate?: string): void => {
                     if (!candidate) {
                         showModuleHelp(mod);
