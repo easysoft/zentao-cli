@@ -139,4 +139,52 @@ describe('buildParams (argv parsing)', () => {
         expect(params.flag).toBe(true);
         expect(params.name).toBe('foo');
     });
+
+    test('--key value accepts space-separated dynamic flags', () => {
+        const params = buildParams({}, 'create', ['--name', 'New task', '--estimate', '1.5']);
+        expect(params.name).toBe('New task');
+        expect(params.estimate).toBe(1.5);
+    });
+
+    test('repeated flags are accumulated for multi-value fields', () => {
+        const params = buildParams({}, 'create', [
+            '--reviewer=alice',
+            '--reviewer',
+            'bob',
+            '--reviewer=carol',
+        ]);
+        expect(params.reviewer).toBe('alice,bob,carol');
+    });
+
+    test('dash-leading values are not mistaken for flags', () => {
+        const params = buildParams({}, 'create', ['--estimate', '-1.5', '--title', '-draft']);
+        expect(params.estimate).toBe(-1.5);
+        expect(params.title).toBe('-draft');
+    });
+
+    test('bare flags become boolean true', () => {
+        const params = buildParams({}, 'create', ['--notify', '--name=Task']);
+        expect(params.notify).toBe(true);
+        expect(params.name).toBe('Task');
+    });
+
+    test('only plain decimal integers are accepted as positional IDs', () => {
+        expect(buildParams({}, 'get', ['123']).id).toBe('123');
+        expect(buildParams({}, 'get', ['1e2']).id).toBeUndefined();
+        expect(buildParams({}, 'get', ['0x10']).id).toBeUndefined();
+        expect(buildParams({}, 'get', ['12abc']).id).toBeUndefined();
+        expect(buildParams({}, 'get', ['1,,2']).id).toBeUndefined();
+    });
+
+    test('invalid --data JSON throws E2007', () => {
+        expect(() => buildParams({ data: '{invalid' }, 'create', [])).toThrow(
+            expect.objectContaining({ code: '2007' }),
+        );
+    });
+
+    test('invalid positional JSON throws E2007', () => {
+        expect(() => buildParams({}, 'create', ['{"title":"broken"'])).toThrow(
+            expect.objectContaining({ code: '2007' }),
+        );
+    });
 });
