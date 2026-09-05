@@ -4,25 +4,30 @@ import type { ModuleDefinition, ModuleAction, ModuleActionType, Profile, ModuleA
 import { findAction, getAction, getAvailableActions, getObjectProps } from '../modules/helper.js';
 import { buildParams } from '../modules/args.js';
 import { executeModuleCommand } from '../modules/executor.js';
+import type { ModuleExecutionResult } from '../modules/executor.js';
 import { getProfileConfig } from '../config/store.js';
 import { formatJson, formatOutput } from '../utils/format.js';
 import type { ModuleActionOptions } from '../types/index.js';
-import { createInterface } from 'node:readline';
-import { renderError, renderObject } from '../utils/render.js';
+import { createInterface } from 'node:readline/promises';
+import { renderObject } from '../utils/render.js';
 import { ZentaoError } from '../errors.js';
 
 
-/** JSON/raw 模式下跳过交互确认，便于脚本化调用 */
-async function confirmDelete(format: string, count: number): Promise<boolean> {
-    if (format === 'json' || format === 'raw') return true;
+async function confirmDelete(format: string, count: number, machineReadable = false): Promise<boolean> {
+    if (machineReadable || format === 'json' || format === 'raw' || !process.stdin.isTTY || !process.stderr.isTTY) {
+        throw new ZentaoError('E2009', {
+            option: 'yes',
+            reason: '非交互或机器可读模式下删除必须显式传入 --yes',
+        });
+    }
 
     const rl = createInterface({ input: process.stdin, output: process.stderr });
-    return new Promise((resolve) => {
-        rl.question(`确认删除 ${count} 个对象？(y/n): `, (answer) => {
-            rl.close();
-            resolve(answer.toLowerCase() === 'y');
-        });
-    });
+    try {
+        const answer = await rl.question(`确认删除 ${count} 个对象？(y/n): `);
+        return answer.toLowerCase() === 'y';
+    } finally {
+        rl.close();
+    }
 }
 
 function splitNumericIds(value: unknown): string[] | undefined {
@@ -52,18 +57,14 @@ function pickBatchIds(args: string[], options: ModuleActionOptions): { ids: stri
     return undefined;
 }
 
-async function renderModuleExecution(
-    client: ZentaoClient,
-    module: ModuleDefinition,
-    actionName: ModuleActionName,
-    args: string[],
+function renderModuleExecution(
+    execution: ModuleExecutionResult,
     options: ModuleActionOptions,
     config: UserConfig,
-): Promise<void> {
+): void {
     const format = options.format ?? config.defaultOutputFormat ?? 'markdown';
     const silent = options.silent ?? config.silent ?? false;
 
-    const execution = await executeModuleCommand(client, module, actionName, args, options, config);
     if (silent) {
         return;
     }
@@ -108,6 +109,87 @@ async function renderModuleExecution(
     if (output) console.log(output);
 }
 
+type BatchId = number;
+
+interface BatchError {
+    objectID: BatchId;
+    error: {
+        code?: string;
+        message: string;
+        details?: unknown;
+    };
+}
+
+interface BatchResult {
+    success: BatchId[];
+    failed: BatchId[];
+    skipped: BatchId[];
+    data?: Array<{ objectID: BatchId; value: unknown }>;
+    errors: BatchError[];
+}
+
+function toBatchError(id: BatchId, error: unknown): BatchError {
+    const normalized = error instanceof Error ? error : new Error(String(error));
+    return {
+        objectID: id,
+        error: {
+            ...(normalized instanceof ZentaoError ? { code: normalized.code, details: normalized.details } : {}),
+            message: normalized.message,
+        },
+    };
+}
+
+function renderBatchResult(result: BatchResult, format: string, pretty: boolean): string {
+    if (format === 'json' || format === 'raw') {
+        return formatJson({
+            status: result.failed.length > 0 ? 'failed' : 'success',
+            result,
+        }, pretty);
+    }
+
+    const lines: string[] = [];
+    if (result.data?.length) {
+        const rows = result.data.map(({ objectID, value }) => (
+            value && typeof value === 'object' && !Array.isArray(value)
+                ? { ...(value as Record<string, unknown>), objectID }
+                : { objectID, value }
+        ));
+        const dataOutput = formatOutput(rows, { format: 'markdown', isList: true });
+        if (dataOutput) lines.push(dataOutput);
+    }
+    lines.push(
+        `操作成功：${result.success.length > 0 ? result.success.join(', ') : '无'}`,
+        `操作失败：${result.failed.length > 0 ? result.failed.join(', ') : '无'}`,
+    );
+    if (result.skipped.length > 0) {
+        lines.push(`已跳过：${result.skipped.join(', ')}`);
+    }
+    for (const item of result.errors) {
+        const code = item.error.code ? `E${item.error.code}: ` : '';
+        lines.push(`${item.objectID}: ${code}${item.error.message}`);
+    }
+    return lines.join('\n');
+}
+
+function renderBatchErrors(result: BatchResult, format: string, pretty: boolean): string {
+    const failure = {
+        failed: result.failed,
+        skipped: result.skipped,
+        errors: result.errors,
+    };
+    if (format === 'json' || format === 'raw') {
+        return formatJson({ status: 'failed', result: failure }, pretty);
+    }
+
+    const lines = [`操作失败：${failure.failed.join(', ')}`];
+    if (failure.skipped.length > 0) lines.push(`已跳过：${failure.skipped.join(', ')}`);
+    for (const item of failure.errors) {
+        const code = item.error.code ? `E${item.error.code}: ` : '';
+        lines.push(`${item.objectID}: ${code}${item.error.message}`);
+    }
+    return lines.join('\n');
+}
+
 /** 输出模块对应对象的属性定义（与 `zentao <module> props` 对应） */
 export function showModuleProps(mod: ModuleDefinition, options: ModuleActionOptions): void {
     if (options.silent) return;
@@ -134,58 +216,78 @@ export async function handleModuleCommand(
     const batchFailFast = options.batchFailFast ?? config.batchFailFast ?? false;
     const format = options.format ?? config.defaultOutputFormat ?? 'markdown';
 
-    const batch = pickBatchIds(args, options);
-    if (batch) {
-        if (actionName === 'delete' && !options.yes) {
-            if (!await confirmDelete(format, batch.ids.length)) {
-                return;
-            }
-        }
-
-        for (const id of batch.ids) {
-            let caughtError: Error | undefined;
-            try {
-                await handleModuleCommand(
-                    client,
-                    module,
-                    actionName,
-                    batch.args,
-                    profile,
-                    { ...options, id, yes: options.yes || actionName === 'delete' },
-                );
-            } catch (error) {
-                caughtError = error as Error;
-            }
-            if (caughtError) {
-                if (batchFailFast) {
-                    throw caughtError;
-                }
-                console.error(renderError(caughtError, format));
-            }
-        }
-
-        return;
-    }
-
     const action = getAction(module, actionName);
     if (!action) {
         throw new ZentaoError('E2005', { module: module.name });
     }
 
+    const batch = pickBatchIds(args, options);
+    if (batch) {
+        if (action.type === 'delete' && !options.yes) {
+            if (!await confirmDelete(format, batch.ids.length, options.machineReadable)) {
+                return;
+            }
+        }
+
+        const result: BatchResult = {
+            success: [],
+            failed: [],
+            skipped: [],
+            ...(action.type === 'delete' ? {} : { data: [] }),
+            errors: [],
+        };
+        for (let index = 0; index < batch.ids.length; index++) {
+            const rawId = batch.ids[index];
+            const id = Number(rawId);
+            try {
+                const execution = await executeModuleCommand(
+                    client,
+                    module,
+                    actionName,
+                    batch.args,
+                    { ...options, id: rawId },
+                    config,
+                );
+                result.success.push(id);
+                result.data?.push({ objectID: id, value: execution.data });
+            } catch (error) {
+                result.failed.push(id);
+                result.errors.push(toBatchError(id, error));
+                if (batchFailFast) {
+                    result.skipped.push(...batch.ids.slice(index + 1).map(Number));
+                    break;
+                }
+            }
+        }
+
+        const silent = options.silent ?? config.silent ?? false;
+        const output = renderBatchResult(result, format, config.jsonPretty ?? false);
+        if (!silent) {
+            console.log(output);
+        } else if (result.failed.length > 0) {
+            console.error(renderBatchErrors(result, format, config.jsonPretty ?? false));
+        }
+        if (result.failed.length > 0) {
+            process.exitCode = 1;
+        }
+        return;
+    }
+
     const params = buildParams(options, actionName, args);
     const hasId = params.id !== undefined && params.id !== '';
-
-    if (action.type === 'delete' && !options.yes) {
-        if (!await confirmDelete(format, hasId ? 1 : 0)) {
-            return;
-        }
-    }
 
     if (!hasId && (action.type === 'delete' || action.type === 'update' || action.type === 'action')) {
         throw new ZentaoError('E2009', { option: 'id', reason: '必须提供要操作的对象 ID' });
     }
 
-    await renderModuleExecution(client, module, actionName, args, options, config);
+    if (action.type === 'delete' && !options.yes) {
+        if (!await confirmDelete(format, 1, options.machineReadable)) {
+            return;
+        }
+    }
+
+    const execution = await executeModuleCommand(client, module, actionName, args, options, config);
+    renderModuleExecution(execution, options, config);
 }
 
 /**
@@ -300,10 +402,7 @@ export function showModuleHelp(mod: ModuleDefinition): void {
     if (createAction || updateAction || actions.length > 0) {
         commonOpts.push({ name: 'data', placeholder: 'json', description: '请求数据（JSON 格式），适用于 create/update/状态流转操作' });
     }
-    commonOpts.push(
-        { name: 'params', placeholder: 'json', description: 'API 调用参数（JSON 对象），可替代单独的 --key=value 传参' },
-        { name: 'options', placeholder: 'json', description: 'CLI 调用选项（JSON 对象），可替代单独的公共选项' },
-    );
+    commonOpts.push({ name: 'params', placeholder: 'json', description: 'API 调用参数（JSON 对象），可替代单独的 --key=value 传参' });
     if (deleteAction) commonOpts.push({ name: 'yes', description: '跳过确认提示，适用于 delete 操作' });
     commonOpts.push({ name: 'silent', description: '静默模式，不输出任何结果' });
     if (getByIdAction || updateAction || deleteAction || actions.length > 0) {
@@ -356,7 +455,6 @@ export function showModuleActionHelp(mod: ModuleDefinition, action: ModuleAction
         apiParams.push({ name: 'data', placeholder: 'json', description: '请求数据（完整 JSON 对象），可替代以上逐个字段传参' });
     }
     apiParams.push({ name: 'params', placeholder: 'json', description: 'API 调用参数（JSON 对象），可替代以上逐个 --key=value 传参' });
-    apiParams.push({ name: 'options', placeholder: 'json', description: 'CLI 调用选项（JSON 对象），可替代以下公共选项' });
 
     if (apiParams.length > 0) {
         console.log('\nAPI 参数:');

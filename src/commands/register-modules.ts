@@ -1,11 +1,9 @@
 import { Command } from 'commander';
 import { getModuleNames, getModule } from '../modules/index.js';
-import { findAction, getAvailableActions } from '../modules/helper.js';
+import { getAction, getAvailableActions } from '../modules/helper.js';
 import { ensureAuth } from '../auth/flow.js';
 import { handleModuleCommand, showModuleActionHelp, showModuleHelp, showModuleProps } from './module-handler.js';
-import { ZentaoError } from '../errors.js';
-import type { GlobalOptions, ModuleActionName, ModuleActionOptions, ModuleActionType } from '../types/index.js';
-import { renderError } from '../utils/render.js';
+import type { GlobalOptions, ModuleActionName, ModuleActionOptions } from '../types/index.js';
 
 /** 为命令挂载数据查询、分页、过滤及父子上下文等通用选项 */
 export function addDataOptions(cmd: Command): Command {
@@ -21,7 +19,6 @@ export function addDataOptions(cmd: Command): Command {
         .option('--limit <number>', '限制获取数量')
         .option('--data <json>', 'JSON 数据')
         .option('--params <json>', 'API 调用参数')
-        .option('--options <json>', 'API 调用选项')
         .option('--yes', '跳过确认')
         .option('--silent', '静默模式')
         .option('--batch-fail-fast', '批量操作出错时停止')
@@ -38,9 +35,9 @@ function collect(value: string, previous: string[]): string[] {
 
 /** 内置模块命令列表 */
 const BUILTIN_COMMANDS = [
-    'login', 'logout', 'profile', 'config', 'workspace', 'version',
+    'login', 'logout', 'profile', 'config', 'version',
     'help', 'ls', 'list', 'get', 'create', 'update', 'delete', 'do', 'autocomplete',
-    'mcp', 'add-mcp', 'add-skill', // 保留命令
+    'mcp', 'add-mcp', 'add-skill', 'upgrade',
 ];
 
 /** 模块命令别名，例如 `zentao plan` -> `zentao productplan` */
@@ -78,79 +75,64 @@ export function registerModuleCommands(program: Command): void {
         cmd.action(async (args: string[], opts: ModuleActionOptions) => {
             const globalOpts = program.opts() as GlobalOptions;
             const options = {...globalOpts, ...opts};
-            try {
-                const showRequestedHelp = (candidate?: string): void => {
-                    if (!candidate) {
-                        showModuleHelp(mod);
-                        return;
-                    }
-
-                    const crudAliases: Record<string, string> = { ls: 'list' };
-                    const normalizedAction = /^\d+$/.test(candidate)
-                        ? 'get'
-                        : (crudAliases[candidate] ?? candidate);
-                    const crudTypes = new Set(['list', 'get', 'create', 'update', 'delete']);
-                    const resolvedAction = crudTypes.has(normalizedAction)
-                        ? findAction(mod, normalizedAction as ModuleActionType)
-                        : findAction(mod, 'action', candidate as ModuleActionName);
-                    if (resolvedAction) {
-                        showModuleActionHelp(mod, resolvedAction);
-                        return;
-                    }
+            const showRequestedHelp = (candidate?: string): void => {
+                if (!candidate) {
                     showModuleHelp(mod);
-                };
-
-                // 处理 --help / -h：等同于 help 子命令
-                const helpFlagIndex = args.findIndex((a) => a === '--help' || a === '-h');
-                if (helpFlagIndex !== -1) {
-                    args.splice(helpFlagIndex, 1);
-                    const positionalArgs = args.filter((a) => !a.startsWith('-'));
-                    showRequestedHelp(positionalArgs[0]);
                     return;
                 }
 
-                // 属性定义来自本地 SDK 注册表，无需连接禅道或执行鉴权。
-                if (args[0] === 'props') {
-                    showModuleProps(mod, options);
+                const resolvedAction = getAction(mod, /^\d+$/.test(candidate) ? 'get' : candidate);
+                if (resolvedAction) {
+                    showModuleActionHelp(mod, resolvedAction);
                     return;
                 }
+                showModuleHelp(mod);
+            };
 
-                // Preserve suffix-help compatibility and keep all help paths auth-free.
-                if (args[0] === 'help') {
-                    showRequestedHelp();
-                    return;
-                }
-                if (args[1] === 'help') {
-                    showRequestedHelp(args[0]);
-                    return;
-                }
-
-                const { client, profile } = await ensureAuth({
-                    insecure: options.insecure,
-                    timeout: options.timeout,
-                });
-
-                const firstArg = args.shift();
-                let action = firstArg;
-                const ids = firstArg?.split(',').map((s) => +s.trim());
-                if (ids?.length && ids.every((id) => !isNaN(id))) {
-                    options.id = ids.join(',');
-                    action = 'get';
-                } else if (action === undefined) {
-                    action = 'list';
-                } else if (action.startsWith('-')) {
-                    args.unshift(action);
-                    action = 'list';
-                }
-
-                await handleModuleCommand(client, mod, action as ModuleActionName, args, profile, options);
-            } catch (error) {
-                if (error instanceof ZentaoError) {
-                    console.log(renderError(error, options.format ?? 'markdown'));
-                    process.exit(1);
-                }
-                throw error;
+            // 处理 --help / -h：等同于 help 子命令
+            const helpFlagIndex = args.findIndex((a) => a === '--help' || a === '-h');
+            if (helpFlagIndex !== -1) {
+                args.splice(helpFlagIndex, 1);
+                const positionalArgs = args.filter((a) => !a.startsWith('-'));
+                showRequestedHelp(positionalArgs[0]);
+                return;
             }
+
+            // 属性定义来自本地 SDK 注册表，无需连接禅道或执行鉴权。
+            if (args[0] === 'props') {
+                showModuleProps(mod, options);
+                return;
+            }
+
+            // Preserve suffix-help compatibility and keep all help paths auth-free.
+            if (args[0] === 'help') {
+                showRequestedHelp();
+                return;
+            }
+            if (args[1] === 'help') {
+                showRequestedHelp(args[0]);
+                return;
+            }
+
+            const { client, profile } = await ensureAuth({
+                insecure: options.insecure,
+                timeout: options.timeout,
+            });
+
+            const firstArg = args.shift();
+            let action = firstArg;
+            const ids = firstArg?.split(',').map((id) => id.trim());
+            if (ids?.length && ids.every((id) => /^\d+$/.test(id))) {
+                options.id = ids.join(',');
+                action = 'get';
+            } else if (action === undefined) {
+                action = 'list';
+            } else if (action.startsWith('-')) {
+                args.unshift(action);
+                action = 'list';
+            }
+
+            await handleModuleCommand(client, mod, action as ModuleActionName, args, profile, options);
         });
     }
 }

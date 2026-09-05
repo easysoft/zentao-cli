@@ -1,6 +1,7 @@
 import { describe, test, expect } from 'bun:test';
 import { ZentaoError as SdkZentaoError } from 'zentao-api';
 import { ZentaoError, ERROR_CODES, formatError, mapSdkError } from '../src/errors';
+import { runCliWithoutAuth } from './helpers';
 
 describe('ZentaoError', () => {
     test('creates error with code and default message', () => {
@@ -107,4 +108,16 @@ describe('mapSdkError', () => {
         const plain = new Error('boom');
         expect(mapSdkError(plain)).toBe(plain);
     });
+});
+
+test('CLI reports command errors through the root handler', async () => {
+    const domainError = await runCliWithoutAuth(['product', 'list', '--format=json']);
+    expect(domainError.exitCode).toBe(1);
+    expect(domainError.stdout).toBe('');
+    expect(JSON.parse(domainError.stderr).error.code).toBe('1006');
+
+    const plainError = await runCliWithoutAuth(['add-skill', 'unknown-agent']);
+    expect(plainError.exitCode).toBe(1);
+    expect(plainError.stdout).toBe('');
+    expect(plainError.stderr).toContain('不支持的 agent: unknown-agent');
 });

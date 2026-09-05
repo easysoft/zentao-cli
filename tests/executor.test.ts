@@ -88,6 +88,21 @@ describe('module executor (zentao-api request pipeline)', () => {
         ]);
     });
 
+    test('uses module pagination config when the CLI option is omitted', async () => {
+        const { client, requests } = mockClient(() => ({ status: 'success', products: [] }));
+
+        await executeModuleCommand(
+            client,
+            getModule('product')!,
+            'list',
+            [],
+            {},
+            { ...DEFAULT_CONFIG, defaultRecPerPage: 25, pagers: { product: 50 } },
+        );
+
+        expect(requests[0].options.query).toMatchObject({ recPerPage: '50' });
+    });
+
     test('executes get commands with HTML conversion and pick', async () => {
         const { client, requests } = mockClient(() => ({
             status: 'success',
@@ -189,6 +204,20 @@ describe('module executor (zentao-api request pipeline)', () => {
             password: 'secret',
         });
         expect((result.rawResponse as { status: string }).status).toBe('success');
+    });
+
+    test('rejects invalid --data JSON before sending a request', async () => {
+        const { client, requests } = mockClient(() => ({ status: 'success' }));
+
+        await expect(executeModuleCommand(
+            client,
+            getModule('user')!,
+            'create',
+            [],
+            { data: '{"account":}' },
+            DEFAULT_CONFIG,
+        )).rejects.toMatchObject({ code: '2007' });
+        expect(requests).toHaveLength(0);
     });
 
     test('throws when required write parameters are missing', async () => {

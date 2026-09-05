@@ -10,7 +10,8 @@ import type {
     UserConfig,
 } from '../types/index.js';
 import { convertHtmlFields, convertHtmlFieldsInArray } from '../utils/html.js';
-import { buildParams, normalizeActionName } from './args.js';
+import { resolveData } from '../utils/stdin.js';
+import { buildParams } from './args.js';
 import { getAction } from './helper.js';
 import { ZentaoError } from '../errors.js';
 
@@ -61,7 +62,14 @@ export async function executeModuleCommand(
     }
 
     const params = buildParams(options, actionName, args);
-    const requestName = `${module.name}/${normalizeActionName(actionName)}`;
+    if (action.type === 'create' || action.type === 'update' || action.type === 'action') {
+        const data = params.data;
+        if (data === undefined || typeof data === 'string') {
+            const resolved = await resolveData(data);
+            if (resolved !== undefined) params.data = resolved;
+        }
+    }
+    const requestName = `${module.name}/${action.name}`;
     const fields = parseFields(options.pick);
     const rawOutput = (options.format ?? config.defaultOutputFormat ?? 'markdown') === 'raw';
     const shouldProcess = !rawOutput;
@@ -74,7 +82,7 @@ export async function executeModuleCommand(
             client,
             autoFill: action.type === 'update',
             throwOnFail: true,
-            recPerPage: options.recPerPage,
+            recPerPage: options.recPerPage ?? String(config.pagers?.[module.name] ?? config.defaultRecPerPage),
             timeout: options.timeout,
             insecure: options.insecure,
             raw: rawOutput,

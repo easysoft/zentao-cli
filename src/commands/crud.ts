@@ -5,7 +5,6 @@ import { ensureAuth } from '../auth/flow.js';
 import { handleModuleCommand } from './module-handler.js';
 import { addDataOptions } from './register-modules.js';
 import type { GlobalOptions, ModuleActionOptions, ModuleName, ModuleActionName } from '../types/index.js';
-import { renderError } from '../utils/render.js';
 
 /** 注册 `ls` / `get` / `create` / `update` / `delete` / `do` 等通用 CRUD 入口 */
 export function registerCrudCommands(program: Command): void {
@@ -100,24 +99,16 @@ async function runCrudCommand(
 
     const globalOpts = program.opts() as GlobalOptions;
     const options = {...globalOpts, ...opts};
-    try {
-        const { client, profile } = await ensureAuth({
-            insecure: globalOpts.insecure,
-            timeout: globalOpts.timeout,
-        });
+    const { client, profile } = await ensureAuth({
+        insecure: globalOpts.insecure,
+        timeout: globalOpts.timeout,
+    });
 
-        const firstArg = args[0];
-        if (firstArg && !isNaN(Number(firstArg))) {
-            options.id = firstArg;
-            args.shift();
-        }
-
-        await handleModuleCommand(client, mod, actionName, args, profile, options);
-    } catch (error) {
-        if (error instanceof ZentaoError) {
-            console.log(renderError(error, options.format ?? 'markdown'));
-            process.exit(1);
-        }
-        throw error;
+    const firstArg = args[0];
+    if (firstArg && /^\d+$/.test(firstArg)) {
+        options.id = firstArg;
+        args.shift();
     }
+
+    await handleModuleCommand(client, mod, actionName, args, profile, options);
 }

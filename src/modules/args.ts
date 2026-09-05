@@ -1,15 +1,6 @@
 import { ZentaoError } from '../errors.js';
 import type { ModuleActionOptions } from '../types/index.js';
 
-const ACTION_NAME_ALIASES: Record<string, string> = {
-    ls: 'list',
-};
-
-/** 将 actionName 归一化（如 `ls` → `list`） */
-export function normalizeActionName(actionName: string): string {
-    return ACTION_NAME_ALIASES[actionName] ?? actionName;
-}
-
 /**
  * 将 CLI 选项与位置参数组装成 SDK `request()` 可消费的参数对象。
  *

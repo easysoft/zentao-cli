@@ -1,4 +1,4 @@
-import type { OutputFormat } from "./config";
+import type { OutputFormat } from './config.js';
 
 /** Commander 顶层 `program` 上挂载的全局 CLI 选项 */
 export interface GlobalOptions {
@@ -17,7 +17,7 @@ export interface GlobalOptions {
     /** 自定义配置文件路径，覆盖默认的 ~/.config/zentao/zentao.json */
     config?: string;
 
-    /** 是否启用机器可读模式，简化格式，禁用颜色输出 */
+    /** 是否禁用 Markdown ANSI 渲染与隐式交互确认 */
     machineReadable?: boolean;
 }
 
@@ -55,9 +55,6 @@ export interface ModuleActionOptions extends GlobalOptions {
 
     /** 通过 JSON 对象来指定多个 API 调用参数，不包括 DataOptions 上的选项 */
     params?: string;
-
-    /** 通过 JSON 对象来指定多个选项，不包括 API 调用选项，适用于所有操作 */
-    options?: string;
 
     /** 是否跳过确认，适用于 actionType 为 delete 操作 */
     yes?: boolean;

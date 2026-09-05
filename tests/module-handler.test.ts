@@ -1,7 +1,4 @@
 import { describe, expect, test } from 'bun:test';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import type { ZentaoClient } from '../src/api/index';
 import { handleModuleCommand } from '../src/commands/module-handler';
 import { getModule } from '../src/modules';
@@ -18,6 +15,20 @@ async function captureConsoleLog(fn: () => Promise<void>): Promise<string[]> {
         await fn();
     } finally {
         console.log = originalLog;
+    }
+    return output;
+}
+
+async function captureConsoleError(fn: () => Promise<void>): Promise<string[]> {
+    const output: string[] = [];
+    const originalError = console.error;
+    console.error = (...args: unknown[]) => {
+        output.push(args.map(String).join(' '));
+    };
+    try {
+        await fn();
+    } finally {
+        console.error = originalError;
     }
     return output;
 }
@@ -61,53 +72,231 @@ describe('handleModuleCommand batch ids', () => {
             { method: 'delete', path: '/products/2' },
         ]);
     });
+
+    test('prints one JSON summary for a batch', async () => {
+        const client = {
+            request: async () => ({ status: 'success' }),
+        } as unknown as ZentaoClient;
+
+        const output = await captureConsoleLog(async () => {
+            await handleModuleCommand(
+                client,
+                getModule('product')!,
+                'delete' as ModuleActionName,
+                ['1,2'],
+                mockProfile,
+                { yes: true, format: 'json' },
+            );
+        });
+
+        expect(output).toHaveLength(1);
+        expect(JSON.parse(output[0])).toEqual({
+            status: 'success',
+            result: { success: [1, 2], failed: [], skipped: [], errors: [] },
+        });
+    });
+
+    test('keeps successful data when batching get operations', async () => {
+        const client = {
+            request: async (path: string) => ({
+                status: 'success',
+                product: { id: Number(path.split('/').at(-1)), name: `产品${path.split('/').at(-1)}` },
+            }),
+        } as unknown as ZentaoClient;
+
+        const output = await captureConsoleLog(async () => {
+            await handleModuleCommand(
+                client,
+                getModule('product')!,
+                'get' as ModuleActionName,
+                ['1,2'],
+                mockProfile,
+                { format: 'json' },
+            );
+        });
+
+        expect(output).toHaveLength(1);
+        expect(JSON.parse(output[0])).toEqual({
+            status: 'success',
+            result: {
+                success: [1, 2],
+                failed: [],
+                skipped: [],
+                data: [
+                    { objectID: 1, value: { id: 1, name: '产品1' } },
+                    { objectID: 2, value: { id: 2, name: '产品2' } },
+                ],
+                errors: [],
+            },
+        });
+    });
+
+    test('silent batch failures do not print successful object data', async () => {
+        const client = {
+            request: async (path: string) => {
+                if (path.endsWith('/2')) throw new Error('request failed');
+                return { status: 'success', product: { id: 1, secret: 'private value' } };
+            },
+        } as unknown as ZentaoClient;
+        const previousExitCode = process.exitCode;
+        process.exitCode = undefined;
+
+        try {
+            const output = await captureConsoleError(async () => {
+                await handleModuleCommand(
+                    client,
+                    getModule('product')!,
+                    'get' as ModuleActionName,
+                    ['1,2'],
+                    mockProfile,
+                    { format: 'json', silent: true },
+                );
+            });
+
+            expect(output).toHaveLength(1);
+            expect(output[0]).not.toContain('private value');
+            expect(JSON.parse(output[0])).toEqual({
+                status: 'failed',
+                result: {
+                    failed: [2],
+                    skipped: [],
+                    errors: [{ objectID: 2, error: { message: 'request failed' } }],
+                },
+            });
+        } finally {
+            process.exitCode = previousExitCode ?? 0;
+        }
+    });
+
+    test('continues after failures and sets a non-zero exit code', async () => {
+        const requests: string[] = [];
+        const client = {
+            request: async (path: string) => {
+                requests.push(path);
+                if (path === '/products/2') throw new Error('request failed');
+                return { status: 'success' };
+            },
+        } as unknown as ZentaoClient;
+        const previousExitCode = process.exitCode;
+        process.exitCode = undefined;
+
+        try {
+            const output = await captureConsoleLog(async () => {
+                await handleModuleCommand(
+                    client,
+                    getModule('product')!,
+                    'delete' as ModuleActionName,
+                    ['1,2,3'],
+                    mockProfile,
+                    { yes: true, format: 'json' },
+                );
+            });
+
+            expect(requests).toEqual(['/products/1', '/products/2', '/products/3']);
+            expect(output).toHaveLength(1);
+            expect(JSON.parse(output[0])).toEqual({
+                status: 'failed',
+                result: {
+                    success: [1, 3],
+                    failed: [2],
+                    skipped: [],
+                    errors: [{ objectID: 2, error: { message: 'request failed' } }],
+                },
+            });
+            expect(Number(process.exitCode)).toBe(1);
+        } finally {
+            process.exitCode = previousExitCode ?? 0;
+        }
+    });
 });
 
 describe('delete confirmation prompt', () => {
-    test('counts comma-separated ids instead of characters', async () => {
-        const dir = mkdtempSync(join(tmpdir(), 'zentao-cli-test-'));
-        const configFile = join(dir, 'zentao.json');
+    test('refuses non-interactive deletion without --yes', async () => {
+        let requestCount = 0;
+        const client = {
+            request: async () => {
+                requestCount++;
+                return { status: 'success' };
+            },
+        } as unknown as ZentaoClient;
+        Object.defineProperty(process.stdin, 'isTTY', { configurable: true, value: false });
 
         try {
-            writeFileSync(configFile, JSON.stringify({
-                currentProfile: `${mockProfile.account}@${mockProfile.server}`,
-                profiles: [mockProfile],
-                updateCheck: {
-                    lastCheck: new Date().toISOString(),
-                    latestVersion: '0.1.4',
-                },
-            }));
-
-            const proc = Bun.spawn({
-                cmd: [
-                    process.execPath,
-                    'src/index.ts',
-                    '--config',
-                    configFile,
-                    'product',
-                    'delete',
-                    '1,2',
-                ],
-                cwd: process.cwd(),
-                stdin: 'pipe',
-                stdout: 'pipe',
-                stderr: 'pipe',
-                env: process.env,
-            });
-
-            proc.stdin.write('n\n');
-            proc.stdin.end();
-
-            const [stderr, exitCode] = await Promise.all([
-                new Response(proc.stderr).text(),
-                proc.exited,
-            ]);
-
-            expect(exitCode).toBe(0);
-            expect(stderr).toContain('确认删除 2 个对象');
+            await expect(handleModuleCommand(
+                client,
+                getModule('product')!,
+                'delete' as ModuleActionName,
+                [],
+                mockProfile,
+                { id: '1', format: 'markdown' },
+            )).rejects.toMatchObject({ code: '2009' });
+            expect(requestCount).toBe(0);
         } finally {
-            rmSync(dir, { recursive: true, force: true });
+            delete (process.stdin as { isTTY?: boolean }).isTTY;
         }
+    });
+
+    test('machine output does not bypass deletion confirmation', async () => {
+        let requestCount = 0;
+        const client = {
+            request: async () => {
+                requestCount++;
+                return { status: 'success' };
+            },
+        } as unknown as ZentaoClient;
+
+        await expect(handleModuleCommand(
+            client,
+            getModule('product')!,
+            'delete' as ModuleActionName,
+            [],
+            mockProfile,
+            { id: '1', format: 'json' },
+        )).rejects.toMatchObject({ code: '2009' });
+        expect(requestCount).toBe(0);
+    });
+});
+
+describe('handleModuleCommand rendered output', () => {
+    test('prints parseable JSON without ANSI for get commands', async () => {
+        const client = {
+            request: async () => ({ status: 'success', product: { id: 1, name: '产品1' } }),
+        } as unknown as ZentaoClient;
+
+        const output = await captureConsoleLog(async () => {
+            await handleModuleCommand(
+                client,
+                getModule('product')!,
+                'get' as ModuleActionName,
+                ['1'],
+                mockProfile,
+                { format: 'json' },
+            );
+        });
+
+        expect(output).toHaveLength(1);
+        expect(output[0]).not.toContain('\x1b');
+        expect(JSON.parse(output[0])).toEqual({ id: 1, name: '产品1' });
+    });
+
+    test('does not render Markdown ANSI when stdout is not a TTY', async () => {
+        const client = {
+            request: async () => ({ status: 'success', product: { id: 1, name: '产品1' } }),
+        } as unknown as ZentaoClient;
+
+        const output = await captureConsoleLog(async () => {
+            await handleModuleCommand(
+                client,
+                getModule('product')!,
+                'get' as ModuleActionName,
+                ['1'],
+                mockProfile,
+                { format: 'markdown' },
+            );
+        });
+
+        expect(output[0]).not.toContain('\x1b');
+        expect(output[0]).toContain('* id: 1');
     });
 });
 

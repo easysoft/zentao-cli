@@ -95,6 +95,7 @@ describe('action lookup', () => {
     test('getAction resolves extension actions', () => {
         const mod = getModule('bug')!;
         expect(getAction(mod, 'resolve')?.name).toBe('resolve');
+        expect(getAction(mod, 'RESOLVE')?.name).toBe('resolve');
     });
 
     test('getAction returns undefined for unknown action', () => {

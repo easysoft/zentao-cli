@@ -1,18 +1,19 @@
 import { ZentaoError } from '../errors.js';
 
-/** 在非 TTY 标准输入下读取全部内容；交互终端上返回 `undefined` */
-export async function readStdin(): Promise<string | undefined> {
-    if (process.stdin.isTTY) return undefined;
+let stdinContent: Promise<string | undefined> | undefined;
 
-    return new Promise((resolve, reject) => {
+/** 在未被占用的非 TTY 标准输入上读取全部内容；交互终端或已有消费者时返回 `undefined` */
+export async function readStdin(): Promise<string | undefined> {
+    if (stdinContent) return stdinContent;
+    if (process.stdin.isTTY || process.stdin.listenerCount('data') > 0) return undefined;
+
+    stdinContent = (async () => {
         const chunks: Buffer[] = [];
-        process.stdin.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
-        process.stdin.on('end', () => {
-            const content = Buffer.concat(chunks).toString('utf-8').trim();
-            resolve(content || undefined);
-        });
-        process.stdin.on('error', reject);
-    });
+        for await (const chunk of process.stdin) chunks.push(Buffer.from(chunk));
+        const content = Buffer.concat(chunks).toString('utf-8').trim();
+        return content || undefined;
+    })();
+    return stdinContent;
 }
 
 /** 解析 `--data` / 管道 JSON，失败时抛出 `E2007` */

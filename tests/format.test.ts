@@ -37,6 +37,11 @@ describe('formatTable', () => {
         const result = formatTable(data);
         expect(result).toContain('{"key":"val"}');
     });
+
+    test('escapes pipes and line breaks inside cells', () => {
+        const result = formatTable([{ value: 'a|b\nc' }]);
+        expect(result).toContain('| a\\|b<br>c |');
+    });
 });
 
 describe('formatList', () => {

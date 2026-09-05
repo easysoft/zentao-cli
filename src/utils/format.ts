@@ -100,8 +100,8 @@ function normalizePager(pager: Pager): Record<string, number> {
 
 function formatCellValue(value: unknown): string {
     if (value === null || value === undefined) return '';
-    if (typeof value === 'object') return JSON.stringify(value);
-    return String(value);
+    const text = typeof value === 'object' ? JSON.stringify(value) : String(value);
+    return text.replace(/\r?\n/g, '<br>').replace(/\|/g, '\\|');
 }
 
 /** 以点分路径读取嵌套字段，路径不存在时返回 `undefined` */
