@@ -49,7 +49,7 @@ export async function login(
 
 /**
  * 拉取服务器配置与用户列表，用于验证 Token 是否可用。
- * - 服务端配置失败抛 E1002（服务不可达）
+ * - 服务端 HTTP 错误由 SDK 统一映射为 CLI 错误
  * - /users 401 由 SDK 映射为 E1004（Token 失效）
  * - /users 返回空列表也按 E1004 处理
  */

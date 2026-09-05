@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import { getAllProfiles, getCurrentProfile, setCurrentProfile, profileKey } from '../config/store.js';
-import { ZentaoError, formatError } from '../errors.js';
+import { ZentaoError } from '../errors.js';
 import type { GlobalOptions } from '../types/index.js';
 import { renderMarkdown } from '../utils/render.js';
 
@@ -12,56 +12,48 @@ export function registerProfileCommand(program: Command): void {
         .argument('[profileKey]', '要切换到的用户配置（格式：account@server，例如 admin@https://zentao.example.com）')
         .action((key: string | undefined) => {
             const globalOpts = program.opts() as GlobalOptions;
-            try {
-                if (key) {
-                    const success = setCurrentProfile(key);
-                    if (!success) throw new ZentaoError('E1007');
-                    if (!globalOpts.silent) {
-                        console.log(renderMarkdown(`已切换到: \`${key}\``));
-                    }
-                    return;
+            if (key) {
+                const success = setCurrentProfile(key);
+                if (!success) throw new ZentaoError('E1007');
+                if (!globalOpts.silent) {
+                    console.log(renderMarkdown(`已切换到: \`${key}\``));
                 }
-
-                const profiles = getAllProfiles();
-                if (profiles.length === 0) {
-                    throw new ZentaoError('E1006');
-                }
-
-                const current = getCurrentProfile();
-                const currentKey = current ? profileKey(current.account, current.server) : '';
-
-                if (globalOpts.format === 'json' || globalOpts.format === 'raw') {
-                    console.log(JSON.stringify({
-                        status: 'success',
-                        currentProfile: currentKey,
-                        profiles: profiles.map((p) => ({
-                            key: profileKey(p.account, p.server),
-                            server: p.server,
-                            account: p.account,
-                            current: profileKey(p.account, p.server) === currentKey,
-                        })),
-                    }, null, 4));
-                    return;
-                }
-
-                const lines = profiles.map((p) => {
-                    const pKey = profileKey(p.account, p.server);
-                    const parts = [pKey];
-                    if (p.serverConfig) {
-                        parts.push(` (${p.serverConfig.version.toUpperCase()})`);
-                    }
-                    if (pKey === currentKey) {
-                        parts.push(' **[当前]**');
-                    }
-                    return `* ${parts.join('')}`;
-                });
-                console.log(renderMarkdown(lines.join('\n')));
-            } catch (error) {
-                if (error instanceof ZentaoError) {
-                    console.error(formatError(error, globalOpts.format ?? 'markdown'));
-                    process.exit(1);
-                }
-                throw error;
+                return;
             }
+
+            const profiles = getAllProfiles();
+            if (profiles.length === 0) {
+                throw new ZentaoError('E1006');
+            }
+
+            const current = getCurrentProfile();
+            const currentKey = current ? profileKey(current.account, current.server) : '';
+
+            if (globalOpts.format === 'json' || globalOpts.format === 'raw') {
+                console.log(JSON.stringify({
+                    status: 'success',
+                    currentProfile: currentKey,
+                    profiles: profiles.map((p) => ({
+                        key: profileKey(p.account, p.server),
+                        server: p.server,
+                        account: p.account,
+                        current: profileKey(p.account, p.server) === currentKey,
+                    })),
+                }, null, 4));
+                return;
+            }
+
+            const lines = profiles.map((p) => {
+                const pKey = profileKey(p.account, p.server);
+                const parts = [pKey];
+                if (p.serverConfig) {
+                    parts.push(` (${p.serverConfig.version.toUpperCase()})`);
+                }
+                if (pKey === currentKey) {
+                    parts.push(' **[当前]**');
+                }
+                return `* ${parts.join('')}`;
+            });
+            console.log(renderMarkdown(lines.join('\n')));
         });
 }

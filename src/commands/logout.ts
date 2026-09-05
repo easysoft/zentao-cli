@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import { removeProfile, getCurrentProfile, profileKey } from '../config/store.js';
-import { ZentaoError, formatError } from '../errors.js';
+import { ZentaoError } from '../errors.js';
 import type { GlobalOptions } from '../types/index.js';
 
 /** 注册 `zentao logout`：按 key 删除本地保存的 Profile */
@@ -11,33 +11,25 @@ export function registerLogoutCommand(program: Command): void {
         .argument('[profileKey]', '要退出的用户配置（格式：account@server）')
         .action((key: string | undefined) => {
             const globalOpts = program.opts() as GlobalOptions;
-            try {
-                let targetKey: string;
-                if (key) {
-                    targetKey = key;
-                } else {
-                    const current = getCurrentProfile();
-                    if (!current) {
-                        console.log('未找到当前用户配置，请先使用 `zentao login` 登录');
-                        return;
-                    }
-                    targetKey = profileKey(current.account, current.server);
+            let targetKey: string;
+            if (key) {
+                targetKey = key;
+            } else {
+                const current = getCurrentProfile();
+                if (!current) {
+                    console.log('未找到当前用户配置，请先使用 `zentao login` 登录');
+                    return;
                 }
+                targetKey = profileKey(current.account, current.server);
+            }
 
-                const removed = removeProfile(targetKey);
-                if (!removed) {
-                    throw new ZentaoError('E1007');
-                }
+            const removed = removeProfile(targetKey);
+            if (!removed) {
+                throw new ZentaoError('E1007');
+            }
 
-                if (!globalOpts.silent) {
-                    console.log(`已退出: ${targetKey}`);
-                }
-            } catch (error) {
-                if (error instanceof ZentaoError) {
-                    console.error(formatError(error, globalOpts.format ?? 'markdown'));
-                    process.exit(1);
-                }
-                throw error;
+            if (!globalOpts.silent) {
+                console.log(`已退出: ${targetKey}`);
             }
         });
 }

@@ -47,7 +47,8 @@ describe('verifyToken', () => {
 
         try {
             const result = await verifyToken(makeClient(server), 'admin');
-            expect(result.serverConfig).toEqual({ version: '22.0', edition: 'open' });
+            expect(result.serverConfig.version).toBe('22.0');
+            expect((result.serverConfig as unknown as Record<string, unknown>).edition).toBe('open');
             expect(result.user).toEqual({ account: 'admin', realname: 'Admin' });
         } finally {
             server.stop();
