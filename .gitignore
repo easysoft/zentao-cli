@@ -140,6 +140,7 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
 # Editors
+.DS_Store
 *.code-workspace
 .cursor/hooks/state
 .claude/*.local.json

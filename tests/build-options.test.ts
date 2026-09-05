@@ -20,7 +20,7 @@ describe('build script target resolution', () => {
     });
 
     test('--targets=all resolves to all mainstream platforms', () => {
-        expect(parseBuildArgs(['--compile', '--targets=all']).targets).toEqual(ALL_MAINSTREAM_TARGETS);
+        expect(parseBuildArgs(['--compile', '--targets=all']).targets).toEqual([...ALL_MAINSTREAM_TARGETS]);
     });
 
     test('supports comma separated targets and repeated --target flags', () => {

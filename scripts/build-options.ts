@@ -143,7 +143,7 @@ function resolveTarget(target: string): { id: string; bunTarget: Bun.Build.Compi
     }
 
     return {
-        id: target.startsWith('bun-') ? target : target,
+        id: target,
         bunTarget: bunTarget as Bun.Build.CompileTarget,
     };
 }

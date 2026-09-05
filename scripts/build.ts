@@ -1,18 +1,15 @@
-import { chmodSync, mkdirSync } from 'node:fs';
+import { mkdirSync, rmSync } from 'node:fs';
 import { dirname } from 'node:path';
 import pkg from '../package.json';
 import { buildCompileOptions, parseBuildArgs } from './build-options';
 
 const buildArgs = parseBuildArgs(process.argv.slice(2));
-const buildTime = Date.now().toString();
-
 const commonOptions = {
     entrypoints: ['src/index.ts'],
     sourcemap: buildArgs.sourcemap,
     bytecode: buildArgs.bytecode,
     minify: buildArgs.minify,
     define: {
-        BUILD_TIME: buildTime,
         BUILD_VERSION: JSON.stringify(pkg.version),
     },
 };
@@ -47,11 +44,13 @@ if (buildArgs.compile) {
         console.log(`Build succeeded: ${option.outfile}`);
     }
 } else {
+    rmSync('dist', { recursive: true, force: true });
     const result = await Bun.build({
         ...commonOptions,
         outdir: 'dist',
         target: 'node',
         format: 'esm',
+        packages: 'external',
     });
 
     if (!result.success) {
@@ -62,6 +61,5 @@ if (buildArgs.compile) {
         process.exit(1);
     }
 
-    chmodSync('bin/zentao.js', 0o755);
     console.log('Build succeeded: dist/index.js');
 }
