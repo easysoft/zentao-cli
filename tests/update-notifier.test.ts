@@ -14,7 +14,7 @@ function mockRegistryResponse(body: unknown, status = 200): void {
     globalThis.fetch = (async () => new Response(JSON.stringify(body), {
         status,
         statusText: status === 200 ? 'OK' : 'Error',
-    })) as typeof fetch;
+    })) as unknown as typeof fetch;
 }
 
 afterEach(() => {
@@ -93,21 +93,7 @@ describe('isStableVersion', () => {
 });
 
 describe('fetchLatestVersion', () => {
-    test('returns highest stable version and skips prereleases', async () => {
-        mockRegistryResponse({
-            'dist-tags': { latest: '0.2.0-beta.1' },
-            versions: {
-                '0.1.8': {},
-                '0.1.9-alpha.1': {},
-                '0.1.9': {},
-                '0.2.0-beta.1': {},
-            },
-        });
-
-        await expect(fetchLatestVersion()).resolves.toBe('0.1.9');
-    });
-
-    test('falls back to package document version when it is stable', async () => {
+    test('returns the latest package version when it is stable', async () => {
         mockRegistryResponse({ version: '0.1.9' });
 
         await expect(fetchLatestVersion()).resolves.toBe('0.1.9');

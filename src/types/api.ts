@@ -7,9 +7,3 @@ export type {
     ApiListResponse,
     LoginResponse,
 } from 'zentao-api';
-
-/** 登录请求参数 */
-export interface LoginRequest {
-    account: string;
-    password: string;
-}

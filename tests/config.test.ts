@@ -1,7 +1,7 @@
 import { describe, test, expect, beforeEach, afterEach } from 'bun:test';
 import { homedir, tmpdir } from 'node:os';
 import { isAbsolute, join, resolve } from 'node:path';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { DEFAULT_CONFIG, VALID_CONFIG_KEYS } from '../src/config/defaults';
 import {
     getConfigPath,
@@ -18,59 +18,31 @@ import {
     setProfileConfig,
     updateProfile,
     buildProfile,
-    getUpdateCheckData,
-    setUpdateCheckData,
     profileKey,
 } from '../src/config/store';
-import type { UserConfig, Workspace, Profile } from '../src/types/config';
+import type { UserConfig, Profile } from '../src/types/config';
 import { mockProfile, resetConfigStore } from './helpers';
 
 describe('DEFAULT_CONFIG', () => {
     test('has correct default values', () => {
         expect(DEFAULT_CONFIG.defaultOutputFormat).toBe('markdown');
-        expect(DEFAULT_CONFIG.lang).toBe('zh-CN');
         expect(DEFAULT_CONFIG.defaultRecPerPage).toBe(20);
         expect(DEFAULT_CONFIG.insecure).toBe(false);
         expect(DEFAULT_CONFIG.timeout).toBe(10000);
         expect(DEFAULT_CONFIG.htmlToMarkdown).toBe(true);
         expect(DEFAULT_CONFIG.batchFailFast).toBe(false);
-        expect(DEFAULT_CONFIG.autoSetWorkspace).toBe(false);
         expect(DEFAULT_CONFIG.silent).toBe(false);
     });
 
     test('VALID_CONFIG_KEYS contains all config keys', () => {
         expect(VALID_CONFIG_KEYS).toContain('defaultOutputFormat');
-        expect(VALID_CONFIG_KEYS).toContain('lang');
         expect(VALID_CONFIG_KEYS).toContain('defaultRecPerPage');
         expect(VALID_CONFIG_KEYS).toContain('insecure');
         expect(VALID_CONFIG_KEYS).toContain('timeout');
         expect(VALID_CONFIG_KEYS).toContain('htmlToMarkdown');
         expect(VALID_CONFIG_KEYS).toContain('batchFailFast');
-        expect(VALID_CONFIG_KEYS).toContain('autoSetWorkspace');
         expect(VALID_CONFIG_KEYS).toContain('pagers');
         expect(VALID_CONFIG_KEYS).toContain('silent');
-    });
-});
-
-describe('Workspace type validation', () => {
-    test('workspace structure is correct', () => {
-        const ws: Workspace = {
-            id: 1,
-            product: { id: 1, name: '产品1' },
-            project: { id: 2, name: '项目1' },
-            execution: { id: 3, name: '执行1' },
-        };
-        expect(ws.id).toBe(1);
-        expect(ws.product?.id).toBe(1);
-        expect(ws.project?.name).toBe('项目1');
-        expect(ws.execution?.id).toBe(3);
-    });
-
-    test('workspace with optional fields', () => {
-        const ws: Workspace = { id: 1 };
-        expect(ws.product).toBeUndefined();
-        expect(ws.project).toBeUndefined();
-        expect(ws.execution).toBeUndefined();
     });
 });
 
@@ -96,13 +68,9 @@ describe('Profile type validation', () => {
             user: { id: 1, realname: 'Admin' },
             loginTime: '2026-04-10T10:00:00Z',
             lastUsedTime: '2026-04-10T10:00:00Z',
-            currentWorkspace: 1,
-            workspaces: [{ id: 1, product: { id: 1, name: '产品1' } }],
             config: { defaultOutputFormat: 'json' },
         };
         expect(profile.user?.id).toBe(1);
-        expect(profile.currentWorkspace).toBe(1);
-        expect(profile.workspaces?.length).toBe(1);
         expect(profile.config?.defaultOutputFormat).toBe('json');
     });
 });
@@ -310,6 +278,21 @@ describe('profile management', () => {
         expect(getAllProfiles().length).toBe(1);
         expect(getCurrentProfile()!.token).toBe('new-token');
     });
+
+    test('saveProfile collapses legacy trailing-slash duplicates', () => {
+        writeFileSync(join(tempDir, 'config.json'), JSON.stringify({
+            currentProfile: 'admin@https://zentao.example.com/',
+            profiles: [
+                mockProfile,
+                { ...mockProfile, server: 'https://zentao.example.com/', token: 'old-token' },
+            ],
+        }));
+
+        saveProfile({ ...mockProfile, token: 'new-token' });
+
+        expect(getAllProfiles()).toEqual([{ ...mockProfile, token: 'new-token' }]);
+        expect(getCurrentProfile()!.token).toBe('new-token');
+    });
 });
 
 describe('profile config', () => {
@@ -331,14 +314,14 @@ describe('profile config', () => {
     test('getProfileConfig returns defaults when no config set', () => {
         const config = getProfileConfig(mockProfile);
         expect(config.defaultOutputFormat).toBe(DEFAULT_CONFIG.defaultOutputFormat);
-        expect(config.lang).toBe(DEFAULT_CONFIG.lang);
+        expect(config.timeout).toBe(DEFAULT_CONFIG.timeout);
     });
 
     test('getProfileConfig merges profile config with defaults', () => {
         const profile: Profile = { ...mockProfile, config: { defaultOutputFormat: 'json' } };
         const config = getProfileConfig(profile);
         expect(config.defaultOutputFormat).toBe('json');
-        expect(config.lang).toBe(DEFAULT_CONFIG.lang);
+        expect(config.timeout).toBe(DEFAULT_CONFIG.timeout);
     });
 
     test('setProfileConfig persists config to profile', () => {
@@ -372,14 +355,12 @@ describe('buildProfile', () => {
         expect(profile.server).toBe('https://zentao.example.com');
     });
 
-    test('merges with oldProfile preserving workspaces', () => {
+    test('merges with oldProfile preserving config', () => {
         const old: Profile = {
             ...mockProfile,
-            workspaces: [{ id: 1, product: { id: 1, name: 'P1' } }],
             config: { defaultOutputFormat: 'json' },
         };
         const profile = buildProfile('https://zentao.example.com', 'admin', 'new-tok', undefined, undefined, old);
-        expect(profile.workspaces).toEqual(old.workspaces);
         expect(profile.config).toEqual(old.config);
         expect(profile.token).toBe('new-tok');
     });
@@ -391,32 +372,5 @@ describe('buildProfile', () => {
         };
         const profile = buildProfile('https://zentao.example.com', 'admin', 'tok', undefined, { realname: 'Super Admin' }, old);
         expect(profile.user).toEqual({ id: 1, realname: 'Super Admin' });
-    });
-});
-
-describe('update check data', () => {
-    let tempDir: string;
-
-    beforeEach(() => {
-        resetConfigStore();
-        tempDir = mkdtempSync(join(tmpdir(), 'zentao-cli-test-'));
-        setConfigPath(join(tempDir, 'config.json'));
-    });
-
-    afterEach(() => {
-        resetConfigStore();
-        if (tempDir && existsSync(tempDir)) {
-            rmSync(tempDir, { recursive: true, force: true });
-        }
-    });
-
-    test('returns undefined when no update check data set', () => {
-        expect(getUpdateCheckData()).toBeUndefined();
-    });
-
-    test('setUpdateCheckData and getUpdateCheckData', () => {
-        const data = { lastCheck: '2026-04-29T00:00:00Z', latestVersion: '0.2.0' };
-        setUpdateCheckData(data);
-        expect(getUpdateCheckData()).toEqual(data);
     });
 });

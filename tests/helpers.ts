@@ -2,15 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { __resetConfigStoreForTests } from '../src/config/store';
-import type { Profile, Workspace } from '../src/types/config';
-
-/** Shared workspace fixture for tests */
-export const mockWorkspace: Workspace = {
-    id: 1,
-    product: { id: 1, name: '产品1' },
-    project: { id: 2, name: '项目1' },
-    execution: { id: 3, name: '执行1' },
-};
+import type { Profile } from '../src/types/config';
 
 /** Shared profile fixture for tests */
 export const mockProfile: Profile = {
@@ -40,19 +32,16 @@ export async function runCliWithoutAuth(args: string[]): Promise<{
     const configFile = join(dir, 'zentao.json');
 
     try {
-        writeFileSync(configFile, JSON.stringify({
-            profiles: [],
-            updateCheck: {
-                lastCheck: new Date().toISOString(),
-                latestVersion: '0.2.0',
-            },
-        }));
+        writeFileSync(configFile, JSON.stringify({ profiles: [] }));
 
-        const env = { ...process.env };
-        delete env.ZENTAO_URL;
-        delete env.ZENTAO_ACCOUNT;
-        delete env.ZENTAO_PASSWORD;
-        delete env.ZENTAO_TOKEN;
+        const env = {
+            ...process.env,
+            // Empty values prevent Bun child processes from reloading credentials from .env.test.
+            ZENTAO_URL: '',
+            ZENTAO_ACCOUNT: '',
+            ZENTAO_PASSWORD: '',
+            ZENTAO_TOKEN: '',
+        };
 
         const proc = Bun.spawn({
             cmd: [process.execPath, 'src/index.ts', '--config', configFile, ...args],

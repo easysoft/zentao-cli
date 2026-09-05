@@ -11,7 +11,6 @@ export const ERROR_CODES = {
     E1005: '配置文件损坏或无法读取，请检查 {path}',
     E1006: '未找到指定的用户配置，请先使用 `zentao login -s <zentao_url> -u <account> -p <password> -t <token>` 登录',
     E1007: '指定的用户配置不存在，请通过 `zentao profile` 查看可用配置',
-    E1008: '当前禅道版本不受支持，请使用禅道 22.0 及以上版本',
 
     // API 调用 (20xx)
     E2001: '未找到指定的模块 {module}，请通过 `zentao help` 查看支持的模块',
@@ -23,16 +22,6 @@ export const ERROR_CODES = {
     E2007: '`--data` 参数中的 JSON 数据格式无效',
     E2008: '禅道服务端返回错误（Url：{url}，Status：{status}），请查看详细错误信息：{serverResponse}',
     E2009: '选项 {option} 的值无效，{reason}',
-    E2010: '选项 {option} 的值类型必须为 {type}，实际类型为 {actualType}',
-
-    // 数据处理 (30xx)
-    E3001: '`--pick` 指定的字段不存在',
-    E3002: '`--filter` 表达式格式无效，请检查过滤条件格式',
-    E3003: '`--sort` 表达式格式无效，请检查排序条件格式',
-
-    // 工作区 (40xx)
-    E4001: '未找到指定的工作区，请通过 `zentao workspace ls` 查看可用工作区',
-    E4002: '当前未设置工作区，请通过 `zentao workspace set` 设置工作区',
 
     // 网络通信 (50xx)
     E5001: '请求超时，请检查网络连接或禅道服务是否正常',

@@ -18,7 +18,7 @@ interface SkillCommand {
 
 const SKILLS_DIR = join(process.cwd(), 'skills');
 const BUILTIN_COMMANDS = new Set([
-    'login', 'logout', 'profile', 'config', 'workspace', 'version', 'help',
+    'login', 'logout', 'profile', 'config', 'version', 'help',
     'ls', 'list', 'get', 'create', 'update', 'delete', 'do', 'autocomplete',
     'mcp', 'add-mcp', 'add-skill',
 ]);

@@ -2,7 +2,7 @@ import Configstore from 'configstore';
 import { chmodSync, existsSync } from 'node:fs';
 import { isAbsolute, join, resolve } from 'node:path';
 import { homedir } from 'node:os';
-import type { ConfigData, Profile, ServerConfig, UpdateCheckData, UserConfig } from '../types/index.js';
+import type { ConfigData, Profile, ServerConfig, UserConfig } from '../types/index.js';
 import { ZentaoError } from '../errors.js';
 import { DEFAULT_CONFIG } from './defaults.js';
 
@@ -92,6 +92,11 @@ export function profileKey(account: string, server: string): string {
     return `${account}@${server}`;
 }
 
+/** 规范化服务地址，避免尾斜杠造成同一 Profile 的重复记录 */
+export function normalizeServerUrl(server: string): string {
+    return server.replace(/\/+$/, '');
+}
+
 /** 获取当前激活的用户 Profile，未登录时返回 undefined */
 export function getCurrentProfile(): Profile | undefined {
     const data = getConfigData();
@@ -104,8 +109,9 @@ export function getCurrentProfile(): Profile | undefined {
 /** 根据账号和服务地址精确查找 Profile */
 export function getProfile(account: string, server: string): Profile | undefined {
     const data = getConfigData();
+    const normalizedServer = normalizeServerUrl(server);
     return data.profiles?.find(
-        (p) => p.account === account && p.server === server,
+        (p) => p.account === account && normalizeServerUrl(p.server) === normalizedServer,
     );
 }
 
@@ -126,16 +132,25 @@ export function findProfileByKey(key: string): Profile | undefined {
 export function saveProfile(profile: Profile): void {
     const s = getStore();
     const profiles = (s.get('profiles') as Profile[] | undefined) ?? [];
-    const idx = profiles.findIndex(
-        (p) => p.account === profile.account && p.server === profile.server,
-    );
-    if (idx >= 0) {
-        profiles[idx] = profile;
-    } else {
-        profiles.push(profile);
+    const normalizedProfile = profile.server === normalizeServerUrl(profile.server)
+        ? profile
+        : { ...profile, server: normalizeServerUrl(profile.server) };
+    const nextProfiles: Profile[] = [];
+    let saved = false;
+    for (const existing of profiles) {
+        const matches = existing.account === normalizedProfile.account
+            && normalizeServerUrl(existing.server) === normalizedProfile.server;
+        if (!matches) {
+            nextProfiles.push(existing);
+        } else if (!saved) {
+            nextProfiles.push(normalizedProfile);
+            saved = true;
+        }
     }
-    s.set('profiles', profiles);
-    s.set('currentProfile', profileKey(profile.account, profile.server));
+    if (!saved) nextProfiles.push(normalizedProfile);
+
+    s.set('profiles', nextProfiles);
+    s.set('currentProfile', profileKey(normalizedProfile.account, normalizedProfile.server));
     enforcePermissions();
 }
 
@@ -197,13 +212,13 @@ export function getConfigPath(): string {
 
 /**
  * 构建或更新 Profile。
- * 若传入 `oldProfile`，会合并 `workspaces`、`config` 等已有字段，并合并 `user` 信息。
+ * 若传入 `oldProfile`，会保留已有配置并合并 `user` 信息。
  */
 export function buildProfile(server: string, account: string, token: string, serverConfig?: ServerConfig, user?: Record<string, unknown>, oldProfile?: Profile): Profile {
     const now = new Date().toISOString();
     return {
         ...oldProfile,
-        server: server.replace(/\/+$/, ''),
+        server: normalizeServerUrl(server),
         account,
         token,
         user: oldProfile ? {
@@ -212,23 +227,6 @@ export function buildProfile(server: string, account: string, token: string, ser
         } : user,
         loginTime: now,
         lastUsedTime: now,
-        serverConfig: oldProfile?.serverConfig ?? serverConfig,
+        serverConfig: serverConfig ?? oldProfile?.serverConfig,
     };
-}
-
-/** 获取版本更新检查数据 */
-export function getUpdateCheckData(): UpdateCheckData | undefined {
-    try {
-        const s = getStore();
-        return s.get('updateCheck') as UpdateCheckData | undefined;
-    } catch {
-        return undefined;
-    }
-}
-
-/** 设置版本更新检查数据 */
-export function setUpdateCheckData(data: UpdateCheckData): void {
-    const s = getStore();
-    s.set('updateCheck', data);
-    enforcePermissions();
 }

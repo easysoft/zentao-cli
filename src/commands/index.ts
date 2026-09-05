@@ -4,7 +4,6 @@ import { registerLoginCommand } from './login.js';
 import { registerLogoutCommand } from './logout.js';
 import { registerProfileCommand } from './profile.js';
 import { registerConfigCommand } from './config.js';
-import { registerWorkspaceCommand } from './workspace.js';
 import { registerVersionCommand } from './version.js';
 import { registerAutocompleteCommand } from './autocomplete.js';
 import { registerAddSkillCommand } from './add-skill.js';
@@ -21,7 +20,6 @@ export function registerAllCommands(program: Command): void {
     registerLogoutCommand(program);
     registerProfileCommand(program);
     registerConfigCommand(program);
-    registerWorkspaceCommand(program);
     registerVersionCommand(program);
     registerAutocompleteCommand(program);
     registerAddSkillCommand(program);

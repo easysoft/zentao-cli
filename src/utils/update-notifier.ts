@@ -1,9 +1,8 @@
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { getCliVersion } from './version.js';
 
 export const PACKAGE_NAME = 'zentao-cli';
-const REGISTRY_URL = `https://registry.npmjs.org/${PACKAGE_NAME}`;
+const REGISTRY_URL = `https://registry.npmjs.org/${PACKAGE_NAME}/latest`;
 
 export interface SemVer {
     major: number;
@@ -76,28 +75,12 @@ export function isStableVersion(version: string): boolean {
     return !!semver && semver.prerelease === '';
 }
 
-function pickLatestStableVersion(versions: string[]): string | null {
-    let latestVersion: string | null = null;
-    let latestSemver: SemVer | null = null;
-
-    for (const version of versions) {
-        const semver = parseSemver(version);
-        if (!semver || semver.prerelease) continue;
-        if (!latestSemver || compareSemver(semver, latestSemver) > 0) {
-            latestVersion = version;
-            latestSemver = semver;
-        }
-    }
-
-    return latestVersion;
-}
-
-export async function fetchLatestVersion(signal?: AbortSignal): Promise<string> {
+export async function fetchLatestVersion(): Promise<string> {
     let response: Response;
     try {
         response = await fetch(REGISTRY_URL, {
             headers: { Accept: 'application/json' },
-            signal: signal ?? AbortSignal.timeout(10_000),
+            signal: AbortSignal.timeout(10_000),
         });
     } catch (err) {
         throw new Error(`无法连接到 npm registry: ${(err as Error).message}`);
@@ -107,17 +90,11 @@ export async function fetchLatestVersion(signal?: AbortSignal): Promise<string> 
         throw new Error(`npm registry 返回错误: ${response.status} ${response.statusText}`);
     }
 
-    const data = (await response.json()) as { version?: unknown; versions?: unknown };
-    if (data.versions && typeof data.versions === 'object' && !Array.isArray(data.versions)) {
-        const latestStable = pickLatestStableVersion(Object.keys(data.versions));
-        if (latestStable) return latestStable;
-    }
-
+    const data = (await response.json()) as { version?: unknown };
     if (typeof data.version === 'string' && isStableVersion(data.version)) {
         return data.version;
     }
-
-    if (typeof data.version !== 'string' && !data.versions) {
+    if (typeof data.version !== 'string') {
         throw new Error('npm registry 返回数据格式异常');
     }
 
@@ -148,58 +125,6 @@ export function buildInstallCommand(pm: PackageManager, version = 'latest'): { c
         return { cmd: 'bun', args: ['add', '-g', packageSpec] };
     }
     return { cmd: 'npm', args: ['install', '-g', packageSpec] };
-}
-
-export interface UpdateCheckResult {
-    hasUpdate: boolean;
-    current: string;
-    latest: string;
-}
-
-/** 异步检查是否有版本更新，忽略所有异常 */
-export async function asyncCheckForUpdate(signal?: AbortSignal): Promise<UpdateCheckResult | null> {
-    try {
-        const currentVersion = getCliVersion();
-        // 仅过滤 getCliVersion 的降级哨兵 `0.0.0-dev`，避免误伤 `1.0.0-develop.1` 之类真实版本
-        if (currentVersion === 'unknown' || currentVersion === '0.0.0-dev') {
-            return null;
-        }
-
-        const latestVersion = await fetchLatestVersion(signal);
-        const current = parseSemver(currentVersion);
-        const latest = parseSemver(latestVersion);
-
-        if (!current || !latest) return null;
-
-        const hasUpdate = compareSemver(current, latest) < 0;
-        return {
-            hasUpdate,
-            current: currentVersion,
-            latest: latestVersion,
-        };
-    } catch {
-        return null;
-    }
-}
-
-/** 显示升级提示信息，仅在 stderr 为 TTY 时输出彩色文案 */
-export function showUpdateNotification(result: UpdateCheckResult): void {
-    if (!result.hasUpdate) return;
-    if (!isStableVersion(result.latest)) return;
-    if (!process.stderr.isTTY) return;
-
-    const reset = '\x1b[0m';
-    const yellow = '\x1b[33m';
-    const cyan = '\x1b[36m';
-    const dim = '\x1b[2m';
-    const bold = '\x1b[1m';
-
-    const lines = [
-        `更新提醒：发现新版本 ${dim}${result.current}${reset} → ${yellow}${bold}${result.latest}${reset}`,
-        `执行 ${cyan}zentao upgrade${reset} 升级到最新版本`,
-    ];
-
-    process.stderr.write('\n' + lines.join('\n') + '\n\n');
 }
 
 /**
