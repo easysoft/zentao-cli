@@ -39,17 +39,13 @@ function writeConfig(path: string, data: object) {
 * 启动时校验 Token 有效性，失效则清除并提示
 * logout 时主动吊销 Token（如果禅道 API 支持 revoke），而不仅仅是本地删除
 
-## Shell 自动补全 (Autocompletion)
-
-支持 zsh、bash 或 fish 的自动补全能极大地提升高级用户的体验。建议在核心功能中加入 `zentao autocomplete` 或类似机制。
-
 ## 本地缓存机制
 
 在 ~/.config/zentao/ 下增加一个极简的缓存机制（带过期时间），用于存储变动不频繁的数据（如产品列表、项目列表），提升命令行响应速度。
 
 ## 工作区管理
 
-`zentao-cli` 支持记住用户上次访问的产品、项目和执行信息，这样在调用相关 API 时可以自动使用上次的上下文参数，方便快速访问和操作禅道数据。可以通过如下命令管理工作区：
+`zentao-cli` 计划支持记住用户上次访问的产品、项目和执行信息，并在业务命令中复用上下文。该能力尚未实现，预期命令如下：
 
 * `zentao workspace`：查看当前工作区信息
 * `zentao workspace ls`：查看所有工作区信息
@@ -94,9 +90,9 @@ $ zentao bug ls # ← 无需指定 --product 参数
 # 输出略
 ```
 
-用户的工作区信息及相关设置保存在 `~/.config/zentao/zentao.json` 文件中。
+按该方案，用户的工作区信息及相关设置将保存在 `~/.config/zentao/zentao.json` 文件中。
 
-如果启用了 `autoSetWorkspace` 选项，则在调用相关操作时会**自动设置工作区**，具体包括：
+计划中的 `autoSetWorkspace` 选项用于在调用相关操作时**自动设置工作区**，具体包括：
 
 * 获取单个产品详情、创建新产品、更新产品等操作时，会自动将工作区设置为该产品所属的工作区
 * 获取单个项目详情、创建新项目、更新项目等操作时，会自动将工作区设置为该项目所属的工作区

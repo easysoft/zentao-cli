@@ -94,6 +94,7 @@ bun run typecheck
 bun test
 bun run build
 node bin/zentao.js -V
+npm pack --dry-run --ignore-scripts
 ```
 
 要求所有命令成功，并确认构建后的 CLI 输出新版本号。命令失败时先诊断并修复根因，不要创建发布提交或 tag。

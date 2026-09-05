@@ -188,29 +188,13 @@ $ pnpm install -g zentao-cli && zentao login && zentao add-skill all
 
 ### 通过 MCP 服务使用
 
-Zentao CLI 支持一键配置 MCP 服务，只需要执行 `zentao add-mcp` 命令，然后按照提示输入禅道 URL、用户名和密码即可。
+Zentao CLI 支持一键配置 MCP 服务。先通过 `zentao login` 登录，再执行 `zentao add-mcp`；命令会复用当前 Profile 中的 Token，不会将禅道密码写入 Agent 配置。
 
 ```bash
 # 一键配置 MCP 服务
+$ zentao login
 $ zentao add-mcp
-
-请输入禅道 URL: https://zentao.example.com
-请输入用户名: admin
-请输入密码: 123456
-
-请选择要配置的 AI Agent:
-   1) Cursor
-   2) Claude Desktop
-   3) Claude Code
-   4) Windsurf
-   5) Cline
-   6) Trae
-   7) VS Code
-   8) Cherry Studio
-   9) OpenCode
-  10) Codex
-  11) 全部配置
-请输入编号 (1-11): 7
+# 然后选择目标 Agent
 ```
 
 如果还未安装 zentao-cli，可以通过下面的命令，一键安装、登录和配置 MCP 服务：
@@ -220,23 +204,26 @@ $ zentao add-mcp
 $ pnpm install -g zentao-cli && zentao login && zentao add-mcp
 ```
 
-统一支持通过 `npx -y zentao-cli mcp` 手动启动 MCP 服务，然后通过 MCP 客户端访问和操作禅道数据。目前各大 Agents 工具无需提前安装 zentao-cli 本身，只需要在 MCP 服务配置中增加如下配置即可：
+支持通过 `zentao mcp` 手动启动 MCP 服务，然后通过 MCP 客户端访问和操作禅道数据。`zentao add-mcp` 会写入如下配置：
 
 ```json
 {
   "mcpServers": {
     "zentao-cli": {
-      "command": "npx",
-      "args": ["-y", "zentao-cli", "mcp"],
+      "command": "zentao",
+      "args": ["mcp"],
       "env": {
         "ZENTAO_URL": "https://zentao.example.com",
         "ZENTAO_ACCOUNT": "admin",
-        "ZENTAO_PASSWORD": "123456"
+        "ZENTAO_TOKEN": "<your-token>"
       }
     }
   }
 }
 ```
+
+`zentao add-mcp` 在 macOS/Linux 上会将写入的 Agent 配置权限收紧为 `0600`。手动配置时也应避免写入账号密码，并限制 Token 配置文件的访问权限。
+为避免破坏已有注释，包含注释或尾逗号的 JSONC 配置不会被自动重写；命令会保持原文件不变并提示手动配置。
 
 ## 文档
 

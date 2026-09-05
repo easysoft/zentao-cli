@@ -8,7 +8,7 @@
 
 下面是一个配置文件示例：
 
-```json
+```jsonc
 {
     /* 当前用户配置的账号@禅道服务地址 */
     "currentProfile": "admin@https://zentao.example.com",
@@ -42,25 +42,6 @@
             /* 最后使用时间 */
             "lastUsedTime": "2026-04-10 10:00:00",
 
-            /* 当前工作区 GID */
-            "currentWorkspace": 1,
-
-            /* 工作区列表 */
-            "workspaces": [
-                {
-                    "id": 1,
-                    "product":   {"id": 1, "name": "产品1"},
-                    "project":   {"id": 1, "name": "项目1"},
-                    "execution": {"id": 1, "name": "执行1"}
-                },
-                {
-                    "id": 2,
-                    "product":   {"id": 1, "name": "产品1"},
-                    "project":   {"id": 2, "name": "项目2"},
-                    "execution": {"id": 3, "name": "执行3"}
-                }
-            ],
-
             /* 服务器配置 */
             "serverConfig": {
                 /* 禅道版本 */
@@ -80,9 +61,6 @@
                 /* 默认输出格式 */
                 "defaultOutputFormat": "markdown",
 
-                /* 界面语言 */
-                "lang": "zh-CN",
-
                 /* 默认分页大小 */
                 "defaultRecPerPage": 20,
 
@@ -97,9 +75,6 @@
 
                 /* 是否在批量操作出错时停止执行后续操作 */
                 "batchFailFast": false,
-
-                /* 是否自动设置工作区 */
-                "autoSetWorkspace": true,
 
                 /* 是否在 JSON 格式化时添加空格 */
                 "jsonPretty": false,
@@ -142,10 +117,10 @@
 
 调用禅道 API 需要在请求头中增加 `token` 字段，其值为获取到的 TOKEN。获取 TOKEN 的过程如下：
 
-1. 检查 `~/.config/zentao/zentao.json` 文件是否存在；如果存在，则读取其中的信息，并执行步骤 3；如果不存在，则执行步骤 2
-2. 从环境变量 `ZENTAO_URL`、`ZENTAO_ACCOUNT`、`ZENTAO_TOKEN` 或 `ZENTAO_PASSWORD` 中读取禅道服务地址、用户账号和 TOKEN/密码，如果没有 TOKEN 但有密码，则先执行登录请求获取 TOKEN；
-3. 使用获取到的 TOKEN 发起所需的请求（获取用户列表信息）。如果请求成功，则只需后续流程，如果请求失败，且原因是 Token 失效，则重新从环境变量获取账户避免登录，执行步骤2；
-4. 在终端提示用户使用 `zentao login -s <zentao_url> -u <account> -p <password>` 命令手动登录
+1. 若 `ZENTAO_URL`、`ZENTAO_ACCOUNT` 以及 `ZENTAO_TOKEN`/`ZENTAO_PASSWORD` 之一齐全，优先使用这组显式身份；如果只有密码，则先登录获取 Token；
+2. 否则读取 `~/.config/zentao/zentao.json` 中的当前 Profile 及其 Token；
+3. 使用解析出的 Token 发起请求；
+4. 若两种来源都不完整，在终端提示用户执行 `zentao login`。
 
 ## 禅道 API 调用
 

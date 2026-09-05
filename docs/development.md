@@ -7,7 +7,6 @@
 * 使用 Bun + TypeScript 开发，构建为 Node.js 兼容产物，通过 npm 发布，用户无需安装 Bun
 * 用户配置存储：[configstore](https://github.com/sindresorhus/configstore)
 * 终端开发辅助库：[commander.js](https://github.com/tj/commander.js)
-* 对象嵌套属性访问：[dot-prop](https://github.com/sindresorhus/dot-prop)
 * HTML 转 Markdown：[turndown](https://github.com/mixmark-io/turndown)
 * [Node.js CLI 应用程序最佳实践](https://github.com/lirantal/nodejs-cli-apps-best-practices/blob/main/README_zh-Hans.md)
 
@@ -39,7 +38,7 @@ zentao-cli/
 bun test
 
 # 运行指定测试文件
-bun test tests/zentao.test.ts
+bun test tests/module-handler.test.ts
 ```
 
 ## 构建

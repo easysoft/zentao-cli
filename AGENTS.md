@@ -1,4 +1,4 @@
-# AGENTDS.md
+# AGENTS.md
 
 ## Project Overview
 
@@ -24,7 +24,7 @@ bun test tests/<file>  # Run a single test file
 The ZenTao API layer (HTTP client, module registry, request resolution, response
 extraction, data utilities, error types) lives in the external [`zentao-api`](https://github.com/easysoft/zentao-api)
 package. The CLI consumes it and focuses on CLI/MCP concerns (argv parsing,
-rendering, help, config/workspace, auth flow).
+rendering, help, config, auth flow).
 
 - `zentao-api` — `ZentaoClient`, high-level `request()`, built-in module registry
   (`getModule`/`getModuleNames`/`getModuleAction`), data utils and `ZentaoError`.
@@ -51,7 +51,7 @@ src/
 ├── api/index.ts           # SDK ZentaoClient re-export + createClient/getServerConfig
 ├── modules/               # SDK wrappers: helper, args, executor
 ├── auth/                  # Login flow & credential prompting
-├── config/                # Persistent config (configstore) & workspace state
+├── config/                # Persistent profile/config state
 ├── mcp/                   # MCP server (tools + lifecycle)
 ├── types/                 # Shared TS types (re-export SDK types + CLI config/commands)
 └── utils/                 # Formatting, rendering, data processing, HTML→MD, etc.
@@ -62,7 +62,6 @@ src/
 - **Framework**: Bun's built-in test runner (`bun test`).
 - **Test files**: `tests/*.test.ts` — naming convention `<subject>.test.ts`.
 - **Helpers**: `tests/helpers.ts`.
-- **Integration tests**: Require `.env.test` with `ZENTAO_URL`, `ZENTAO_ACCOUNT`, `ZENTAO_PASSWORD`.
 
 ## Build & Distribution
 
@@ -74,11 +73,11 @@ src/
 
 ## Release
 
-To prepare a new release (bump version, update CHANGES.md, tag), follow the steps in [.claude/commands/release.md](./.claude/commands/release.md).
+To prepare a new release (bump version, update CHANGES.md, tag), follow the project [release skill](./.agents/skills/release/SKILL.md).
 
 ## Code Conventions
 
-- **Runtime**: Bun (not Node.js). TypeScript, ESNext target, bundler module resolution.
+- **Development runtime**: Bun. Published npm builds run on Node.js 18 or newer. TypeScript uses an ESNext target and bundler module resolution.
 - **Language**: Code and comments in English; user-facing CLI strings in Chinese (简体中文).
 - **Error handling**: All domain errors use `ZentaoError` with structured codes from `src/errors.ts`. Never throw raw strings.
 - **Imports**: Use `.js` extension in import paths (ESM): `import { foo } from './bar.js'`.

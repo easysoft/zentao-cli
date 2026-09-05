@@ -246,18 +246,20 @@ $ zentao product delete 1,2
 # 强制删除禅道产品 #1 和 #2
 $ zentao product delete 1,2 --yes
 
-已删除 2 个产品：1, 2
+操作成功：1, 2
+操作失败：无
 
 # 使用 JSON 输出
 $ zentao product delete 1,2 --yes --format=json
 
 {
     "status": "success",
-    "result": [
-        "success": [1, 2]
+    "result": {
+        "success": [1, 2],
         "failed": [],
-        "skipped": []
-    ]
+        "skipped": [],
+        "errors": []
+    }
 }
 ```
 
@@ -397,23 +399,23 @@ echo '{"name": "新产品"}' | zentao product create
 # 批量删除 5 个产品，但在第三个产品时出错
 $ zentao product delete 1,2,3,4,5 --yes
 
-已删除 4 个产品：1, 2, 4, 5
+操作成功：1, 2, 4, 5
 操作失败：3
-失败原因：Error(E2006): 当前用户没有权限执行此操作
+3: E2006: 当前用户没有权限执行此操作
 
 # 批量删除 5 个产品，但在第三个产品时出错，使用 batchFailFast 选项
 $ zentao product delete 1,2,3,4,5 --yes --batch-fail-fast
 
-已删除 1 个产品：1
+操作成功：1, 2
 操作失败：3
-已跳过 2 个产品：4, 5
-失败原因：Error(E2006): 当前用户没有权限执行此操作
+已跳过：4, 5
+3: E2006: 当前用户没有权限执行此操作
 
 # 使用 JSON 输出
 $ zentao product delete 1,2,3,4,5 --yes --batch-fail-fast --format=json
 
 {
-    "status": "success",
+    "status": "failed",
     "result": {
         "success": [1, 2],
         "failed": [3],
@@ -427,10 +429,6 @@ $ zentao product delete 1,2,3,4,5 --yes --batch-fail-fast --format=json
                 }
             }
         ]
-    },
-    "error": {
-        "code": "2006",
-        "message": "当前用户没有权限执行此操作"
     }
 }
 ```
@@ -658,14 +656,12 @@ $ zentao product --page=1 --recPerPage=100
 支持通过 `zentao config set <key> <value>` 设置默认配置，支持的配置项包括：
 
 * `defaultOutputFormat`：默认输出格式，支持 `markdown`、`json`、`raw`
-* `lang`：界面语言，支持 `zh-cn`、`zh-tw`、`en`
 * `defaultRecPerPage`：默认分页大小
 * `insecure`：是否忽略 SSL/TLS 证书验证
 * `timeout`：请求超时时间
 * `htmlToMarkdown`：是否将对象属性中的 HTML 转换为 Markdown
 * `batchFailFast`：是否在批量操作出错时停止执行后续操作
 * `pagers`：分页配置，支持 `product`、`project`、`execution` 等模块
-* `autoSetWorkspace`：是否自动设置工作区，默认值为 `false`
 * `silent`：是否启用静默模式，默认值为 `false`
 * `jsonPretty`：是否在 JSON 格式化时添加空格，默认值为 `false`
 
@@ -673,8 +669,6 @@ $ zentao product --page=1 --recPerPage=100
 # 设置默认输出格式为 JSON
 $ zentao config set defaultOutputFormat json
 
-# 设置界面语言为英文
-$ zentao config set lang en
 ```
 
 通过 `zentao config get [key]` 查看默认配置；如果不指定 `key`，则返回全部默认配置。
@@ -689,7 +683,6 @@ json
 $ zentao config get
 
 defaultOutputFormat: "json"
-lang: "en"
 defaultRecPerPage: 20
 insecure: false
 timeout: 10000
