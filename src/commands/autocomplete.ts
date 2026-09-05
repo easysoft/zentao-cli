@@ -2,25 +2,27 @@ import { Command } from 'commander';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { createInterface } from 'node:readline';
+import { createInterface } from 'node:readline/promises';
 import { getModuleNames } from '../modules/index.js';
-
-const ROOT_COMMANDS = [
-    'login', 'logout', 'profile', 'config', 'workspace', 'version',
-    'ls', 'get', 'create', 'update', 'delete', 'do', 'autocomplete', 'add-skill', 'add-mcp',
-];
+import { AGENT_NAMES as SKILL_AGENT_NAMES } from './add-skill.js';
+import { AGENT_NAMES as MCP_AGENT_NAMES } from './add-mcp.js';
 
 const CONFIG_SUBCOMMANDS = ['get', 'set'];
-const WORKSPACE_SUBCOMMANDS = ['ls', 'set'];
-const COMMON_OPTIONS = ['--format', '--silent', '--insecure', '--timeout', '-h', '--help'];
 
-function createCandidates(): string {
-    const modules = getModuleNames();
-    return [...new Set([...ROOT_COMMANDS, ...modules])].sort().join(' ');
+function createCandidates(program: Command): string {
+    return [...new Set(program.commands.flatMap((command) => [command.name(), ...command.aliases()]))]
+        .sort()
+        .join(' ');
 }
 
-function generateBashScript(command = 'zentao'): string {
-    const commands = createCandidates();
+function getCommonOptions(program: Command): string[] {
+    return program.createHelp().visibleOptions(program)
+        .flatMap((option) => [option.short, option.long].filter(Boolean) as string[]);
+}
+
+function generateBashScript(program: Command, command = 'zentao'): string {
+    const commands = createCandidates(program);
+    const commonOptions = getCommonOptions(program);
     return `# bash completion for ${command}
 _${command}_completion() {
   local cur prev words cword
@@ -28,8 +30,7 @@ _${command}_completion() {
 
   local root_commands="${commands}"
   local config_subcommands="${CONFIG_SUBCOMMANDS.join(' ')}"
-  local workspace_subcommands="${WORKSPACE_SUBCOMMANDS.join(' ')}"
-  local common_options="${COMMON_OPTIONS.join(' ')}"
+  local common_options="${commonOptions.join(' ')}"
 
   if [[ \${cword} -eq 1 ]]; then
     COMPREPLY=( $(compgen -W "\${root_commands} \${common_options}" -- "\${cur}") )
@@ -39,9 +40,6 @@ _${command}_completion() {
   case "\${words[1]}" in
     config)
       COMPREPLY=( $(compgen -W "\${config_subcommands} \${common_options}" -- "\${cur}") )
-      ;;
-    workspace)
-      COMPREPLY=( $(compgen -W "\${workspace_subcommands} \${common_options}" -- "\${cur}") )
       ;;
     ls|get|create|update|delete|do)
       if [[ \${cword} -eq 2 ]]; then
@@ -57,11 +55,11 @@ _${command}_completion() {
       if [[ "\${prev}" == "--output" || "\${prev}" == "-o" ]]; then
         COMPREPLY=( $(compgen -d -- "\${cur}") )
       else
-        COMPREPLY=( $(compgen -W "claude-code cursor cherry-studio codex opencode vscode antigravity gemini all --output -o" -- "\${cur}") )
+        COMPREPLY=( $(compgen -W "${[...SKILL_AGENT_NAMES, 'all', '--output', '-o'].join(' ')}" -- "\${cur}") )
       fi
       ;;
     add-mcp)
-      COMPREPLY=( $(compgen -W "cursor claude-desktop claude-code windsurf cline trae vscode cherry-studio opencode codex all" -- "\${cur}") )
+      COMPREPLY=( $(compgen -W "${[...MCP_AGENT_NAMES, 'all'].join(' ')}" -- "\${cur}") )
       ;;
     *)
       COMPREPLY=( $(compgen -W "\${common_options}" -- "\${cur}") )
@@ -73,16 +71,17 @@ complete -F _${command}_completion ${command}
 `;
 }
 
-function generateZshScript(command = 'zentao'): string {
-    const commands = createCandidates();
+function generateZshScript(program: Command, command = 'zentao'): string {
+    const commands = createCandidates(program);
     const modules = getModuleNames().join(' ');
+    const commonOptions = getCommonOptions(program);
     return `#compdef ${command}
 
 _${command}() {
   local -a root_commands modules common_opts
   root_commands=(${commands})
   modules=(${modules})
-  common_opts=(${COMMON_OPTIONS.join(' ')})
+  common_opts=(${commonOptions.join(' ')})
 
   if (( CURRENT == 2 )); then
     _describe 'command' root_commands
@@ -92,9 +91,6 @@ _${command}() {
   case "$words[2]" in
     config)
       _values 'config command' ${CONFIG_SUBCOMMANDS.map((s) => `'${s}'`).join(' ')}
-      ;;
-    workspace)
-      _values 'workspace command' ${WORKSPACE_SUBCOMMANDS.map((s) => `'${s}'`).join(' ')}
       ;;
     ls|get|create|update|delete|do)
       if (( CURRENT == 3 )); then
@@ -109,10 +105,10 @@ _${command}() {
     add-skill)
       _arguments \\
         '(-o --output)'{-o,--output}'[将所有内置技能导出到指定目录]:目录:_files -/' \\
-        '1:agent:(claude-code cursor cherry-studio codex opencode vscode antigravity gemini all)'
+        '1:agent:(${[...SKILL_AGENT_NAMES, 'all'].join(' ')})'
       ;;
     add-mcp)
-      _values 'agent' 'cursor' 'claude-desktop' 'claude-code' 'windsurf' 'cline' 'trae' 'vscode' 'cherry-studio' 'opencode' 'codex' 'all'
+      _values 'agent' ${[...MCP_AGENT_NAMES, 'all'].map((name) => `'${name}'`).join(' ')}
       ;;
     *)
       _describe 'option' common_opts
@@ -124,34 +120,35 @@ compdef _${command} ${command}
 `;
 }
 
-function generateFishScript(command = 'zentao'): string {
-    const commands = createCandidates();
+function generateFishScript(program: Command, command = 'zentao'): string {
+    const commands = createCandidates(program);
     const modules = getModuleNames().join(' ');
+    const commonOptions = getCommonOptions(program).join(' ');
     return `# fish completion for ${command}
 set -l __${command}_cmds ${commands}
 set -l __${command}_mods ${modules}
 
 complete -c ${command} -f
 complete -c ${command} -n "__fish_use_subcommand" -a "$__${command}_cmds"
+complete -c ${command} -a "${commonOptions}"
 
 complete -c ${command} -n "__fish_seen_subcommand_from config" -a "${CONFIG_SUBCOMMANDS.join(' ')}"
-complete -c ${command} -n "__fish_seen_subcommand_from workspace" -a "${WORKSPACE_SUBCOMMANDS.join(' ')}"
 complete -c ${command} -n "__fish_seen_subcommand_from autocomplete" -a "bash zsh fish"
-complete -c ${command} -n "__fish_seen_subcommand_from add-skill" -a "claude-code cursor cherry-studio codex opencode vscode antigravity gemini all"
+complete -c ${command} -n "__fish_seen_subcommand_from add-skill" -a "${[...SKILL_AGENT_NAMES, 'all'].join(' ')}"
 complete -c ${command} -n "__fish_seen_subcommand_from add-skill" -s o -l output -r -d "将所有内置技能导出到指定目录"
-complete -c ${command} -n "__fish_seen_subcommand_from add-mcp" -a "cursor claude-desktop claude-code windsurf cline trae vscode cherry-studio opencode codex all"
+complete -c ${command} -n "__fish_seen_subcommand_from add-mcp" -a "${[...MCP_AGENT_NAMES, 'all'].join(' ')}"
 complete -c ${command} -n "__fish_seen_subcommand_from ls get create update delete do; and test (count (commandline -opc)) -eq 2" -a "$__${command}_mods"
 `;
 }
 
-function generateScript(shell: string): string {
+export function generateCompletionScript(shell: string, program: Command): string {
     switch (shell) {
         case 'bash':
-            return generateBashScript();
+            return generateBashScript(program);
         case 'zsh':
-            return generateZshScript();
+            return generateZshScript(program);
         case 'fish':
-            return generateFishScript();
+            return generateFishScript(program);
         default:
             throw new Error(`不支持的 shell: ${shell}`);
     }
@@ -174,17 +171,16 @@ async function promptShellSelection(): Promise<string> {
         process.stderr.write(`  ${index + 1}) ${shell}\n`);
     });
 
-    return new Promise((resolve, reject) => {
-        rl.question('请输入编号 (1-3): ', (answer) => {
-            rl.close();
-            const idx = Number(answer.trim());
-            if (!Number.isInteger(idx) || idx < 1 || idx > shells.length) {
-                reject(new Error(`无效选择: ${answer || '(empty)'}`));
-                return;
-            }
-            resolve(shells[idx - 1]);
-        });
-    });
+    try {
+        const answer = await rl.question('请输入编号 (1-3): ');
+        const idx = Number(answer.trim());
+        if (!Number.isInteger(idx) || idx < 1 || idx > shells.length) {
+            throw new Error(`无效选择: ${answer || '(empty)'}`);
+        }
+        return shells[idx - 1];
+    } finally {
+        rl.close();
+    }
 }
 
 /** 注册 `zentao autocomplete`：输出 shell 自动补全脚本 */
@@ -197,11 +193,10 @@ export function registerAutocompleteCommand(program: Command): void {
             const selectedShell = shell ?? await promptShellSelection();
             const normalized = selectedShell.toLowerCase();
             if (!['bash', 'zsh', 'fish'].includes(normalized)) {
-                console.error(`不支持的 shell: ${selectedShell}，仅支持 bash、zsh、fish`);
-                process.exit(1);
+                throw new Error(`不支持的 shell: ${selectedShell}，仅支持 bash、zsh、fish`);
             }
 
-            const script = generateScript(normalized);
+            const script = generateCompletionScript(normalized, program);
             const completionFile = getCompletionFilePath(normalized);
             const completionDir = join(homedir(), '.config', 'zentao');
 

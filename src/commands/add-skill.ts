@@ -1,9 +1,9 @@
 import { Command } from 'commander';
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createInterface } from 'node:readline';
+import { createInterface } from 'node:readline/promises';
 import type { GlobalOptions } from '../types/index.js';
 
 interface AgentTarget {
@@ -28,7 +28,7 @@ const AGENT_TARGETS: Record<string, AgentTarget> = {
     'gemini':      { label: 'Gemini',      dir: join(homedir(), '.gemini', 'skills') },
 };
 
-const AGENT_NAMES = Object.keys(AGENT_TARGETS);
+export const AGENT_NAMES = Object.keys(AGENT_TARGETS);
 
 function resolveSkillSource(skillName: string): string {
     const thisFile = fileURLToPath(import.meta.url);
@@ -75,18 +75,17 @@ async function promptAgentSelection(): Promise<string[]> {
         process.stderr.write(`  ${index + 1}) ${label}\n`);
     });
 
-    return new Promise((resolve, reject) => {
-        rl.question(`请输入编号 (1-${choices.length}): `, (answer) => {
-            rl.close();
-            const idx = Number(answer.trim());
-            if (!Number.isInteger(idx) || idx < 1 || idx > choices.length) {
-                reject(new Error(`无效选择: ${answer || '(empty)'}`));
-                return;
-            }
-            const selected = choices[idx - 1];
-            resolve(selected === 'all' ? [...AGENT_NAMES] : [selected]);
-        });
-    });
+    try {
+        const answer = await rl.question(`请输入编号 (1-${choices.length}): `);
+        const idx = Number(answer.trim());
+        if (!Number.isInteger(idx) || idx < 1 || idx > choices.length) {
+            throw new Error(`无效选择: ${answer || '(empty)'}`);
+        }
+        const selected = choices[idx - 1];
+        return selected === 'all' ? [...AGENT_NAMES] : [selected];
+    } finally {
+        rl.close();
+    }
 }
 
 function resolveAgents(agent: string): string[] {
@@ -116,16 +115,7 @@ function copySkillDir(srcDir: string, destDir: string): void {
     if (existsSync(destDir) && !statSync(destDir).isDirectory()) {
         throw new Error(`技能目标路径必须是目录: ${destDir}`);
     }
-    mkdirSync(destDir, { recursive: true });
-    for (const entry of readdirSync(srcDir)) {
-        const srcPath = join(srcDir, entry);
-        const destPath = join(destDir, entry);
-        if (statSync(srcPath).isDirectory()) {
-            copySkillDir(srcPath, destPath);
-        } else {
-            writeFileSync(destPath, readFileSync(srcPath));
-        }
-    }
+    cpSync(srcDir, destDir, { recursive: true, dereference: true });
 }
 
 function resolveOutputDir(output: string): string {
@@ -190,25 +180,20 @@ export function registerAddSkillCommand(program: Command): void {
             const globalOpts = program.opts() as GlobalOptions;
             const silent = !!globalOpts.silent;
 
-            try {
-                if (options.output !== undefined) {
-                    if (agent) {
-                        throw new Error('不能同时指定 agent 和 --output；导出技能请使用: zentao add-skill --output <path>');
-                    }
-                    exportSkills(options.output, silent);
-                    return;
+            if (options.output !== undefined) {
+                if (agent) {
+                    throw new Error('不能同时指定 agent 和 --output；导出技能请使用: zentao add-skill --output <path>');
                 }
+                exportSkills(options.output, silent);
+                return;
+            }
 
-                const agents = agent ? resolveAgents(agent) : await promptAgentSelection();
+            const agents = agent ? resolveAgents(agent) : await promptAgentSelection();
 
-                for (const a of agents) {
-                    for (const skillName of SKILL_NAMES) {
-                        installSkill(a, skillName, silent);
-                    }
+            for (const a of agents) {
+                for (const skillName of SKILL_NAMES) {
+                    installSkill(a, skillName, silent);
                 }
-            } catch (error) {
-                console.error(String((error as Error).message ?? error));
-                process.exit(1);
             }
         });
 }

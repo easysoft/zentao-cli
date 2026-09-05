@@ -30,7 +30,7 @@ describe('MCP tool input JSON Schema', () => {
         });
 
         expect(json.type).toBe('object');
-        expect(json.properties && 'params' in json.properties).toBe(true);
+        expect(json).toHaveProperty('properties.params');
     });
 
     test('explicit string-key record is preferred over z.record(z.unknown())', () => {
@@ -44,7 +44,7 @@ describe('MCP tool input JSON Schema', () => {
         });
 
         expect(json.type).toBe('object');
-        expect(json.properties && 'params' in json.properties).toBe(true);
+        expect(json).toHaveProperty('properties.params');
     });
 
     test('converts simple string and number fields', () => {
@@ -54,8 +54,8 @@ describe('MCP tool input JSON Schema', () => {
         });
 
         expect(json.type).toBe('object');
-        expect(json.properties.name).toBeDefined();
-        expect(json.properties.count).toBeDefined();
+        expect(json).toHaveProperty('properties.name');
+        expect(json).toHaveProperty('properties.count');
     });
 
     test('converts enum field', () => {
@@ -63,7 +63,7 @@ describe('MCP tool input JSON Schema', () => {
             status: z.enum(['active', 'closed']).describe('status'),
         });
 
-        expect(json.properties.status).toBeDefined();
+        expect(json).toHaveProperty('properties.status');
     });
 
     test('converts array of strings', () => {
@@ -71,7 +71,7 @@ describe('MCP tool input JSON Schema', () => {
             tags: z.array(z.string()).optional().describe('tags'),
         });
 
-        expect(json.properties.tags).toBeDefined();
+        expect(json).toHaveProperty('properties.tags');
     });
 
     test('marks required vs optional fields', () => {
@@ -92,6 +92,6 @@ describe('MCP tool input JSON Schema', () => {
             meta: z.record(z.string(), z.string()).optional().describe('metadata'),
         });
 
-        expect(json.properties.meta).toBeDefined();
+        expect(json).toHaveProperty('properties.meta');
     });
 });
