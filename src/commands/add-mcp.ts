@@ -1,10 +1,10 @@
 import { Command } from 'commander';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { createInterface } from 'node:readline';
+import { createInterface } from 'node:readline/promises';
 import type { GlobalOptions } from '../types/index.js';
-import { getCurrentProfile } from '../config/store.js';
+import { ensureAuth } from '../auth/flow.js';
 
 /* ── Types ── */
 
@@ -19,7 +19,7 @@ interface McpAgentTarget {
 interface McpCredentials {
     url: string;
     account: string;
-    password: string;
+    token: string;
 }
 
 /* ── Constants ── */
@@ -53,7 +53,7 @@ const AGENT_TARGETS: Record<string, McpAgentTarget> = {
     'gemini':         { label: 'Gemini',          configPath: join(home, '.gemini', 'mcp_config.json'),                            format: 'mcpServers' },
 };
 
-const AGENT_NAMES = Object.keys(AGENT_TARGETS);
+export const AGENT_NAMES = Object.keys(AGENT_TARGETS);
 
 /* ── Helpers ── */
 
@@ -61,53 +61,18 @@ function tildeDisplay(absPath: string): string {
     return absPath.startsWith(home) ? absPath.replace(home, '~') : absPath;
 }
 
-/** Strip JS-style comments and trailing commas from JSONC text */
-function stripJsonComments(text: string): string {
-    let result = '';
-    let i = 0;
-    let inString = false;
-
-    while (i < text.length) {
-        if (inString) {
-            if (text[i] === '\\') {
-                result += text[i] + (text[i + 1] ?? '');
-                i += 2;
-                continue;
-            }
-            if (text[i] === '"') inString = false;
-            result += text[i++];
-            continue;
-        }
-        if (text[i] === '"') {
-            inString = true;
-            result += text[i++];
-            continue;
-        }
-        if (text[i] === '/' && text[i + 1] === '/') {
-            while (i < text.length && text[i] !== '\n') i++;
-            continue;
-        }
-        if (text[i] === '/' && text[i + 1] === '*') {
-            i += 2;
-            while (i < text.length && !(text[i] === '*' && text[i + 1] === '/')) i++;
-            i += 2;
-            continue;
-        }
-        result += text[i++];
-    }
-    return result.replace(/,(\s*[}\]])/g, '$1');
-}
-
-function readJsonFile(filePath: string, jsonc = false): Record<string, unknown> {
+function readJsonFile(filePath: string): Record<string, unknown> {
     if (!existsSync(filePath)) return {};
-    let content = readFileSync(filePath, 'utf-8').trim();
+    const content = readFileSync(filePath, 'utf-8').trim();
     if (!content) return {};
-    if (jsonc) content = stripJsonComments(content);
     try {
-        return JSON.parse(content);
+        const parsed = JSON.parse(content) as unknown;
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+            throw new Error('Config root must be an object');
+        }
+        return parsed as Record<string, unknown>;
     } catch {
-        if (!jsonc) return readJsonFile(filePath, true);
-        throw new Error(`无法解析配置文件: ${filePath}`);
+        throw new Error(`无法安全更新包含注释或无效 JSON 的配置文件，请手动配置: ${filePath}`);
     }
 }
 
@@ -124,43 +89,28 @@ function deepSet(obj: Record<string, unknown>, keyPath: string[], value: unknown
 }
 
 function writeJsonFile(filePath: string, data: Record<string, unknown>): void {
-    mkdirSync(dirname(filePath), { recursive: true });
-    writeFileSync(filePath, JSON.stringify(data, null, 2) + '\n', 'utf-8');
+    writePrivateFile(filePath, JSON.stringify(data, null, 2) + '\n');
 }
 
-function tomlEscape(s: string): string {
-    return s.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+function writePrivateFile(filePath: string, content: string): void {
+    mkdirSync(dirname(filePath), { recursive: true, mode: 0o700 });
+    const tempPath = `${filePath}.${process.pid}.tmp`;
+    try {
+        writeFileSync(tempPath, content, { encoding: 'utf-8', mode: 0o600 });
+        if (process.platform !== 'win32') chmodSync(tempPath, 0o600);
+        renameSync(tempPath, filePath);
+        if (process.platform !== 'win32') chmodSync(filePath, 0o600);
+    } catch (error) {
+        if (existsSync(tempPath)) unlinkSync(tempPath);
+        throw error;
+    }
 }
 
 /* ── Credential Resolution ── */
 
-async function resolveCredentials(): Promise<McpCredentials> {
-    const profile = getCurrentProfile();
-    if (!profile) {
-        throw new Error('未登录禅道，请先运行 zentao login');
-    }
-
-    const { server: url, account } = profile;
-
-    if (process.env.ZENTAO_PASSWORD) {
-        return { url, account, password: process.env.ZENTAO_PASSWORD };
-    }
-
-    if (!process.stdin.isTTY || !process.stderr.isTTY) {
-        throw new Error('非交互模式下请设置 ZENTAO_PASSWORD 环境变量');
-    }
-
-    const rl = createInterface({ input: process.stdin, output: process.stderr });
-    return new Promise((resolve, reject) => {
-        rl.question(`请输入禅道密码 [${account}@${url}]: `, (password) => {
-            rl.close();
-            if (!password.trim()) {
-                reject(new Error('密码不能为空'));
-                return;
-            }
-            resolve({ url, account, password: password.trim() });
-        });
-    });
+async function resolveCredentials(options: { insecure?: boolean; timeout?: number }): Promise<McpCredentials> {
+    const { profile } = await ensureAuth(options);
+    return { url: profile.server, account: profile.account, token: profile.token };
 }
 
 /* ── Agent Selection ── */
@@ -186,18 +136,17 @@ async function promptAgentSelection(): Promise<string[]> {
         process.stderr.write(`  ${num}) ${label}\n`);
     });
 
-    return new Promise((resolve, reject) => {
-        rl.question(`请输入编号 (1-${choices.length}): `, (answer) => {
-            rl.close();
-            const idx = Number(answer.trim());
-            if (!Number.isInteger(idx) || idx < 1 || idx > choices.length) {
-                reject(new Error(`无效选择: ${answer || '(empty)'}`));
-                return;
-            }
-            const selected = choices[idx - 1];
-            resolve(selected === 'all' ? [...AGENT_NAMES] : [selected]);
-        });
-    });
+    try {
+        const answer = await rl.question(`请输入编号 (1-${choices.length}): `);
+        const idx = Number(answer.trim());
+        if (!Number.isInteger(idx) || idx < 1 || idx > choices.length) {
+            throw new Error(`无效选择: ${answer || '(empty)'}`);
+        }
+        const selected = choices[idx - 1];
+        return selected === 'all' ? [...AGENT_NAMES] : [selected];
+    } finally {
+        rl.close();
+    }
 }
 
 function resolveAgents(agent: string): string[] {
@@ -213,12 +162,12 @@ function resolveAgents(agent: string): string[] {
 
 function buildStandardEntry(creds: McpCredentials) {
     return {
-        command: 'npx',
-        args: ['-y', 'zentao-cli', 'mcp'],
+        command: 'zentao',
+        args: ['mcp'],
         env: {
             ZENTAO_URL: creds.url,
             ZENTAO_ACCOUNT: creds.account,
-            ZENTAO_PASSWORD: creds.password,
+            ZENTAO_TOKEN: creds.token,
         },
     };
 }
@@ -230,7 +179,7 @@ function writeMcpServersConfig(configPath: string, creds: McpCredentials): void 
 }
 
 function writeVscodeConfig(configPath: string, creds: McpCredentials): void {
-    const config = readJsonFile(configPath, true);
+    const config = readJsonFile(configPath);
     deepSet(config, ['servers', MCP_NAME], {
         type: 'stdio',
         ...buildStandardEntry(creds),
@@ -242,11 +191,11 @@ function writeOpenCodeConfig(configPath: string, creds: McpCredentials): void {
     const config = readJsonFile(configPath);
     deepSet(config, ['mcp', MCP_NAME], {
         type: 'local',
-        command: ['npx', '-y', 'zentao-cli', 'mcp'],
+        command: ['zentao', 'mcp'],
         env: {
             ZENTAO_URL: creds.url,
             ZENTAO_ACCOUNT: creds.account,
-            ZENTAO_PASSWORD: creds.password,
+            ZENTAO_TOKEN: creds.token,
         },
         enabled: true,
     });
@@ -254,39 +203,39 @@ function writeOpenCodeConfig(configPath: string, creds: McpCredentials): void {
 }
 
 function writeCodexToml(configPath: string, creds: McpCredentials): void {
-    mkdirSync(dirname(configPath), { recursive: true });
-
     let content = existsSync(configPath) ? readFileSync(configPath, 'utf-8') : '';
 
     const sectionHeader = `[mcp_servers.${MCP_NAME}]`;
     const section = [
         sectionHeader,
-        'command = "npx"',
-        'args = ["-y", "zentao-cli", "mcp"]',
-        `env = { ZENTAO_URL = "${tomlEscape(creds.url)}", ZENTAO_ACCOUNT = "${tomlEscape(creds.account)}", ZENTAO_PASSWORD = "${tomlEscape(creds.password)}" }`,
+        'command = "zentao"',
+        'args = ["mcp"]',
+        `env = { ZENTAO_URL = ${JSON.stringify(creds.url)}, ZENTAO_ACCOUNT = ${JSON.stringify(creds.account)}, ZENTAO_TOKEN = ${JSON.stringify(creds.token)} }`,
     ].join('\n') + '\n';
 
-    const headerIdx = content.indexOf(sectionHeader);
-    if (headerIdx >= 0) {
-        let nextSectionIdx = content.indexOf('\n[', headerIdx + sectionHeader.length);
-        if (nextSectionIdx < 0) {
-            content = content.substring(0, headerIdx) + section;
-        } else {
-            content = content.substring(0, headerIdx) + section + content.substring(nextSectionIdx);
-        }
+    const target = /^[ \t]*\[mcp_servers\.zentao-cli\][ \t]*(?:#[^\r\n]*)?\r?$/m.exec(content);
+    if (target) {
+        const nextSection = /^[ \t]*\[{1,2}[^\]\r\n]+\]{1,2}[ \t]*(?:#[^\r\n]*)?\r?$/gm;
+        nextSection.lastIndex = target.index + target[0].length;
+        const next = nextSection.exec(content);
+        content = content.slice(0, target.index) + section + content.slice(next?.index ?? content.length);
     } else {
         const trimmed = content.trimEnd();
         content = (trimmed ? trimmed + '\n\n' : '') + section;
     }
 
-    writeFileSync(configPath, content, 'utf-8');
+    writePrivateFile(configPath, content);
 }
 
-function printCherryStudioConfig(creds: McpCredentials, silent: boolean): void {
+function printCherryStudioConfig(silent: boolean): void {
     if (silent) return;
-    const entry = buildStandardEntry(creds);
-    process.stderr.write('\nCherry Studio 不支持文件配置，请在 Settings > MCP Server 中手动添加:\n\n');
-    console.log(JSON.stringify({ name: MCP_NAME, type: 'stdio', ...entry }, null, 2));
+    process.stderr.write('\nCherry Studio 不支持文件配置，请在 Settings > MCP Server 中手动添加（运行时复用当前登录）:\n\n');
+    console.log(JSON.stringify({
+        name: MCP_NAME,
+        type: 'stdio',
+        command: 'zentao',
+        args: ['mcp'],
+    }, null, 2));
 }
 
 /* ── Main Install Logic ── */
@@ -308,7 +257,7 @@ function installMcp(agent: string, creds: McpCredentials, silent: boolean): void
             writeCodexToml(target.configPath, creds);
             break;
         case 'cherry-studio':
-            printCherryStudioConfig(creds, silent);
+            printCherryStudioConfig(silent);
             return;
     }
 
@@ -329,16 +278,14 @@ export function registerAddMcpCommand(program: Command): void {
             const globalOpts = program.opts() as GlobalOptions;
             const silent = !!globalOpts.silent;
 
-            try {
-                const agents = agent ? resolveAgents(agent) : await promptAgentSelection();
-                const creds = await resolveCredentials();
+            const agents = agent ? resolveAgents(agent) : await promptAgentSelection();
+            const creds = await resolveCredentials({
+                insecure: globalOpts.insecure,
+                timeout: globalOpts.timeout,
+            });
 
-                for (const a of agents) {
-                    installMcp(a, creds, silent);
-                }
-            } catch (error) {
-                console.error(String((error as Error).message ?? error));
-                process.exit(1);
+            for (const a of agents) {
+                installMcp(a, creds, silent);
             }
         });
 }
