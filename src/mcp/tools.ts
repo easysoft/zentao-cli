@@ -6,7 +6,7 @@ import type { ModuleDefinition, ModuleAction, ModuleActionOptions } from '../typ
 import { executeModuleCommand } from '../modules/executor.js';
 import { ZentaoError } from '../errors.js';
 import type { AuthProvider } from './server.js';
-import { getCurrentProfile, getProfileConfig, setCurrentProfile, profileKey } from '../config/store.js';
+import { findProfileByKey, getCurrentProfile, getProfileConfig, profileKey } from '../config/store.js';
 import { DEFAULT_CONFIG } from '../config/defaults.js';
 
 function buildToolDescription(mod: ModuleDefinition): string {
@@ -105,13 +105,12 @@ interface SwitchProfileInput {
 }
 
 async function handleSwitchProfileTool(input: SwitchProfileInput, auth: AuthProvider): Promise<CallToolResult> {
-    const success = setCurrentProfile(input.profileKey);
-    if (!success) {
+    const profile = findProfileByKey(input.profileKey);
+    if (!profile) {
         throw new ZentaoError('E1007');
     }
 
-    auth.resetClient();
-    await auth.getClient();
+    await auth.getClient(profile);
 
     const current = getCurrentProfile();
     const currentKey = current ? profileKey(current.account, current.server) : input.profileKey;

@@ -11,16 +11,13 @@ export interface AuthContext {
 }
 
 /**
- * 确保当前进程具备可用的禅道凭证。
- *
- * 解析顺序：
- * 1. 读取完整的 `ZENTAO_*` 环境变量：优先 Token，其次账号密码登录
- * 2. 否则读取本地 `currentProfile`，若 Token 可用则直接复用并刷新 `lastUsedTime`
- * 3. 均失败时抛出 {@link ZentaoError} `E1006`
+ * An explicitly selected profile overrides all other credential sources.
+ * Otherwise, prefer complete environment credentials, then the current saved
+ * profile. Throw E1006 when the selected source has no usable credentials.
  */
-export async function ensureAuth(options?: { insecure?: boolean; timeout?: number }): Promise<AuthContext> {
+export async function ensureAuth(options?: { insecure?: boolean; timeout?: number; profile?: Profile }): Promise<AuthContext> {
     const env = getEnvCredentials();
-    if (env.url && env.account && (env.token || env.password)) {
+    if (!options?.profile && env.url && env.account && (env.token || env.password)) {
         const server = normalizeServerUrl(env.url);
         const existingProfile = getProfile(env.account, server);
         const config = existingProfile ? getProfileConfig(existingProfile) : undefined;
@@ -48,7 +45,7 @@ export async function ensureAuth(options?: { insecure?: boolean; timeout?: numbe
         }
     }
 
-    const currentProfile = getCurrentProfile();
+    const currentProfile = options?.profile ?? getCurrentProfile();
     if (currentProfile?.token) {
         const config = getProfileConfig(currentProfile);
         const clientOpts = {

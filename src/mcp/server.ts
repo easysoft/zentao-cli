@@ -4,25 +4,22 @@ import { ZentaoClient } from '../api/index.js';
 import { ensureAuth } from '../auth/flow.js';
 import { registerModuleTools } from './tools.js';
 import { getCliVersion } from '../utils/version.js';
+import type { Profile } from '../types/index.js';
 
 export interface AuthProvider {
-    getClient(): Promise<ZentaoClient>;
-    resetClient(): void;
+    getClient(profile?: Profile): Promise<ZentaoClient>;
 }
 
 function createAuthProvider(options?: { insecure?: boolean; timeout?: number }): AuthProvider {
     let client: ZentaoClient | null = null;
 
     return {
-        async getClient(): Promise<ZentaoClient> {
-            if (client) return client;
+        async getClient(profile?: Profile): Promise<ZentaoClient> {
+            if (client && !profile) return client;
 
-            const auth = await ensureAuth(options);
+            const auth = await ensureAuth({ ...options, profile });
             client = auth.client;
             return client;
-        },
-        resetClient(): void {
-            client = null;
         },
     };
 }
