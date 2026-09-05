@@ -104,6 +104,16 @@ export async function executeModuleCommand(
     }
 
     if (rawOutput) {
+        // The SDK returns raw responses before applying throwOnFail.
+        if (response?.status === 'fail') {
+            throw new ZentaoError('E2008', {
+                url: '',
+                status: '',
+                serverResponse: typeof response.message === 'string'
+                    ? response.message
+                    : JSON.stringify(response.message ?? response),
+            }, response);
+        }
         return {
             action,
             data: response,

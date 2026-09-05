@@ -208,6 +208,48 @@ describe('handleModuleCommand batch ids', () => {
             process.exitCode = previousExitCode ?? 0;
         }
     });
+
+    test.each([false, true])('records raw API failures with batchFailFast=%p', async (batchFailFast) => {
+        const requests: string[] = [];
+        const failure = { status: 'fail', message: { name: ['Cannot delete this product'] } };
+        const client = {
+            request: async (path: string) => {
+                requests.push(path);
+                return path === '/products/2' ? failure : { status: 'success' };
+            },
+        } as unknown as ZentaoClient;
+        const previousExitCode = process.exitCode;
+
+        try {
+            process.exitCode = 0;
+            const output = await captureConsoleLog(() => handleModuleCommand(
+                client,
+                getModule('product')!,
+                'delete',
+                ['1,2,3'],
+                mockProfile,
+                { yes: true, format: 'raw', batchFailFast },
+            ));
+
+            expect(requests).toEqual(batchFailFast
+                ? ['/products/1', '/products/2']
+                : ['/products/1', '/products/2', '/products/3']);
+            expect(output).toHaveLength(1);
+            expect(JSON.parse(output[0])).toMatchObject({
+                status: 'failed',
+                result: {
+                    success: batchFailFast ? [1] : [1, 3],
+                    failed: [2],
+                    skipped: batchFailFast ? [3] : [],
+                    errors: [{ objectID: 2, error: { code: '2008', details: failure } }],
+                },
+            });
+            expect(output[0]).toContain('Cannot delete this product');
+            expect(Number(process.exitCode)).toBe(1);
+        } finally {
+            process.exitCode = previousExitCode ?? 0;
+        }
+    });
 });
 
 describe('delete confirmation prompt', () => {

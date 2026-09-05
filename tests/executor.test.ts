@@ -183,6 +183,20 @@ describe('module executor (zentao-api request pipeline)', () => {
         expect(result.rawResponse).toEqual(result.data);
     });
 
+    test('rejects raw API failures while retaining the original response details', async () => {
+        const failure = { status: 'fail', message: 'Deletion refused', reason: 'linked objects exist' };
+        const { client, requests } = mockClient(() => failure);
+
+        await expect(executeModuleCommand(
+            client, getModule('product')!, 'delete', ['1'], { format: 'raw' }, DEFAULT_CONFIG,
+        )).rejects.toMatchObject({
+            code: '2008',
+            message: expect.stringContaining('Deletion refused'),
+            details: failure,
+        });
+        expect(requests).toHaveLength(1);
+    });
+
     test('executes create commands and retains the normalized response', async () => {
         const rawResponse = { status: 'success', id: 7, message: 'created' };
         const { client, requests } = mockClient(() => rawResponse);
