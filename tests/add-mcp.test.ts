@@ -145,6 +145,36 @@ describe('add-mcp credentials', () => {
         expect(written).toContain(`ZENTAO_TOKEN = "${SECRET_TOKEN}"`);
     });
 
+    test('Codex TOML preserves following tables with brackets in quoted keys', async () => {
+        const codexConfig = join(tempDir, '.codex', 'config.toml');
+        const followingTables = [
+            '[projects."/tmp/repo[work]"] # keep this project',
+            'trust_level = "trusted"',
+            '',
+            "[projects.'/tmp/repo[personal]']",
+            'trust_level = "untrusted"',
+            '',
+            '[[profiles."test]env"]]',
+            'name = "keep this profile"',
+            '',
+        ].join('\r\n');
+        mkdirSync(dirname(codexConfig), { recursive: true });
+        writeFileSync(codexConfig, '[mcp_servers.zentao-cli]\r\ncommand = "npx"\r\n\r\n' + followingTables);
+
+        const result = await runAddMcp('codex', true);
+        const written = readFileSync(codexConfig, 'utf-8');
+
+        expect(result.exitCode).toBe(0);
+        expect(written.endsWith(followingTables)).toBe(true);
+        expect(Bun.TOML.parse(written)).toMatchObject({
+            projects: {
+                '/tmp/repo[work]': { trust_level: 'trusted' },
+                '/tmp/repo[personal]': { trust_level: 'untrusted' },
+            },
+            profiles: { 'test]env': [{ name: 'keep this profile' }] },
+        });
+    });
+
     test('refuses to destroy JSONC comments', async () => {
         const vscodeConfig = process.platform === 'darwin'
             ? join(tempDir, 'Library', 'Application Support', 'Code', 'User', 'mcp.json')

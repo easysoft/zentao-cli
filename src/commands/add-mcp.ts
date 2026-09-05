@@ -215,7 +215,7 @@ function writeCodexToml(configPath: string, creds: McpCredentials): void {
 
     const target = /^[ \t]*\[mcp_servers\.zentao-cli\][ \t]*(?:#[^\r\n]*)?\r?$/m.exec(content);
     if (target) {
-        const nextSection = /^[ \t]*\[{1,2}[^\]\r\n]+\]{1,2}[ \t]*(?:#[^\r\n]*)?\r?$/gm;
+        const nextSection = /^[ \t]*\[{1,2}[^\r\n]+\]{1,2}[ \t]*(?:#[^\r\n]*)?\r?$/gm;
         nextSection.lastIndex = target.index + target[0].length;
         const next = nextSection.exec(content);
         content = content.slice(0, target.index) + section + content.slice(next?.index ?? content.length);
