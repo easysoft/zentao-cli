@@ -174,8 +174,23 @@ describe('getServerConfig', () => {
         try {
             const config = await getServerConfig(createClient(server.url.toString(), 'tok'));
             expect(receivedPath).toBe('/');
-            expect(receivedMode).toBe('getconfig');
+            expect(receivedMode as string | null).toBe('getconfig');
             expect(config.version).toBe('22.0');
+        } finally {
+            server.stop();
+        }
+    });
+
+    test('preserves a ZenTao subdirectory while using the SDK transport', async () => {
+        let receivedPath: string | undefined;
+        const server = createMockServer((_req, url) => {
+            receivedPath = url.pathname;
+            return Response.json({ version: '22.0' });
+        });
+        try {
+            const siteUrl = new URL('zentao/', server.url).toString();
+            await getServerConfig(createClient(siteUrl, 'tok'));
+            expect(receivedPath).toBe('/zentao/');
         } finally {
             server.stop();
         }
@@ -187,6 +202,20 @@ describe('getServerConfig', () => {
             await expect(
                 getServerConfig(createClient(server.url.toString(), 'tok')),
             ).rejects.toBeInstanceOf(ZentaoError);
+        } finally {
+            server.stop();
+        }
+    });
+
+    test('uses the client timeout and maps it to E5001', async () => {
+        const server = createMockServer(async () => {
+            await Bun.sleep(100);
+            return Response.json({ version: '22.0' });
+        });
+        try {
+            await expect(
+                getServerConfig(createClient(server.url.toString(), 'tok', { timeout: 10 })),
+            ).rejects.toMatchObject({ code: '5001' });
         } finally {
             server.stop();
         }

@@ -1,5 +1,5 @@
 import { ZentaoClient } from 'zentao-api';
-import { ZentaoError } from '../errors.js';
+import { mapSdkError } from '../errors.js';
 import type { ServerConfig } from '../types/index.js';
 
 export { ZentaoClient };
@@ -28,22 +28,16 @@ export function createClient(serverUrl: string, token?: string, options?: Client
 /**
  * 获取禅道服务端配置。
  *
- * SDK 的 {@link ZentaoClient} 不提供该方法，且该接口位于 `/api.php/v2` 之外
- * （`{siteRoot}/?mode=getconfig`），因此这里基于 `client.siteUrl` 直接发起请求。
+ * 该接口位于 `/api.php/v2` 之外（`{siteRoot}/?mode=getconfig`），通过相对路径
+ * 回到站点根目录，以复用 SDK 客户端的超时、TLS 和错误处理。
  */
 export async function getServerConfig(client: ZentaoClient): Promise<ServerConfig> {
-    const url = `${client.siteUrl}/?mode=getconfig`;
-    const response = await fetch(url, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-    });
-    if (!response.ok) {
-        const body = await response.text().catch(() => '');
-        throw new ZentaoError('E2008', {
-            url,
-            status: String(response.status),
-            serverResponse: body,
+    try {
+        return await client.get<ServerConfig>('../../', {
+            query: { mode: 'getconfig' },
+            responseType: 'json',
         });
+    } catch (error) {
+        throw mapSdkError(error);
     }
-    return await response.json() as ServerConfig;
 }
