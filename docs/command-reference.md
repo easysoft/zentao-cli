@@ -170,7 +170,7 @@ zentao file create --file=/path/to/screenshot.png --objectType=bug --objectID=42
 
 ## 覆盖范围
 
-对应当前工作区：CLI **0.2.0**，API 定义 **0.6.7**；覆盖 **17 个内置一级命令**（另含 config get/set）、**26 个业务模块、229 个业务操作**。已安装版本不同时，请以本机命令的 --help 为准。
+对应当前工作区：CLI **0.2.0**，API 定义 **0.6.8**；覆盖 **17 个内置一级命令**（另含 config get/set）、**26 个业务模块、229 个业务操作**。已安装版本不同时，请以本机命令的 --help 为准。
 
 <a id="global-options"></a>
 
