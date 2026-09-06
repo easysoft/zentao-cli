@@ -257,10 +257,15 @@ describe('bundled Skill command contracts', () => {
         expect(result.stdout).not.toContain('--all');
         expect(result.stdout).toContain('zentao bug <操作> --help');
 
-        const unpaged = await runCliWithoutAuth(['release', '--help']);
+        const unpaged = await runCliWithoutAuth(['story', 'getGrades', '--help']);
         expect(unpaged.exitCode).toBe(0);
         expect(unpaged.stdout).not.toContain('--page <number>');
         expect(unpaged.stdout).not.toContain('--recPerPage <number>');
+
+        const paged = await runCliWithoutAuth(['release', '--help']);
+        expect(paged.exitCode).toBe(0);
+        expect(paged.stdout).toContain('--page <number>');
+        expect(paged.stdout).toContain('--recPerPage <number>');
 
         const fixedScope = await runCliWithoutAuth(['task', 'list', '--help']);
         expect(fixedScope.exitCode).toBe(0);

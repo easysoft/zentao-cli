@@ -114,6 +114,11 @@ export function registerModuleCommands(program: Command): void {
                 return;
             }
 
+            if (args.length === 0 && !getAction(mod, 'list')) {
+                showModuleHelp(mod);
+                return;
+            }
+
             const { client, profile } = await ensureAuth({
                 insecure: options.insecure,
                 timeout: options.timeout,

@@ -1,8 +1,7 @@
 import type { ZentaoClient } from '../api/index.js';
 import { getModuleActionParams } from 'zentao-api';
 import type { ModuleDefinition, ModuleAction, ModuleActionType, Profile, ModuleActionName, UserConfig } from '../types/index.js';
-import { findAction, getAction, getAvailableActions, getObjectProps } from '../modules/helper.js';
-import { buildParams } from '../modules/args.js';
+import { getAction, getActionDescription, getAvailableActions, getObjectProps } from '../modules/helper.js';
 import { executeModuleCommand } from '../modules/executor.js';
 import type { ModuleExecutionResult } from '../modules/executor.js';
 import { getProfileConfig } from '../config/store.js';
@@ -273,13 +272,6 @@ export async function handleModuleCommand(
         return;
     }
 
-    const params = buildParams(options, actionName, args);
-    const hasId = params.id !== undefined && params.id !== '';
-
-    if (!hasId && (action.type === 'delete' || action.type === 'update' || action.type === 'action')) {
-        throw new ZentaoError('E2009', { option: 'id', reason: '必须提供要操作的对象 ID' });
-    }
-
     if (action.type === 'delete' && !options.yes) {
         if (!await confirmDelete(format, 1, options.machineReadable)) {
             return;
@@ -305,26 +297,26 @@ export function showModuleHelp(mod: ModuleDefinition): void {
     type CmdEntry = { cmd: string; desc: string };
     const cmds: CmdEntry[] = [];
 
-    const listAction = findAction(mod, 'list');
+    const listAction = getAction(mod, 'list');
     if (listAction) {
-        cmds.push({ cmd: `zentao ${n} [选项]`, desc: listAction.display ?? '获取列表' });
+        cmds.push({ cmd: `zentao ${n} [选项]`, desc: getActionDescription(listAction) });
     }
-    const getByIdAction = findAction(mod, 'get');
+    const getByIdAction = getAction(mod, 'get');
     if (getByIdAction) {
-        cmds.push({ cmd: `zentao ${n} <id> [选项]`, desc: getByIdAction.display ?? '获取详情' });
+        cmds.push({ cmd: `zentao ${n} <id> [选项]`, desc: getActionDescription(getByIdAction) });
     }
     cmds.push({ cmd: `zentao ${n} props [选项]`, desc: '获取对象属性定义' });
-    const createAction = findAction(mod, 'create');
+    const createAction = getAction(mod, 'create');
     if (createAction) {
-        cmds.push({ cmd: `zentao ${n} create [--key=value ...]`, desc: createAction.display ?? '创建' });
+        cmds.push({ cmd: `zentao ${n} create [--key=value ...]`, desc: getActionDescription(createAction) });
     }
-    const updateAction = findAction(mod, 'update');
+    const updateAction = getAction(mod, 'update');
     if (updateAction) {
-        cmds.push({ cmd: `zentao ${n} update <id> [--key=value ...]`, desc: updateAction.display ?? '更新' });
+        cmds.push({ cmd: `zentao ${n} update <id> [--key=value ...]`, desc: getActionDescription(updateAction) });
     }
-    const deleteAction = findAction(mod, 'delete');
+    const deleteAction = getAction(mod, 'delete');
     if (deleteAction) {
-        cmds.push({ cmd: `zentao ${n} delete <id>[,<id>...] [选项]`, desc: deleteAction.display ?? '删除' });
+        cmds.push({ cmd: `zentao ${n} delete <id>[,<id>...] [选项]`, desc: getActionDescription(deleteAction) });
     }
 
     if (cmds.length > 0) {
@@ -339,9 +331,8 @@ export function showModuleHelp(mod: ModuleDefinition): void {
     if (actions.length > 0) {
         const extCmds: CmdEntry[] = [];
         for (const actionName of actions) {
-            const action = findAction(mod, 'action', actionName);
-            const desc = action?.display ?? actionName;
-            extCmds.push({ cmd: `zentao ${n} ${actionName} <id> [--key=value ...]`, desc });
+            const action = getAction(mod, actionName)!;
+            extCmds.push({ cmd: `zentao ${n} ${actionName} [选项]`, desc: getActionDescription(action) });
         }
         console.log(`\n扩展操作:`);
         const cmdCol = Math.max(...extCmds.map(c => c.cmd.length), 24) + 4;
@@ -428,6 +419,7 @@ export function showModuleHelp(mod: ModuleDefinition): void {
  */
 export function showModuleActionHelp(mod: ModuleDefinition, action: ModuleAction): void {
     console.log(action.display ?? `${mod.display ?? mod.name} ${action.name}`);
+    console.log(`最低禅道版本: ${action.minVersion.join(' / ')}`);
     if (action.description && action.description !== action.display) {
         console.log(`描述: ${action.description}`);
     }
@@ -439,9 +431,8 @@ export function showModuleActionHelp(mod: ModuleDefinition, action: ModuleAction
             && !(action.type === 'list' && (param.name === 'pageID' || param.name === 'recPerPage')))
         .map((param) => {
             const isPathId = param.role === 'path' && param.name.endsWith('ID');
-            const useGenericId = action.type !== 'list' && isPathId;
             return {
-                name: useGenericId ? 'id' : param.name,
+                name: param.name,
                 placeholder: isPathId ? 'number' : getParamPlaceholder(param),
                 description: param.description ?? (isPathId ? `${mod.display ?? mod.name} ID` : param.name),
                 required: param.required,
@@ -449,6 +440,11 @@ export function showModuleActionHelp(mod: ModuleDefinition, action: ModuleAction
                 options: param.options,
             };
         });
+
+    const firstPathId = actionParams.find((param) => param.role === 'path' && param.name.endsWith('ID') && param.name !== 'scopeID');
+    if (firstPathId && firstPathId.name !== 'id') {
+        apiParams.push({ name: 'id', placeholder: 'number', description: `${firstPathId.name} 的别名，也可作为首个位置参数传入；其他路径参数需分别指定` });
+    }
 
     const needsBody = action.type === 'create' || action.type === 'update' || action.type === 'action';
     if (needsBody && !actionParams.some((param) => param.role === 'body' && param.name === 'data')) {
@@ -520,14 +516,14 @@ const MODULE_HELP_CRUD_ORDER: ModuleActionType[] = ['list', 'get', 'create', 'up
 export function showModuleAllActionsHelp(mod: ModuleDefinition): void {
     let first = true;
     for (const type of MODULE_HELP_CRUD_ORDER) {
-        const action = findAction(mod, type);
+        const action = getAction(mod, type);
         if (!action) continue;
         if (!first) console.log(`\n${'─'.repeat(56)}\n`);
         first = false;
         showModuleActionHelp(mod, action);
     }
     for (const extName of getAvailableActions(mod)) {
-        const action = findAction(mod, 'action', extName);
+        const action = getAction(mod, extName);
         if (!action) continue;
         if (!first) console.log(`\n${'─'.repeat(56)}\n`);
         first = false;

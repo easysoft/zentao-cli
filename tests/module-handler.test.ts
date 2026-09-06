@@ -1,9 +1,9 @@
 import { describe, expect, test } from 'bun:test';
 import type { ZentaoClient } from '../src/api/index';
-import { handleModuleCommand } from '../src/commands/module-handler';
-import { getModule } from '../src/modules';
+import { handleModuleCommand, showModuleHelp, showModuleAllActionsHelp, showModuleActionHelp } from '../src/commands/module-handler';
+import { getAllModules, getAvailableActions, getModule } from '../src/modules';
 import type { ModuleActionName, ModuleActionOptions } from '../src/types';
-import { mockProfile } from './helpers';
+import { mockProfile, runCliWithoutAuth } from './helpers';
 
 async function captureConsoleLog(fn: () => Promise<void>): Promise<string[]> {
     const output: string[] = [];
@@ -33,10 +33,79 @@ async function captureConsoleError(fn: () => Promise<void>): Promise<string[]> {
     return output;
 }
 
+describe('expanded SDK actions', () => {
+    test('shows every registered action and its version requirement exactly once in detailed help', async () => {
+        for (const mod of getAllModules()) {
+            const summary = (await captureConsoleLog(async () => showModuleHelp(mod))).join('\n');
+            for (const action of getAvailableActions(mod)) {
+                expect(summary).toContain(`zentao ${mod.name} ${action} [选项]`);
+            }
+            const details = await captureConsoleLog(async () => showModuleAllActionsHelp(mod));
+            expect(details.filter((line) => line.startsWith('最低禅道版本:'))).toHaveLength(mod.actions.length);
+        }
+    });
+
+    test('shows named list operations without advertising a nonexistent default list', async () => {
+        const result = await runCliWithoutAuth(['my']);
+        expect(result.exitCode).toBe(0);
+        expect(result.stdout).toContain('zentao my tasks [选项]');
+        expect(result.stdout).not.toContain('zentao my [选项]');
+        expect(result.stderr).toBe('');
+    });
+
+    test('preserves distinct document path parameters in help and requests', async () => {
+        const mod = getModule('doc')!;
+        const action = mod.actions.find((action) => action.name === 'createMyDoc')!;
+        const help = (await captureConsoleLog(async () => showModuleActionHelp(mod, action))).join('\n');
+        expect(help).toContain('--spaceID <number>');
+        expect(help).toContain('--libID <number>');
+        expect(help).toContain('22.5 / biz13.5 / max8.5 / ipd5.5');
+
+        const requests: Array<{ path: string; options: { method?: string; body?: unknown } }> = [];
+        const client = {
+            getZentaoConfig: async () => ({ version: '22.5' }),
+            request: async (path: string, options: { method?: string; body?: unknown }) => {
+                requests.push({ path, options });
+                return { status: 'success', id: 3 };
+            },
+        } as unknown as ZentaoClient;
+        await handleModuleCommand(client, mod, 'createMyDoc', ['--spaceID=1', '--libID=2'], mockProfile, {
+            silent: true, data: '{"title":"新文档","content":"# 正文","contentType":"doc"}',
+        });
+        expect(requests).toEqual([{
+            path: '/doc/my/spaces/1/libs/2/docs',
+            options: expect.objectContaining({ method: 'POST', body: { title: '新文档', content: '# 正文', contentType: 'doc' } }),
+        }]);
+    });
+
+    test('accepts a named path ID and auto-fills from the matching document resource', async () => {
+        const requests: Array<{ path: string; method?: string; body?: unknown }> = [];
+        const client = {
+            getZentaoConfig: async () => ({ version: '22.5' }),
+            request: async (path: string, options: { method?: string; body?: unknown }) => {
+                requests.push({ path, method: options.method, body: options.body });
+                return options.method === 'GET'
+                    ? { lib: { id: 2, name: '原文档库', acl: 'private', users: ['admin'] } }
+                    : { status: 'success', id: 2 };
+            },
+        } as unknown as ZentaoClient;
+        await handleModuleCommand(client, getModule('doc')!, 'updateLib', ['--libID=2', '--name=新文档库'], mockProfile, { silent: true });
+        expect(requests.map(({ path, method }) => ({ path, method }))).toEqual([
+            { path: '/doc/libs/2', method: 'GET' },
+            { path: '/doc/libs/2', method: 'PUT' },
+        ]);
+        expect(requests[1].body).toMatchObject({ name: '新文档库', acl: 'private', users: ['admin'] });
+        requests.length = 0;
+        await expect(handleModuleCommand(client, getModule('doc')!, 'updateLib', [], mockProfile, { silent: true })).rejects.toMatchObject({ code: '2003' });
+        expect(requests).toHaveLength(0);
+    });
+});
+
 describe('handleModuleCommand batch ids', () => {
     async function runDelete(args: string[], options: ModuleActionOptions = {}) {
         const requests: Array<{ method: string; path: string }> = [];
         const client = {
+            getZentaoConfig: async () => ({ version: '22.5' }),
             request: async (path: string, opts: { method?: string }) => {
                 requests.push({ method: (opts.method ?? 'GET').toLowerCase(), path });
                 return { status: 'success' };
@@ -75,6 +144,7 @@ describe('handleModuleCommand batch ids', () => {
 
     test('prints one JSON summary for a batch', async () => {
         const client = {
+            getZentaoConfig: async () => ({ version: '22.5' }),
             request: async () => ({ status: 'success' }),
         } as unknown as ZentaoClient;
 
@@ -98,6 +168,7 @@ describe('handleModuleCommand batch ids', () => {
 
     test('keeps successful data when batching get operations', async () => {
         const client = {
+            getZentaoConfig: async () => ({ version: '22.5' }),
             request: async (path: string) => ({
                 status: 'success',
                 product: { id: Number(path.split('/').at(-1)), name: `产品${path.split('/').at(-1)}` },
@@ -133,6 +204,7 @@ describe('handleModuleCommand batch ids', () => {
 
     test('silent batch failures do not print successful object data', async () => {
         const client = {
+            getZentaoConfig: async () => ({ version: '22.5' }),
             request: async (path: string) => {
                 if (path.endsWith('/2')) throw new Error('request failed');
                 return { status: 'success', product: { id: 1, secret: 'private value' } };
@@ -171,6 +243,7 @@ describe('handleModuleCommand batch ids', () => {
     test('continues after failures and sets a non-zero exit code', async () => {
         const requests: string[] = [];
         const client = {
+            getZentaoConfig: async () => ({ version: '22.5' }),
             request: async (path: string) => {
                 requests.push(path);
                 if (path === '/products/2') throw new Error('request failed');
@@ -213,6 +286,7 @@ describe('handleModuleCommand batch ids', () => {
         const requests: string[] = [];
         const failure = { status: 'fail', message: { name: ['Cannot delete this product'] } };
         const client = {
+            getZentaoConfig: async () => ({ version: '22.5' }),
             request: async (path: string) => {
                 requests.push(path);
                 return path === '/products/2' ? failure : { status: 'success' };
@@ -256,6 +330,7 @@ describe('delete confirmation prompt', () => {
     test('refuses non-interactive deletion without --yes', async () => {
         let requestCount = 0;
         const client = {
+            getZentaoConfig: async () => ({ version: '22.5' }),
             request: async () => {
                 requestCount++;
                 return { status: 'success' };
@@ -281,6 +356,7 @@ describe('delete confirmation prompt', () => {
     test('machine output does not bypass deletion confirmation', async () => {
         let requestCount = 0;
         const client = {
+            getZentaoConfig: async () => ({ version: '22.5' }),
             request: async () => {
                 requestCount++;
                 return { status: 'success' };
@@ -302,6 +378,7 @@ describe('delete confirmation prompt', () => {
 describe('handleModuleCommand rendered output', () => {
     test('prints parseable JSON without ANSI for get commands', async () => {
         const client = {
+            getZentaoConfig: async () => ({ version: '22.5' }),
             request: async () => ({ status: 'success', product: { id: 1, name: '产品1' } }),
         } as unknown as ZentaoClient;
 
@@ -323,6 +400,7 @@ describe('handleModuleCommand rendered output', () => {
 
     test('does not render Markdown ANSI when stdout is not a TTY', async () => {
         const client = {
+            getZentaoConfig: async () => ({ version: '22.5' }),
             request: async () => ({ status: 'success', product: { id: 1, name: '产品1' } }),
         } as unknown as ZentaoClient;
 
@@ -345,6 +423,7 @@ describe('handleModuleCommand rendered output', () => {
 describe('handleModuleCommand raw output', () => {
     test('prints original API response for list commands', async () => {
         const client = {
+            getZentaoConfig: async () => ({ version: '22.5' }),
             request: async () => ({
                 status: 'success',
                 products: [{ id: 1, name: '产品1' }],
@@ -371,6 +450,7 @@ describe('handleModuleCommand raw output', () => {
 
     test('prints original API response for get commands', async () => {
         const client = {
+            getZentaoConfig: async () => ({ version: '22.5' }),
             request: async () => ({
                 status: 'success',
                 user: { id: 1, realname: 'Admin' },
@@ -397,6 +477,7 @@ describe('handleModuleCommand raw output', () => {
 
     test('prints original API response for write commands', async () => {
         const client = {
+            getZentaoConfig: async () => ({ version: '22.5' }),
             request: async () => ({ status: 'success', id: 7, message: 'created' }),
         } as unknown as ZentaoClient;
 
