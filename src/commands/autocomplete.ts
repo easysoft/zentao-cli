@@ -3,7 +3,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline/promises';
-import { getModuleNames } from '../modules/index.js';
+import { getModule, getModuleNames } from '../modules/index.js';
 import { AGENT_NAMES as SKILL_AGENT_NAMES } from './add-skill.js';
 import { AGENT_NAMES as MCP_AGENT_NAMES } from './add-mcp.js';
 
@@ -18,6 +18,16 @@ function createCandidates(program: Command): string {
 function getCommonOptions(program: Command): string[] {
     return program.createHelp().visibleOptions(program)
         .flatMap((option) => [option.short, option.long].filter(Boolean) as string[]);
+}
+
+function getModuleCompletions(program: Command) {
+    return program.commands.flatMap((command) => {
+        const mod = getModule(command.name());
+        return mod ? [{
+            names: [command.name(), ...command.aliases()],
+            actions: ['help', 'props', ...mod.actions.map((action) => action.name)],
+        }] : [];
+    });
 }
 
 function generateBashScript(program: Command, command = 'zentao'): string {
@@ -38,6 +48,13 @@ _${command}_completion() {
   fi
 
   case "\${words[1]}" in
+${getModuleCompletions(program).map(({ names, actions }) => `    ${names.join('|')})
+      if [[ \${cword} -eq 2 ]]; then
+        COMPREPLY=( $(compgen -W "${actions.join(' ')} \${common_options}" -- "\${cur}") )
+      else
+        COMPREPLY=( $(compgen -W "\${common_options}" -- "\${cur}") )
+      fi
+      ;;`).join('\n')}
     config)
       COMPREPLY=( $(compgen -W "\${config_subcommands} \${common_options}" -- "\${cur}") )
       ;;
@@ -89,6 +106,13 @@ _${command}() {
   fi
 
   case "$words[2]" in
+${getModuleCompletions(program).map(({ names, actions }) => `    ${names.join('|')})
+      if (( CURRENT == 3 )); then
+        _values 'action' ${actions.map((action) => `'${action}'`).join(' ')}
+      else
+        _describe 'option' common_opts
+      fi
+      ;;`).join('\n')}
     config)
       _values 'config command' ${CONFIG_SUBCOMMANDS.map((s) => `'${s}'`).join(' ')}
       ;;
@@ -131,6 +155,8 @@ set -l __${command}_mods ${modules}
 complete -c ${command} -f
 complete -c ${command} -n "__fish_use_subcommand" -a "$__${command}_cmds"
 complete -c ${command} -a "${commonOptions}"
+
+${getModuleCompletions(program).map(({ names, actions }) => `complete -c ${command} -n "__fish_seen_subcommand_from ${names.join(' ')}; and test (count (commandline -opc)) -eq 2" -a "${actions.join(' ')}"`).join('\n')}
 
 complete -c ${command} -n "__fish_seen_subcommand_from config" -a "${CONFIG_SUBCOMMANDS.join(' ')}"
 complete -c ${command} -n "__fish_seen_subcommand_from autocomplete" -a "bash zsh fish"
