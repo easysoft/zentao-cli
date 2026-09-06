@@ -1,6 +1,6 @@
 ---
 name: zentao-cli
-description: 通过 zentao 命令行工具查询和操作禅道（ZenTao）数据，覆盖项目集、产品、项目、执行、需求、Bug、任务、测试用例、测试单、产品计划、版本、发布、反馈、工单、应用、用户、附件等模块的增删改查及状态流转。当用户提到禅道、zentao、查询项目进展、获取 Bug 列表、创建任务、更新需求状态等项目管理操作时使用本技能。
+description: 通过 zentao 命令行工具查询和操作禅道（ZenTao）数据，覆盖项目集、产品、项目、执行、需求、Bug、任务、测试用例、测试单、产品计划、版本、发布、反馈、工单、应用、用户、附件、文档、待办、地盘、问题、风险、会议、工作流等模块的增删改查及状态流转。当用户提到禅道、zentao、查询项目进展、获取 Bug 列表、创建任务、更新需求状态等项目管理操作时使用本技能。
 license: MIT
 metadata:
   author: Sun Hao <sunhao@chandao.com>
@@ -62,7 +62,7 @@ zentao login -s https://zentao.example.com -u admin -p 123456
 | 创建 | `zentao <module> create --field=value` |
 | 更新 | `zentao <module> update <id> --field=value` |
 | 删除 | `zentao <module> delete <id>` |
-| 动作 | `zentao <module> <action> <id>` |
+| 命名操作 | `zentao <module> <action> [参数]`（是否需要 ID 以操作帮助为准） |
 | 帮助 | `zentao <module> --help` / `zentao <module> <action> --help` |
 
 也支持 `--data='JSON'` 传入 JSON 数据。
@@ -89,9 +89,30 @@ zentao login -s https://zentao.example.com -u admin -p 123456
 | ticket | 工单 | CRUD + activate / close |
 | system | 应用 | CU（按产品查列表） |
 | user | 用户 | CRUD |
-| file | 附件 | 编辑名称 + 删除 |
+| file | 附件 | 上传 + 编辑名称 + 删除 |
+| issue | 问题 | 列表、详情、创建及项目/执行内列表 |
+| risk | 风险 | 列表、详情、创建及项目/执行内列表 |
+| meeting | 会议 | 列表、详情、创建及项目/执行内列表 |
+| workflow | 工作流 | 工作流列表及示例合同详情 |
+| doc | 文档 | 空间、文档库、目录、文档的命名查询和写入操作 |
+| todo | 待办 | 创建、更新、删除；列表通过 my todos 获取 |
+| my | 地盘 | todos、tasks、bugs、stories、projects 等个人列表 |
 
 > CRUD = 列表 + 详情 + 创建 + 更新 + 删除；CUD = 创建 + 更新 + 删除。“按范围查列表”表示列表命令必须携带所属范围。
+
+### 最低版本要求
+
+先通过 `zentao <module> <action> --help` 查看参数和最低禅道版本。原有操作基线为 `22.0 / biz13.0 / max8.0 / ipd5.0`，新增操作一般为 `22.5 / biz13.5 / max8.5 / ipd5.5`，按同一系列比较。CLI 在请求前检查实际服务器版本；遇到 `E2010` 时报告兼容性限制，不反复重试同一操作。帮助离线列出完整操作，不代表当前服务器全部支持。
+
+`doc` 和 `my` 没有默认列表，需要明确操作名称；多个路径参数需分别传入，`--id` 只代表首个路径 ID。
+
+```bash
+zentao story getGrades
+zentao my tasks --pick=id,name,status
+zentao doc myDocs --spaceID=1 --libID=2
+zentao doc createMyDoc --spaceID=1 --libID=2 --data '{"title":"开发说明","content":"# 正文","contentType":"doc"}'
+zentao file create --file=/path/to/screenshot.png --objectType=bug --objectID=1
+```
 
 ### 列表范围参数
 
@@ -101,7 +122,7 @@ zentao login -s https://zentao.example.com -u admin -p 123456
 zentao story --product=1                # 产品 #1 的需求
 zentao bug --product=1                  # 产品 #1 的 Bug
 zentao task --executionID=1             # 执行 #1 的任务
-zentao execution --status=all --filter='project=5'  # 项目 #5 的执行（当前页客户端过滤）
+zentao execution projectExecutions --projectID=5 --browseType=all  # 项目 #5 的执行，需满足新增操作的最低版本
 zentao build --project=5                # 项目 #5 的版本
 zentao testtask --product=1             # 产品 #1 的测试单
 zentao release --productID=1            # 产品 #1 的发布
@@ -199,7 +220,7 @@ CLI 不会自动翻页。仅当该列表操作的 `--help` 显示 `--page` / `--
 
 ```bash
 zentao project --browseType=doing --pick=id,name,status
-zentao execution --status=all --filter='project=5' --pick=id,name,status
+zentao execution projectExecutions --projectID=5 --browseType=all --pick=id,name,status
 ```
 
 ### 创建需求并关联计划
@@ -271,6 +292,9 @@ zentao help                # 查看所有命令
 | E2002 | 对象不存在 | 检查 ID 是否正确 |
 | E2003 | 缺少必要参数 | 执行 `zentao <module> --help` 或 `zentao <module> <action> --help` 查看操作参数 |
 | E2006 | 无权限 | 提示用户检查权限 |
+| E2010 | 禅道版本不支持该操作 | 按错误提示确认对应系列的最低版本 |
+| E2011 | 版本格式无法识别 | 检查是否为受支持的正式版本 |
+| E2012 | 无法识别服务器配置 | 检查站点根地址的 ?mode=getconfig 响应 |
 | E5001 | 请求超时 | 检查网络或禅道服务状态 |
 
 ## 注意事项

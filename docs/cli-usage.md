@@ -4,6 +4,8 @@
 
 快速使用请参考 [README](../README.md)，在 AI Agents 中使用请参考 [在 Agents 中使用禅道](./use-zentao-in-agents.md)。
 
+逐项查询所有命令、操作及参数，请参考 [命令、参数与用法参考](./command-reference.md)。
+
 ## 用户验证
 
 ### 登录验证
@@ -76,6 +78,50 @@ $ ZENTAO_CONFIG_FILE=~/work/zt.json zentao product
 
 ## 禅道数据访问和操作
 
+### API 覆盖与版本兼容
+
+CLI 使用 `zentao-api 0.6.7` 的注册表，提供 26 个模块、229 个操作。除原有模块外，新增问题（`issue`）、风险（`risk`）、会议（`meeting`）、工作流（`workflow`）、文档（`doc`）、待办（`todo`）和地盘（`my`），并支持项目集/项目/执行下的关联列表、需求层级、附件上传和 Markdown 文档正文。
+
+每个操作都带有最低禅道版本要求。SDK 0.5.5 及之前已有的操作与之后新增的操作分别使用以下基线，具体以操作帮助为准：
+
+| 操作 | 开源版 | 企业版 | 旗舰版 | IPD 版 |
+| --- | --- | --- | --- | --- |
+| 原有操作 | 22.0 | biz13.0 | max8.0 | ipd5.0 |
+| 新增操作 | 22.5 | biz13.5 | max8.5 | ipd5.5 |
+
+版本只在同一系列内比较，未列出的系列不受支持。目前支持点分数字正式版本，不接受 alpha、beta、rc 等后缀。
+
+登录和业务请求通过 SDK 获取站点根地址的 `?mode=getconfig`，配置请求不携带 Token。SDK 在同一客户端内缓存配置最多 24 小时；普通 CLI 命令各自启动进程，MCP 和批量操作会复用客户端缓存，切换账户后使用目标服务器的配置。CLI 的登录记录不用于跳过版本检查。
+
+配置获取失败默认中止调用；版本不足时返回 `E2010`，提示操作、当前版本和最低版本，更新操作的自动补全预读也不会执行。版本格式错误返回 `E2011`，配置缺少有效版本字段返回 `E2012`。`raw` 输出同样执行版本检查。
+
+帮助和自动补全在未登录时仍可使用，并列出完整注册表；CLI 帮助和 MCP 的 `action` 参数说明展示最低版本要求，执行时以实际服务器版本为准。
+
+MCP 提供无需登录的 `zentao_action_help` 工具，传入 `module` 和 `action` 即可查询该操作的路径、必填参数、参数类型及 `minVersion`，例如 `{"module":"doc","action":"createMyDoc"}`。
+
+```bash
+# 不需要对象 ID 的命名列表
+zentao story getGrades
+zentao my tasks --pick=id,name,status
+
+# 直接查询项目下的执行
+zentao execution projectExecutions --projectID=5 --browseType=all
+
+# 创建 Markdown 文档：多个路径 ID 必须分别传入
+zentao doc createMyDoc --spaceID=1 --libID=2 --data '{"title":"开发说明","content":"# 开发说明","contentType":"doc"}'
+
+# 修改文档库，自动从同一路径的详情接口补全已有字段
+zentao doc updateLib --libID=2 --name=开发文档
+
+# SDK 自动按 multipart/form-data 上传本地文件（默认上限 50 MiB）
+zentao file create --file=/path/to/screenshot.png --objectType=bug --objectID=1
+
+# 查看路径、查询、请求体参数和最低版本
+zentao doc createMyDoc --help
+```
+
+`id` 或首个位置参数只是首个路径 ID 的简写，其他路径参数需使用各自的名称。`doc`、`my` 等没有默认 `list` 的模块，在省略操作时会显示帮助。命名的列表、详情、创建、更新和删除操作遵循各自的类型，删除操作仍需确认或显式 `--yes`。
+
 ### 命令调用方式
 
 禅道数据访问和操作支持两种调用方式：
@@ -136,8 +182,11 @@ $ zentao product --format=json
     }
 }
 
-# 执行列表没有项目作用域；以当前页返回值做客户端项目过滤
-$ zentao execution --status=all --filter='project=5'
+# 查询项目下的执行（要求 22.5 / biz13.5 / max8.5 / ipd5.5）
+$ zentao execution projectExecutions --projectID=5 --browseType=all
+
+# 旧版服务器：以全局列表当前页返回值做客户端项目过滤，汇总时需逐页读取
+$ zentao execution --browseType=all --filter='project=5'
 
 # 输出略
 ```

@@ -5,6 +5,7 @@
 ## 主要特性
 
 * ✅ 基于最新的禅道 RESTful API 2.0 实现
+* ✅ 覆盖 26 个模块、229 个 API 操作，调用前按禅道版本检查接口兼容性
 * ✅ 使用便捷，可通过 `npx zentao-cli` 立即运行
 * ✅ 安全的用户认证管理，支持多用户切换
 * ✅ 支持对数据进行摘取、过滤、排序等处理，并自动将 HTML 转换为 Markdown
@@ -62,6 +63,8 @@ zentao add-skill
 ```
 
 ## 核心命令
+
+当前使用 `zentao-api 0.6.7`，支持文档、待办、地盘、问题、风险、会议和工作流等模块。各操作的最低禅道版本可通过 `zentao <模块> <操作> --help` 查看；开源版、企业版、旗舰版和 IPD 版分别比较，版本不足时会在发送业务请求前报错。详见[API 覆盖与版本兼容](docs/cli-usage.md#api-覆盖与版本兼容)。
 
 zentao-cli 的命令格式简单直观：`zentao <模块名> [操作] [参数]`。下面通过常见场景快速上手。
 
@@ -229,6 +232,8 @@ $ pnpm install -g zentao-cli && zentao login && zentao add-mcp
 
 | 文档 | 说明 |
 | --- | --- |
+| [交互式命令参考（HTML）](docs/command-reference.html) | 浏览器直接打开，搜索命令与参数，按模块和操作类型筛选 |
+| [命令、参数与用法参考](docs/command-reference.md) | 全部内置命令、业务操作、参数类型、必填项、可选值和用法 |
 | [CLI 核心功能详解](docs/cli-usage.md) | 用户验证、数据访问与操作、数据处理、输出格式、配置管理等 |
 | [在 Agents 中使用禅道](docs/use-zentao-in-agents.md) | 通过技能或 MCP 在 AI Agents 中使用禅道 |
 | [开发指引](docs/development.md) | 技术栈、项目结构、测试 |

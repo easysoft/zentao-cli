@@ -28,11 +28,11 @@ zentao project --browseType=doing --pick=id,name,begin,end,progress
 让他扫一眼，问："有没有哪条看着不对劲？进度慢的、日期要到的？"——挑出一个深入看：
 
 ```bash
-zentao execution --status=all --filter='project=<id>' --pick=id,name,status --page=<页码> --recPerPage=100
-zentao task --executionID=<执行ID> --status=all --pick=id,status --page=<页码> --recPerPage=100 --format=json
+zentao execution projectExecutions --projectID=<id> --browseType=all --pick=id,name,status --page=<页码> --recPerPage=100
+zentao task --executionID=<执行ID> --browseType=all --pick=id,status --page=<页码> --recPerPage=100 --format=json
 ```
 
-执行列表没有项目作用域，所以用 `--filter` 在当前页本地筛选；必须扫完全局执行列表的每一页，才能收集某项目的全部执行 ID。再对每个执行按任务 pager 逐页读取，本地聚合"wait/doing/done 各多少"，用一句话汇报给用户。
+先用 `zentao execution projectExecutions --help` 查看最低版本；服务器支持时直接按项目逐页查询。旧版服务器返回 E2010 时，使用 `zentao execution --browseType=all --filter='project=<id>' --page=<页码> --recPerPage=100`，扫完全局执行列表的每一页，收集该项目的执行 ID。再对每个执行按任务 pager 逐页读取，本地聚合"wait/doing/done 各多少"，用一句话汇报给用户。
 
 ## 如果他关心产品健康度
 
@@ -85,8 +85,8 @@ zentao ticket --productID=<id> --browseType=all --pick=id,title,status,pri
 | 关注点 | 命令 |
 |--------|------|
 | 进行中的项目 | `zentao project --browseType=doing --pick=id,name,progress,begin,end` |
-| 项目下的执行 | `zentao execution --status=all --filter='project=<id>' --pick=id,name,status --page=<页码> --recPerPage=100`|
-| 任务状态聚合 | `zentao task --executionID=<id> --status=all --pick=status --page=<页码> --recPerPage=100 --format=json` |
+| 项目下的执行 | `zentao execution projectExecutions --projectID=<id> --browseType=all --pick=id,name,status --page=<页码> --recPerPage=100`|
+| 任务状态聚合 | `zentao task --executionID=<id> --browseType=all --pick=status --page=<页码> --recPerPage=100 --format=json` |
 | 产品下需求概览 | `zentao story --product=<id> --browseType=allstory --pick=id,pri,stage,plan --page=<页码> --recPerPage=100 --format=json` |
 | 产品下 Bug 概览 | `zentao bug --product=<id> --browseType=all --pick=id,severity,pri,status --page=<页码> --recPerPage=100 --format=json` |
 | 即将 / 最近发布 | `zentao release --productID=<id> --pick=id,name,date,status` |
