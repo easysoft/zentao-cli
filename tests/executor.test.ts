@@ -1,4 +1,7 @@
 import { describe, expect, test } from 'bun:test';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { ZentaoClient } from '../src/api/index';
 import { DEFAULT_CONFIG } from '../src/config/defaults';
 import { getModule } from '../src/modules';
@@ -9,9 +12,10 @@ interface CapturedRequest {
     options: { method?: string; query?: unknown; body?: unknown };
 }
 
-function mockClient(handler: (req: CapturedRequest) => unknown) {
+function mockClient(handler: (req: CapturedRequest) => unknown, version = '22.5') {
     const requests: CapturedRequest[] = [];
     const client = {
+        getZentaoConfig: async () => ({ version }),
         async request(path: string, options: CapturedRequest['options']) {
             const captured = { path, options };
             requests.push(captured);
@@ -22,6 +26,72 @@ function mockClient(handler: (req: CapturedRequest) => unknown) {
 }
 
 describe('module executor (zentao-api request pipeline)', () => {
+    test.each(['22.0', 'biz13.0', 'max8.0', 'ipd5.0'])('keeps existing APIs available on %s and blocks newer APIs before HTTP', async (version) => {
+        const { client, requests } = mockClient(() => ({ status: 'success', products: [] }), version);
+        await executeModuleCommand(client, getModule('product')!, 'list', [], {}, DEFAULT_CONFIG);
+        expect(requests).toHaveLength(1);
+        requests.length = 0;
+
+        for (const format of ['json', 'raw'] as const) {
+            await expect(executeModuleCommand(
+                client, getModule('doc')!, 'updateLib', [], { params: '{"libID":2}', format }, DEFAULT_CONFIG,
+            )).rejects.toMatchObject({
+                code: '2010',
+                message: expect.stringContaining('最低版本要求'),
+                details: { action: 'doc/updateLib', version, minVersion: ['22.5', 'biz13.5', 'max8.5', 'ipd5.5'] },
+            });
+        }
+        expect(requests).toHaveLength(0);
+    });
+
+    test.each(['22.5', 'biz13.5', 'max8.5', 'ipd5.5'])('executes a new list action without an object ID on %s', async (version) => {
+        const { client, requests } = mockClient(() => ({ grades: [{ grade: 1, name: '一级' }] }), version);
+        const result = await executeModuleCommand(client, getModule('story')!, 'getGrades', [], {}, DEFAULT_CONFIG);
+        expect(requests[0].path).toBe('/storygrades');
+        expect(result.data).toEqual([{ grade: 1, name: '一级' }]);
+        expect(result.isList).toBe(true);
+    });
+
+    test('routes a new scoped list and processes its pager and fields', async () => {
+        const { client, requests } = mockClient(() => ({
+            executions: [{ id: 3, name: '迭代', status: 'doing' }],
+            pager: { pageID: 2, recPerPage: 10, recTotal: 11 },
+        }));
+        const result = await executeModuleCommand(client, getModule('execution')!, 'projectExecutions', [], {
+            params: '{"projectID":5,"browseType":"all"}', page: '2', recPerPage: '10', pick: 'id,name',
+        }, DEFAULT_CONFIG);
+        expect(requests[0]).toMatchObject({ path: '/projects/5/executions', options: { query: { browseType: 'all', pageID: '2' } } });
+        expect(result.data).toEqual([{ id: 3, name: '迭代' }]);
+        expect(result.pager).toEqual({ pageID: 2, recPerPage: 10, recTotal: 11 });
+    });
+
+    test.each([null, 'plain text', ['first', 'second']])('preserves non-object raw responses: %j', async (raw) => {
+        const { client } = mockClient(() => raw);
+        const result = await executeModuleCommand(client, getModule('product')!, 'list', [], { format: 'raw' }, DEFAULT_CONFIG);
+        expect(result.data).toEqual(raw);
+    });
+
+    test('uploads explicit local file paths through the SDK multipart pipeline', async () => {
+        const dir = mkdtempSync(join(tmpdir(), 'zentao-cli-upload-'));
+        const file = join(dir, 'attachment.txt');
+        writeFileSync(file, 'attachment content');
+        const { client, requests } = mockClient(() => ({ status: 'success', id: 8 }));
+        try {
+            await executeModuleCommand(client, getModule('file')!, 'create', [`--file=${file}`], {
+                params: '{"objectType":"bug","objectID":1}',
+            }, DEFAULT_CONFIG);
+            expect(requests[0].path).toBe('/files');
+            expect(requests[0].options.method).toBe('POST');
+            const form = requests[0].options.body as FormData;
+            expect(form).toBeInstanceOf(FormData);
+            expect(form.get('objectType')).toBe('bug');
+            expect(form.get('objectID')).toBe('1');
+            expect(await (form.get('file') as Blob).text()).toBe('attachment content');
+        } finally {
+            rmSync(dir, { recursive: true, force: true });
+        }
+    });
+
     test('executes list commands and applies SDK-side processing', async () => {
         const { client, requests } = mockClient(() => ({
             status: 'success',

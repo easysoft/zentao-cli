@@ -22,6 +22,9 @@ export const ERROR_CODES = {
     E2007: '`--data` 参数中的 JSON 数据格式无效',
     E2008: '禅道服务端返回错误（Url：{url}，Status：{status}），请查看详细错误信息：{serverResponse}',
     E2009: '选项 {option} 的值无效，{reason}',
+    E2010: '操作 {action} 不支持当前禅道版本 {version}，最低版本要求：{minVersion}，请升级对应系列的禅道版本',
+    E2011: '无法识别禅道版本 {version}，仅支持点分数字的正式版本（如 22.5、biz13.5、max8.5、ipd5.5）',
+    E2012: '无法识别禅道服务端配置，请检查站点根地址的 ?mode=getconfig 是否返回包含 version 的 JSON 对象',
 
     // 网络通信 (50xx)
     E5001: '请求超时，请检查网络连接或禅道服务是否正常',
@@ -127,6 +130,16 @@ export function mapSdkError(error: unknown): unknown {
             }, details);
         case 'E_LOGIN_FAILED':
             return new ZentaoError('E1003', undefined, details);
+        case 'E_UNSUPPORTED_ZENTAO_VERSION':
+            return new ZentaoError('E2010', {
+                action: String(d.action ?? ''),
+                version: String(d.version ?? ''),
+                minVersion: Array.isArray(d.minVersion) ? d.minVersion.join(' / ') : String(d.minVersion ?? ''),
+            }, details);
+        case 'E_INVALID_ZENTAO_VERSION':
+            return new ZentaoError('E2011', { version: tail(message, 'version:') }, details);
+        case 'E_INVALID_ZENTAO_CONFIG':
+            return new ZentaoError('E2012', undefined, details);
         case 'E_MISSING_PARAM':
             return new ZentaoError('E2003', { fields: tail(message, 'parameter:'), module: '' }, details);
         case 'E_INVALID_PARAM': {

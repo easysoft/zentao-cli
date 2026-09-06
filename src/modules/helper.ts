@@ -53,7 +53,12 @@ export function findAction(
     return mod.actions.find((a) => a.type === type);
 }
 
-/** 返回所有 type === 'action' 的扩展操作名称列表 */
+/** Include named list/get/create/update/delete operations as well as state transitions. */
 export function getAvailableActions(mod: ModuleDefinition): string[] {
-    return mod.actions.filter((a) => a.type === 'action').map((a) => a.name);
+    return mod.actions.filter((a) => !['list', 'get', 'create', 'update', 'delete'].includes(a.name)).map((a) => a.name);
+}
+
+/** Shared action description for CLI help and MCP discovery. */
+export function getActionDescription(action: ModuleAction): string {
+    return `${action.display ?? action.name}（最低版本：${action.minVersion.join(' / ')}）`;
 }

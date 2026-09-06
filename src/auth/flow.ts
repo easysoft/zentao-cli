@@ -39,7 +39,7 @@ export async function ensureAuth(options?: { insecure?: boolean; timeout?: numbe
             const profile = buildProfile(server, env.account, result.token, result.serverConfig, result.user, existingProfile);
             saveProfile(profile);
             return {
-                client: createClient(server, result.token, clientOpts),
+                client: result.client,
                 profile,
             };
         }

@@ -1,4 +1,4 @@
-import { request } from 'zentao-api';
+import { request, type RequestOptions, type ResponseData } from 'zentao-api';
 import type { ZentaoClient } from '../api/index.js';
 import { mapSdkError } from '../errors.js';
 import type {
@@ -76,51 +76,51 @@ export async function executeModuleCommand(
     const processList = shouldProcess && action.type === 'list';
     const processSingle = shouldProcess && action.type === 'get';
 
-    let response;
+    const requestOptions: RequestOptions = {
+        client,
+        autoFill: action.type === 'update',
+        throwOnFail: true,
+        recPerPage: options.recPerPage ?? String(config.pagers?.[module.name] ?? config.defaultRecPerPage),
+        timeout: options.timeout,
+        insecure: options.insecure,
+        convert: processList && config.htmlToMarkdown !== false
+            ? convertHtmlFieldsInArray
+            : undefined,
+        convertSingle: processSingle && config.htmlToMarkdown !== false
+            ? convertHtmlFields
+            : undefined,
+        filter: processList ? options.filter : undefined,
+        search: processList ? options.search : undefined,
+        searchFields: processList ? parseFields(options.searchFields) : undefined,
+        sort: processList ? options.sort : undefined,
+        limit: processList ? options.limit : undefined,
+        pick: processList || processSingle ? fields : undefined,
+    };
+
+    let response: ResponseData;
     try {
-        response = await request(requestName, params, {
-            client,
-            autoFill: action.type === 'update',
-            throwOnFail: true,
-            recPerPage: options.recPerPage ?? String(config.pagers?.[module.name] ?? config.defaultRecPerPage),
-            timeout: options.timeout,
-            insecure: options.insecure,
-            raw: rawOutput,
-            convert: processList && config.htmlToMarkdown !== false
-                ? convertHtmlFieldsInArray
-                : undefined,
-            convertSingle: processSingle && config.htmlToMarkdown !== false
-                ? convertHtmlFields
-                : undefined,
-            filter: processList ? options.filter : undefined,
-            search: processList ? options.search : undefined,
-            searchFields: processList ? parseFields(options.searchFields) : undefined,
-            sort: processList ? options.sort : undefined,
-            limit: processList ? options.limit : undefined,
-            pick: processList || processSingle ? fields : undefined,
-        });
+        if (rawOutput) {
+            const rawResponse = await request(requestName, params, { ...requestOptions, raw: true });
+            // The SDK returns raw responses before applying throwOnFail.
+            if (rawResponse && typeof rawResponse === 'object' && 'status' in rawResponse && rawResponse.status === 'fail') {
+                const message = 'message' in rawResponse ? rawResponse.message : undefined;
+                throw new ZentaoError('E2008', {
+                    url: '',
+                    status: '',
+                    serverResponse: typeof message === 'string' ? message : JSON.stringify(message ?? rawResponse),
+                }, rawResponse);
+            }
+            return {
+                action,
+                data: rawResponse,
+                rawResponse,
+                fields,
+                isList: action.type === 'list',
+            };
+        }
+        response = await request(requestName, params, { ...requestOptions, raw: false });
     } catch (error) {
         throw mapSdkError(error);
-    }
-
-    if (rawOutput) {
-        // The SDK returns raw responses before applying throwOnFail.
-        if (response?.status === 'fail') {
-            throw new ZentaoError('E2008', {
-                url: '',
-                status: '',
-                serverResponse: typeof response.message === 'string'
-                    ? response.message
-                    : JSON.stringify(response.message ?? response),
-            }, response);
-        }
-        return {
-            action,
-            data: response,
-            rawResponse: response,
-            fields,
-            isList: action.type === 'list',
-        };
     }
 
     const pager: ListPagerInfo | undefined = response.pager

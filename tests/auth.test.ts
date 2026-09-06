@@ -1,6 +1,9 @@
 import { describe, test, expect, afterEach, beforeEach } from 'bun:test';
 import { createClient } from '../src/api/index';
-import { verifyToken, getEnvCredentials } from '../src/auth/login';
+import { login, verifyToken, getEnvCredentials } from '../src/auth/login';
+import { executeModuleCommand } from '../src/modules/executor';
+import { getModule } from '../src/modules';
+import { DEFAULT_CONFIG } from '../src/config/defaults';
 import { ZentaoError } from '../src/errors';
 
 type RouteHandler = (req: Request, url: URL) => Response | Promise<Response>;
@@ -32,6 +35,29 @@ function makeClient(server: { url: URL }, token = 'test-token') {
 }
 
 describe('verifyToken', () => {
+    test('password login keeps config when user lookup fails and reuses it for subsequent requests', async () => {
+        let configRequests = 0;
+        const server = createMockServer({
+            serverConfig: () => {
+                configRequests++;
+                return Response.json({ version: '22.5' });
+            },
+            users: () => new Response('Forbidden', { status: 403 }),
+            fallback: (_req, url) => url.pathname.endsWith('/users/login')
+                ? Response.json({ status: 'success', token: 'test-login-token' })
+                : Response.json({ status: 'success', products: [] }),
+        });
+        try {
+            const result = await login(server.url.toString(), 'admin', 'test-password');
+            expect(result.serverConfig?.version).toBe('22.5');
+            expect(result.user).toBeUndefined();
+            await executeModuleCommand(result.client, getModule('product')!, 'list', [], {}, DEFAULT_CONFIG);
+            expect(configRequests).toBe(1);
+        } finally {
+            server.stop();
+        }
+    });
+
     test('返回 serverConfig 和匹配账号的 user', async () => {
         const server = createMockServer({
             serverConfig: () => Response.json({ version: '22.0', edition: 'open' }),

@@ -1,3 +1,7 @@
+import type { ServerConfig } from 'zentao-api';
+
+export type { ServerConfig };
+
 /** 用户可配置的选项，存储在 profile.config 中 */
 export interface UserConfig {
     /** 默认输出格式 */
@@ -18,28 +22,6 @@ export interface UserConfig {
     silent?: boolean;
     /** JSON 输出是否美化（带缩进） */
     jsonPretty?: boolean;
-}
-
-/** 禅道服务端配置 */
-export interface ServerConfig {
-    /** 禅道版本 */
-    version: string;
-    /** 系统模式 */
-    systemMode: string;
-    /** 冲刺概念 */
-    sprintConcept: string;
-    /** 请求类型 */
-    requestType: string;
-    /** 请求修复 */
-    requestFix: string;
-    /** 模块变量 */
-    moduleVar: string;
-    /** 方法变量 */
-    methodVar: string;
-    /** 视图变量 */
-    viewVar: string;
-    /** 会话变量 */
-    sessionVar: string;
 }
 
 /**

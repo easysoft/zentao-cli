@@ -11,7 +11,9 @@ describe('module registry (zentao-api)', () => {
         expect(names).toContain('task');
         expect(names).toContain('story');
         expect(names).toContain('user');
-        expect(names.length).toBe(19);
+        for (const name of ['issue', 'risk', 'meeting', 'workflow', 'doc', 'todo', 'my']) {
+            expect(names).toContain(name);
+        }
     });
 
     test('getAllModules returns every registered module', () => {
@@ -59,6 +61,7 @@ describe('module registry (zentao-api)', () => {
         expect(actions).toContain('resolve');
         expect(actions).toContain('close');
         expect(actions).toContain('activate');
+        expect(actions).toContain('confirm');
     });
 
     test('task module has correct actions', () => {
@@ -109,6 +112,11 @@ describe('action lookup', () => {
         expect(actions).toContain('change');
         expect(actions).toContain('close');
         expect(actions).toContain('activate');
+        expect(actions).toContain('getGrades');
+        expect(actions).toContain('updateModule');
+        expect(actions).not.toContain('list');
+        expect(getAvailableActions(getModule('doc')!)).toContain('createMyDoc');
+        expect(getAvailableActions(getModule('my')!)).toContain('tasks');
     });
 });
 

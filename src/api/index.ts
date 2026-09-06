@@ -28,15 +28,11 @@ export function createClient(serverUrl: string, token?: string, options?: Client
 /**
  * 获取禅道服务端配置。
  *
- * 该接口位于 `/api.php/v2` 之外（`{siteRoot}/?mode=getconfig`），通过相对路径
- * 回到站点根目录，以复用 SDK 客户端的超时、TLS 和错误处理。
+ * Reuse the SDK's token-free config request and 24-hour in-memory cache.
  */
 export async function getServerConfig(client: ZentaoClient): Promise<ServerConfig> {
     try {
-        return await client.get<ServerConfig>('../../', {
-            query: { mode: 'getconfig' },
-            responseType: 'json',
-        });
+        return await client.getZentaoConfig();
     } catch (error) {
         throw mapSdkError(error);
     }

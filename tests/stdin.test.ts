@@ -8,6 +8,7 @@ async function executeCreateWithStdin(dataOption: string | undefined, input: str
 
         const requests = [];
         const client = {
+            getZentaoConfig: async () => ({ version: '22.5' }),
             async request(path, options) {
                 requests.push({ path, options });
                 return { status: 'success', id: 1 };

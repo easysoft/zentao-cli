@@ -166,16 +166,37 @@ describe('getServerConfig', () => {
     test('fetches the getconfig endpoint from siteUrl', async () => {
         let receivedPath: string | undefined;
         let receivedMode: string | null = null;
-        const server = createMockServer((_req, url) => {
+        let receivedToken: string | null = null;
+        let requests = 0;
+        const server = createMockServer((req, url) => {
+            requests++;
             receivedPath = url.pathname;
             receivedMode = url.searchParams.get('mode');
+            receivedToken = req.headers.get('Token');
             return Response.json({ version: '22.0' });
         });
         try {
-            const config = await getServerConfig(createClient(server.url.toString(), 'tok'));
+            const client = createClient(server.url.toString(), 'tok');
+            const config = await getServerConfig(client);
             expect(receivedPath).toBe('/');
             expect(receivedMode as string | null).toBe('getconfig');
             expect(config.version).toBe('22.0');
+            expect(receivedToken).toBeNull();
+            expect(await getServerConfig(client)).toEqual(config);
+            expect(await client.getZentaoConfig()).toEqual(config);
+            expect(requests).toBe(1);
+        } finally {
+            server.stop();
+        }
+    });
+
+    test.each([
+        [{ status: 'success' }, '2012'],
+        [{ version: '22.5.beta1' }, '2011'],
+    ])('reports invalid config and version responses: %j', async (body, code) => {
+        const server = createMockServer(() => Response.json(body));
+        try {
+            await expect(getServerConfig(createClient(server.url.toString()))).rejects.toMatchObject({ code });
         } finally {
             server.stop();
         }

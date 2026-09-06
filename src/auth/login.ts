@@ -4,6 +4,7 @@ import { ZentaoError, mapSdkError } from '../errors.js';
 
 /** 密码登录成功后的结果 */
 export interface LoginResult {
+    client: ZentaoClient;
     token: string;
     user?: Record<string, unknown>;
     serverConfig?: ServerConfig;
@@ -37,14 +38,14 @@ export async function login(
     }
 
     let user: Record<string, unknown> | undefined;
-    let serverConfig: ServerConfig | undefined;
+    const serverConfig = await getServerConfig(client);
     try {
-        ({ serverConfig, user } = await verifyToken(client, account));
+        ({ user } = await verifyToken(client, account));
     } catch {
         // Token valid but couldn't fetch user details - not fatal
     }
 
-    return { token, user, serverConfig };
+    return { client, token, user, serverConfig };
 }
 
 /**
