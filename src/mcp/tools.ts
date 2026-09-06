@@ -1,7 +1,8 @@
 import { z } from 'zod';
+import { getModuleActionParams } from 'zentao-api';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import { getAllModules } from '../modules/helper.js';
+import { getAction, getActionDescription, getAllModules, getModule } from '../modules/helper.js';
 import type { ModuleDefinition, ModuleAction, ModuleActionOptions } from '../types/index.js';
 import { executeModuleCommand } from '../modules/executor.js';
 import { ZentaoError } from '../errors.js';
@@ -18,6 +19,7 @@ function buildToolDescription(mod: ModuleDefinition): string {
         parts.push(`${mod.display ?? mod.name} 管理`);
     }
     parts.push(`支持操作: ${actions.join(', ')}`);
+    parts.push('使用 zentao_action_help 查看操作参数与最低版本，调用前自动校验当前服务器版本');
 
     const listAction = mod.actions.find(a => a.type === 'list');
     if (listAction?.pathParams && 'scope' in listAction.pathParams) {
@@ -44,13 +46,13 @@ function buildInputSchema(mod: ModuleDefinition) {
     const actionEnum = buildActionEnum(mod);
     return {
         action: z.enum(actionEnum).describe('要执行的操作。' + mod.actions.map(a =>
-            `${a.name}: ${a.display ?? a.name}`
+            `${a.name}: ${getActionDescription(a)}`
         ).join('; ')),
-        id: z.number().optional().describe('对象 ID（get/update/delete 及扩展操作必填）'),
+        id: z.number().optional().describe('首个路径 ID 的简写；是否必填取决于操作，有多个路径参数时通过 params 分别传入'),
         product: z.number().optional().describe('产品 ID（范围参数）'),
         project: z.number().optional().describe('项目 ID（范围参数）'),
         execution: z.number().optional().describe('执行 ID（范围参数）'),
-        params: z.record(z.string(), z.unknown()).optional().describe('API 参数键值对，用于传递操作所需字段（如 title, severity 等）'),
+        params: z.record(z.string(), z.unknown()).optional().describe('API 路径、查询和请求体参数（如 spaceID、libID、title、contentType）；通过 zentao_action_help 查看完整定义'),
         pick: z.string().optional().describe('摘取字段（逗号分隔）'),
         filter: z.array(z.string()).optional().describe('过滤条件组（组内逗号分隔为 AND，多组为 OR，如 status=active,severity<=2）'),
         sort: z.string().optional().describe('排序（如 pri:asc,severity:desc；兼容下划线写法）'),
@@ -178,7 +180,45 @@ function toolAnnotations(actions: readonly ModuleAction[]) {
     };
 }
 
+function toolError(error: unknown): CallToolResult {
+    return {
+        isError: true,
+        content: [{
+            type: 'text',
+            text: error instanceof ZentaoError
+                ? `E${error.code}: ${error.message}`
+                : error instanceof Error ? error.message : String(error),
+        }],
+    };
+}
+
 export function registerModuleTools(server: McpServer, auth: AuthProvider): void {
+    server.tool(
+        'zentao_action_help',
+        '查看禅道操作的路径、参数定义和最低版本要求，无需登录；调用业务工具前可按需查询',
+        { module: z.string().describe('模块名，如 doc、story'), action: z.string().describe('操作名，如 createMyDoc、getGrades') },
+        { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+        async ({ module, action }) => {
+            try {
+                const mod = getModule(module);
+                if (!mod) throw new ZentaoError('E2001', { module });
+                const definition = getAction(mod, action);
+                if (!definition) throw new ZentaoError('E2005', { module: mod.name });
+                return { content: [{ type: 'text', text: JSON.stringify({
+                    module: mod.name,
+                    action: definition.name,
+                    display: definition.display,
+                    type: definition.type,
+                    path: definition.path,
+                    minVersion: definition.minVersion,
+                    parameters: getModuleActionParams(mod.name, definition.name),
+                }, null, 2) }] };
+            } catch (error) {
+                return toolError(error);
+            }
+        },
+    );
+
     server.tool(
         'zentao_profile',
         '获取当前登录禅道账号信息',
@@ -188,16 +228,7 @@ export function registerModuleTools(server: McpServer, auth: AuthProvider): void
             try {
                 return await handleProfileTool(auth);
             } catch (error) {
-                if (error instanceof ZentaoError) {
-                    return {
-                        isError: true,
-                        content: [{ type: 'text', text: `E${error.code}: ${error.message}` }],
-                    };
-                }
-                return {
-                    isError: true,
-                    content: [{ type: 'text', text: (error as Error).message ?? String(error) }],
-                };
+                return toolError(error);
             }
         },
     );
@@ -213,16 +244,7 @@ export function registerModuleTools(server: McpServer, auth: AuthProvider): void
             try {
                 return await handleSwitchProfileTool(input as SwitchProfileInput, auth);
             } catch (error) {
-                if (error instanceof ZentaoError) {
-                    return {
-                        isError: true,
-                        content: [{ type: 'text', text: `E${error.code}: ${error.message}` }],
-                    };
-                }
-                return {
-                    isError: true,
-                    content: [{ type: 'text', text: (error as Error).message ?? String(error) }],
-                };
+                return toolError(error);
             }
         },
     );
@@ -238,16 +260,7 @@ export function registerModuleTools(server: McpServer, auth: AuthProvider): void
             try {
                 return await handleModuleTool(mod, input as ToolInput, auth);
             } catch (error) {
-                if (error instanceof ZentaoError) {
-                    return {
-                        isError: true,
-                        content: [{ type: 'text', text: `E${error.code}: ${error.message}` }],
-                    };
-                }
-                return {
-                    isError: true,
-                    content: [{ type: 'text', text: (error as Error).message ?? String(error) }],
-                };
+                return toolError(error);
             }
         });
     }
