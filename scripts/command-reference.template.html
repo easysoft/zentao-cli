@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="禅道 CLI 命令参考，按模块、操作类型和参数快速检索。">
+  <title>命令参考 · ZenTao CLI</title>
+  <style>
+    /* Reference reader: DESIGN_VARIANCE 3, MOTION_INTENSITY 1, VISUAL_DENSITY 7.
+       Native controls; 6px control radius; one blue accent; no external assets. */
+    :root {
+      --bg: #f7f9fc; --surface: #fcfdff; --muted-surface: #f0f3f8; --line: #dce2eb;
+      --text: #1c2637; --muted: #596579; --accent: #1756bf; --accent-bg: #e8f0ff;
+      --code: #eef2f8; --focus: #1756bf; --shadow: #182b491a;
+      font: 14px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--text); background: var(--bg); color-scheme: light;
+    }
+    :root[data-theme="dark"] {
+      --bg: #141922; --surface: #191f2a; --muted-surface: #222b39; --line: #343f50;
+      --text: #e4eaf3; --muted: #a7b3c6; --accent: #8bb5ff; --accent-bg: #253958;
+      --code: #242e3e; --focus: #8bb5ff; --shadow: #00000030;
+      color-scheme: dark;
+    }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    body { margin: 0; height: 100dvh; display: grid; grid-template-rows: auto minmax(0, 1fr); overflow: hidden; }
+    button, input, select { font: inherit; color: inherit; }
+    button, select { cursor: pointer; }
+    button, input, select { border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+    button { padding: 6px 12px; white-space: nowrap; }
+    button:hover { background: var(--muted-surface); }
+    button:active { background: var(--accent-bg); }
+    :focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+    a { color: var(--accent); text-underline-offset: 3px; }
+    code, pre, .mono { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
+    code { font-size: .92em; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    .skip-link { position: fixed; top: 8px; left: 8px; padding: 8px 16px; transform: translateY(-180%); background: var(--surface); z-index: 2; }
+    .skip-link:focus { transform: translateY(0); }
+    .topbar { display: grid; grid-template-columns: 216px minmax(200px, 640px) 1fr; gap: 24px; align-items: center; padding: 16px 24px 16px 20px; border-bottom: 1px solid var(--line); background: var(--surface); }
+    .brand { display: flex; align-items: baseline; gap: 7px; white-space: nowrap; font-size: 22px; letter-spacing: -.8px; font-weight: 750; }
+    .brand span { color: var(--accent); font-size: 13px; letter-spacing: 0; font-weight: 650; }
+    .search-box { display: flex; align-items: center; gap: 12px; }
+    .search-box input { width: 100%; min-width: 0; height: 40px; padding: 8px 13px; background: var(--bg); }
+    input::placeholder { color: var(--muted); opacity: 1; }
+    .shortcut { font-size: 12px; border: 1px solid var(--line); border-radius: 4px; padding: 0 7px; color: var(--muted); }
+    .appearance { justify-self: end; display: flex; align-items: center; gap: 9px; color: var(--muted); }
+    .appearance select { padding: 5px 7px; }
+    .layout { min-height: 0; display: grid; grid-template-columns: 216px 300px minmax(0, 1fr); }
+    .sidebar { min-height: 0; display: flex; flex-direction: column; border-right: 1px solid var(--line); }
+    .sidebar-title { margin: 21px 20px 12px; font-size: 16px; font-weight: 680; }
+    .scope-nav { overflow: auto; padding: 0 10px 16px; flex: 1; scrollbar-width: thin; }
+    .nav-label { margin: 22px 10px 7px; font-size: 12px; font-weight: 650; color: var(--muted); }
+    .scope-button { display: flex; align-items: center; justify-content: space-between; width: 100%; border: 0; background: transparent; border-radius: 5px; padding: 7px 10px; text-align: left; font-size: 13px; }
+    .scope-button[aria-current="true"] { color: var(--accent); background: var(--accent-bg); font-weight: 650; }
+    .scope-button .count { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; margin-left: 5px; }
+    .module-name { margin-left: 6px; color: var(--muted); font-size: 10px; }
+    .sidebar-footer { padding: 13px 20px; border-top: 1px solid var(--line); font-size: 11px; color: var(--muted); }
+    .results { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--line); background: var(--surface); }
+    .results-tools { padding: 20px 18px 14px; border-bottom: 1px solid var(--line); }
+    .results-heading { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .results-heading h2 { margin: 0; font-size: 15px; font-weight: 650; flex: 1; }
+    .results-heading span { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+    .filter-row { display: flex; align-items: center; gap: 8px; }
+    .filter-row select { padding: 5px 8px; width: 100%; min-width: 0; }
+    .reset-button { color: var(--muted); border: 0; background: transparent; padding: 4px 0 4px 4px; }
+    .mobile-scope { display: none; margin-bottom: 10px; }
+    .mobile-scope select { width: 100%; padding: 6px 8px; }
+    .result-list { overflow: auto; min-height: 0; padding: 5px 0 20px; scrollbar-width: thin; }
+    .result-item { display: block; width: 100%; border: 0; border-left: 3px solid transparent; border-radius: 0; padding: 13px 17px 13px 15px; text-align: left; background: transparent; white-space: normal; }
+    .result-item + .result-item { border-top: 1px solid var(--line); }
+    .result-item[aria-current="true"] { border-left-color: var(--accent); background: var(--accent-bg); }
+    .result-item .title { display: block; font-size: 12px; font-weight: 650; overflow-wrap: anywhere; line-height: 1.6; }
+    .result-item .description { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 4px; font-size: 12px; line-height: 1.6; color: var(--muted); }
+    .result-item .entry-type { display: block; margin-top: 6px; color: var(--muted); font-size: 10px; }
+    .empty { padding: 40px 23px; color: var(--muted); }
+    .empty strong { display: block; color: var(--text); margin-bottom: 7px; font-size: 16px; }
+    .empty button { margin-top: 15px; }
+    .reader { min-width: 0; min-height: 0; overflow: auto; background: var(--surface); scrollbar-width: thin; }
+    .reader-inner { max-width: 1080px; padding: 26px 36px 80px; margin-inline: auto; }
+    .reader-top { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+    .breadcrumb { color: var(--muted); font-size: 12px; flex: 1; }
+    .text-button { color: var(--muted); background: transparent; padding: 4px 9px; font-size: 12px; }
+    .mobile-back { display: none; }
+    .reader h1 { font-size: clamp(23px, 2vw, 31px); font-weight: 680; letter-spacing: -.7px; line-height: 1.4; margin: 0 0 10px; overflow-wrap: anywhere; }
+    .reader .lead { margin: 0 0 24px; color: var(--muted); font-size: 15px; line-height: 1.8; }
+    .entry-badge { display: inline-block; color: var(--accent); background: var(--accent-bg); padding: 2px 7px; border-radius: 4px; font-size: 11px; font-weight: 600; margin-left: 7px; }
+    .parameter-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 0 16px; margin-bottom: 8px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .parameter-tools input[type="search"] { flex: 1; min-width: 150px; width: 220px; padding: 6px 10px; font-size: 12px; }
+    .required-control { display: flex; align-items: center; gap: 6px; font-size: 12px; white-space: nowrap; }
+    input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px; margin: 0; }
+    .parameter-count { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .parameter-empty { color: var(--muted); background: var(--muted-surface); border-radius: 6px; padding: 10px 12px; font-size: 12px; }
+    .prose { font-size: 13px; line-height: 1.85; overflow-wrap: break-word; }
+    .prose h2 { font-size: 21px; line-height: 1.5; margin: 32px 0 12px; letter-spacing: -.3px; }
+    .prose h3 { font-size: 16px; margin: 29px 0 10px; }
+    .prose p { margin: 14px 0; }
+    .prose code { background: var(--code); border-radius: 3px; padding: 2px 4px; overflow-wrap: anywhere; }
+    .prose ul, .prose ol { padding-left: 22px; }
+    .prose li { margin: 5px 0; }
+    .code-block { position: relative; margin: 18px 0; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--code); }
+    .code-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 6px 11px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 11px; }
+    .code-toolbar button { border: 0; background: transparent; color: var(--accent); font-size: 11px; padding: 1px 5px; }
+    .prose pre { margin: 0; padding: 15px 17px; overflow: auto; font-size: 12px; line-height: 1.8; tab-size: 2; }
+    .prose pre code { padding: 0; border-radius: 0; background: transparent; white-space: pre; }
+    .table-scroll { overflow: auto; width: 100%; margin: 18px 0; border: 1px solid var(--line); border-radius: 6px; }
+    .prose table { border-collapse: collapse; width: 100%; font-size: 12px; line-height: 1.75; text-align: left; }
+    .prose th { background: var(--muted-surface); font-weight: 600; color: var(--muted); white-space: nowrap; padding: 10px 11px; }
+    .prose td { padding: 11px; vertical-align: top; border-top: 1px solid var(--line); }
+    .prose table td:first-child { min-width: 105px; }
+    .prose table.parameter-table { min-width: 670px; }
+    .prose table.parameter-table td:nth-child(1) { width: 19%; }
+    .prose table.parameter-table td:nth-child(2), .prose table.parameter-table td:nth-child(4) { white-space: nowrap; width: 7%; }
+    .prose table.parameter-table td:nth-child(3), .prose table.parameter-table td:nth-child(5) { width: 10%; }
+    .prose table.parameter-table td:nth-child(3) code { white-space: nowrap; }
+    .prose table.parameter-table td:last-child { min-width: 215px; }
+    .prose .is-required { color: var(--accent); font-weight: 650; }
+    .long-description summary { cursor: pointer; }
+    .long-description .preview { color: var(--text); }
+    .long-description .expand-label, .long-description .collapse-label { display: block; color: var(--accent); font-size: 11px; margin-top: 5px; }
+    .long-description .collapse-label { display: none; }
+    .long-description[open] .preview, .long-description[open] .expand-label { display: none; }
+    .long-description[open] .collapse-label { display: inline; }
+    .long-description .full-description { margin-top: 9px; }
+    .copy-notice { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); max-width: min(90vw, 460px); padding: 9px 15px; background: var(--text); color: var(--surface); border-radius: 6px; box-shadow: 0 4px 22px var(--shadow); font-size: 12px; z-index: 1; }
+    @media (max-width: 1100px) {
+      .topbar { grid-template-columns: 185px minmax(180px, 1fr) auto; gap: 16px; }
+      .layout { grid-template-columns: 185px 270px minmax(0, 1fr); }
+      .reader-inner { padding: 23px 24px 65px; }
+      .appearance label { display: none; }
+      .module-name { display: none; }
+    }
+    @media (max-width: 950px) {
+      .sidebar { display: none; }
+      .layout { grid-template-columns: 280px minmax(0, 1fr); }
+      .mobile-scope { display: block; }
+      .topbar { grid-template-columns: auto minmax(180px, 1fr) auto; }
+    }
+    @media (max-width: 700px) {
+      .topbar { grid-template-columns: 1fr auto; gap: 10px; padding: 12px 16px; }
+      .brand { font-size: 20px; }
+      .appearance { grid-column: 2; grid-row: 1; }
+      .search-box { grid-column: 1 / -1; grid-row: 2; }
+      .shortcut { display: none; }
+      .layout { grid-template-columns: minmax(0, 1fr); }
+      .results { border: 0; }
+      .results-tools { padding: 16px; }
+      .mobile-scope { margin-bottom: 9px; }
+      .reader-inner { padding: 19px 18px 60px; }
+      .result-item { padding: 14px 18px; }
+      .result-item .title { font-size: 13px; }
+      .result-item .entry-type { display: inline; }
+      .result-item .description { -webkit-line-clamp: 1; }
+      .mobile-back { display: inline-flex; }
+      .reader-top { flex-wrap: wrap; gap: 7px; margin-bottom: 22px; }
+      .reader h1 { font-size: 24px; }
+      .breadcrumb { flex-basis: 100%; order: 1; margin-top: 7px; }
+      #copy-link { margin-left: auto; }
+      body[data-mobile-view="list"] .reader { display: none; }
+      body[data-mobile-view="reader"] .results { display: none; }
+      .parameter-tools { gap: 10px 12px; }
+      .parameter-tools input[type="search"] { flex-basis: 100%; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; } }
+    @media print {
+      body { display: block; height: auto; overflow: visible; background: white; color: black; }
+      .topbar, .sidebar, .results, .reader-top, .parameter-tools, .code-toolbar, .copy-notice { display: none !important; }
+      .layout, .reader { display: block !important; overflow: visible; }
+      .reader-inner { max-width: none; padding: 0; }
+      .table-scroll, .prose pre { overflow: visible; }
+      .prose pre code { white-space: pre-wrap; }
+    }
+  </style>
+</head>
+<body data-mobile-view="list">
+  <a class="skip-link" href="#reader">跳到正文</a>
+  <header class="topbar">
+    <div class="brand">zentao<span>CLI / 命令参考</span></div>
+    <div class="search-box">
+      <label class="sr-only" for="search">搜索命令、参数和说明</label>
+      <input id="search" type="search" placeholder="搜索命令、参数或说明，如 bug、--productID" autocomplete="off" spellcheck="false">
+      <kbd class="shortcut" title="按 / 快速搜索">/</kbd>
+    </div>
+    <div class="appearance">
+      <label for="theme">外观</label>
+      <select id="theme" aria-label="页面外观"><option value="system">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option></select>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar" aria-label="参考文档目录">
+      <div class="sidebar-title">查阅命令</div>
+      <nav id="scope-nav" class="scope-nav" aria-label="选择模块"></nav>
+      <div class="sidebar-footer" id="version-info"></div>
+    </aside>
+    <section class="results" aria-label="搜索和筛选结果">
+      <div class="results-tools">
+        <div class="results-heading"><h2 id="scope-title">全部内容</h2><span id="result-count" role="status" aria-live="polite"></span></div>
+        <div class="mobile-scope">
+          <label class="sr-only" for="scope-select">筛选模块</label><select id="scope-select"></select>
+        </div>
+        <div class="filter-row">
+          <label class="sr-only" for="type-filter">筛选操作类型</label>
+          <select id="type-filter">
+            <option value="">全部操作类型</option><option value="list">查询列表</option><option value="get">查看详情</option>
+            <option value="create">创建</option><option value="update">更新</option><option value="delete">删除</option>
+            <option value="action">其他业务操作</option><option value="builtin">内置命令</option>
+            <option value="guide">使用指南</option><option value="overview">模块概览</option>
+          </select>
+          <button id="reset-filters" class="reset-button" title="清空搜索及筛选">重置</button>
+        </div>
+      </div>
+      <nav id="result-list" class="result-list" aria-label="检索结果"></nav>
+      <div id="no-results" class="empty" hidden><strong>没有匹配的内容</strong>试试更短的关键词，或调整模块和操作类型。<br><button id="clear-empty">清空筛选</button></div>
+    </section>
+    <section id="reader" class="reader" aria-label="命令详情" tabindex="-1">
+      <div id="reader-inner" class="reader-inner">
+        <div class="reader-top">
+          <button id="back-to-list" class="text-button mobile-back">返回列表</button>
+          <div id="breadcrumb" class="breadcrumb"></div>
+          <button id="copy-link" class="text-button">复制链接</button>
+        </div>
+        <h1 id="entry-title" tabindex="-1"></h1>
+        <p id="entry-description" class="lead"></p>
+        <div id="parameter-tools" class="parameter-tools" hidden>
+          <label class="sr-only" for="parameter-search">筛选当前参数或字段</label>
+          <input id="parameter-search" type="search" placeholder="筛选当前参数或字段" autocomplete="off" spellcheck="false">
+          <label id="required-control" class="required-control"><input id="required-only" type="checkbox">仅看必填</label>
+          <span id="parameter-count" class="parameter-count" role="status"></span>
+        </div>
+        <p id="parameter-empty" class="parameter-empty" hidden>没有符合条件的参数。请清空参数筛选，或取消“仅看必填”。</p>
+        <article id="entry-content" class="prose"></article>
+      </div>
+      <div id="reader-empty" class="empty" hidden><strong>调整筛选后继续查阅</strong>可搜索命令名、参数名、中文说明或枚举值。</div>
+    </section>
+  </main>
+  <div id="copy-notice" class="copy-notice" role="status" hidden></div>
+  <noscript>交互筛选需要 JavaScript。完整文字版本请打开同目录的 command-reference.md。</noscript>
+  <script id="reference-data" type="application/json">__REFERENCE_DATA__</script>
+  <script>
+    'use strict';
+    const data = JSON.parse(document.getElementById('reference-data').textContent);
+    const byId = new Map(data.entries.map(entry => [entry.id, entry]));
+    const $ = id => document.getElementById(id);
+    const types = { guide: '使用指南', overview: '模块概览', builtin: '内置命令', list: '查询列表', get: '查看详情', create: '创建', update: '更新', delete: '删除', action: '其他业务操作' };
+    const scopes = [
+      { id: 'all', label: '全部内容' }, { id: 'guides', label: '使用指南' }, { id: 'builtin', label: '内置命令' },
+      ...data.modules.map(mod => ({ id: mod.name, label: mod.display, code: mod.name })),
+    ];
+    const template = document.createElement('template');
+    for (const entry of data.entries) {
+      template.innerHTML = entry.html;
+      entry.searchText = [entry.title, entry.description, entry.aliases || '', template.content.textContent].join(' ').toLowerCase();
+    }
+    let scope = 'all';
+    let selected = byId.has(location.hash.slice(1)) ? location.hash.slice(1) : 'usage';
+    let visible = [];
+    let parameterRows = [];
+    let noticeTimer;
+    let searchTimer;
+    const systemTheme = matchMedia('(prefers-color-scheme: dark)');
+    try { const saved = localStorage.getItem('zentao-reference-theme'); if (['system', 'light', 'dark'].includes(saved)) $('theme').value = saved; } catch {}
+    function applyTheme() {
+      const choice = $('theme').value;
+      document.documentElement.dataset.theme = choice === 'system' ? (systemTheme.matches ? 'dark' : 'light') : choice;
+    }
+    $('theme').addEventListener('change', () => { applyTheme(); try { localStorage.setItem('zentao-reference-theme', $('theme').value); } catch {} });
+    systemTheme.addEventListener('change', applyTheme);
+    applyTheme();
+    $('version-info').textContent = 'CLI ' + data.version + ' · ' + data.actionCount + ' 个业务操作 · 离线可用';
+    function element(tag, className, text) {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text !== undefined) node.textContent = text;
+      return node;
+    }
+    function terms(value) { return value.toLowerCase().trim().split(/\s+/).filter(Boolean); }
+    function matchesScope(entry, value) { return value === 'all' || entry.group === value; }
+    for (const item of scopes) {
+      if (item.id === data.modules[0]?.name) $('scope-nav').append(element('div', 'nav-label', '业务模块'));
+      const button = element('button', 'scope-button');
+      button.dataset.scope = item.id;
+      const label = element('span', '', item.label);
+      if (item.code) label.append(element('span', 'module-name mono', item.code));
+      button.append(label, element('span', 'count'));
+      button.addEventListener('click', () => { scope = item.id; renderResults(); });
+      $('scope-nav').append(button);
+      const option = element('option', '', item.label + (item.code ? ' · ' + item.code : ''));
+      option.value = item.id;
+      $('scope-select').append(option);
+    }
+    function renderResults() {
+      clearTimeout(searchTimer);
+      const query = terms($('search').value);
+      const type = $('type-filter').value;
+      const candidates = data.entries.filter(entry => (!type || entry.type === type) && query.every(term => entry.searchText.includes(term)));
+      if (query.length) {
+        const matchesTitle = entry => query.every(term => (entry.title + ' ' + (entry.aliases || '')).toLowerCase().includes(term));
+        candidates.sort((a, b) => Number(matchesTitle(b)) - Number(matchesTitle(a)));
+      }
+      visible = candidates.filter(entry => matchesScope(entry, scope));
+      $('scope-select').value = scope;
+      $('scope-title').textContent = scopes.find(item => item.id === scope).label;
+      $('result-count').textContent = visible.length + ' 条';
+      for (const button of $('scope-nav').querySelectorAll('button')) {
+        button.setAttribute('aria-current', String(button.dataset.scope === scope));
+        button.querySelector('.count').textContent = candidates.filter(entry => matchesScope(entry, button.dataset.scope)).length;
+      }
+      const fragment = document.createDocumentFragment();
+      if (!visible.some(entry => entry.id === selected)) selected = visible[0]?.id;
+      for (const entry of visible) {
+        const button = element('button', 'result-item');
+        button.dataset.entry = entry.id;
+        button.setAttribute('aria-current', String(entry.id === selected));
+        button.append(element('span', 'title' + (entry.title.startsWith('zentao ') ? ' mono' : ''), entry.title));
+        button.append(element('span', 'description', entry.description));
+        button.append(element('span', 'entry-type', types[entry.type] + (entry.parameterCount === undefined ? '' : ' · ' + entry.parameterCount + ' 个参数')));
+        button.addEventListener('click', () => openEntry(entry.id));
+        fragment.append(button);
+      }
+      $('result-list').replaceChildren(fragment);
+      $('no-results').hidden = visible.length > 0;
+      renderDetail();
+    }
+    function openEntry(id, updateHistory = true) {
+      if (!byId.has(id)) return;
+      selected = id;
+      if (!visible.some(entry => entry.id === id)) { scope = 'all'; $('search').value = ''; $('type-filter').value = ''; renderResults(); }
+      else {
+        for (const button of $('result-list').querySelectorAll('button')) button.setAttribute('aria-current', String(button.dataset.entry === id));
+        renderDetail();
+      }
+      if (updateHistory && location.hash !== '#' + id) history.pushState(null, '', '#' + id);
+      document.body.dataset.mobileView = 'reader';
+      if (matchMedia('(max-width: 700px)').matches) $('entry-title').focus({ preventScroll: true });
+      $('result-list').querySelector('[aria-current="true"]')?.scrollIntoView({ block: 'nearest' });
+    }
+    function renderDetail() {
+      const entry = byId.get(selected);
+      $('reader-inner').hidden = !entry;
+      $('reader-empty').hidden = !!entry;
+      if (!entry) return;
+      document.title = entry.title + ' · ZenTao CLI';
+      $('entry-title').textContent = entry.title;
+      $('entry-title').classList.toggle('mono', entry.title.startsWith('zentao '));
+      $('entry-description').textContent = entry.description;
+      const groupLabel = scopes.find(item => item.id === entry.group).label;
+      $('breadcrumb').textContent = '命令参考 / ' + groupLabel;
+      if (groupLabel !== types[entry.type]) $('breadcrumb').append(element('span', 'entry-badge', types[entry.type]));
+      $('entry-content').innerHTML = entry.html;
+      $('parameter-search').value = '';
+      $('required-only').checked = false;
+      parameterRows = [];
+      let hasRequired = false;
+      for (const table of $('entry-content').querySelectorAll('table')) {
+        const headers = Array.from(table.querySelectorAll('thead th'), th => th.textContent.trim());
+        const requiredIndex = headers.indexOf('必填');
+        const filterable = ['参数', '位置参数', '选项', '配置项', '变量'].includes(headers[0]);
+        if (headers.length === 6 && headers[0] === '参数') table.classList.add('parameter-table');
+        if (filterable) for (const row of table.querySelectorAll('tbody tr')) {
+          const required = requiredIndex >= 0 && row.cells[requiredIndex].textContent.trim() === '是';
+          if (required) row.cells[requiredIndex].classList.add('is-required');
+          parameterRows.push({ row, text: row.textContent.toLowerCase(), required, canRequire: requiredIndex >= 0 });
+        }
+        hasRequired ||= filterable && requiredIndex >= 0;
+        for (const cell of table.querySelectorAll('tbody td:last-child')) {
+          if (cell.textContent.length < 280) continue;
+          const details = element('details', 'long-description');
+          const summary = element('summary');
+          summary.append(element('span', 'preview', cell.textContent.trim().slice(0, 125) + '…'), element('span', 'expand-label', '展开完整说明'), element('span', 'collapse-label', '收起说明'));
+          const full = element('div', 'full-description');
+          full.append(...Array.from(cell.childNodes));
+          details.append(summary, full);
+          cell.append(details);
+        }
+        const wrapper = element('div', 'table-scroll');
+        wrapper.tabIndex = 0;
+        wrapper.setAttribute('role', 'region');
+        wrapper.setAttribute('aria-label', headers.join('、') + '，可左右滚动');
+        table.before(wrapper);
+        wrapper.append(table);
+      }
+      $('parameter-tools').hidden = parameterRows.length === 0;
+      $('required-control').hidden = !hasRequired;
+      filterParameters();
+      for (const pre of $('entry-content').querySelectorAll('pre')) {
+        const wrapper = element('div', 'code-block');
+        const toolbar = element('div', 'code-toolbar');
+        const copy = element('button', '', '复制');
+        const text = pre.textContent;
+        copy.setAttribute('aria-label', '复制代码或用法');
+        copy.addEventListener('click', () => copyText(text, copy));
+        toolbar.append(element('span', '', pre.querySelector('.language-bash') ? '命令示例' : '用法 / 参考'), copy);
+        pre.before(wrapper);
+        wrapper.append(toolbar, pre);
+      }
+      $('reader').scrollTop = 0;
+    }
+    function filterParameters() {
+      const query = terms($('parameter-search').value);
+      const requiredOnly = $('required-only').checked;
+      let count = 0;
+      for (const item of parameterRows) {
+        item.row.hidden = !(query.every(term => item.text.includes(term)) && (!requiredOnly || !item.canRequire || item.required));
+        if (!item.row.hidden) count++;
+      }
+      $('parameter-count').textContent = count + ' / ' + parameterRows.length + ' 项';
+      $('parameter-empty').hidden = !parameterRows.length || count > 0;
+    }
+    async function copyText(text, button) {
+      let copied = false;
+      try { await navigator.clipboard.writeText(text); copied = true; } catch {
+        const input = element('textarea');
+        input.value = text;
+        input.style.cssText = 'position:fixed;left:-9999px;top:0';
+        document.body.append(input);
+        input.select();
+        try { copied = document.execCommand('copy'); } catch {}
+        input.remove();
+        button?.focus({ preventScroll: true });
+      }
+      $('copy-notice').textContent = copied ? '已复制' : '复制失败，请手动选择并复制文本。';
+      $('copy-notice').hidden = false;
+      clearTimeout(noticeTimer);
+      noticeTimer = setTimeout(() => { $('copy-notice').hidden = true; }, 2200);
+    }
+    function resetFilters() { scope = 'all'; $('search').value = ''; $('type-filter').value = ''; renderResults(); }
+    $('search').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(renderResults, 100); document.body.dataset.mobileView = 'list'; });
+    $('type-filter').addEventListener('change', renderResults);
+    $('scope-select').addEventListener('change', () => { scope = $('scope-select').value; renderResults(); });
+    $('reset-filters').addEventListener('click', resetFilters);
+    $('clear-empty').addEventListener('click', resetFilters);
+    $('parameter-search').addEventListener('input', filterParameters);
+    $('required-only').addEventListener('change', filterParameters);
+    $('copy-link').addEventListener('click', event => { const url = new URL(location.href); url.hash = selected; copyText(url.href, event.currentTarget); });
+    $('back-to-list').addEventListener('click', () => { document.body.dataset.mobileView = 'list'; $('result-list').querySelector('[aria-current="true"]')?.focus(); });
+    $('entry-content').addEventListener('click', event => { const link = event.target.closest('a[href^="#"]'); if (link && byId.has(link.hash.slice(1))) { event.preventDefault(); openEntry(link.hash.slice(1)); } });
+    document.querySelector('.skip-link').addEventListener('click', () => { document.body.dataset.mobileView = 'reader'; });
+    document.addEventListener('keydown', event => {
+      const editing = event.target.matches('input, textarea, select, [contenteditable="true"]');
+      if ((event.key === '/' && !editing) || ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k')) { event.preventDefault(); $('search').focus(); $('search').select(); }
+      if (event.key === 'Escape' && event.target === $('search')) { $('search').value = ''; renderResults(); }
+    });
+    window.addEventListener('popstate', () => openEntry(location.hash.slice(1) || 'usage', false));
+    window.addEventListener('hashchange', () => openEntry(location.hash.slice(1) || 'usage', false));
+    renderResults();
+    if (location.hash && byId.has(location.hash.slice(1))) document.body.dataset.mobileView = 'reader';
+  </script>
+</body>
+</html>

@@ -62,6 +62,15 @@ bun run build:sf -- --targets=linux-x64 --outfile ./release/zentao
 
 ## 更多技术文档
 
+完整的用户命令参考提供 [Markdown 版本](./command-reference.md) 和 [可搜索的 HTML 版本](./command-reference.html)。HTML 是单文件页面，可直接用浏览器打开，无需启动服务。更新命令或升级 `zentao-api` 后，运行以下命令同时同步两种格式，并检查文档是否过期：
+
+```bash
+bun run scripts/generate-command-reference.ts
+bun run scripts/generate-command-reference.ts --check
+```
+
+文档开头的用法与场景示例手动维护；生成标记之后的内容来自命令注册、API 参数定义和脚本内的用户说明。HTML 页面模板位于 `scripts/command-reference.template.html`，与 Markdown 共用同一份正文。生成过程只读取离线帮助，不访问禅道服务。
+
 * [技术方案与实现细节](./implementation.md) - 详解内部接口调用规则、验证机制与持久化配置
 * [常见错误排查与参考手册](./errors.md) - 使用命令遇到错误（格式：Exxxx）时进行查阅
 * [后续计划](./roadmap.md) - 待实现的功能和改进计划
