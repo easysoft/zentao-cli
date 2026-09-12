@@ -1,7 +1,7 @@
 import { describe, test, expect, beforeEach, afterEach } from 'bun:test';
 import { homedir, tmpdir } from 'node:os';
 import { isAbsolute, join, resolve } from 'node:path';
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { DEFAULT_CONFIG, VALID_CONFIG_KEYS } from '../src/config/defaults';
 import {
     getConfigPath,
@@ -166,6 +166,47 @@ describe('profile management', () => {
         resetConfigStore();
         if (tempDir && existsSync(tempDir)) {
             rmSync(tempDir, { recursive: true, force: true });
+        }
+    });
+
+    test('reading a missing config does not create a file', () => {
+        expect(getCurrentProfile()).toBeUndefined();
+        expect(getAllProfiles()).toEqual([]);
+        expect(existsSync(join(tempDir, 'config.json'))).toBe(false);
+    });
+
+    test.each([false, true])('preserves malformed config with an initialized store: %s', (initialized) => {
+        if (initialized) saveProfile(mockProfile);
+        const file = join(tempDir, 'config.json');
+        const original = '{"currentProfile":"admin", "profiles": [';
+        writeFileSync(file, original);
+
+        for (const operation of [
+            () => getAllProfiles(),
+            () => saveProfile(mockProfile),
+            () => removeProfile(profileKey(mockProfile.account, mockProfile.server)),
+        ]) {
+            expect(operation).toThrow('配置文件损坏或无法读取');
+            expect(readFileSync(file, 'utf-8')).toBe(original);
+        }
+    });
+
+    test('help preserves malformed config and profile reports E1005', async () => {
+        const file = join(tempDir, 'config.json');
+        const original = '{"profiles": [';
+        writeFileSync(file, original);
+        for (const argument of ['--help', 'profile']) {
+            const child = Bun.spawn({
+                cmd: [process.execPath, '--no-env-file', 'src/index.ts', '--config', file, '--format=json', argument],
+                env: { ...process.env, ZENTAO_URL: '', ZENTAO_ACCOUNT: '', ZENTAO_PASSWORD: '', ZENTAO_TOKEN: '' },
+                stdin: 'ignore', stdout: 'pipe', stderr: 'pipe',
+            });
+            const [, stderr, exitCode] = await Promise.all([
+                new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited,
+            ]);
+            expect(exitCode).toBe(argument === '--help' ? 0 : 1);
+            if (argument === 'profile') expect(JSON.parse(stderr).error.code).toBe('1005');
+            expect(readFileSync(file, 'utf-8')).toBe(original);
         }
     });
 

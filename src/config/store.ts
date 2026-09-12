@@ -19,7 +19,7 @@ let store: Configstore | null = null;
 
 function getStore(): Configstore {
     if (!store) {
-        store = new Configstore('zentao-cli', {}, { configPath });
+        store = new Configstore('zentao-cli', undefined, { configPath, clearInvalidConfig: false });
         enforcePermissions();
     }
     return store;
@@ -77,10 +77,10 @@ export function __resetConfigStoreForTests(): void {
 /** 读取完整配置数据，读取失败时抛出 E1005 */
 export function getConfigData(): ConfigData {
     try {
-        const s = getStore();
+        const data = getStore().all;
         return {
-            currentProfile: s.get('currentProfile') as string | undefined,
-            profiles: s.get('profiles') as Profile[] | undefined,
+            currentProfile: data.currentProfile as string | undefined,
+            profiles: data.profiles as Profile[] | undefined,
         };
     } catch {
         throw new ZentaoError('E1005', { path: configPath });
@@ -130,8 +130,8 @@ export function findProfileByKey(key: string): Profile | undefined {
 
 /** 保存或更新 Profile（按 account+server 去重），并将其设为当前 Profile */
 export function saveProfile(profile: Profile): void {
+    const profiles = getConfigData().profiles ?? [];
     const s = getStore();
-    const profiles = (s.get('profiles') as Profile[] | undefined) ?? [];
     const normalizedProfile = profile.server === normalizeServerUrl(profile.server)
         ? profile
         : { ...profile, server: normalizeServerUrl(profile.server) };
@@ -156,16 +156,16 @@ export function saveProfile(profile: Profile): void {
 
 /** 按 profileKey 删除 Profile。若删除的是当前 Profile，则自动切换到第一个 */
 export function removeProfile(key: string): boolean {
+    const data = getConfigData();
     const s = getStore();
-    const profiles = (s.get('profiles') as Profile[] | undefined) ?? [];
+    const profiles = data.profiles ?? [];
     const idx = profiles.findIndex(
         (p) => profileKey(p.account, p.server) === key,
     );
     if (idx < 0) return false;
     profiles.splice(idx, 1);
     s.set('profiles', profiles);
-    const current = s.get('currentProfile') as string | undefined;
-    if (current === key) {
+    if (data.currentProfile === key) {
         s.set('currentProfile', profiles.length > 0 ? profileKey(profiles[0].account, profiles[0].server) : undefined);
     }
     enforcePermissions();
