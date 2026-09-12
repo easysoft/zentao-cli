@@ -80,7 +80,7 @@ $ ZENTAO_CONFIG_FILE=~/work/zt.json zentao product
 
 ### API 覆盖与版本兼容
 
-CLI 使用 `zentao-api 0.6.8` 的注册表，提供 26 个模块、229 个操作。除原有模块外，新增问题（`issue`）、风险（`risk`）、会议（`meeting`）、工作流（`workflow`）、文档（`doc`）、待办（`todo`）和地盘（`my`），并支持项目集/项目/执行下的关联列表、需求层级、附件上传和 Markdown 文档正文。
+CLI 使用 `zentao-api 0.6.9` 的注册表，提供 26 个模块、229 个操作。除原有模块外，新增问题（`issue`）、风险（`risk`）、会议（`meeting`）、工作流（`workflow`）、文档（`doc`）、待办（`todo`）和地盘（`my`），并支持项目集/项目/执行下的关联列表、需求层级、附件上传和 Markdown 文档正文。
 
 每个操作都带有最低禅道版本要求。SDK 0.5.5 及之前已有的操作与之后新增的操作分别使用以下基线，具体以操作帮助为准：
 

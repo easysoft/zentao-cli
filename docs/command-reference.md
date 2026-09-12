@@ -170,7 +170,7 @@ zentao file create --file=/path/to/screenshot.png --objectType=bug --objectID=42
 
 ## 覆盖范围
 
-对应当前工作区：CLI **0.2.0**，API 定义 **0.6.8**；覆盖 **17 个内置一级命令**（另含 config get/set）、**26 个业务模块、229 个业务操作**。已安装版本不同时，请以本机命令的 --help 为准。
+对应当前工作区：CLI **0.2.0**，API 定义 **0.6.9**；覆盖 **17 个内置一级命令**（另含 config get/set）、**26 个业务模块、229 个业务操作**。已安装版本不同时，请以本机命令的 --help 为准。
 
 <a id="global-options"></a>
 
@@ -2251,14 +2251,14 @@ zentao story activate --storyID=<number> [选项]
 最低禅道版本：`22.0` / `biz13.0` / `max8.0` / `ipd5.0`。
 
 ```text
-zentao story change --storyID=<number> --reviewer=<string[]> [选项]
+zentao story change --storyID=<number> [选项]
 ```
 
 | 参数 | 位置 | 类型 | 必填 | 默认值 | 说明与可选值 |
 | --- | --- | --- | --- | --- | --- |
 | `--storyID` | 路径 | `number` | 是 | 未声明 | 需求ID |
 | `--title` | 请求体 | `string` | 否 | 未声明 | 需求名称 |
-| `--reviewer` | 请求体 | `string[]` | 是 | 未声明 | 评审人员 |
+| `--reviewer` | 请求体 | `string[]` | 否 | 未声明 | 评审人员 |
 | `--spec` | 请求体 | `string` | 否 | 未声明 | 需求描述 |
 | `--verify` | 请求体 | `string` | 否 | 未声明 | 验收标准 |
 
@@ -2466,14 +2466,14 @@ zentao epic activate --storyID=<number> [选项]
 最低禅道版本：`22.0` / `biz13.0` / `max8.0` / `ipd5.0`。
 
 ```text
-zentao epic change --storyID=<number> --reviewer=<string[]> [选项]
+zentao epic change --storyID=<number> [选项]
 ```
 
 | 参数 | 位置 | 类型 | 必填 | 默认值 | 说明与可选值 |
 | --- | --- | --- | --- | --- | --- |
 | `--storyID` | 路径 | `number` | 是 | 未声明 | 需求ID |
 | `--title` | 请求体 | `string` | 否 | 未声明 | 需求名称 |
-| `--reviewer` | 请求体 | `string[]` | 是 | 未声明 | 评审人员 |
+| `--reviewer` | 请求体 | `string[]` | 否 | 未声明 | 评审人员 |
 | `--spec` | 请求体 | `string` | 否 | 未声明 | 需求描述 |
 | `--verify` | 请求体 | `string` | 否 | 未声明 | 验收标准 |
 
@@ -2676,6 +2676,7 @@ zentao requirement change --storyID=<number> [选项]
 | `--title` | 请求体 | `string` | 否 | 未声明 | 需求名称 |
 | `--spec` | 请求体 | `string` | 否 | 未声明 | 需求描述 |
 | `--verify` | 请求体 | `string` | 否 | 未声明 | 验收标准 |
+| `--reviewer` | 请求体 | `string[]` | 否 | 未声明 | 评审人员 |
 
 `--storyID` 可用 `--id` 或首个数字位置参数代替；其余路径 ID 需分别提供。
 
