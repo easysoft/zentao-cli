@@ -76,7 +76,7 @@ zentao add-mcp --help
 zentao add-mcp cursor
 ```
 
-第二条是用户选用 Cursor 时的示例，会将当前服务器、账号和 Token 写入该客户端的本地 MCP 配置；应在用户要求配置该客户端的范围内使用，不自动配置全部客户端。不要打印配置里的 Token。手工配置、其他客户端与认证细节按 [zentao-cli 技能](../zentao-cli/SKILL.md) 处理。
+第二条是用户选用 Cursor 时的示例，会将当前服务器、账号和 Token 写入该客户端的本地 MCP 配置；应在用户要求配置该客户端的范围内使用，不自动配置全部客户端。不要打印配置里的 Token。CLI 认证细节见 [zentao-cli 技能](../zentao-cli/SKILL.md)。
 
 ## 查询结果的边界
 
