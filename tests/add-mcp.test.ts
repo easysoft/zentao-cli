@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { getStaticTOMLValue, parseTOML } from 'toml-eslint-parser';
 
 const SECRET_TOKEN = 'secret-token-that-must-not-be-logged';
 
@@ -43,7 +44,7 @@ describe('add-mcp credentials', () => {
         };
 
         const proc = Bun.spawn({
-            cmd: [process.execPath, 'src/index.ts', ...(silent ? ['--silent'] : []), 'add-mcp', agent],
+            cmd: [process.execPath, '--no-env-file', 'src/index.ts', ...(silent ? ['--silent'] : []), 'add-mcp', agent],
             cwd: process.cwd(),
             env,
             stdin: 'ignore',
@@ -166,13 +167,131 @@ describe('add-mcp credentials', () => {
 
         expect(result.exitCode).toBe(0);
         expect(written.endsWith(followingTables)).toBe(true);
-        expect(Bun.TOML.parse(written)).toMatchObject({
+        expect(getStaticTOMLValue(parseTOML(written))).toMatchObject({
             projects: {
                 '/tmp/repo[work]': { trust_level: 'trusted' },
                 '/tmp/repo[personal]': { trust_level: 'untrusted' },
             },
             profiles: { 'test]env': [{ name: 'keep this profile' }] },
         });
+    });
+
+    test('Codex TOML replaces quoted target tables and separated descendants without changing other text', async () => {
+        const codexConfig = join(tempDir, '.codex', 'config.toml');
+        const before = '# existing configuration\r\nmodel = "keep"\r\n\r\n';
+        const unrelated = [
+            '',
+            '# keep this project comment',
+            '[projects."/tmp/example"]',
+            'trust_level = "trusted" # keep this value comment',
+            '',
+            '[mcp_servers.zentao-cli-extra]',
+            'command = "keep"',
+            '',
+        ].join('\r\n');
+        const after = '\r\n# keep this final comment\r\n[other]\r\nvalue = "keep"\r\n';
+        const target = [
+            '[ "mcp_servers" . \'zentao-cli\' ] # replace this server',
+            'command = "npx"',
+            'args = ["-y", "zentao-cli", "mcp"]',
+            '',
+        ].join('\r\n');
+        const descendants = [
+            '[mcp_servers."zentao-cli"."env"]',
+            'ZENTAO_PASSWORD = "legacy-password" # remove this credential',
+            '',
+            '["mcp_servers".\'zentao-cli\'.legacy]',
+            'value = "obsolete"',
+            '',
+        ].join('\r\n');
+        mkdirSync(dirname(codexConfig), { recursive: true });
+        writeFileSync(codexConfig, before + target + unrelated + descendants + after);
+
+        const result = await runAddMcp('codex', true);
+        const written = readFileSync(codexConfig, 'utf-8');
+        const parsed = getStaticTOMLValue(parseTOML(written));
+
+        expect(result.exitCode).toBe(0);
+        expect(written.startsWith(before)).toBe(true);
+        expect(written).toContain(unrelated);
+        expect(written.endsWith(after)).toBe(true);
+        expect(written.replaceAll('\r\n', '')).not.toContain('\n');
+        expect(written).not.toContain('legacy-password');
+        expect(written).not.toContain('ZENTAO_PASSWORD');
+        expect(written).not.toContain('obsolete');
+        expect(parsed).toMatchObject({
+            mcp_servers: {
+                'zentao-cli': {
+                    command: 'zentao',
+                    args: ['mcp'],
+                    env: { ZENTAO_TOKEN: SECRET_TOKEN },
+                },
+                'zentao-cli-extra': { command: 'keep' },
+            },
+        });
+        expect(result.stdout + result.stderr).not.toContain(SECRET_TOKEN);
+
+        expect((await runAddMcp('codex', true)).exitCode).toBe(0);
+        expect(readFileSync(codexConfig, 'utf-8')).toBe(written);
+    });
+
+    test.each([
+        '[mcp_servers.zentao-cli.env]\nZENTAO_PASSWORD = "legacy-password"\n',
+        '[mcp_servers.zentao-cli.env]\nZENTAO_PASSWORD = "legacy-password"\n\n[mcp_servers.zentao-cli]\ncommand = "old"\n',
+    ])('Codex TOML replaces a target first declared through a child table: %s', async (original) => {
+        const codexConfig = join(tempDir, '.codex', 'config.toml');
+        mkdirSync(dirname(codexConfig), { recursive: true });
+        writeFileSync(codexConfig, original);
+
+        const result = await runAddMcp('codex', true);
+        const written = readFileSync(codexConfig, 'utf-8');
+
+        expect(result.exitCode).toBe(0);
+        expect(getStaticTOMLValue(parseTOML(written))).toMatchObject({
+            mcp_servers: { 'zentao-cli': { command: 'zentao', env: { ZENTAO_TOKEN: SECRET_TOKEN } } },
+        });
+        expect(written).not.toContain('ZENTAO_PASSWORD');
+    });
+
+    test.each(['"""', "'''"])('Codex TOML ignores apparent table headers inside %s strings', async (quote) => {
+        const codexConfig = join(tempDir, '.codex', 'config.toml');
+        const original = `[other]\ntext = ${quote}\n[mcp_servers.zentao-cli]\ncommand = "keep this text"\n${quote}\n`;
+        mkdirSync(dirname(codexConfig), { recursive: true });
+        writeFileSync(codexConfig, original);
+
+        const result = await runAddMcp('codex', true);
+        const written = readFileSync(codexConfig, 'utf-8');
+
+        expect(result.exitCode).toBe(0);
+        expect(written.startsWith(original)).toBe(true);
+        expect(getStaticTOMLValue(parseTOML(written))).toMatchObject({
+            other: { text: '[mcp_servers.zentao-cli]\ncommand = "keep this text"\n' },
+            mcp_servers: { 'zentao-cli': { command: 'zentao' } },
+        });
+    });
+
+    test.each([
+        ['duplicate env table', '[mcp_servers.zentao-cli]\nenv = { ZENTAO_TOKEN = "old-secret" }\n[mcp_servers.zentao-cli.env]\nZENTAO_PASSWORD = "legacy-password"\n'],
+        ['reopened child table', '[mcp_servers.zentao-cli.env]\nA = "old-secret"\n[other]\nvalue = "keep"\n[mcp_servers.zentao-cli.env]\nB = "legacy-password"\n'],
+        ['invalid TOML', '[mcp_servers.zentao-cli]\nenv = { ZENTAO_TOKEN = "old-secret"\n'],
+        ['inline server', '[mcp_servers]\nzentao-cli = { command = "old-secret" }\n'],
+        ['dotted server', 'mcp_servers.zentao-cli.command = "old-secret"\n'],
+        ['dotted server under parent table', '[mcp_servers]\nzentao-cli.command = "old-secret"\n'],
+        ['inline parent table', 'mcp_servers = { other = { command = "old-secret" } }\n'],
+    ])('Codex TOML refuses %s without changing the file or exposing values', async (_name, original) => {
+        const codexConfig = join(tempDir, '.codex', 'config.toml');
+        mkdirSync(dirname(codexConfig), { recursive: true });
+        writeFileSync(codexConfig, original);
+
+        const result = await runAddMcp('codex', true);
+
+        expect(result.exitCode).toBe(1);
+        expect(readFileSync(codexConfig, 'utf-8')).toBe(original);
+        expect(result.stderr).toContain('1005');
+        expect(result.stderr).toContain(codexConfig);
+        expect(result.stdout + result.stderr).not.toContain(SECRET_TOKEN);
+        expect(result.stdout + result.stderr).not.toContain('old-secret');
+        expect(result.stdout + result.stderr).not.toContain('legacy-password');
     });
 
     test('refuses to destroy JSONC comments', async () => {

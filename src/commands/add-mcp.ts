@@ -3,8 +3,10 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, unlinkSync,
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { createInterface } from 'node:readline/promises';
+import { parseTOML, type AST } from 'toml-eslint-parser';
 import type { GlobalOptions } from '../types/index.js';
 import { ensureAuth } from '../auth/flow.js';
+import { ZentaoError } from '../errors.js';
 
 /* ── Types ── */
 
@@ -202,29 +204,57 @@ function writeOpenCodeConfig(configPath: string, creds: McpCredentials): void {
     writeJsonFile(configPath, config);
 }
 
-function writeCodexToml(configPath: string, creds: McpCredentials): void {
-    let content = existsSync(configPath) ? readFileSync(configPath, 'utf-8') : '';
+function getTableLineRange(content: string, table: AST.TOMLTable): [number, number] {
+    const start = content.lastIndexOf('\n', table.range[0] - 1) + 1;
+    const newline = content.indexOf('\n', table.range[1]);
+    return [start, newline < 0 ? content.length : newline + 1];
+}
 
-    const sectionHeader = `[mcp_servers.${MCP_NAME}]`;
-    const section = [
-        sectionHeader,
-        'command = "zentao"',
-        'args = ["mcp"]',
-        `env = { ZENTAO_URL = ${JSON.stringify(creds.url)}, ZENTAO_ACCOUNT = ${JSON.stringify(creds.account)}, ZENTAO_TOKEN = ${JSON.stringify(creds.token)} }`,
-    ].join('\n') + '\n';
+function replaceCodexServerSection(content: string, section: string, newline: string): string {
+    const ast = parseTOML(content);
+    const tables = ast.body[0].body.filter((node): node is AST.TOMLTable =>
+        node.type === 'TOMLTable'
+        && node.resolvedKey[0] === 'mcp_servers'
+        && node.resolvedKey[1] === MCP_NAME,
+    );
+    const ranges = tables.map((table) => getTableLineRange(content, table));
+    let updated = content;
 
-    const target = /^[ \t]*\[mcp_servers\.zentao-cli\][ \t]*(?:#[^\r\n]*)?\r?$/m.exec(content);
-    if (target) {
-        const nextSection = /^[ \t]*\[{1,2}[^\r\n]+\]{1,2}[ \t]*(?:#[^\r\n]*)?\r?$/gm;
-        nextSection.lastIndex = target.index + target[0].length;
-        const next = nextSection.exec(content);
-        content = content.slice(0, target.index) + section + content.slice(next?.index ?? content.length);
+    if (ranges.length > 0) {
+        // Replace the first target table and remove every descendant, even if
+        // unrelated tables occur between them. Source ranges preserve other text.
+        for (let i = ranges.length - 1; i >= 0; i--) {
+            const [start, end] = ranges[i];
+            updated = updated.slice(0, start) + (i === 0 ? section : '') + updated.slice(end);
+        }
     } else {
-        const trimmed = content.trimEnd();
-        content = (trimmed ? trimmed + '\n\n' : '') + section;
+        const separator = !content || content.endsWith(newline + newline)
+            ? '' : content.endsWith('\n') ? newline : newline + newline;
+        updated = content + separator + section;
     }
 
-    writePrivateFile(configPath, content);
+    // Inline or dotted declarations can conflict with the new table. Validate
+    // before writing rather than risk replacing unrelated configuration.
+    parseTOML(updated);
+    return updated;
+}
+
+function writeCodexToml(configPath: string, creds: McpCredentials): void {
+    try {
+        const content = existsSync(configPath) ? readFileSync(configPath, 'utf-8') : '';
+        const newline = content.match(/\r?\n/)?.[0] ?? '\n';
+        const section = [
+            `[mcp_servers.${MCP_NAME}]`,
+            'command = "zentao"',
+            'args = ["mcp"]',
+            `env = { ZENTAO_URL = ${JSON.stringify(creds.url)}, ZENTAO_ACCOUNT = ${JSON.stringify(creds.account)}, ZENTAO_TOKEN = ${JSON.stringify(creds.token)} }`,
+        ].join(newline) + newline;
+
+        writePrivateFile(configPath, replaceCodexServerSection(content, section, newline));
+    } catch {
+        // Parser errors may contain configuration values, including credentials.
+        throw new ZentaoError('E1005', { path: configPath });
+    }
 }
 
 function printCherryStudioConfig(silent: boolean): void {
