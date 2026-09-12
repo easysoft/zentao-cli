@@ -44,7 +44,7 @@ bun run preview
 - `docs-generator.ts` 直接读取根目录 `README.md`、`CHANGES.md` 和 `docs/` 内全部 Markdown，在开发与生产构建时生成页面。正文只在原 Markdown 中维护，新增 `docs/*.md` 会自动加入目录。
 - `docs-template.html` 定义阅读布局，`src/docs.css` 与 `src/docs.ts` 提供文档目录、页内目录、搜索和代码复制。共享的主题、图标、移动导航和复制反馈在 `src/ui.ts`，首页继续由 `src/main.ts` 处理其交互。
 - 文档相对链接及本仓库 GitHub 文档链接映射为站内页面，保留原有章节锚点、表格、折叠内容和代码原文。GitHub 仓库、Issue、Release 与外部项目文档仍保留外链。
-- 全文搜索按章节索引，首次搜索时才加载 `docs/search-index.json`；结果可直接定位章节。原 `docs/command-reference.html` 的模块、操作类型和参数筛选功能在 `docs/command-explorer.html` 保留，由 `command-explorer.ts` 增加站内返回入口。
+- 全文搜索按章节索引，首次搜索时才加载 `docs/search-index.json`；结果可直接定位章节。原 `docs/command-reference.html` 的模块、操作类型和参数筛选功能在 `docs/command-explorer.html` 保留，由 `command-explorer.ts` 增加站内返回入口及品牌资源，`src/explorer.css` 将原阅读器变量映射到共享主题；开发与构建均加载首页的共享样式，不另维护配色和字体。
 - Markdown 解析与 HTML 清理仅在开发服务器和构建时运行，不进入浏览器脚本。输出的所有文档页可在普通静态服务器直接打开、刷新和分享，无需 SPA 回退配置。
 
 维护时运行 `bun run build`，检查所有文档、内链与锚点、全文搜索和无结果状态、代码复制、折叠示例及手机布局。对部署子路径的改动，还需用 `BASE_PATH=/zentao-cli/` 构建核对资源与文档地址。首页与文档共用主题和品牌资源。
@@ -62,6 +62,8 @@ BASE_PATH=/zentao-cli/ bun run build
 ## 品牌与资源
 
 品牌资源来自 `/Users/hao/Projects/logo-factory/zentao-cli/pixel-logo-final`，复制到 `public/brand/`，保留 SVG 和主版 512 PNG 的原文件名。`favicon.png` 使用原始 flat 32 PNG。字体通过 Fontsource 随站点构建，图标使用 Phosphor Icons，不依赖远程字体服务。
+
+Agent 客户端 LOGO 使用 [lobe-icons](https://github.com/lobehub/lobe-icons) 的单色 SVG，按需保存在 `public/brand/agents/`。`src/agent-guides.ts` 的 `icon` 指定文件名，指南渲染器在构建时内联到选择项和标题中，以继承浅深主题颜色；页面不需要额外下载图标库或访问 CDN。版本、来源和 MIT 许可证见 `public/licenses/`。
 
 Manrope 与 JetBrains Mono 使用 SIL Open Font License 1.1，Phosphor Icons 使用 MIT 许可证。原始许可证从对应已安装包的 `LICENSE` 文件完整复制到 [`public/licenses/`](./public/licenses/)，来源、版权与版本见 [`THIRD-PARTY-NOTICES.txt`](./public/licenses/THIRD-PARTY-NOTICES.txt)。Vite 会将这些文件一并输出到 `dist/licenses/`，部署时保留该目录。
 

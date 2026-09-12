@@ -1,4 +1,7 @@
+import { readFileSync } from "node:fs";
+
 const sourceUrl = "https://zentao-cli.invalid/docs/command-reference.html";
+const explorerStylePath = new URL("./src/explorer.css", import.meta.url);
 
 function siteDocumentationLink(href: string): string {
   if (href.startsWith("#")) return href;
@@ -49,7 +52,10 @@ function rewriteDocumentationLinks(html: string): string {
 }
 
 /** Adapt the self-contained reference reader without replacing its search UI. */
-export function renderCommandExplorer(source: string): string {
+export function renderCommandExplorer(
+  source: string,
+  stylesheetLinks: string,
+): string {
   let html = source.replace(
     /(<script\b[^>]*\bid="reference-data"[^>]*>)([\s\S]*?)(<\/script>)/i,
     (_match, opening, json, closing) => {
@@ -76,16 +82,26 @@ export function renderCommandExplorer(source: string): string {
   );
 
   html = html.replace(
-    /(<div class="brand">[\s\S]*?<\/div>)/,
-    `<div class="site-brand">$1<nav class="site-links" aria-label="网站导航"><a href="./command-reference.html">返回文档</a><a href="../index.html">网站首页</a></nav></div>`,
+    /<div class="brand">[\s\S]*?<\/div>/,
+    `<div class="site-brand"><a class="wordmark" href="../index.html" aria-label="ZenTao CLI 首页"><img class="brand-light" src="../brand/pixel-tao-terminal-blue-flat.svg" alt="" width="32" height="32"><img class="brand-dark" src="../brand/pixel-tao-reverse.svg" alt="" width="32" height="32"><span>ZenTao <strong>CLI</strong></span></a><nav class="site-links" aria-label="网站导航"><a href="./command-reference.html">返回文档</a><a href="../index.html">网站首页</a></nav></div>`,
   );
+  // Keep the reference reader's layout and behavior, with the site as token owner.
+  html = html.replace(/<style>([\s\S]*?)<\/style>/, (_match, css: string) => {
+    const layout = css.replace(/:root(?:\[data-theme="dark"\])?\s*\{[^}]*\}/g, "");
+    return `${stylesheetLinks}\n<style>${layout}\n${readFileSync(explorerStylePath, "utf8")}</style>`;
+  });
+  html = html.replace("<body ", '<body class="explorer-page" ');
   html = html.replace(
-    "</style>",
-    `  .site-brand { min-width: 0; }
-    .site-links { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 2px; font-size: 12px; }
-    .site-links a { display: inline-flex; align-items: center; min-height: 28px; }
-    @media (max-width: 700px) { .site-links a { min-height: 32px; } }
-  </style>`,
+    "</title>",
+    `</title><link rel="icon" type="image/png" href="../brand/favicon.png"><script>
+      try {
+        const saved = localStorage.getItem("zentao-site-theme");
+        document.documentElement.dataset.theme = saved === "light" || saved === "dark"
+          ? saved : matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      } catch {
+        document.documentElement.dataset.theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      }
+    </script>`,
   );
   html = html.replace(
     /<noscript>[\s\S]*?<\/noscript>/,

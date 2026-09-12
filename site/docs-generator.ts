@@ -502,17 +502,20 @@ export function documentationPlugin(): Plugin {
         this.addWatchFile(resolve(repositoryRoot, document.sourcePath));
       }
       this.addWatchFile(explorerPath);
+      this.addWatchFile(resolve(siteRoot, "src/explorer.css"));
     },
     configureServer(server) {
       server.watcher.add([
         resolve(repositoryRoot, "README.md"),
         resolve(repositoryRoot, "CHANGES.md"),
         docsDirectory,
+        resolve(siteRoot, "src/explorer.css"),
       ]);
       const reload = (path: string) => {
         if (
           path === resolve(repositoryRoot, "README.md") ||
           path === resolve(repositoryRoot, "CHANGES.md") ||
+          path === resolve(siteRoot, "src/explorer.css") ||
           (path.startsWith(`${docsDirectory}/`) && /\.(?:md|html)$/.test(path))
         ) {
           server.ws.send({ type: "full-reload", path: "*" });
@@ -552,7 +555,10 @@ export function documentationPlugin(): Plugin {
           if (pathname === "/docs/command-explorer.html") {
             response.setHeader("Content-Type", "text/html; charset=utf-8");
             response.end(
-              renderCommandExplorer(readFileSync(explorerPath, "utf8")),
+              renderCommandExplorer(
+                readFileSync(explorerPath, "utf8"),
+                `<link rel="stylesheet" href="${server.config.base}src/styles.css">`,
+              ),
             );
             return;
           }
@@ -619,10 +625,28 @@ export function documentationPlugin(): Plugin {
           fileName: "docs/search-index.json",
           source: JSON.stringify(pages.flatMap((page) => page.search)),
         });
+        // The homepage links the shared stylesheet without docs-only CSS.
+        const homepage = bundle["index.html"];
+        if (!homepage || homepage.type !== "asset") {
+          throw new Error("Vite did not emit the homepage HTML template.");
+        }
+        const homepageHtml =
+          typeof homepage.source === "string"
+            ? homepage.source
+            : new TextDecoder().decode(homepage.source);
+        const stylesheetLinks = homepageHtml.match(
+          /<link\b[^>]*\brel=["']stylesheet["'][^>]*>/g,
+        );
+        if (!stylesheetLinks?.length) {
+          throw new Error("Vite did not emit the shared site stylesheet.");
+        }
         this.emitFile({
           type: "asset",
           fileName: "docs/command-explorer.html",
-          source: renderCommandExplorer(readFileSync(explorerPath, "utf8")),
+          source: renderCommandExplorer(
+            readFileSync(explorerPath, "utf8"),
+            templateForDocsDirectory(stylesheetLinks.join("\n"), configuredBase),
+          ),
         });
         delete bundle["docs-template.html"];
       },

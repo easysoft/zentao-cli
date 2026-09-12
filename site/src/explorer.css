@@ -1,0 +1,120 @@
+/* The original reader owns layout and interactions; site tokens own its theme. */
+:root {
+  --bg: var(--page);
+  --muted-surface: var(--surface-soft);
+  --line: var(--border);
+  --text: var(--ink);
+  --accent-bg: var(--accent-soft);
+  --code: var(--surface-soft);
+  --focus: var(--accent);
+}
+.explorer-page {
+  font: 14px/1.65 var(--sans);
+}
+.explorer-page :is(code, pre, .mono, .shortcut) {
+  font-family: var(--mono);
+}
+.explorer-page .topbar {
+  background: var(--page);
+}
+.explorer-page .site-brand {
+  min-width: 0;
+}
+.explorer-page .wordmark {
+  gap: 9px;
+  font-size: 18px;
+}
+.explorer-page .wordmark > span {
+  font-size: inherit;
+}
+.explorer-page .wordmark img {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+}
+.explorer-page .site-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-top: 4px;
+  padding-left: 41px;
+  font-size: 11px;
+}
+.explorer-page .site-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  color: var(--muted);
+}
+.explorer-page .site-links a:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+.explorer-page :is(button, input, select, .scope-button) {
+  border-radius: var(--radius-small);
+}
+.explorer-page :is(.code-block, .table-scroll, .parameter-empty, .copy-notice) {
+  border-radius: var(--radius);
+}
+.explorer-page :is(.entry-badge, .shortcut) {
+  border-radius: var(--radius-label);
+}
+.explorer-page .result-item {
+  border-radius: 0;
+}
+.explorer-page :is(.scope-button, .result-item)[aria-current="true"] {
+  color: var(--accent);
+}
+.explorer-page .scope-button[aria-current="true"] {
+  box-shadow: inset 2px 0 var(--accent);
+}
+.explorer-page .reader h1 {
+  font-weight: 750;
+}
+.explorer-page .code-block {
+  color: var(--terminal-ink);
+  background: var(--terminal);
+  border-color: var(--terminal-line);
+}
+.explorer-page .code-toolbar {
+  color: var(--terminal-muted);
+  background: var(--terminal-top);
+  border-color: var(--terminal-line);
+}
+.explorer-page .code-toolbar button {
+  color: var(--terminal-accent);
+}
+.explorer-page .code-toolbar button:hover {
+  background: var(--terminal-line);
+}
+.explorer-page .code-block :focus-visible {
+  outline-color: var(--terminal-accent);
+}
+.explorer-page .copy-notice {
+  box-shadow: var(--shadow);
+  z-index: 30;
+}
+.explorer-page .skip-link {
+  z-index: 40;
+}
+@media (max-width: 700px) {
+  .explorer-page .site-links {
+    padding-left: 0;
+  }
+  .explorer-page .site-links a {
+    min-height: 32px;
+  }
+}
+@media (forced-colors: active) {
+  .explorer-page :is(.scope-button, .result-item)[aria-current="true"] {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+}
+@media print {
+  .explorer-page .code-block {
+    color: CanvasText;
+    background: Canvas;
+    border-color: CanvasText;
+  }
+}
