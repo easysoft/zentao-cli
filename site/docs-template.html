@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f6f8fa" />
+    <meta name="description" content="__DOC_DESCRIPTION__" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="zh_CN" />
+    <meta property="og:title" content="__DOC_TITLE__ · ZenTao CLI 文档" />
+    <meta property="og:description" content="__DOC_DESCRIPTION__" />
+    <link rel="icon" type="image/png" href="%BASE_URL%brand/favicon.png" />
+    <title>__DOC_TITLE__ · ZenTao CLI 文档</title>
+    <script>
+      try {
+        const savedTheme = localStorage.getItem("zentao-site-theme");
+        document.documentElement.dataset.theme =
+          savedTheme === "dark" || savedTheme === "light"
+            ? savedTheme
+            : matchMedia("(prefers-color-scheme: dark)").matches
+              ? "dark"
+              : "light";
+      } catch {
+        document.documentElement.dataset.theme = matchMedia(
+          "(prefers-color-scheme: dark)",
+        ).matches
+          ? "dark"
+          : "light";
+      }
+    </script>
+    <link rel="stylesheet" href="/src/styles.css" />
+
+    <link rel="stylesheet" href="/src/docs.css" />
+  </head>
+  <body class="docs-page">
+    <a class="skip-link" href="#main">跳到文档正文</a>
+    <header class="header">
+      <div class="container header-inner">
+        <a class="wordmark" href="../index.html" aria-label="ZenTao CLI 首页">
+          <img
+            class="brand-light"
+            src="%BASE_URL%brand/pixel-tao-terminal-blue-flat.svg"
+            alt=""
+            width="34"
+            height="34"
+          />
+          <img
+            class="brand-dark"
+            src="%BASE_URL%brand/pixel-tao-reverse.svg"
+            alt=""
+            width="34"
+            height="34"
+          />
+          <span>ZenTao <strong>CLI</strong></span>
+        </a>
+        <nav id="navigation" class="navigation" aria-label="主导航">
+          <a href="../index.html#agents">Agent 集成</a>
+          <a href="../index.html#features">CLI 能力</a>
+          <a href="./index.html" aria-current="page">文档</a>
+        </nav>
+        <div class="header-actions">
+          <a
+            class="github-link"
+            href="https://github.com/easysoft/zentao-cli"
+            aria-label="在 GitHub 查看 ZenTao CLI"
+            ><span data-icon="github-logo"></span><span>GitHub</span></a
+          >
+          <button
+            class="icon-button theme-toggle"
+            type="button"
+            aria-label="切换深色模式"
+            title="切换深色模式"
+            hidden
+          >
+            <span data-icon="moon"></span>
+          </button>
+          <a class="button button-small" href="../index.html#agents"
+            >选择你的 Agent <span data-icon="arrow-right"></span
+          ></a>
+          <button
+            class="icon-button menu-toggle"
+            type="button"
+            aria-label="打开导航菜单"
+            aria-expanded="false"
+            aria-controls="navigation"
+            hidden
+          >
+            <span data-icon="list"></span>
+          </button>
+        </div>
+      </div>
+    </header>
+    <div class="docs-shell">
+      <aside class="docs-sidebar">
+        <div class="docs-search">
+          <label for="docs-search">搜索文档</label>
+          <div class="docs-search-field">
+            <span data-icon="book-open"></span>
+            <input
+              id="docs-search"
+              type="search"
+              placeholder="命令、参数或关键词"
+              autocomplete="off"
+              spellcheck="false"
+              aria-controls="docs-search-results"
+            />
+            <button
+              type="button"
+              id="docs-search-close"
+              aria-label="清空搜索"
+              hidden
+            >
+              <span data-icon="x"></span>
+            </button>
+          </div>
+          <div class="docs-search-panel" id="docs-search-panel" hidden>
+            <p id="docs-search-status" role="status" aria-live="polite"></p>
+            <ul id="docs-search-results" aria-label="搜索结果"></ul>
+          </div>
+        </div>
+        <details id="docs-navigation" class="docs-navigation" open>
+          <summary>文档目录 <span data-icon="list"></span></summary>
+          <nav aria-label="文档目录"><!-- docs-sidebar --></nav>
+        </details>
+        <a class="docs-agent-link" href="../index.html#agents"
+          ><span data-icon="sparkle"></span> 查看 Agent 集成指南
+          <span data-icon="arrow-right"></span
+        ></a>
+      </aside>
+      <main class="docs-reader">
+        <nav class="docs-breadcrumb" aria-label="当前位置">
+          <a href="./index.html">文档</a><span aria-hidden="true">/</span
+          ><span>__DOC_TITLE__</span>
+        </nav>
+        <article id="main" class="doc-prose" tabindex="-1">
+          <!-- docs-content -->
+        </article>
+        <nav class="docs-pagination" aria-label="文档翻页">
+          <!-- docs-pagination -->
+        </nav>
+        <footer class="docs-footer">
+          <span>ZenTao CLI · 开源，基于 MIT 许可证</span
+          ><a href="../index.html"
+            >返回网站首页 <span data-icon="arrow-right"></span
+          ></a>
+        </footer>
+      </main>
+      <aside class="docs-toc">
+        <details id="docs-toc-details" open>
+          <summary>本页目录 <span data-icon="list"></span></summary>
+          <nav aria-label="本页目录"><!-- docs-toc --></nav>
+        </details>
+      </aside>
+    </div>
+    <div
+      id="copy-status"
+      class="copy-status"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+    ></div>
+    <noscript
+      ><style>
+        .docs-search,
+        .doc-copy,
+        .theme-toggle,
+        .menu-toggle {
+          display: none !important;
+        }
+      </style></noscript
+    >
+    <script type="module" src="/src/docs.ts"></script>
+  </body>
+</html>

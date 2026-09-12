@@ -1,0 +1,802 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f6f8fa" />
+    <meta
+      name="description"
+      content="在 Claude Code、Cursor、Codex 等 AI Agent 中使用禅道。提供 12 种客户端的 Skill 与 MCP 集成指南，查询需求、分析 Bug、跟进任务。"
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="zh_CN" />
+    <meta property="og:title" content="ZenTao CLI · 让 AI Agent 接上你的禅道" />
+    <meta
+      property="og:description"
+      content="让 AI Agent 获取禅道中的需求、Bug 与任务上下文。选择你的 Agent，按步骤接入 Skill 或 MCP。"
+    />
+    <link rel="icon" type="image/png" href="%BASE_URL%brand/favicon.png" />
+    <title>ZenTao CLI · 让 AI Agent 接上你的禅道</title>
+    <script>
+      try {
+        const savedTheme = localStorage.getItem("zentao-site-theme");
+        document.documentElement.dataset.theme =
+          savedTheme === "dark" || savedTheme === "light"
+            ? savedTheme
+            : matchMedia("(prefers-color-scheme: dark)").matches
+              ? "dark"
+              : "light";
+      } catch {
+        document.documentElement.dataset.theme = matchMedia(
+          "(prefers-color-scheme: dark)",
+        ).matches
+          ? "dark"
+          : "light";
+      }
+    </script>
+    <link rel="stylesheet" href="/src/styles.css" />
+    <noscript
+      ><style>
+        button,
+        [role="tablist"] {
+          display: none !important;
+        }
+        .integration-layout {
+          grid-template-columns: 1fr;
+        }
+        .integration-panel[hidden] {
+          display: block !important;
+        }
+        .integration-panel + .integration-panel {
+          border-top: 1px solid var(--border);
+        }
+      </style></noscript
+    >
+  </head>
+  <body>
+    <a class="skip-link" href="#main">跳到主要内容</a>
+    <header class="header">
+      <div class="container header-inner">
+        <a class="wordmark" href="#" aria-label="ZenTao CLI 首页">
+          <img
+            class="brand-light"
+            src="%BASE_URL%brand/pixel-tao-terminal-blue-flat.svg"
+            alt=""
+            width="34"
+            height="34"
+          />
+          <img
+            class="brand-dark"
+            src="%BASE_URL%brand/pixel-tao-reverse.svg"
+            alt=""
+            width="34"
+            height="34"
+          />
+          <span>ZenTao <strong>CLI</strong></span>
+        </a>
+        <nav id="navigation" class="navigation" aria-label="主导航">
+          <a href="#agents">Agent 集成</a>
+          <a href="#features">CLI 能力</a>
+          <a href="%BASE_URL%docs/cli-usage.html">文档</a>
+        </nav>
+        <div class="header-actions">
+          <a
+            class="github-link"
+            href="https://github.com/easysoft/zentao-cli"
+            aria-label="在 GitHub 查看 ZenTao CLI"
+            ><span data-icon="github-logo"></span><span>GitHub</span></a
+          >
+          <button
+            class="icon-button theme-toggle"
+            type="button"
+            aria-label="切换深色模式"
+            title="切换深色模式"
+            hidden
+          >
+            <span data-icon="moon"></span>
+          </button>
+          <a class="button button-small" href="#agents"
+            >选择你的 Agent <span data-icon="arrow-right"></span
+          ></a>
+          <button
+            class="icon-button menu-toggle"
+            type="button"
+            aria-label="打开导航菜单"
+            aria-expanded="false"
+            aria-controls="navigation"
+            hidden
+          >
+            <span data-icon="list"></span>
+          </button>
+        </div>
+      </div>
+    </header>
+    <main id="main">
+      <section class="hero container" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="eyebrow">
+            <span class="prompt-mark" aria-hidden="true">&gt;_</span>
+            为 AI Agents 连接禅道
+          </p>
+          <h1 id="hero-title">
+            让 AI Agent，<br /><span
+              >接上你的禅道<span class="title-period">。</span></span
+            >
+          </h1>
+          <p class="hero-description">
+            在你熟悉的 Agent 中，直接查需求、分析 Bug、跟进任务。<br />Skill 与
+            MCP，选一种适合你的方式。
+          </p>
+          <div class="hero-actions">
+            <a class="button" href="#agents"
+              >选择你的 Agent <span data-icon="arrow-right"></span
+            ></a>
+            <a class="button button-secondary" href="#start"
+              ><span data-icon="terminal-window"></span> 安装 CLI</a
+            >
+          </div>
+        </div>
+        <div class="hero-demo">
+          <img
+            class="hero-brand brand-light"
+            src="%BASE_URL%brand/pixel-tao-terminal-blue.svg"
+            alt=""
+            width="220"
+            height="220"
+            fetchpriority="high"
+          />
+          <img
+            class="hero-brand brand-dark"
+            src="%BASE_URL%brand/pixel-tao-reverse.svg"
+            alt=""
+            width="220"
+            height="220"
+          />
+          <div class="terminal" aria-label="Agent 使用禅道的场景示例">
+            <div class="terminal-heading">
+              <span><span data-icon="sparkle"></span> Agent + ZenTao</span
+              ><span class="terminal-heading-note">场景示例</span>
+            </div>
+            <div class="demo-tabs" role="tablist" aria-label="命令场景">
+              <button
+                id="tab-task"
+                type="button"
+                role="tab"
+                aria-selected="true"
+                aria-controls="panel-task"
+                data-demo="task"
+              >
+                我的任务
+              </button>
+              <button
+                id="tab-bug"
+                type="button"
+                role="tab"
+                aria-selected="false"
+                aria-controls="panel-bug"
+                tabindex="-1"
+                data-demo="bug"
+              >
+                处理 Bug
+              </button>
+              <button
+                id="tab-story"
+                type="button"
+                role="tab"
+                aria-selected="false"
+                aria-controls="panel-story"
+                tabindex="-1"
+                data-demo="story"
+              >
+                查找需求
+              </button>
+            </div>
+            <div class="terminal-panels">
+              <div
+                id="panel-task"
+                class="demo-panel"
+                role="tabpanel"
+                aria-labelledby="tab-task"
+                tabindex="0"
+              >
+                <blockquote class="agent-request">
+                  “我在禅道中有哪些任务？”
+                </blockquote>
+                <p class="code-comment">Agent 可调用的命令</p>
+                <div class="terminal-command">
+                  <span aria-hidden="true">$</span
+                  ><code>zentao my tasks --pick=id,name,status</code>
+                </div>
+                <div class="terminal-table-wrap">
+                  <table class="terminal-table">
+                    <thead>
+                      <tr>
+                        <th>id</th>
+                        <th>name</th>
+                        <th>status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>108</td>
+                        <td>实现登录功能</td>
+                        <td><span class="status-progress">doing</span></td>
+                      </tr>
+                      <tr>
+                        <td>109</td>
+                        <td>补充接口测试</td>
+                        <td>wait</td>
+                      </tr>
+                      <tr>
+                        <td>112</td>
+                        <td>更新使用文档</td>
+                        <td>wait</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <p class="terminal-result">
+                  <span data-icon="check"></span> 把任务上下文带进当前对话。
+                </p>
+              </div>
+              <div
+                id="panel-bug"
+                class="demo-panel"
+                role="tabpanel"
+                aria-labelledby="tab-bug"
+                tabindex="0"
+                hidden
+              >
+                <blockquote class="agent-request">
+                  “产品 1 还有哪些未解决的 Bug？”
+                </blockquote>
+                <p class="code-comment">Agent 可调用的命令</p>
+                <div class="terminal-command">
+                  <span aria-hidden="true">$</span
+                  ><code
+                    >zentao bug --product=1 --filter 'status=active'
+                    --pick=id,title,status</code
+                  >
+                </div>
+                <div class="terminal-table-wrap">
+                  <table class="terminal-table">
+                    <thead>
+                      <tr>
+                        <th>id</th>
+                        <th>title</th>
+                        <th>status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>329</td>
+                        <td>登录后页面未跳转</td>
+                        <td><span class="status-progress">active</span></td>
+                      </tr>
+                      <tr>
+                        <td>335</td>
+                        <td>搜索条件未保留</td>
+                        <td><span class="status-progress">active</span></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <p class="terminal-result">
+                  <span data-icon="arrow-right"></span> 用 zentao bug 329
+                  继续查看详情。
+                </p>
+              </div>
+              <div
+                id="panel-story"
+                class="demo-panel"
+                role="tabpanel"
+                aria-labelledby="tab-story"
+                tabindex="0"
+                hidden
+              >
+                <blockquote class="agent-request">
+                  “找出产品 1 中与登录相关的需求。”
+                </blockquote>
+                <p class="code-comment">Agent 可调用的命令</p>
+                <div class="terminal-command">
+                  <span aria-hidden="true">$</span
+                  ><code
+                    >zentao story --product=1 --search=登录
+                    --search-fields=title --pick=id,title,status</code
+                  >
+                </div>
+                <div class="terminal-table-wrap">
+                  <table class="terminal-table">
+                    <thead>
+                      <tr>
+                        <th>id</th>
+                        <th>title</th>
+                        <th>status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>86</td>
+                        <td>支持邮箱验证码登录</td>
+                        <td><span class="status-progress">active</span></td>
+                      </tr>
+                      <tr>
+                        <td>91</td>
+                        <td>记住上次登录方式</td>
+                        <td>draft</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <p class="terminal-result">
+                  <span data-icon="check"></span> 用关键词，收窄关注范围。
+                </p>
+              </div>
+            </div>
+            <div class="terminal-footer">
+              <span>示例数据</span
+              ><button type="button" class="terminal-copy" data-copy-demo>
+                <span data-icon="copy"></span><span>复制命令</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+      <div class="workflow-strip container" aria-label="三种使用方式">
+        <div>
+          <span data-icon="terminal-window"></span>
+          <p>
+            <strong>需求上下文，直接读</strong
+            ><span>让 Agent 理解工作从哪里开始</span>
+          </p>
+        </div>
+        <div>
+          <span data-icon="brackets-curly"></span>
+          <p>
+            <strong>任务和 Bug，接着做</strong
+            ><span>在对话中查询与推进项目工作</span>
+          </p>
+        </div>
+        <div>
+          <span data-icon="sparkle"></span>
+          <p>
+            <strong>Skill 与 MCP，自由选</strong
+            ><span>接入已有的 Agent 和工具链</span>
+          </p>
+        </div>
+      </div>
+      <section
+        id="agents"
+        class="integrations section"
+        aria-labelledby="agents-title"
+      >
+        <div class="container">
+          <div class="section-heading">
+            <h2 id="agents-title">
+              选好 Agent，<br class="mobile-break" />照着接入。
+            </h2>
+            <p>
+              编码 Agent 优先安装 Skill；需要标准工具调用时，也可以使用 MCP。
+            </p>
+          </div>
+          <div class="integration-prerequisite">
+            <span data-icon="terminal-window"></span>
+            <p>
+              <strong>接入前，先全局安装并登录 CLI。</strong
+              ><span
+                >在 Agent 所在电脑运行
+                <code>zentao product</code>，确认能正常查询。</span
+              >
+            </p>
+            <a class="inline-link" href="#start"
+              >查看安装步骤 <span data-icon="arrow-right"></span
+            ></a>
+          </div>
+          <!-- agent-guides -->
+          <div class="integration-notes">
+            <p>
+              <span data-icon="sparkle"></span><strong>Skill</strong> 为 Agent
+              提供禅道操作知识，通过终端调用 CLI。
+            </p>
+            <p>
+              <span data-icon="plugs-connected"></span><strong>MCP</strong>
+              由客户端启动本地服务，将禅道操作提供为可调用的工具。
+            </p>
+          </div>
+          <p class="integration-login-note">
+            本页 MCP 示例复用本机的禅道登录。切换账号后，请重连 MCP
+            服务；可用操作取决于登录账号的权限。
+          </p>
+        </div>
+      </section>
+      <section
+        id="features"
+        class="features section container"
+        aria-labelledby="features-title"
+      >
+        <div class="section-heading">
+          <h2 id="features-title">Agent 的背后，是可组合的 CLI 能力。</h2>
+          <p>同一套禅道命令，也能在终端和自动化脚本中直接使用。</p>
+        </div>
+        <div class="feature-grid">
+          <article class="feature-card coverage-card">
+            <span class="feature-icon" data-icon="squares-four"></span>
+            <h3>从产品到交付，一套命令贯通</h3>
+            <p>
+              产品、项目、需求、任务、Bug、测试、文档。<br />常用的禅道能力，都有命令可用。
+            </p>
+            <div class="coverage-stats">
+              <div>
+                <strong>26<span>个</span></strong
+                ><span>业务模块</span>
+              </div>
+              <div>
+                <strong>229<span>个</span></strong
+                ><span>API 操作</span>
+              </div>
+            </div>
+            <div class="module-grid" aria-label="常用模块">
+              <span>product</span><span>project</span><span>story</span
+              ><span>task</span><span>bug</span><span>testcase</span
+              ><span>doc</span
+              ><a href="%BASE_URL%docs/command-reference.html"
+                >全部命令 <span data-icon="arrow-up-right"></span
+              ></a>
+            </div>
+          </article>
+          <article class="feature-card output-card">
+            <div class="output-card-heading">
+              <span class="feature-icon" data-icon="funnel-simple"></span
+              ><span class="small-label">给人看，也给程序用</span>
+            </div>
+            <h3>只取需要的数据</h3>
+            <p>
+              筛选、搜索、排序、字段摘取。<br />把结果整理好，再交给下一步。
+            </p>
+            <div class="output-demo">
+              <div class="output-tabs" role="tablist" aria-label="输出格式">
+                <button
+                  type="button"
+                  id="tab-json"
+                  role="tab"
+                  aria-selected="true"
+                  aria-controls="panel-json"
+                  data-format="json"
+                >
+                  JSON</button
+                ><button
+                  type="button"
+                  id="tab-md"
+                  role="tab"
+                  aria-selected="false"
+                  aria-controls="panel-md"
+                  tabindex="-1"
+                  data-format="md"
+                >
+                  Markdown
+                </button>
+              </div>
+              <div class="output-command">
+                <span aria-hidden="true">$</span
+                ><code id="output-command"
+                  >zentao product --pick=id,name --format=json</code
+                >
+              </div>
+              <div
+                id="panel-json"
+                role="tabpanel"
+                aria-labelledby="tab-json"
+                tabindex="0"
+              >
+                <pre><code>{
+  <span class="code-key">"status"</span>: <span class="code-string">"success"</span>,
+  <span class="code-key">"data"</span>: [
+    { <span class="code-key">"id"</span>: <span class="code-number">1</span>, <span class="code-key">"name"</span>: <span class="code-string">"团队知识库"</span> },
+    { <span class="code-key">"id"</span>: <span class="code-number">2</span>, <span class="code-key">"name"</span>: <span class="code-string">"客户服务平台"</span> }
+  ]
+}</code></pre>
+              </div>
+              <div
+                id="panel-md"
+                role="tabpanel"
+                aria-labelledby="tab-md"
+                tabindex="0"
+                hidden
+              >
+                <pre><code>| id | name         |
+| -- | ------------ |
+| 1  | 团队知识库    |
+| 2  | 客户服务平台  |</code></pre>
+              </div>
+              <div class="output-caption">
+                示例输出（已格式化）
+                <button class="text-button" type="button" data-copy-output>
+                  复制命令 <span data-icon="copy"></span>
+                </button>
+              </div>
+            </div>
+          </article>
+        </div>
+        <div class="feature-notes">
+          <p>
+            <span data-icon="user-switch"></span><strong>多账号切换</strong
+            ><span>在不同禅道环境间从容切换</span>
+          </p>
+          <p>
+            <span data-icon="shield-check"></span><strong>版本兼容检查</strong
+            ><span>调用前检查接口支持情况</span>
+          </p>
+          <p>
+            <span data-icon="file-text"></span><strong>HTML → Markdown</strong
+            ><span>让富文本更适合终端与 Agent</span>
+          </p>
+        </div>
+      </section>
+      <section
+        id="start"
+        class="start-section section container"
+        aria-labelledby="start-title"
+      >
+        <div class="section-heading">
+          <h2 id="start-title">下一步，打开终端。</h2>
+          <p>安装、登录，然后试试你的第一条命令。</p>
+        </div>
+        <div class="start-layout">
+          <div class="install-panel">
+            <div class="install-heading">
+              <h3>安装 ZenTao CLI</h3>
+              <span>Node.js ≥ 18</span>
+            </div>
+            <div class="install-tabs" role="tablist" aria-label="安装方式">
+              <button
+                id="tab-npm"
+                type="button"
+                role="tab"
+                aria-selected="true"
+                aria-controls="panel-npm"
+                data-install="npm"
+              >
+                npm</button
+              ><button
+                id="tab-bun"
+                type="button"
+                role="tab"
+                aria-selected="false"
+                aria-controls="panel-bun"
+                tabindex="-1"
+                data-install="bun"
+              >
+                Bun</button
+              ><button
+                id="tab-npx"
+                type="button"
+                role="tab"
+                aria-selected="false"
+                aria-controls="panel-npx"
+                tabindex="-1"
+                data-install="npx"
+              >
+                npx 直接运行
+              </button>
+            </div>
+            <div
+              id="panel-npm"
+              role="tabpanel"
+              aria-labelledby="tab-npm"
+              tabindex="0"
+            >
+              <div class="install-command">
+                <span aria-hidden="true">$</span
+                ><code>npm install -g zentao-cli</code
+                ><button
+                  class="icon-button"
+                  type="button"
+                  data-copy="npm install -g zentao-cli"
+                  aria-label="复制 npm 安装命令"
+                >
+                  <span data-icon="copy"></span>
+                </button>
+              </div>
+              <p class="install-note">
+                全局安装后，在任意目录使用 zentao 命令。
+              </p>
+            </div>
+            <div
+              id="panel-bun"
+              role="tabpanel"
+              aria-labelledby="tab-bun"
+              tabindex="0"
+              hidden
+            >
+              <div class="install-command">
+                <span aria-hidden="true">$</span
+                ><code>bun install -g zentao-cli</code
+                ><button
+                  class="icon-button"
+                  type="button"
+                  data-copy="bun install -g zentao-cli"
+                  aria-label="复制 Bun 安装命令"
+                >
+                  <span data-icon="copy"></span>
+                </button>
+              </div>
+              <p class="install-note">已经在用 Bun？也可以用熟悉的方式安装。</p>
+            </div>
+            <div
+              id="panel-npx"
+              role="tabpanel"
+              aria-labelledby="tab-npx"
+              tabindex="0"
+              hidden
+            >
+              <div class="install-command">
+                <span aria-hidden="true">$</span><code>npx zentao-cli</code
+                ><button
+                  class="icon-button"
+                  type="button"
+                  data-copy="npx zentao-cli"
+                  aria-label="复制 npx 运行命令"
+                >
+                  <span data-icon="copy"></span>
+                </button>
+              </div>
+              <p class="install-note">
+                适合临时体验 CLI。接入本页的 Agent 指南时，请选择 npm 或 Bun
+                全局安装。
+              </p>
+            </div>
+            <a
+              class="inline-link"
+              href="https://github.com/easysoft/zentao-cli/releases"
+              >查看发布与独立可执行文件 <span data-icon="arrow-up-right"></span
+            ></a>
+          </div>
+          <ol class="next-steps">
+            <li>
+              <div class="step-heading">
+                <span class="step-number">1</span>
+                <h3>连接你的禅道</h3>
+              </div>
+              <div class="step-body">
+                <div class="command-line">
+                  <code id="login-command">zentao login</code
+                  ><button
+                    class="icon-button"
+                    type="button"
+                    data-copy-login
+                    aria-label="复制登录命令"
+                  >
+                    <span data-icon="copy"></span>
+                  </button>
+                </div>
+                <p>按提示输入服务器地址和账号，完成登录。</p>
+              </div>
+            </li>
+            <li>
+              <div class="step-heading">
+                <span class="step-number">2</span>
+                <h3>看看有哪些产品</h3>
+              </div>
+              <div class="step-body">
+                <div class="command-line">
+                  <code id="product-command">zentao product</code
+                  ><button
+                    class="icon-button"
+                    type="button"
+                    data-copy-product
+                    aria-label="复制产品查询命令"
+                  >
+                    <span data-icon="copy"></span>
+                  </button>
+                </div>
+                <p>获取产品列表，开始探索你的项目。</p>
+              </div>
+            </li>
+          </ol>
+        </div>
+      </section>
+      <section class="faq-section container" aria-labelledby="faq-title">
+        <h2 id="faq-title">再了解一点</h2>
+        <div class="faq-list">
+          <details>
+            <summary>需要什么运行环境？<span data-icon="plus"></span></summary>
+            <p>
+              通过 npm 安装或 npx 运行需要 Node.js 18 或更高版本，也可以使用
+              Bun。你还需要一个可访问的禅道服务器和具有相应权限的账号。独立可执行文件可从项目发布页查看。
+            </p>
+          </details>
+          <details>
+            <summary>支持哪些禅道版本？<span data-icon="plus"></span></summary>
+            <p>
+              ZenTao CLI 基于禅道 RESTful API v2，支持开源版、企业版、旗舰版和
+              IPD 版。不同操作有不同的最低版本要求，运行
+              <code>zentao &lt;模块&gt; &lt;操作&gt; --help</code>
+              查看具体要求。CLI 会在发送业务请求前检查版本兼容性。
+            </p>
+          </details>
+          <details>
+            <summary>
+              Skill 和 MCP 怎么选？<span data-icon="plus"></span>
+            </summary>
+            <p>
+              支持执行终端命令的编码 Agent，可以安装 Skill，让它按技能说明使用
+              CLI。 需要通过标准工具协议接入时，选择 MCP。两种方式都需要先安装
+              CLI 并登录禅道， 按上方对应客户端的指南配置即可。
+            </p>
+          </details>
+          <details>
+            <summary>
+              Agent 提示找不到 zentao 命令？<span data-icon="plus"></span>
+            </summary>
+            <p>
+              先在 Agent 所在电脑的终端运行
+              <code>zentao --version</code>，确认已全局安装。
+              桌面客户端可能未读取终端的 PATH，可在 MCP 配置中将
+              <code>command</code> 的
+              <code>zentao</code>
+              改为可执行文件的绝对路径，然后重启客户端或重连服务。
+            </p>
+          </details>
+          <details>
+            <summary>
+              ZenTao CLI 是开源的吗？<span data-icon="plus"></span>
+            </summary>
+            <p>
+              是的。ZenTao CLI 使用 MIT 许可证，源代码公开在 GitHub。欢迎提交
+              Issue、改进文档或贡献代码。<a
+                href="https://github.com/easysoft/zentao-cli"
+                >查看 GitHub 仓库</a
+              >。
+            </p>
+          </details>
+        </div>
+      </section>
+    </main>
+    <footer class="footer container">
+      <div class="footer-top">
+        <a class="wordmark" href="#" aria-label="返回 ZenTao CLI 首页"
+          ><img
+            class="brand-light"
+            src="%BASE_URL%brand/pixel-tao-terminal-blue-flat.svg"
+            alt=""
+            width="30"
+            height="30"
+          /><img
+            class="brand-dark"
+            src="%BASE_URL%brand/pixel-tao-reverse.svg"
+            alt=""
+            width="30"
+            height="30"
+          /><span>ZenTao <strong>CLI</strong></span></a
+        >
+        <p>在熟悉的 Agent 里，继续推进工作。</p>
+        <a href="https://github.com/easysoft/zentao-cli" class="inline-link"
+          >在 GitHub 上参与 <span data-icon="arrow-up-right"></span
+        ></a>
+      </div>
+      <div class="footer-bottom">
+        <span>开源，基于 MIT 许可证</span>
+        <div>
+          <a href="%BASE_URL%docs/cli-usage.html">使用文档</a
+          ><a href="https://github.com/easysoft/zentao-cli/issues">问题反馈</a
+          ><a href="https://www.zentao.net/"
+            >禅道官网 <span data-icon="arrow-up-right"></span
+          ></a>
+        </div>
+      </div>
+    </footer>
+    <div
+      id="copy-status"
+      class="copy-status"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+    ></div>
+    <noscript
+      ><p class="noscript-note">
+        当前显示默认命令示例。启用 JavaScript 后可切换示例和复制命令。
+      </p></noscript
+    >
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-labelledby="title desc" shape-rendering="crispEdges">
+  <title id="title">ZenTao CLI — Pixel Tao Terminal Blue</title>
+  <desc id="desc">The selected Pixel Tao mark in a restrained terminal navy finish with directional light, pixel-cell bevels, and subtle deterministic texture.</desc>
+  <defs>
+    <path id="pixel-tao-grid" transform="scale(6.25)" d="
+      M6 1h4v1H6z M4 2h8v1H4z M3 3h10v1H3z
+      M2 4h2v1H2z M9 4h5v1H9z
+      M2 5h1v1H2z M4 5h2v1H4z M10 5h4v1h-4z
+      M1 6h5v1H1z M11 6h4v1h-4z
+      M1 7h4v1H1z M6 7h4v1H6z M13 7h2v1h-2z
+      M1 8h3v1H1z M5 8h3v1H5z M10 8h5v1h-5z
+      M1 9h3v1H1z M5 9h2v1H5z M8 9h1v1H8z M11 9h4v1h-4z
+      M2 10h2v1H2z M5 10h5v1H5z M11 10h3v1h-3z
+      M2 11h2v1H2z M6 11h3v1H6z M11 11h3v1h-3z
+      M3 12h2v1H3z M10 12h3v1h-3z
+      M4 13h8v1H4z M6 14h4v1H6z
+    "/>
+
+    <clipPath id="tao-clip" clipPathUnits="userSpaceOnUse">
+      <use href="#pixel-tao-grid"/>
+    </clipPath>
+
+    <linearGradient id="terminal-blue" x1="13" y1="7" x2="88" y2="94" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#367DA3"/>
+      <stop offset=".30" stop-color="#245E80"/>
+      <stop offset=".58" stop-color="#174D70"/>
+      <stop offset=".82" stop-color="#0B2A43"/>
+      <stop offset="1" stop-color="#06111E"/>
+    </linearGradient>
+
+    <radialGradient id="ambient-light" cx="28" cy="13" r="70" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#D8EAF0" stop-opacity=".28"/>
+      <stop offset=".30" stop-color="#91B9CB" stop-opacity=".10"/>
+      <stop offset="1" stop-color="#91B9CB" stop-opacity="0"/>
+    </radialGradient>
+
+    <linearGradient id="inner-depth" x1="25" y1="20" x2="75" y2="88" gradientUnits="userSpaceOnUse">
+      <stop offset=".40" stop-color="#020812" stop-opacity="0"/>
+      <stop offset="1" stop-color="#020812" stop-opacity=".22"/>
+    </linearGradient>
+
+    <!-- One pattern unit equals one logical pixel in the 16 × 16 source grid. -->
+    <pattern id="pixel-bevel" width="6.25" height="6.25" patternUnits="userSpaceOnUse">
+      <rect width="6.25" height=".28" fill="#D8EAF0" opacity=".08"/>
+      <rect width=".28" height="6.25" fill="#D8EAF0" opacity=".05"/>
+      <rect y="5.92" width="6.25" height=".33" fill="#020812" opacity=".12"/>
+      <rect x="5.92" width=".33" height="6.25" fill="#020812" opacity=".08"/>
+    </pattern>
+
+    <!-- Sparse, deterministic micro-pixels: visible up close, silent at icon size. -->
+    <pattern id="micro-texture" width="12.5" height="12.5" patternUnits="userSpaceOnUse">
+      <rect x="1.55" y="2.20" width=".34" height=".34" fill="#F3F6F7" opacity=".09"/>
+      <rect x="8.30" y="1.25" width=".28" height=".28" fill="#91B9CB" opacity=".08"/>
+      <rect x="4.65" y="8.85" width=".32" height=".32" fill="#F3F6F7" opacity=".06"/>
+      <rect x="10.70" y="7.15" width=".36" height=".36" fill="#020812" opacity=".10"/>
+      <rect x="2.85" y="11.10" width=".26" height=".26" fill="#020812" opacity=".08"/>
+    </pattern>
+  </defs>
+
+  <g clip-path="url(#tao-clip)">
+    <rect width="100" height="100" fill="url(#terminal-blue)"/>
+    <rect width="100" height="100" fill="url(#ambient-light)"/>
+    <rect width="100" height="100" fill="url(#inner-depth)"/>
+    <rect width="100" height="100" fill="url(#pixel-bevel)"/>
+    <rect width="100" height="100" fill="url(#micro-texture)" opacity=".46"/>
+
+    <!-- Local specular steps follow one consistent top-left light source. -->
+    <g fill="#D8EAF0" opacity=".13">
+      <rect x="43.75" y="6.85" width="6.25" height=".42"/>
+      <rect x="25.80" y="13.05" width="12.50" height=".38"/>
+      <rect x="6.82" y="43.75" width=".38" height="6.25"/>
+      <rect x="43.75" y="44.28" width="6.25" height=".36"/>
+    </g>
+
+    <!-- Two short occlusion steps add depth without outlining the whole mark. -->
+    <g fill="#020812" opacity=".14">
+      <rect x="43.75" y="92.60" width="12.50" height=".46"/>
+      <rect x="43.75" y="74.08" width="6.25" height=".40"/>
+    </g>
+  </g>
+</svg>

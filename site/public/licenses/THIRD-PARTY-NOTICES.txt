@@ -1,0 +1,24 @@
+ZenTao CLI website — third-party notices
+
+Manrope
+Package: @fontsource-variable/manrope 5.3.0
+Copyright 2019 The Manrope Project Authors
+Source: https://github.com/sharanda/manrope
+Distribution: https://fontsource.org/fonts/manrope
+License: SIL Open Font License 1.1; see manrope-OFL-1.1.txt
+
+JetBrains Mono
+Package: @fontsource-variable/jetbrains-mono 5.3.0
+Copyright 2020 The JetBrains Mono Project Authors
+Source: https://github.com/JetBrains/JetBrainsMono
+Distribution: https://fontsource.org/fonts/jetbrains-mono
+License: SIL Open Font License 1.1; see jetbrains-mono-OFL-1.1.txt
+
+Phosphor Icons
+Package: @phosphor-icons/core 2.1.1
+Copyright (c) 2023 Phosphor Icons
+Source: https://github.com/phosphor-icons/phosphor-core
+License: MIT; see phosphor-MIT.txt
+
+Full license texts and copyright notices are copied without modification
+from the installed packages. These files are distributed with the site.
