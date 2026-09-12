@@ -16,7 +16,7 @@ describe('MCP server (stdio e2e smoke)', () => {
         async () => {
             const transport = new StdioClientTransport({
                 command: 'bun',
-                args: ['run', join(repoRoot, 'src/index.ts'), 'mcp'],
+                args: ['--no-env-file', 'run', join(repoRoot, 'src/index.ts'), 'mcp'],
                 cwd: repoRoot,
             });
 
@@ -100,7 +100,7 @@ describe('MCP server (stdio e2e smoke)', () => {
         writeFileSync(configFile, JSON.stringify({ currentProfile: selectedKey, profiles }));
         const transport = new StdioClientTransport({
             command: process.execPath,
-            args: [join(repoRoot, 'src/index.ts'), '--config', configFile, 'mcp'],
+            args: ['--no-env-file', join(repoRoot, 'src/index.ts'), '--config', configFile, 'mcp'],
             cwd: repoRoot,
             env: {
                 ...process.env,
@@ -142,6 +142,103 @@ describe('MCP server (stdio e2e smoke)', () => {
                 { path: '/b/api.php/v2/products/1', token: 'test-token-b' },
             ]);
             expect(JSON.parse(readFileSync(configFile, 'utf-8')).currentProfile).toBe(selectedKey);
+        } finally {
+            await client.close();
+            server.stop(true);
+            rmSync(dir, { recursive: true, force: true });
+        }
+    }, { timeout: 20_000 });
+
+    test('follows external profile, token and client option changes without mixing identities', async () => {
+        const requests: Array<{ path: string; token: string | null; recPerPage: string | null }> = [];
+        let delayProduct = false;
+        const server = Bun.serve({
+            hostname: '127.0.0.1',
+            port: 0,
+            async fetch(req) {
+                const url = new URL(req.url);
+                requests.push({ path: url.pathname, token: req.headers.get('Token'), recPerPage: url.searchParams.get('recPerPage') });
+                if (url.searchParams.get('mode') === 'getconfig') return Response.json({ version: '22.5' });
+                const account = url.pathname.startsWith('/a/') ? 'account-a' : 'account-b';
+                if (url.pathname.endsWith('/users')) return Response.json({ users: [{ account }] });
+                if (url.pathname.endsWith('/products')) return Response.json({ products: [{ id: 1, name: account }] });
+                if (delayProduct) await Bun.sleep(200);
+                return Response.json({ product: { id: 1, name: account } });
+            },
+        });
+        const dir = mkdtempSync(join(tmpdir(), 'zentao-cli-mcp-external-switch-'));
+        const configFile = join(dir, 'config.json');
+        const profiles = ['a', 'b'].map((id) => ({
+            server: new URL(id, server.url).toString(),
+            account: `account-${id}`,
+            token: `test-token-${id}`,
+            loginTime: '',
+            lastUsedTime: '',
+            config: { defaultRecPerPage: id === 'a' ? 13 : 27, timeout: 1000, insecure: false },
+        }));
+        const selectedKey = `account-b@${profiles[1].server}`;
+        const writeConfig = () => writeFileSync(configFile, JSON.stringify({ currentProfile: selectedKey, profiles }));
+        writeConfig();
+        const env = {
+            ...process.env,
+            ZENTAO_URL: profiles[0].server,
+            ZENTAO_ACCOUNT: profiles[0].account,
+            ZENTAO_TOKEN: profiles[0].token,
+            ZENTAO_PASSWORD: '',
+        };
+        const transport = new StdioClientTransport({
+            command: process.execPath,
+            args: ['--no-env-file', join(repoRoot, 'src/index.ts'), '--config', configFile, 'mcp'],
+            cwd: dir,
+            env,
+        });
+        const client = new Client({ name: 'zentao-cli-external-switch-test', version: '0.0.0' });
+        const getProduct = () => client.callTool({ name: 'zentao_product', arguments: { action: 'get', id: 1 } });
+        const getConfigRequestCount = () => requests.filter(({ path }) => path === '/a/' || path === '/b/').length;
+
+        try {
+            await client.connect(transport);
+            expect(await getProduct()).toMatchObject({ content: [{ text: expect.stringContaining('account-a') }] });
+            const switched = Bun.spawnSync({
+                cmd: [process.execPath, '--no-env-file', join(repoRoot, 'src/index.ts'), '--config', configFile, 'profile', 'account-b'],
+                cwd: dir,
+                env,
+            });
+            expect(switched.exitCode).toBe(0);
+
+            const currentProfile = await client.callTool({ name: 'zentao_profile', arguments: {} });
+            expect(currentProfile).toMatchObject({ content: [{ text: JSON.stringify({ account: 'account-b' }, null, 2) }] });
+            expect(requests.at(-1)).toMatchObject({ path: '/b/api.php/v2/users', token: 'test-token-b' });
+            expect(await getProduct()).toMatchObject({ content: [{ text: expect.stringContaining('account-b') }] });
+            expect(requests.at(-1)).toMatchObject({ path: '/b/api.php/v2/products/1', token: 'test-token-b' });
+
+            const configRequests = getConfigRequestCount();
+            profiles[1].config.defaultRecPerPage = 31;
+            writeConfig();
+            expect((await client.callTool({ name: 'zentao_product', arguments: { action: 'list' } })).isError).not.toBe(true);
+            expect(requests.at(-1)).toMatchObject({ path: '/b/api.php/v2/products', token: 'test-token-b', recPerPage: '31' });
+            expect(getConfigRequestCount()).toBe(configRequests);
+
+            profiles[1].token = 'test-token-b-refreshed';
+            writeConfig();
+            expect((await getProduct()).isError).not.toBe(true);
+            expect(requests.at(-1)).toMatchObject({ path: '/b/api.php/v2/products/1', token: 'test-token-b-refreshed' });
+
+            profiles[1].config.insecure = true;
+            writeConfig();
+            const beforeInsecureChange = getConfigRequestCount();
+            expect((await getProduct()).isError).not.toBe(true);
+            expect(getConfigRequestCount()).toBe(beforeInsecureChange + 1);
+
+            delayProduct = true;
+            profiles[1].config.timeout = 30;
+            writeConfig();
+            expect(await getProduct()).toMatchObject({ isError: true, content: [{ text: expect.stringContaining('E5001:') }] });
+
+            const beforeLogout = requests.length;
+            writeFileSync(configFile, JSON.stringify({ profiles: [] }));
+            expect(await getProduct()).toMatchObject({ isError: true, content: [{ text: expect.stringContaining('E1006:') }] });
+            expect(requests).toHaveLength(beforeLogout);
         } finally {
             await client.close();
             server.stop(true);

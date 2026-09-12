@@ -7,8 +7,7 @@ import type { ModuleDefinition, ModuleAction, ModuleActionOptions } from '../typ
 import { executeModuleCommand } from '../modules/executor.js';
 import { ZentaoError } from '../errors.js';
 import type { AuthProvider } from './server.js';
-import { findProfileByKey, getCurrentProfile, getProfileConfig, profileKey } from '../config/store.js';
-import { DEFAULT_CONFIG } from '../config/defaults.js';
+import { findProfileByKey, getProfileConfig, profileKey } from '../config/store.js';
 
 function buildToolDescription(mod: ModuleDefinition): string {
     const actions = mod.actions.map(a => a.name);
@@ -80,9 +79,8 @@ interface ToolInput {
 }
 
 async function handleProfileTool(auth: AuthProvider): Promise<CallToolResult> {
-    const client = await auth.getClient();
-    const profile = getCurrentProfile();
-    const account = profile?.account;
+    const { client, profile } = await auth.getContext();
+    const account = profile.account;
 
     const usersResp = await client.get<Record<string, unknown>>('/users', {
         query: { browseType: 'inside', recPerPage: 100 },
@@ -97,7 +95,7 @@ async function handleProfileTool(auth: AuthProvider): Promise<CallToolResult> {
     return {
         content: [{
             type: 'text',
-            text: JSON.stringify(user ?? profile?.user ?? {}, null, 2),
+            text: JSON.stringify(user ?? profile.user ?? {}, null, 2),
         }],
     };
 }
@@ -112,10 +110,8 @@ async function handleSwitchProfileTool(input: SwitchProfileInput, auth: AuthProv
         throw new ZentaoError('E1007');
     }
 
-    await auth.getClient(profile);
-
-    const current = getCurrentProfile();
-    const currentKey = current ? profileKey(current.account, current.server) : input.profileKey;
+    const { profile: current } = await auth.getContext(profile);
+    const currentKey = profileKey(current.account, current.server);
     return {
         content: [{
             type: 'text',
@@ -132,9 +128,8 @@ async function handleModuleTool(
     input: ToolInput,
     auth: AuthProvider,
 ): Promise<CallToolResult> {
-    const client = await auth.getClient();
-    const profile = getCurrentProfile();
-    const config = profile ? getProfileConfig(profile) : DEFAULT_CONFIG;
+    const { client, profile } = await auth.getContext();
+    const config = getProfileConfig(profile);
     const actionName = input.action;
 
     const opts: ModuleActionOptions = {

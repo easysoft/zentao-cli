@@ -1,25 +1,40 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { ZentaoClient } from '../api/index.js';
-import { ensureAuth } from '../auth/flow.js';
+import { ensureAuth, type AuthContext } from '../auth/flow.js';
+import { getCurrentProfile, getProfileConfig, normalizeServerUrl } from '../config/store.js';
+import { ZentaoError } from '../errors.js';
 import { registerModuleTools } from './tools.js';
 import { getCliVersion } from '../utils/version.js';
 import type { Profile } from '../types/index.js';
 
 export interface AuthProvider {
-    getClient(profile?: Profile): Promise<ZentaoClient>;
+    getContext(profile?: Profile): Promise<AuthContext>;
 }
 
 function createAuthProvider(options?: { insecure?: boolean; timeout?: number }): AuthProvider {
-    let client: ZentaoClient | null = null;
+    let context: AuthContext | undefined;
 
     return {
-        async getClient(profile?: Profile): Promise<ZentaoClient> {
-            if (client && !profile) return client;
+        async getContext(profile?: Profile): Promise<AuthContext> {
+            if (context && !profile) {
+                const current = getCurrentProfile();
+                if (!current?.token) throw new ZentaoError('E1006');
 
-            const auth = await ensureAuth({ ...options, profile });
-            client = auth.client;
-            return client;
+                const currentConfig = getProfileConfig(current);
+                const cachedConfig = getProfileConfig(context.profile);
+                if (normalizeServerUrl(current.server) === normalizeServerUrl(context.profile.server)
+                    && current.account === context.profile.account
+                    && current.token === context.profile.token
+                    && (options?.timeout ?? currentConfig.timeout) === (options?.timeout ?? cachedConfig.timeout)
+                    && (options?.insecure ?? currentConfig.insecure) === (options?.insecure ?? cachedConfig.insecure)) {
+                    return { client: context.client, profile: current };
+                }
+                profile = current;
+            }
+
+            // Environment credentials apply initially; later calls follow the selected saved profile.
+            context = await ensureAuth({ ...options, profile });
+            return context;
         },
     };
 }
