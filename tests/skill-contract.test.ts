@@ -18,6 +18,7 @@ interface SkillCommand {
 
 const SKILLS_DIR = join(process.cwd(), 'skills');
 const BUILTIN_COMMANDS = new Set([
+    '-V', '--version', '-h', '--help',
     'login', 'logout', 'profile', 'config', 'version', 'help',
     'ls', 'list', 'get', 'create', 'update', 'delete', 'do', 'autocomplete',
     'mcp', 'add-mcp', 'add-skill',
@@ -128,7 +129,7 @@ function resolveDocumentedAction(words: string[]): { module: ModuleDefinition; a
         return { module, action: getAction(module, 'list')!, actionIndex: 1 };
     }
     if (candidate === 'props' || candidate === 'help' || candidate.includes('/') || candidate === '...') return undefined;
-    if (/^\d+$/.test(candidate) || /^<[^>]*id[^>]*>$/i.test(candidate)) {
+    if (/^\d+(?:,\d+)*$/.test(candidate) || /^<[^>]*id[^>]*>$/i.test(candidate)) {
         return { module, action: getAction(module, 'get')!, actionIndex: 1 };
     }
     if (candidate.includes('<')) return undefined;
@@ -173,7 +174,8 @@ function missingRequiredParams(command: SkillCommand, words: string[], action: M
     const provided = optionNames(command.raw);
     const params = getModuleActionParams(words[1], action.name);
     const opaqueBody = provided.has('data') || provided.has('params');
-    const positional = words.slice(actionIndex + 1).some((word) => !word.startsWith('--') && (/^\d+$/.test(word) || /^<[^>]*id[^>]*>$/i.test(word)));
+    const positional = words.slice(actionIndex + 1).some((word) => !word.startsWith('--') && (/^\d+(?:,\d+)*$/.test(word) || /^<[^>]*id[^>]*>$/i.test(word)));
+    const firstPathID = params.find((param) => param.role === 'path' && param.name.endsWith('ID'))?.name;
     const hasScope = ['product', 'project', 'execution'].some((scope) => provided.has(scope) || provided.has(`${scope}ID`))
         || (provided.has('scope') && provided.has('scopeID'));
 
@@ -181,7 +183,8 @@ function missingRequiredParams(command: SkillCommand, words: string[], action: M
         if (!param.required || param.defaultValue !== undefined) return [];
         if (param.role === 'path') {
             if (param.name === 'scope' || param.name === 'scopeID') return hasScope ? [] : [param.name];
-            return provided.has(param.name) || provided.has('id') || positional ? [] : [param.name];
+            const providedByID = param.name === firstPathID && (provided.has('id') || positional);
+            return provided.has(param.name) || providedByID ? [] : [param.name];
         }
         if (param.role === 'body' && (action.type === 'update' || opaqueBody)) return [];
         return provided.has(param.name) ? [] : [param.name];
@@ -204,6 +207,18 @@ function contradictoryFilters(command: string): string[] {
 }
 
 describe('bundled Skill command contracts', () => {
+    test('documented ID shorthand satisfies only the first path ID', () => {
+        for (const raw of [
+            'zentao doc myDocs 1',
+            'zentao doc myDocs --id=1',
+        ]) {
+            const words = shellWords(raw);
+            const resolved = resolveDocumentedAction(words)!;
+            const command = { file: 'example.md', line: 1, raw, fenced: true };
+            expect(missingRequiredParams(command, words, resolved.action, resolved.actionIndex)).toEqual(['libID']);
+        }
+    });
+
     test('all documented commands match the current CLI and SDK schemas', () => {
         const commands = extractSkillCommands();
         const issues: string[] = [];

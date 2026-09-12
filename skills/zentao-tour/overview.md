@@ -1,114 +1,91 @@
 # 禅道与 zentao-cli 速览
 
-本文档服务于 [SKILL.md](SKILL.md) 的 "第 1 步"，用于向用户快速介绍禅道与 zentao-cli，并完成工具就绪检查。
+供 [SKILL.md](SKILL.md) 按需读取。用户只想了解概念时，介绍与当前角色相关的对象即可。
 
-## 什么是禅道
+## 对象怎么串起来
 
-禅道（ZenTao）是一款开源的一站式项目管理平台，覆盖研发团队的完整工作流：
-
-- **需求管理**：记录、评审、变更业务需求与用户故事
-- **项目管理**：组建项目、制定计划、排期执行
-- **任务管理**：拆分任务、分派开发、跟踪进度
-- **Bug 管理**：提交、指派、解决、回归 Bug
-- **测试管理**：编写测试用例、执行测试单、记录缺陷
-- **发布管理**：管理版本与发布，沉淀交付记录
-
-核心对象之间的关系：
+禅道覆盖需求、项目、任务、Bug、测试与交付管理。产品承载需求；项目组织研发工作并关联产品；执行按项目模型表现为迭代、阶段或看板，任务在执行中推进。
 
 ```mermaid
 flowchart LR
-    Program[项目集] --> Product[产品]
-    Program --> Project[项目]
+    Program[项目集] --> Project[项目]
+    Project -->|关联| Product[产品]
     Product --> Story[需求]
-    Product --> ProductPlan[产品计划]
-    Product --> Release[发布]
-    Project --> Execution[执行/迭代]
+    Product --> Plan[产品计划]
+    Plan -->|安排| Story
+    Project --> Execution[执行：迭代/阶段/看板]
     Execution --> Task[任务]
-    Execution --> Build[版本]
+    Task -->|关联| Story
     Product --> Bug[Bug]
-    Product --> TestCase[测试用例]
-    Execution --> TestTask[测试单]
-    ProductPlan --> Story
-    Story --> Task
+    Product --> Case[测试用例]
+    Execution --> Build[版本/构建]
+    Build --> TestTask[测试单]
+    Product --> Release[发布]
 ```
 
-简单理解：**产品承载需求**，**项目承载执行（迭代）**，**执行承载任务**；Bug 和测试用例属于产品，测试单属于执行。
+这是常见路线，不是所有关系的穷举。产品计划安排交付范围和时间，不等于执行迭代；测试单指定提测版本，也可关联执行。不要仅凭图中关系推断 CLI 有相应关联动作。
 
-## 什么是 zentao-cli
+## 安装与登录
 
-[zentao-cli](https://github.com/easysoft/zentao-cli) 是官方命令行工具，封装了禅道 RESTful API v2.0，特点：
-
-- 覆盖 20+ 模块（产品、项目、执行、需求、Bug、任务、测试用例、计划、版本、发布、反馈、工单等）的 CRUD 与状态流转
-- 对 AI 友好：默认输出 Markdown 表格便于阅读，加 `--format=json` 可获取结构化数据
-- 内置过滤、排序、分页、模糊搜索、字段摘取
-
-更多命令细节见 [zentao-cli 技能文档](../zentao-cli/SKILL.md)。
-
-## 两种接入方式
-
-### 方式一：本地 CLI（推荐，快速上手）
-
-优先使用系统中已有的包管理器全局安装：
+先复用已经可用的 CLI 或 MCP。命令不存在且用户需要本地 CLI 时，使用用户已有的包管理器安装，例如：
 
 ```bash
 npm install -g zentao-cli
-# 或 bun install -g zentao-cli
-# 或 pnpm install -g zentao-cli
-# 也可免安装：npx zentao-cli
 ```
 
-首次使用登录禅道：
+让用户在自己的交互终端登录，按提示输入服务地址、账号和凭证：
 
 ```bash
-zentao login -s https://zentao.example.com -u <账号> -p <密码>
+zentao login
 ```
 
-登录成功后凭证缓存在 `~/.config/zentao/zentao.json`，后续无需重复登录。
+不要让用户把密码或 Token 发到聊天里，也不要把真实凭证写进命令参数、示例、日志或仓库文件。无法进行交互输入时，使用用户已安全注入的 `ZENTAO_URL`、`ZENTAO_ACCOUNT` 和 `ZENTAO_PASSWORD` / `ZENTAO_TOKEN`；需要强制按这些环境变量登录时使用 `zentao login --useEnv`。不要为检查变量而打印值。
 
-也可以通过环境变量配置（优先级低于命令行参数）：`ZENTAO_URL`、`ZENTAO_ACCOUNT`、`ZENTAO_PASSWORD`、`ZENTAO_TOKEN`。
+默认配置在 `~/.config/zentao/zentao.json`，保存账号、服务器和 Token，不保存密码。`--config` / `ZENTAO_CONFIG_FILE` 可指定其他配置文件；沿用用户当前配置，不读取或展示整份凭证文件。
 
-### 方式二：配置为 MCP 服务
-
-若用户使用的智能工具（如 Cursor、Claude Desktop 等）支持 MCP（Model Context Protocol），可将 zentao-cli 注册为 MCP 服务，直接在对话中调用禅道能力。通用配置思路：
-
-```json
-{
-  "mcpServers": {
-    "zentao": {
-      "command": "npx",
-      "args": ["-y", "zentao-cli", "mcp"],
-      "env": {
-        "ZENTAO_URL": "https://zentao.example.com",
-        "ZENTAO_ACCOUNT": "<账号>",
-        "ZENTAO_TOKEN": "<token>"
-      }
-    }
-  }
-}
-```
-
-具体 MCP 启动方式与参数以 [zentao-cli 仓库](https://github.com/easysoft/zentao-cli) 的最新说明为准；不同智能工具的配置文件位置不同（Cursor 的 `~/.cursor/mcp.json`、Claude Desktop 的 `claude_desktop_config.json` 等）。
-
-## 就绪自检
-
-正式开始前，顺手跑一下这两条，把账号和连通性确认掉：
+## 就绪检查与离线帮助
 
 ```bash
-zentao profile                               # 确认已登录，显示当前账号
-zentao product --pick=id,name               # 能正常拉取产品列表
+zentao profile
+zentao product --pick=id,name --page=1 --recPerPage=5
 ```
 
-如果返回错误：
+第一条只读本地账号列表，不验证凭证、连通性或角色；第二条才是一次真实的只读业务请求。用户已指定别的业务范围时，可用该范围内的只读请求替代产品查询。产品返回空列表不代表服务未连通，更不代表必须新建产品。没有本地 profile（E1006）但已配置环境凭证时，也不能据此认定无法使用。
 
-- `E1001` / `E1004`：未登录或 Token 失效 → 让用户执行 `zentao login ...`
-- 命令找不到（`command not found`）→ 回到上文"方式一"安装
-- 网络错误 / `E5001` → 检查禅道服务地址是否正确、网络是否可达
+CLI 已安装但尚未登录时，仍可使用：
 
-通了之后回到 SKILL.md，顺势问用户想从哪个角色切入就好。
+```bash
+zentao version
+zentao my tasks --help
+zentao task start --help
+zentao task props --format=json
+```
+
+`version` 展示 CLI 版本及本地记录的服务器信息，不主动验证服务端版本。操作帮助列出输入参数与最低禅道版本；`props` 展示返回对象属性，不能据此猜测写入参数。实际业务请求会获取服务端配置并检查当前版本，帮助中有操作不等于当前服务器和账号允许执行。
+
+新增操作如 `my tasks`、`my bugs`、`execution projectExecutions` 通常要求 22.5 / biz13.5 / max8.5 / ipd5.5，具体按操作帮助。出现 E2010 时按角色文件降级；服务配置/版本不合法（E2011 / E2012）时先解决配置问题。
+
+## MCP 接入
+
+已连接 MCP 时直接复用。无需登录的 `zentao_action_help` 接受 `{"module":"my","action":"tasks"}` 等参数，返回路径、参数类型、必填项及 `minVersion`；适合先讲解能力，再连接业务环境。业务调用使用实际暴露的模块工具及其参数，不把 CLI 命令字符串当作 MCP 参数。
+
+用户需要配置 MCP 时，先查看本地支持的目标，再为他选定的客户端安装：
+
+```bash
+zentao add-mcp --help
+zentao add-mcp cursor
+```
+
+第二条是用户选用 Cursor 时的示例，会将当前服务器、账号和 Token 写入该客户端的本地 MCP 配置；应在用户要求配置该客户端的范围内使用，不自动配置全部客户端。不要打印配置里的 Token。手工配置、其他客户端与认证细节按 [zentao-cli 技能](../zentao-cli/SKILL.md) 处理。
+
+## 查询结果的边界
+
+默认 Markdown 适合浏览，`--format=json` 适合处理结构化数据。查询候选时可以只看一页；做完整统计时，根据返回 `pager` 逐页读取，保留统计所需字段，并记录账号可见范围。
+
+`--filter`、`--sort`、`--search`、`--pick`、`--limit` 都在客户端处理当前页。单个 `--filter` 内的条件是 AND，重复该选项表示 OR。服务端 `browseType`、`orderBy`、`filters` 则以当前操作帮助为准；各操作的默认范围并不相同。只对帮助列出分页参数的操作使用分页选项，不能用 `--all` 自动拉全量。
 
 ## 外部资料
 
 - [禅道官网](https://www.zentao.net/)
 - [禅道使用手册](https://www.zentao.net/book/zentaopms/38.html)
-- [禅道不同版本功能对比](https://www.zentao.net/compare-features.html)
 - [zentao-cli 仓库](https://github.com/easysoft/zentao-cli)

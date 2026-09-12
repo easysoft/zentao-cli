@@ -1,107 +1,64 @@
 # 项目经理视角
 
-用户选了这个身份，意味着他关心的是"怎么把事情安排下去、推进下去"。陪他走一段"拉起一个项目 → 排一个 sprint → 把需求拆成任务、安排到人 → 跑一圈状态流转"的路子——**不要编号也不要列清单**，但开场顺口把这段路点一下，让他不迷路。
+从“这个项目下一步怎么安排”切入，把项目、执行、任务和人员串起来。遵循 [共同规则](../SKILL.md)，优先使用现有项目和执行；体验不要求重新建一套，也不要求把任务全部流转到完成。
 
-## 开场：一句话点路，马上动手
-
-示例开场（可变奏，别照抄）：
-
-> "那我们大概这样走：先挂个项目到某个产品下面，再开一个 sprint，把两三条需求拆成任务、排到人，最后跑一遍状态流转让你感受一下节奏。随时说换或者停都行。
->
-> 先看看你们禅道里现在有哪些产品——项目总得挂在某个产品下面。"
-
-顺手跑一下，让用户从现有产品里挑：
+## 先选已有项目与执行
 
 ```bash
-zentao product --pick=id,name --limit=10
+zentao project --browseType=all --pick=id,name,model,status,begin,end --page=1 --recPerPage=10
+zentao execution projectExecutions --projectID=<项目ID> --browseType=all --pick=id,name,type,status,begin,end --page=1 --recPerPage=20
 ```
 
-如果一条都没有，别卡住，顺手建议："要不我们借 PM 视角先捏一个玩具产品出来？"（跳到 [pm.md](pm.md) 的建产品那段，建完回来）。
-
-## 拉起项目这件事，用最简几个字段就够
-
-和用户聊清这几样就可以动手：
-
-- 项目叫什么（`name`，建议与产品呼应，比如"XXX v1 研发"）
-- 起止日期（`begin` / `end`，给 4 周 / 8 周 / 12 周 三挡让他挑）
-- 绑定哪个产品（`products`）
-- 项目管理方式（`model`，不确定时可先用 `scrum`）
-- 项目流程（`workflowGroup`，开源版用 `0`，付费版使用实际流程 ID）
-
-征得同意后执行：
+第二条是直接查询项目执行的新入口，使用前可查 `zentao execution projectExecutions --help`。E2010 时，改用全局执行列表分页读取并按 `project` 筛选；过滤后空页不能作为终止条件：
 
 ```bash
-zentao project create --name="..." --model=scrum --begin=<YYYY-MM-DD> --end=<YYYY-MM-DD> --products=<产品ID> --workflowGroup=0
+zentao execution --browseType=all --filter='project=<项目ID>' --pick=id,name,type,status,project --page=<页码> --recPerPage=100 --format=json
 ```
 
-记下返回的项目 ID——后面 `zentao execution` 的 `--project` 要用。
+项目可关联产品，产品不是项目的必填“父对象”。下面的创建例子走常见的产品研发路线，只在用户确实需要新项目或演示对象时采用。
 
-用**回顾 + 钩子**的一句话过渡："《XXX 研发》已经开张了，挂在《产品 XXX》下面——项目像个大框，还得切成一段段小冲刺才推得动。你们团队习惯两周一个 sprint 还是更长？"
+## 需要新建时，明确模型和日期
 
-## 接着把 Sprint 建出来
-
-用户答完周期后：
+说明项目名称、起止日期、管理方式和关联产品。`scrum` 是敏捷项目示例，不替用户已有的瀑布或看板项目改模型。数组字段用 JSON；下文 `12` 是示例产品 ID，必须替换为实际选定产品。
 
 ```bash
-zentao execution create --project=<项目ID> --name="Sprint 1" --begin=... --end=... --products=<产品ID>
+zentao project create --name="<项目名称>" --model=scrum --begin=<YYYY-MM-DD> --end=<YYYY-MM-DD> --workflowGroup=0 --data '{"products":[12]}'
 ```
 
-记下返回的执行 ID——后面 `zentao task create --executionID=<执行ID> --name="..."` 会一直用到。
+当前 CLI 将 `workflowGroup` 定义为必填：开源版示例用 `0`；付费版应使用实际项目流程 ID，不照抄 `0`。服务器支持时可用 `zentao workflow --help`、`zentao workflow` 查看流程；不支持时使用用户提供或界面中核实的配置，不能编造 ID。
 
-一句话过渡到下一段："Sprint 1 挂好了——空的 sprint 没啥意思，我们挑几条需求塞进来拆成任务？"
-
-## 顺势把需求拆成任务
-
-> "既然 sprint 立起来了，我们挑几条需求塞进去？"
-
-先看可以塞什么：
+拿到真实项目 ID 后，创建迭代：
 
 ```bash
-zentao story --product=<产品ID> --filter='stage=wait' --pick=id,title,pri
+zentao execution create --project=<项目ID> --name="Sprint 1" --type=sprint --begin=<YYYY-MM-DD> --end=<YYYY-MM-DD> --data '{"products":[12]}'
 ```
 
-和用户挑 2–3 条就够，别贪多。对每一条都问一句"你打算把它拆成几个任务？给谁做？预估几小时？"——用户给出一组就创建一个：
+执行并非都叫 sprint。按 `zentao execution create --help` 与项目模型选用 `sprint`、`stage` 或 `kanban`；阶段还可用 `parent` 指定父阶段、`attribute` 指定阶段类型。用户使用 IPD 时，创建阶段必须显式传 `type=stage`；仅在确实需要时展开这些字段。
+
+## 把已有需求拆成任务
+
+先在实际产品范围内找需求，查看其状态和是否已关联执行：
 
 ```bash
-zentao task create --executionID=<执行ID> --story=<需求ID> --name="..." --type=devel --assignedTo=<账号> --estimate=<小时>
+zentao story --product=<产品ID> --browseType=allstory --pick=id,title,pri,status,stage --page=1 --recPerPage=20
 ```
 
-拆到第三条的时候可以主动刹车："节奏差不多了，想不想看看现在已经排成什么样？"
-
-## 让他看到"进度"是什么感觉
+选一条讨论任务拆分、负责人和预估工时。读取需求详情，确认具备进入该执行的条件；如需把需求关联到执行，而当前 CLI 没有对应动作，说明应在禅道界面完成，不把创建任务当作已经关联需求的证据。
 
 ```bash
-zentao task --executionID=<执行ID> --pick=id,name,status,assignedTo,estimate
+zentao task create --executionID=<执行ID> --story=<需求ID> --name="<任务名称>" --type=devel --assignedTo=<账号> --estimate=<小时>
 ```
 
-如果用户对流转感兴趣，顺手演示一个任务从开始到完成：
+`assignedTo` 使用实际账号，必要时从执行成员里核对，不能从姓名猜账号。已批准的任务可以按批次完成，结果部分失败时仅继续处理未成功部分。
+
+## 看分工与进展
 
 ```bash
-zentao task start <id> --realStarted="<YYYY-MM-DD HH:mm:ss>"
-zentao task finish <id> --currentConsumed=<本次小时> --realStarted="<YYYY-MM-DD HH:mm:ss>" --finishedDate="<YYYY-MM-DD HH:mm:ss>"
+zentao task --executionID=<执行ID> --browseType=all --pick=id,name,status,assignedTo,estimate,consumed,left --page=<页码> --recPerPage=100 --format=json
 ```
 
-边演示边用一句话解释 status 从 `wait` → `doing` → `done` 的变化，就足够了。
+按 pager 完整读取后，才能统计这个执行的工作量或状态分布。区分预计、累计消耗和剩余工时；少数任务或当前页不能代表整个项目。
 
-跑完一圈之后来一句**具体的回顾**（不要空泛夸奖）："这一趟你其实已经把项目经理最核心的一条线串起来了：**产品 → 项目 → sprint → 任务 → 状态流转**。禅道里所有的进度汇总、人力统计都是从这条线长出来的。"
+如果用户只想了解状态，说明 `wait → doing → done` 即可。需要实际登记开始/完成时，转到 [开发视角](dev.md) 的工时与状态命令，核对真实进展和时间；不要为展示看板效果写入虚假完成记录。
 
-## 自然收尾
-
-出现下列信号之一就可以收：
-
-- 用户开始问"那 Bug 呢 / 测试呢"——介绍测试视角的存在，邀请切换。
-- 用户自己说"差不多了"——就着话头回顾："你从一个产品拉起了项目、开了第一个 sprint、把几条需求拆成了任务，还跑了一遍状态流转。"
-- 对话自然淡下来——回到 [../SKILL.md](../SKILL.md) 的收尾流程，问要不要换身份或清理演示数据。
-
-## 写操作速查（给 AI 用）
-
-| 动作 | 命令 |
-|------|------|
-| 建项目 | `zentao project create --name= --model=scrum --begin= --end= --products=<产品ID> --workflowGroup=0` |
-| 建 Sprint | `zentao execution create --project= --name= --begin= --end= --products=<产品ID>` |
-| 建任务 | `zentao task create --executionID= --story= --name= --type=devel --assignedTo= --estimate=` |
-| 启动任务 | `zentao task start <id> --realStarted="<YYYY-MM-DD HH:mm:ss>"` |
-| 完成任务 | `zentao task finish <id> --currentConsumed=<本次小时> --realStarted="<YYYY-MM-DD HH:mm:ss>" --finishedDate="<YYYY-MM-DD HH:mm:ss>"` |
-| 查执行下任务 | `zentao task --executionID=<id> --pick=id,name,status,assignedTo` |
-
-> 本视角目前剧情比较轻，欢迎根据真实团队节奏补得更丰满。
+收尾说明已确认的项目、执行、分工和未完成安排，按 [收尾规则](../SKILL.md) 处理。测试组织问题可转到 [测试视角](test.md)。

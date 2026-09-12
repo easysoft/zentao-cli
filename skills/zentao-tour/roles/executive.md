@@ -1,97 +1,66 @@
 # 高管视角
 
-用户选了这个身份，意味着他不想看"一条记录"而想看"整体情况"。陪他从几个入口溜一圈全局数据，**只读、不写**，也**别列 4 个维度**。
+只读查看项目节奏、产品健康、发布或团队反馈，选用户最关心的一两个方向展开。不要为了演示报表修改任何业务记录；需要操作时先明确新范围，再转对应角色。
 
-## 开场：一句话点路，再让他挑一块最关心的
+## 先说明数据范围
 
-示例开场：
+确认关注的项目/产品和时间范围，展示结果时说明当前账号可见范围与查询时间。以下 `<页码>` 从 1 开始，按各请求的 pager 逐页读取；每个执行的任务也分别翻完。客户端筛选后为空仍可能有后续页，不能因此结束读取。完整规则见 [SKILL.md](../SKILL.md)。
 
-> "高管视角其实就是从不同角度扫一眼全局——项目节奏、产品健康度、发布动静、团队声音，都是入口。我们不用四个都看，挑你现在最想知道的那一块深挖就够了。
->
-> 你现在最想先看哪块？"
+一页候选可以帮助用户选目标；做总数、分布、最近记录或全局排序时，先拿全约定范围。权限、版本或分页失败的范围标为缺失，不计作零。`--pick` 保留判断所用字段，不用缺失字段推断健康状态。
 
-用 AskQuestion 给 4 个选项：
+## 项目节奏
 
-- 项目节奏
-- 产品健康度（需求 / Bug 分布）
-- 发布与版本
-- 团队反馈与工单
-
-根据选择从下面对应段切入。**不要全部都看一遍**，陪用户挖他真正关心的那 1–2 个就好。
-
-## 如果他关心项目节奏
+先列进行中的项目供选择；若要包含未开始、已延期或已关闭项目，按约定范围改用 `browseType=all`：
 
 ```bash
-zentao project --browseType=doing --pick=id,name,begin,end,progress
+zentao project --browseType=doing --pick=id,name,status,begin,end,progress --page=<页码> --recPerPage=100 --format=json
 ```
 
-让他扫一眼，问："有没有哪条看着不对劲？进度慢的、日期要到的？"——挑出一个深入看：
+围绕一个项目查看执行和任务：
 
 ```bash
-zentao execution projectExecutions --projectID=<id> --browseType=all --pick=id,name,status --page=<页码> --recPerPage=100
-zentao task --executionID=<执行ID> --browseType=all --pick=id,status --page=<页码> --recPerPage=100 --format=json
+zentao execution projectExecutions --projectID=<项目ID> --browseType=all --pick=id,name,status,begin,end --page=<页码> --recPerPage=100 --format=json
+zentao task --executionID=<执行ID> --browseType=all --pick=id,name,status,assignedTo,estimate,consumed,left --page=<页码> --recPerPage=100 --format=json
 ```
 
-先用 `zentao execution projectExecutions --help` 查看最低版本；服务器支持时直接按项目逐页查询。旧版服务器返回 E2010 时，使用 `zentao execution --browseType=all --filter='project=<id>' --page=<页码> --recPerPage=100`，扫完全局执行列表的每一页，收集该项目的执行 ID。再对每个执行按任务 pager 逐页读取，本地聚合"wait/doing/done 各多少"，用一句话汇报给用户。
-
-## 如果他关心产品健康度
+`projectExecutions` 的最低版本见 `zentao execution projectExecutions --help`。遇到 E2010，分页读取全局执行，再筛选项目并收集执行 ID：
 
 ```bash
-zentao product --pick=id,name,status
+zentao execution --browseType=all --filter='project=<项目ID>' --pick=id,name,status,project --page=<页码> --recPerPage=100 --format=json
 ```
 
-挑他在意的那个产品：
+按对象 ID 去重，汇总每种实际状态的数量，不把 `pause`、`cancel`、`closed` 隐去。若计算完成率，先说明分母是否排除取消任务；不要把任务数量完成率、工时进度和服务端 `progress` 当作同一指标。计划结束日已过可以提示核对延期，不能仅据此断言实际交付失败。
+
+## 产品健康度
 
 ```bash
-zentao story --product=<id> --browseType=allstory --pick=id,pri,stage,plan --page=<页码> --recPerPage=100 --format=json
-zentao bug --product=<id> --browseType=all --pick=id,severity,pri,status --page=<页码> --recPerPage=100 --format=json
+zentao product --pick=id,name,status --page=<页码> --recPerPage=100 --format=json
+zentao story --product=<产品ID> --browseType=allstory --pick=id,title,pri,status,stage,plan --page=<页码> --recPerPage=100 --format=json
+zentao bug --product=<产品ID> --browseType=all --pick=id,title,severity,pri,status --page=<页码> --recPerPage=100 --format=json
 ```
 
-根据 pager 逐页读完再做简单统计（高优先级未处理需求数、严重 Bug 数），用两句话告诉用户："《XXX》当前有 N 条高优需求还没排期，严重 Bug M 条——主要堆在这几个 severity 上。"
+明确统计口径后再计算。例如“激活状态、优先级 1–2、尚未排入计划的需求”和“激活状态、严重程度 1–2 的 Bug”。`pri` 是优先级，`severity` 是严重程度，不能互相代替；`plan` 的空值/数组/对象形态以实际返回为准，缺失时补查询或说明无法判断。
 
-## 如果他关心发布与版本
+用一两句话报告数量和集中位置，再挑影响最大的具体对象查看；没有历史对照数据时不声称数量“正在上升”或“持续好转”。
+
+## 发布与版本
 
 ```bash
-zentao release --productID=<id> --pick=id,name,date,status
-zentao build --project=<projectID> --pick=id,name,date
+zentao release --productID=<产品ID> --browseType=all --pick=id,name,date,status --page=<页码> --recPerPage=100 --format=json
+zentao build --project=<项目ID> --browseType=all --pick=id,name,date,product --page=<页码> --recPerPage=100 --format=json
 ```
 
-挑最近一次已发布和最近一次待发布，用一句话把时间节点说出来。
+读完整个约定范围后，再按日期及状态挑近期记录。发布的 `date` 是计划发布日期，不能直接当作实际完成上线的时间；构建存在也不等于已经发布。只在返回状态和已知事实支持时说明实际交付情况。
 
-## 如果他关心团队声音
+## 反馈与工单
 
 ```bash
-zentao feedback --productID=<id> --browseType=all --pick=id,title,status,pri
-zentao ticket --productID=<id> --browseType=all --pick=id,title,status,pri
+zentao feedback --productID=<产品ID> --browseType=all --pick=id,title,status,pri,type --page=<页码> --recPerPage=100 --format=json
+zentao ticket --productID=<产品ID> --browseType=all --pick=id,title,status,pri,type --page=<页码> --recPerPage=100 --format=json
 ```
 
-扫一下高频类别或未处理量，用一两句汇报热点。
+说明哪些状态算未处理，再统计数量与类型。反馈、工单是不同对象，不直接相加当作去重后的“用户问题总数”；标题相似也不能自动认定同一问题。模块不可用或无权访问时，说明缺失范围并继续已有的只读分析。
 
-## 顺势介绍一招"驾驶舱"技巧
+## 收尾
 
-挖完用户关心的那块之后，顺手点一句**回顾 + 钩子**：
-
-> "刚才我们用了不到十条命令，就把《XXX》这块的健康度摸清楚了——其实这些查询加 `--format=json` 之后都能本地汇总，就是一个极简驾驶舱。你想要哪类数字定期看，我都可以帮你凑一个小脚本。"
-
-这是钩子，不必当场实现，除非用户明确要。
-
-## 自然收尾
-
-- 用户满足了——用一句话回顾他看过的那一两个维度，然后回到 [../SKILL.md](../SKILL.md) 的收尾流程。
-- 用户问起操作类的事（比如"这条 Bug 谁来解"）——说"这就得换开发视角 / 项目经理视角了"，邀请切换。
-
-## 查询速查（给 AI 用）
-
-| 关注点 | 命令 |
-|--------|------|
-| 进行中的项目 | `zentao project --browseType=doing --pick=id,name,progress,begin,end` |
-| 项目下的执行 | `zentao execution projectExecutions --projectID=<id> --browseType=all --pick=id,name,status --page=<页码> --recPerPage=100`|
-| 任务状态聚合 | `zentao task --executionID=<id> --browseType=all --pick=status --page=<页码> --recPerPage=100 --format=json` |
-| 产品下需求概览 | `zentao story --product=<id> --browseType=allstory --pick=id,pri,stage,plan --page=<页码> --recPerPage=100 --format=json` |
-| 产品下 Bug 概览 | `zentao bug --product=<id> --browseType=all --pick=id,severity,pri,status --page=<页码> --recPerPage=100 --format=json` |
-| 即将 / 最近发布 | `zentao release --productID=<id> --pick=id,name,date,status` |
-| 版本 | `zentao build --project=<id> --pick=id,name,date` |
-| 用户反馈 | `zentao feedback --productID=<id> --browseType=all --pick=id,title,status,pri` |
-| 工单 | `zentao ticket --productID=<id> --browseType=all --pick=id,title,status,pri` |
-
-> 本视角完全只读，不要触发任何 create / update / delete。
+用几句话回顾本次查到的事实、统计口径和仍需核对的点，保留关键对象 ID 便于追查。用户要定期看这些数字时再讨论查询脚本或定期运行，不把一次查询默认变成持续监控。回到 [SKILL.md](../SKILL.md) 结束或切换角色。

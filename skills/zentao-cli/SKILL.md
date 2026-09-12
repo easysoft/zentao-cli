@@ -1,6 +1,6 @@
 ---
 name: zentao-cli
-description: 通过 zentao 命令行工具查询和操作禅道（ZenTao）数据，覆盖项目集、产品、项目、执行、需求、Bug、任务、测试用例、测试单、产品计划、版本、发布、反馈、工单、应用、用户、附件、文档、待办、地盘、问题、风险、会议、工作流等模块的增删改查及状态流转。当用户提到禅道、zentao、查询项目进展、获取 Bug 列表、创建任务、更新需求状态等项目管理操作时使用本技能。
+description: 使用 zentao CLI 或已连接的禅道 MCP 查询、创建和更新禅道数据，执行需求、任务、Bug 等状态流转，汇总项目进展，并排查认证、参数与版本兼容问题。用户要求操作禅道、查询个人工作或配置 zentao-cli 接入时使用；首次体验和按角色上手可结合 zentao-tour。
 license: MIT
 metadata:
   author: Sun Hao <sunhao@chandao.com>
@@ -11,294 +11,108 @@ metadata:
 
 # 禅道 CLI
 
-通过 `zentao` 命令行工具查询和操作禅道数据。CLI 自动处理认证，支持分页、数据过滤和排序。
+通过 `zentao` 操作禅道。以当前安装版本的离线帮助为命令依据；字段、动作和最低服务器版本可能随 CLI / SDK 更新。
 
-## 前置准备
+## 开始工作
 
-### 安装
+已有可用 CLI 或禅道 MCP 时直接复用。先确认用户要访问的站点、对象范围和操作；上下文已明确的内容不用重复询问。
 
 ```bash
-npm install -g zentao-cli
-# 或 bun install -g zentao-cli
-# 或 pnpm install -g zentao-cli
-# 或免安装运行：npx zentao-cli
+zentao --version
+zentao help
+zentao profile --format=json
 ```
 
-如果用户没有安装，引导用户进行全局安装使用，如果系统存在 bun 或 pnpm 则优先使用 bun 或 pnpm 进行全局安装。
+- `help`、模块/操作 `--help`、`props` 无需登录。先查帮助再准备请求，不必为查看参数连接服务器。
+- `profile` 只列出本地保存的账号和站点，不校验 Token、网络或业务角色。需要验证连接时，在用户要访问的范围内执行一个只读查询。
+- 未配置本地账号时 `profile` 返回 `E1006`；完整环境凭证仍可用于业务命令。不要据此断言服务不可用。
+- 未安装时按用户环境选择 `npm install -g zentao-cli`、`bun install -g zentao-cli` 或 `pnpm install -g zentao-cli`；一次性运行可用 `npx zentao-cli <参数>`。
 
-### 认证
+### 认证与账号选择
 
-首次执行任意 `zentao` 命令会自动提示登录。也可显式登录：
+业务命令缺少凭证会报错，不会自动弹出登录。需要登录时让用户在自己的交互终端执行 `zentao login`，由 CLI 收集凭证。不要在对话里收集密码或 Token，不要读取、打印凭证环境变量或本地凭证文件。
+
+自动化凭证由运行环境提供：`ZENTAO_URL` + `ZENTAO_ACCOUNT` + `ZENTAO_TOKEN` 或 `ZENTAO_PASSWORD`。同源同时提供 Token 和密码时优先 Token。业务命令优先使用完整环境凭证，再回退到当前保存的 Profile。
 
 ```bash
-zentao login -s https://zentao.example.com -u admin -p 123456
+zentao profile 'admin@https://zentao.example.com'
 ```
 
-环境变量（优先级低于命令行参数）：
+上述命令切换本地默认账号；完整环境凭证仍会优先，不能仅凭切换成功认定后续请求使用了该账号。需由运行环境维护者调整凭证来源；MCP 显式切换见 [references/mcp.md](references/mcp.md)。
 
-| 变量 | 说明 |
-|------|------|
-| `ZENTAO_URL` | 禅道服务地址 |
-| `ZENTAO_ACCOUNT` | 用户账号 |
-| `ZENTAO_PASSWORD` | 密码 |
-| `ZENTAO_TOKEN` | 直接指定 Token（有此变量可省略密码） |
+默认凭证文件为 `~/.config/zentao/zentao.json`；自定义路径可用全局 `--config <路径>` 或 `ZENTAO_CONFIG_FILE`，前者优先。沿用用户选定的配置路径，不通过直接读取文件确认身份。
 
-登录成功后凭证缓存在 `~/.config/zentao/zentao.json`，后续无需重复登录。
+## 查找命令与参数
 
-### 凭证安全
+| 意图 | 命令形式 |
+|------|----------|
+| 列表（仅支持默认列表的模块） | `zentao <module> [范围参数]` |
+| 详情（仅支持 get 的模块） | `zentao <module> <id>` |
+| 创建 / 更新 / 删除 | `zentao <module> create` / `zentao <module> update <id>` / `zentao <module> delete <id>` |
+| 状态流转或命名操作 | `zentao <module> <action> [参数]` |
+| 操作参数、必填项、最低版本 | `zentao <module> <action> --help` |
+| 返回对象的字段定义 | `zentao <module> props --format=json` |
 
-- 用户尚未登录时，不要在对话里收集账号密码。让用户直接在终端执行 `zentao login`，或执行任意 `zentao` 命令触发首次自动登录提示，由用户自行输入凭证。
-- 严禁读取本地凭证：`ZENTAO_PASSWORD` / `ZENTAO_TOKEN` 环境变量、`~/.config/zentao/zentao.json` 配置文件。所有禅道数据均通过 `zentao` 命令获取，凭证由 CLI 内部处理。
+`props` 不是写入字段清单，也不代表当前站点的动态选项。创建、更新、状态流转都以操作帮助为准；先读懂参数用途，再选值。
 
-## 命令格式
+- 业务字段优先使用 `--field=value`，保留帮助中的大小写。复杂对象、数组或长文本见 [references/writes.md](references/writes.md)。
+- 不要推断每个模块都有 CRUD。`doc`、`my` 无默认列表，必须选择命名操作。
+- 多个路径参数要分别传入；位置 ID / `--id` 仅代表首个路径 ID，不能代替后续 ID。
+- 不知道 ID 时先按产品、项目或执行查找，出现同名对象再澄清，不能套用示例 ID。
+- `browseType` 是各接口自己的服务端筛选值，例如项目 `doing`、需求 `allstory`；不能在不同模块间照搬。
 
-使用简写方式（推荐）：
+### 常用入口
 
-| 操作 | 命令 |
-|------|------|
-| 列表 | `zentao <module>` |
-| 详情 | `zentao <module> <id>` |
-| 属性定义 | `zentao <module> props` |
-| 创建 | `zentao <module> create --field=value` |
-| 更新 | `zentao <module> update <id> --field=value` |
-| 删除 | `zentao <module> delete <id>` |
-| 命名操作 | `zentao <module> <action> [参数]`（是否需要 ID 以操作帮助为准） |
-| 帮助 | `zentao <module> --help` / `zentao <module> <action> --help` |
-
-也支持 `--data='JSON'` 传入 JSON 数据。
-
-## 模块与操作速查
-
-| 模块名 | 中文 | 支持的操作 |
-|--------|------|-----------|
-| program | 项目集 | CRUD |
-| product | 产品 | CRUD |
-| project | 项目 | 列表 + CUD（无详情接口） |
-| execution | 执行/迭代 | CRUD |
-| story | 需求 | CRUD + activate / change / close |
-| epic | 业务需求 | CRUD + activate / change / close |
-| requirement | 用户需求 | CRUD + activate / change / close |
-| bug | Bug | CRUD + activate / close / resolve |
-| task | 任务 | CRUD + activate / close / finish / start |
-| testcase | 测试用例 | CRUD |
-| testtask | 测试单 | CUD（按产品/项目/执行查列表） |
-| productplan | 产品计划 | CRUD（按产品查列表） |
-| build | 版本 | CUD（按项目/执行查列表） |
-| release | 发布 | CUD（按产品查列表） |
-| feedback | 反馈 | CRUD + activate / close |
-| ticket | 工单 | CRUD + activate / close |
-| system | 应用 | CU（按产品查列表） |
-| user | 用户 | CRUD |
-| file | 附件 | 上传 + 编辑名称 + 删除 |
-| issue | 问题 | 列表、详情、创建及项目/执行内列表 |
-| risk | 风险 | 列表、详情、创建及项目/执行内列表 |
-| meeting | 会议 | 列表、详情、创建及项目/执行内列表 |
-| workflow | 工作流 | 工作流列表及示例合同详情 |
-| doc | 文档 | 空间、文档库、目录、文档的命名查询和写入操作 |
-| todo | 待办 | 创建、更新、删除；列表通过 my todos 获取 |
-| my | 地盘 | todos、tasks、bugs、stories、projects 等个人列表 |
-
-> CRUD = 列表 + 详情 + 创建 + 更新 + 删除；CUD = 创建 + 更新 + 删除。“按范围查列表”表示列表命令必须携带所属范围。
-
-### 最低版本要求
-
-先通过 `zentao <module> <action> --help` 查看参数和最低禅道版本。原有操作基线为 `22.0 / biz13.0 / max8.0 / ipd5.0`，新增操作一般为 `22.5 / biz13.5 / max8.5 / ipd5.5`，按同一系列比较。CLI 在请求前检查实际服务器版本；遇到 `E2010` 时报告兼容性限制，不反复重试同一操作。帮助离线列出完整操作，不代表当前服务器全部支持。
-
-`doc` 和 `my` 没有默认列表，需要明确操作名称；多个路径参数需分别传入，`--id` 只代表首个路径 ID。
+先用对应操作的 `--help` 确认安装版本支持，再代入真实 ID：
 
 ```bash
-zentao story getGrades
-zentao my tasks --pick=id,name,status
-zentao doc myDocs --spaceID=1 --libID=2
-zentao doc createMyDoc --spaceID=1 --libID=2 --data '{"title":"开发说明","content":"# 正文","contentType":"doc"}'
-zentao file create --file=/path/to/screenshot.png --objectType=bug --objectID=1
-```
-
-### 列表范围参数
-
-部分模块的列表需要指定所属范围：
-
-```bash
-zentao story --product=1                # 产品 #1 的需求
-zentao bug --product=1                  # 产品 #1 的 Bug
-zentao task --executionID=1             # 执行 #1 的任务
-zentao execution projectExecutions --projectID=5 --browseType=all  # 项目 #5 的执行，需满足新增操作的最低版本
-zentao build --project=5                # 项目 #5 的版本
-zentao testtask --product=1             # 产品 #1 的测试单
-zentao release --productID=1            # 产品 #1 的发布
-zentao productplan --productID=1        # 产品 #1 的计划
-zentao feedback --productID=1           # 产品 #1 的反馈
-zentao ticket --productID=1             # 产品 #1 的工单
-zentao system --productID=1             # 产品 #1 的应用
-```
-
-## AI 使用策略
-
-### 输出格式
-
-- 展示给用户：不加 `--format` 参数，默认输出 Markdown 表格（列表）或列表（单个对象）
-- 需要程序化处理：加 `--format=json`，返回结构化 JSON
-
-### 交互确认
-
-AI 场景下执行删除操作时加 `--yes` 跳过确认提示：
-
-```bash
-zentao bug delete 1 --yes
-```
-
-### 不知道 ID 时
-
-先查列表获取 ID，再操作具体对象：
-
-```bash
-zentao product --pick=id,name           # 查看产品列表
-zentao bug --product=1 --pick=id,title  # 查看 Bug 列表
-zentao bug 42                           # 查看具体 Bug
-```
-
-### 不确定字段时
-
-查询返回对象可能包含哪些字段时用 `props`；查看创建、更新或状态流转能传哪些参数时，以该操作的 `--help` 为准。`props` 不是写入参数清单。
-
-```bash
-zentao bug props --format=json
-zentao bug create --help
-```
-
-### 写操作前确认
-
-执行创建、更新、删除等写操作前，先向用户确认操作内容。用户明确要求不确认时可跳过。
-
-### 更新操作自动补全
-
-执行 `update` 时，CLI 会先 GET 当前对象，把用户未显式传入的字段用现值填充后再 PUT，避免禅道 PUT 覆盖未提交字段导致清空。因此只需传想改的字段即可，无需手动先查再传完整参数。
-
-## 数据处理
-
-### 摘取字段
-
-```bash
-zentao product --pick=id,name,status
-```
-
-### 过滤
-
-```bash
-zentao bug --product=1 --filter='status=active'
-zentao bug --product=1 --filter='severity<=2,pri<=2'    # AND
-zentao bug --product=1 --filter='status=active' --filter='status=resolved'  # OR
-```
-
-支持的运算符：`=` 等于（推荐）、`:` 等于（兼容）、`!=` 不等于、`>` `<` `>=` `<=`、`~` 包含、`!~` 不包含。
-
-### 模糊搜索
-
-```bash
-zentao bug --product=1 --search=登录 --search-fields=title,steps
-zentao bug --product=1 --search=登录,失败 --search=注册,超时  # 组内 AND，组间 OR
-```
-
-### 排序
-
-```bash
-zentao bug --product=1 --sort=pri:asc,severity:asc
-```
-
-### 分页
-
-```bash
-zentao bug --product=1 --page=1 --recPerPage=50
-zentao bug --product=1 --limit=10       # 只取当前返回页的前 10 条
-```
-
-CLI 不会自动翻页。仅当该列表操作的 `--help` 显示 `--page` / `--recPerPage` 时才可使用这两个参数；部分列表接口不支持服务端分页参数。需要全量数据且返回了 pager 时，重复调整 `--page`，直到已读取条数覆盖总数。`--limit` 只在当前返回页上截取。
-
-## 常用操作示例
-
-### 查看进行中的项目和执行
-
-```bash
+zentao product --pick=id,name
+zentao story --product=1 --pick=id,title,status
+zentao bug --product=1 --pick=id,title,status
+zentao task --executionID=1 --pick=id,name,status
 zentao project --browseType=doing --pick=id,name,status
-zentao execution projectExecutions --projectID=5 --browseType=all --pick=id,name,status
+zentao execution projectExecutions --projectID=5 --browseType=all
+zentao productplan --productID=1
+zentao release --productID=1
+zentao build --project=5
+zentao my tasks --pick=id,name,status
+zentao my bugs --pick=id,title,status
+zentao my todos
+zentao doc myDocs --spaceID=1 --libID=2
 ```
 
-### 创建需求并关联计划
+需求分为 `epic`（业务需求）、`requirement`（用户需求）、`story`（研发需求）。问题 `issue`、风险 `risk`、会议 `meeting`、工作流 `workflow`、文档 `doc` 等能力通过模块帮助发现，无需套用任务或 Bug 的字段。
 
-```bash
-zentao story create --productID=1 --title="需求标题" --assignedTo=admin --pri=3
-zentao story update 11 --title="需求标题" --plan=1
-```
+### 服务器版本
 
-### 创建并解决 Bug
+帮助离线列出完整注册表，不等于服务器支持全部动作。请求前会检查实际服务器版本；最低版本按同一系列比较，例如 `22.5 / biz13.5 / max8.5 / ipd5.5`。具体门槛以该动作帮助为准，不用统一版本号推断所有新增能力。
 
-```bash
-zentao bug create --productID=1 --title="Bug标题" --severity=2 --pri=2 --type=codeerror --openedBuild=trunk
-zentao bug resolve 42 --resolution=fixed
-```
+遇到 `E2010` 时报告当前版本和该动作要求。可改用已支持且语义等价的查询，例如按执行查任务，或逐页查询全局执行再按项目筛选；不能把替代查询当成全量结果，不能为绕过检查修改版本信息。`zentao version` 中的服务器信息来自本地缓存，不是实时兼容性验证。
 
-### 创建、启动并完成任务
+## 执行与核实
 
-```bash
-zentao task create --executionID=1 --name="任务名" --type=devel --assignedTo=admin --estimate=4
-zentao task start 100 --realStarted="<YYYY-MM-DD HH:mm:ss>"
-zentao task finish 100 --currentConsumed=4 --realStarted="<YYYY-MM-DD HH:mm:ss>" --finishedDate="<YYYY-MM-DD HH:mm:ss>"
-```
-
-### 查看帮助
-
-```bash
-zentao bug --help          # 查看 Bug 模块的参数和操作
-zentao story update --help # 查看需求更新操作的参数和操作
-zentao help                # 查看所有命令
-```
-
-## 意图识别
-
-| 用户意图 | CLI 命令 |
-|---------|---------|
-| 所有产品/项目/项目集 | `zentao product` / `zentao project --browseType=all` / `zentao program`，全量结果按 pager 逐页读取 |
-| 进行中的项目 | `zentao project --browseType=doing` |
-| 某产品的 Bug | `zentao bug --product=<id>` |
-| 某执行的任务 | `zentao task --executionID=<id>` |
-| 创建/新增 Bug | `zentao bug create ...` |
-| 解决 Bug | `zentao bug resolve <id> --resolution=<解决方案>` |
-| 关闭 Bug | `zentao bug close <id>` |
-| 激活 Bug | `zentao bug activate <id>` |
-| 创建需求 | `zentao story create ...` |
-| 变更需求 | `zentao story change <id> --reviewer=<审评账号>` |
-| 关闭需求 | `zentao story close <id> --closedReason=<关闭原因>` |
-| 激活需求 | `zentao story activate <id>` |
-| 业务需求 | `zentao epic ...`，操作参数以 `zentao epic <action> --help` 为准 |
-| 用户需求 | `zentao requirement ...`，操作参数以 `zentao requirement <action> --help` 为准 |
-| 创建/启动/完成/关闭任务 | `zentao task create/start/finish/close ...` |
-| 测试用例 | `zentao testcase ...` |
-| 测试单 | `zentao testtask ...` |
-| 产品计划 | `zentao productplan ...` |
-| 版本/Build | `zentao build ...` |
-| 发布 | `zentao release ...` |
-| 反馈 | `zentao feedback ...` |
-| 工单 | `zentao ticket ...` |
-| 用户列表 | `zentao user` |
-| 当前用户信息 | `zentao profile` |
+- 查询默认适合阅读；程序处理显式加 `--format=json`。全量统计、过滤、排序、原始响应及 JSON 结构见 [references/data-output.md](references/data-output.md)。
+- 创建、更新和状态流转按用户已授权的目标与字段执行；明确的请求不再重复确认。缺少目标、状态含义或必要信息时，只补问影响本次操作的内容。
+- 用户只要求查看、分析或建议时，先返回结果。演示不代表授权修改已有业务记录。
+- 更新自动补全仅在存在可用详情操作时生效，并且只补当前动作声明的可写字段；不能假设所有模块都有详情、所有字段都能保留。具体边界与示例见 [references/writes.md](references/writes.md)。
+- 删除和批量操作先落实用户授权的对象集合；自动化删除必须显式传 `--yes`。批量部分失败时分开报告成功、失败和跳过的对象，不能整体重试。
+- 根据返回的 ID 查询详情或在所属列表中核实关键字段，再宣告创建、关联、完成等结果。写入超时或返回不明确时先查询是否已生效，尤其不要盲目重试创建。
+- 已连接 MCP 时直接调用可用工具，操作发现和接入配置见 [references/mcp.md](references/mcp.md)。
 
 ## 错误处理
 
-| 错误码 | 含义 | 处理方式 |
-|--------|------|---------|
-| E1001 | 未登录/凭证缺失 | 执行 `zentao login` |
-| E1004 | Token 失效 | 执行 `zentao login` 重新登录 |
-| E2001 | 模块不存在 | 执行 `zentao help` 查看可用模块 |
-| E2002 | 对象不存在 | 检查 ID 是否正确 |
-| E2003 | 缺少必要参数 | 执行 `zentao <module> --help` 或 `zentao <module> <action> --help` 查看操作参数 |
-| E2006 | 无权限 | 提示用户检查权限 |
-| E2010 | 禅道版本不支持该操作 | 按错误提示确认对应系列的最低版本 |
-| E2011 | 版本格式无法识别 | 检查是否为受支持的正式版本 |
-| E2012 | 无法识别服务器配置 | 检查站点根地址的 ?mode=getconfig 响应 |
-| E5001 | 请求超时 | 检查网络或禅道服务状态 |
+保留错误要点，按原因处理；不要将所有错误都归为重新登录。
 
-## 注意事项
-
-- 不确定模块参数时，先执行 `zentao <module> --help` 查看帮助，不确定操作参数时，先执行 `zentao <module> <action> --help` 查看帮助
-- `browseType` 常用值：`all`（全部）、`doing`（进行中）、`closed`（已关闭）
-- 多账号切换：`zentao profile` 查看和切换账号
+| 错误码 | 处理 |
+|--------|------|
+| E1001 / E1006 | 凭证不完整或没有可用配置；请用户交互登录或配置完整环境凭证 |
+| E1003 / E1004 | 账号密码错误或 Token 失效；请用户重新登录 |
+| E1005 / E1007 | 配置不可读或指定 Profile 不存在；核对配置路径，使用 profile 查看可用账号 |
+| E2001 / E2005 | 模块或动作不存在；查本地帮助 |
+| E2002 | 对象或接口未找到；核对 ID、范围和具体错误 URL，不立即断定记录已删除 |
+| E2003 / E2004 / E2007 / E2009 | 缺参数、类型/选项错误或无效 JSON；对照动作帮助修正 |
+| E2006 | 无权限；说明受限操作，交由用户处理授权 |
+| E2008 | 服务端业务或 HTTP 错误；检查具体响应，不以 HTTP 200 或 raw 输出认定成功 |
+| E2010 | 服务器版本不支持；说明要求，选择受支持的等价能力或由用户升级 |
+| E2011 / E2012 | 版本格式或站点配置无法识别；核对站点根地址及其 `?mode=getconfig` 响应 |
+| E1002 / E5001 / E5002 | 地址不可达、超时或证书验证失败；核对网络、地址和证书，写请求先核实结果再决定是否重试 |

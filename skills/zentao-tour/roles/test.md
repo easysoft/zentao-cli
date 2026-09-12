@@ -1,89 +1,69 @@
 # 测试视角
 
-用户选了这个身份，意味着他对"怎么确保东西是对的 / 怎么把问题反馈出去"更有兴趣。陪他走一段"挑个目标 → 写个用例 → 建个测试单 → 抓一只 Bug 看它走完生老病死"的路子——**别编号也别列清单**，但开场顺口把这段路点一下。
+围绕“怎么知道功能符合预期、发现的问题怎么跟进”展开，从需求、用例到测试单与 Bug。遵循 [共同规则](../SKILL.md)，已存在的业务缺陷不用于随意演练解决和关闭。
 
-## 开场：一句话点路 + 挑靶子
+## 选需求与提测版本
 
-示例开场：
-
-> "测试这块我们大概这样走：先从你们产品里挑一条需求当靶子，围着它写两条用例（正向一个、异常一个），拉个测试单装起来，最后提一只 Bug 陪它走完从 active 到 closed 的全程。随时喊停。
->
-> 先看看产品里有哪些需求可以拿来练手——"
-
-列几条候选让用户挑：
+复用用户已给定的产品和执行；不清楚时先选范围，再列候选：
 
 ```bash
-zentao story --product=<产品ID> --pick=id,title,pri --filter='stage=wait' --filter='stage=developing' --limit=10
+zentao story --product=<产品ID> --browseType=allstory --pick=id,title,pri,stage,status --page=1 --recPerPage=20
+zentao build --project=<项目ID> --pick=id,name,date,product --page=1 --recPerPage=20
 ```
 
-如果产品里没需求，顺水推舟："要不我们借 PM 视角先捏一条？"（跳到 [pm.md](pm.md) 的建需求那段）。
+第一页仅供选择，找不到目标时继续分页，不自动创建替代需求或虚构版本。需要筛选多个阶段时，可使用重复的 `--filter` 表示 OR，例如 `--filter='stage=developed' --filter='stage=testing'`；阶段枚举与业务范围以实际需求为准。
 
-## 围着这条需求写用例
+## 写一条能执行的用例
 
-不要一上来罗列用例类型。用联想的问法：
-
-> "如果这条需求真上线，你第一个会想试什么？再想一个'要是乱搞会怎样'的场景？"
-
-用户给出一个正向和一个异常场景，就可以各写一条用例，每条创建前把关键字段口语化报一遍：
+读所选需求详情，让用户描述一个正常场景和一个异常场景。把前置条件、操作步骤、预期结果对齐，再在已授权范围内创建。简单步骤与预期用等长数组传入；下面是内容示例，应替换为真实场景：
 
 ```bash
-zentao testcase create --productID=<产品ID> --story=<storyID> --title="..." --pri=<1-4> --type=feature
+zentao testcase create --productID=<产品ID> --story=<需求ID> --data '{"title":"正常账号可以登录","pri":2,"type":"feature","precondition":"账号可用且已退出登录","steps":["输入正确账号和密码并提交"],"expects":["进入首页并显示当前用户"],"stepType":["step"]}'
 ```
 
-如果用户想看完整字段（步骤/预期），用 `zentao testcase create --help` 展开，按需求补。
+需要分组或嵌套步骤时先读 `zentao testcase create --help`，不自行猜结构。创建用例只代表记录了测试设计，不代表已执行或通过。
 
-## 顺势拉个测试单
+## 组织测试单
 
-> "有了用例还得有个'测试本子'把它们装起来跑，禅道里叫测试单。"
+测试单指定本次要测的真实构建/版本；明确名称、日期与执行后再创建：
 
 ```bash
-zentao testtask create --productID=<产品ID> --name="v1 冒烟测试" --build=<版本ID> --begin=... --end=...
+zentao testtask create --productID=<产品ID> --name="<测试单名称>" --build=<版本ID> --execution=<执行ID> --begin=<YYYY-MM-DD> --end=<YYYY-MM-DD>
 ```
 
-当前 CLI 没有把用例关联到测试单的动作；如需关联，在禅道界面完成。创建后先列一眼：
+`build` 是数值版本 ID，不能用 Bug 接口的 `trunk` 值替代。当前 CLI 没有将用例关联到测试单或执行用例的动作，应在禅道界面完成这些步骤。不要把创建测试单描述为“用例已经关联并跑通”。此模块也没有 `get`，必要时通过列表核实创建结果：
 
 ```bash
-zentao testtask --product=<产品ID> --pick=id,name,status
+zentao testtask --product=<产品ID> --pick=id,name,status,build --page=<页码> --recPerPage=100 --format=json
 ```
 
-## 然后抓一只 Bug 看它走完一生
+用户只想看自己负责的测试单时，可先查看 `zentao my testtasks --help`，支持当前服务器版本后调用 `zentao my testtasks --page=1 --recPerPage=20`；E2010 时仍使用上面的产品范围查询。
 
-用带点戏剧感的口气：
+## 发现 Bug 后记录证据
 
-> "假设你跑用例的时候发现点不对劲——要不我们提一个 Bug 练练手？"
-
-和用户商量 Bug 的标题、严重度（`severity`）、优先级（`pri`）、重现步骤（`steps`）。严重度和优先级给个建议（比如"看起来能用就是有点歪，那严重 3 优先 3？"），让他点头即可。
+确认标题、严重度、优先级、重现步骤、实际与预期结果，以及影响版本。`openedBuild` 是字符串数组，下例 `"34"` 为示例版本 ID；只有实际影响主干时才用 `"trunk"`。
 
 ```bash
-zentao bug create --productID=<产品ID> --title="..." --severity=<1-4> --pri=<1-4> --type=codeerror --openedBuild=<版本ID> --steps="..."
+zentao bug create --productID=<产品ID> --title="<Bug 标题>" --severity=<1-4> --pri=<1-4> --type=codeerror --steps="<前置条件、重现步骤、实际与预期结果>" --data '{"openedBuild":["34"]}'
 ```
 
-顺手演示状态流转（边执行边用一句话解释它代表开发解决了、你关掉了）：
+用户有本地截图并明确要上传时，可关联到刚创建或指定的 Bug：
 
 ```bash
-zentao bug resolve <id> --resolution=fixed
+zentao file create --file=<本地截图路径> --objectType=bug --objectID=<BugID>
+```
+
+上传前核对文件与目标，成功后引用实际返回的附件信息，不把附件上传当作 Bug 已解决。
+
+## 解决与回归是两个动作
+
+只想认识生命周期时，说明 `active → resolved → closed` 的含义并展示命令即可。实际记录须对应已核实的解决与回归结果；`fixed` 要有修复依据，关闭前要有回归依据。用户授权的演示对象可用于演练，但应明确是演示。
+
+```bash
+zentao bug resolve <id> --resolution=fixed --resolvedBuild=<版本ID>
 zentao bug close <id>
 ```
 
-走完之后**具体点一下**用户刚才串起了什么：
+两条是不同阶段的动作，不因放在同一段示例就连续执行。回归仍失败时，先看 `zentao bug activate --help` 的必填字段，在授权范围内重新激活；不要为了演示闭环把真实 Bug 关闭。
 
-> "你看，这一圈其实把测试最核心的一条链走完了：**需求 → 用例 → 测试单 → Bug → 状态流转**。真实工作里无非是每环都放大一些——写更多用例、加回归、跟踪遗留缺陷。骨架你已经有感觉了。"
-
-## 自然收尾
-
-- 用户如果开始问"开发那边怎么接 Bug"——指一下 dev 视角。
-- 用户语气淡下来——顺口回顾："你从一条需求写出了用例，拉了测试单，还提了一个 Bug 并把它送走。"
-- 回到 [../SKILL.md](../SKILL.md) 的收尾流程。
-
-## 写操作速查（给 AI 用）
-
-| 动作 | 命令 |
-|------|------|
-| 挑目标需求 | `zentao story --product=<id> --filter='stage=wait' --filter='stage=developing'` |
-| 建用例 | `zentao testcase create --productID= --story= --title= --pri= --type=feature` |
-| 建测试单 | `zentao testtask create --productID= --name= --build= --begin= --end=` |
-| 提 Bug | `zentao bug create --productID= --title= --severity= --pri= --type=codeerror --openedBuild= --steps=` |
-| 解决 Bug | `zentao bug resolve <id> --resolution=fixed` |
-| 关闭 Bug | `zentao bug close <id>` |
-
-> 本视角目前剧情较轻，欢迎结合真实测试节奏继续扩展（例如回归、遗留缺陷分析）。
+回顾时区分已写用例、已建测试单、已关联/执行的步骤及已登记的 Bug。按 [收尾规则](../SKILL.md) 保留记录；开发处理问题可转到 [开发视角](dev.md)。
