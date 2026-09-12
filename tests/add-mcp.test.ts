@@ -112,6 +112,33 @@ describe('add-mcp credentials', () => {
         expect(result.stdout + result.stderr).not.toContain(SECRET_TOKEN);
     });
 
+    test('OpenCode writes environment and replaces the legacy env entry', async () => {
+        const opencodeConfig = join(tempDir, '.config', 'opencode', 'opencode.json');
+        mkdirSync(dirname(opencodeConfig), { recursive: true });
+        writeFileSync(opencodeConfig, JSON.stringify({
+            theme: 'keep',
+            mcp: {
+                existing: { type: 'local', command: ['keep'] },
+                'zentao-cli': { type: 'local', env: { ZENTAO_PASSWORD: 'legacy-password' } },
+            },
+        }));
+
+        const result = await runAddMcp('opencode', true);
+        expect(result.exitCode).toBe(0);
+        expect(JSON.parse(readFileSync(opencodeConfig, 'utf-8'))).toEqual({
+            theme: 'keep',
+            mcp: {
+                existing: { type: 'local', command: ['keep'] },
+                'zentao-cli': {
+                    type: 'local', command: ['zentao', 'mcp'], enabled: true,
+                    environment: { ZENTAO_URL: 'https://zentao.example.com', ZENTAO_ACCOUNT: 'admin', ZENTAO_TOKEN: SECRET_TOKEN },
+                },
+            },
+        });
+        expect(result.stdout + result.stderr).not.toContain(SECRET_TOKEN);
+        expect(result.stdout + result.stderr).not.toContain('legacy-password');
+    });
+
     test('Cherry Studio instructions never print the saved token', async () => {
         const result = await runAddMcp('cherry-studio');
 

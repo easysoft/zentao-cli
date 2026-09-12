@@ -194,7 +194,7 @@ function writeOpenCodeConfig(configPath: string, creds: McpCredentials): void {
     deepSet(config, ['mcp', MCP_NAME], {
         type: 'local',
         command: ['zentao', 'mcp'],
-        env: {
+        environment: {
             ZENTAO_URL: creds.url,
             ZENTAO_ACCOUNT: creds.account,
             ZENTAO_TOKEN: creds.token,
