@@ -3,6 +3,7 @@ import { getModuleActionParams } from 'zentao-api';
 import type { ModuleDefinition, ModuleAction, ModuleActionType, Profile, ModuleActionName, UserConfig } from '../types/index.js';
 import { getAction, getActionDescription, getAvailableActions, getObjectProps } from '../modules/helper.js';
 import { executeModuleCommand } from '../modules/executor.js';
+import { buildParams } from '../modules/args.js';
 import type { ModuleExecutionResult } from '../modules/executor.js';
 import { getProfileConfig } from '../config/store.js';
 import { formatJson, formatOutput } from '../utils/format.js';
@@ -40,20 +41,6 @@ function splitNumericIds(value: unknown): string[] | undefined {
         return undefined;
     }
     return ids;
-}
-
-function pickBatchIds(args: string[], options: ModuleActionOptions): { ids: string[]; args: string[] } | undefined {
-    const optionIds = splitNumericIds(options.id);
-    if (optionIds) {
-        return { ids: optionIds, args };
-    }
-
-    const positionalIds = splitNumericIds(args[0]);
-    if (positionalIds) {
-        return { ids: positionalIds, args: args.slice(1) };
-    }
-
-    return undefined;
 }
 
 function renderModuleExecution(
@@ -220,10 +207,12 @@ export async function handleModuleCommand(
         throw new ZentaoError('E2005', { module: module.name });
     }
 
-    const batch = pickBatchIds(args, options);
-    if (batch) {
+    // Resolve all argument sources before selecting targets or confirming deletion.
+    const params = buildParams(options, actionName, args);
+    const batchIds = splitNumericIds(params.id);
+    if (batchIds) {
         if (action.type === 'delete' && !options.yes) {
-            if (!await confirmDelete(format, batch.ids.length, options.machineReadable)) {
+            if (!await confirmDelete(format, batchIds.length, options.machineReadable)) {
                 return;
             }
         }
@@ -235,17 +224,18 @@ export async function handleModuleCommand(
             ...(action.type === 'delete' ? {} : { data: [] }),
             errors: [],
         };
-        for (let index = 0; index < batch.ids.length; index++) {
-            const rawId = batch.ids[index];
+        for (let index = 0; index < batchIds.length; index++) {
+            const rawId = batchIds[index];
             const id = Number(rawId);
             try {
                 const execution = await executeModuleCommand(
                     client,
                     module,
                     actionName,
-                    batch.args,
-                    { ...options, id: rawId },
+                    [],
+                    options,
                     config,
+                    { ...params, id: rawId },
                 );
                 result.success.push(id);
                 result.data?.push({ objectID: id, value: execution.data });
@@ -253,7 +243,7 @@ export async function handleModuleCommand(
                 result.failed.push(id);
                 result.errors.push(toBatchError(id, error));
                 if (batchFailFast) {
-                    result.skipped.push(...batch.ids.slice(index + 1).map(Number));
+                    result.skipped.push(...batchIds.slice(index + 1).map(Number));
                     break;
                 }
             }
@@ -278,7 +268,7 @@ export async function handleModuleCommand(
         }
     }
 
-    const execution = await executeModuleCommand(client, module, actionName, args, options, config);
+    const execution = await executeModuleCommand(client, module, actionName, [], options, config, params);
     renderModuleExecution(execution, options, config);
 }
 

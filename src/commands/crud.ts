@@ -30,8 +30,7 @@ export function registerCrudCommands(program: Command): void {
         .argument('<id>', '对象 ID');
     addDataOptions(getCmd);
     getCmd.action(async (moduleName: string, id: string, opts: ModuleActionOptions) => {
-        opts.id = id;
-        await runCrudCommand(program, moduleName, 'get', {id, ...opts});
+        await runCrudCommand(program, moduleName, 'get', opts, [id]);
     });
 
     // zentao create <module>
@@ -103,12 +102,6 @@ async function runCrudCommand(
         insecure: globalOpts.insecure,
         timeout: globalOpts.timeout,
     });
-
-    const firstArg = args[0];
-    if (firstArg && /^\d+$/.test(firstArg)) {
-        options.id = firstArg;
-        args.shift();
-    }
 
     await handleModuleCommand(client, mod, actionName, args, profile, options);
 }

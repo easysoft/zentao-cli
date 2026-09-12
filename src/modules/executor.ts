@@ -49,6 +49,7 @@ export async function executeModuleCommand(
     args: string[],
     options: ModuleActionOptions,
     config: UserConfig,
+    resolvedParams?: Record<string, unknown>,
 ): Promise<ModuleExecutionResult> {
     const action = getAction(module, actionName);
     if (!action) {
@@ -61,7 +62,7 @@ export async function executeModuleCommand(
         });
     }
 
-    const params = buildParams(options, actionName, args);
+    const params = resolvedParams ? { ...resolvedParams } : buildParams(options, actionName, args);
     if (action.type === 'create' || action.type === 'update' || action.type === 'action') {
         const data = params.data;
         if (data === undefined || typeof data === 'string') {

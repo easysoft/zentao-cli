@@ -128,7 +128,7 @@ export function registerModuleCommands(program: Command): void {
             let action = firstArg;
             const ids = firstArg?.split(',').map((id) => id.trim());
             if (ids?.length && ids.every((id) => /^\d+$/.test(id))) {
-                options.id = ids.join(',');
+                args.unshift(ids.join(','));
                 action = 'get';
             } else if (action === undefined) {
                 action = 'list';
