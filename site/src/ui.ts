@@ -112,7 +112,10 @@ function syncThemeButton() {
   );
   document
     .querySelector('meta[name="theme-color"]')
-    ?.setAttribute("content", isDark ? "#0f1b29" : "#f6f8fa");
+    ?.setAttribute(
+      "content",
+      getComputedStyle(document.documentElement).getPropertyValue("--page").trim(),
+    );
 }
 themeToggle.hidden = false;
 syncThemeButton();

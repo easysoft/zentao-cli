@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#f6f8fa" />
+    <meta name="theme-color" content="#f3f6f7" />
     <meta
       name="description"
       content="在 Claude Code、Cursor、Codex 等 AI Agent 中使用禅道。提供 12 种客户端的 Skill 与 MCP 集成指南，查询需求、分析 Bug、跟进任务。"
@@ -53,11 +53,11 @@
       </style></noscript
     >
   </head>
-  <body>
+  <body id="top">
     <a class="skip-link" href="#main">跳到主要内容</a>
     <header class="header">
       <div class="container header-inner">
-        <a class="wordmark" href="#" aria-label="ZenTao CLI 首页">
+        <a class="wordmark" href="#top" aria-label="ZenTao CLI 首页">
           <img
             class="brand-light"
             src="%BASE_URL%brand/pixel-tao-terminal-blue-flat.svg"
@@ -114,10 +114,27 @@
     <main id="main">
       <section class="hero container" aria-labelledby="hero-title">
         <div class="hero-copy">
-          <p class="eyebrow">
-            <span class="prompt-mark" aria-hidden="true">&gt;_</span>
-            为 AI Agents 连接禅道
-          </p>
+          <div class="hero-identity">
+            <img
+              class="hero-brand brand-light"
+              src="%BASE_URL%brand/pixel-tao-terminal-blue.svg"
+              alt=""
+              width="96"
+              height="96"
+              fetchpriority="high"
+            />
+            <img
+              class="hero-brand brand-dark"
+              src="%BASE_URL%brand/pixel-tao-reverse.svg"
+              alt=""
+              width="96"
+              height="96"
+            />
+            <div>
+              <p class="hero-wordmark">ZenTao <span>CLI</span></p>
+              <p class="eyebrow">为 AI Agents 连接禅道</p>
+            </div>
+          </div>
           <h1 id="hero-title">
             让 AI Agent，<br /><span
               >接上你的禅道<span class="title-period">。</span></span
@@ -137,24 +154,9 @@
           </div>
         </div>
         <div class="hero-demo">
-          <img
-            class="hero-brand brand-light"
-            src="%BASE_URL%brand/pixel-tao-terminal-blue.svg"
-            alt=""
-            width="220"
-            height="220"
-            fetchpriority="high"
-          />
-          <img
-            class="hero-brand brand-dark"
-            src="%BASE_URL%brand/pixel-tao-reverse.svg"
-            alt=""
-            width="220"
-            height="220"
-          />
           <div class="terminal" aria-label="Agent 使用禅道的场景示例">
             <div class="terminal-heading">
-              <span><span data-icon="sparkle"></span> Agent + ZenTao</span
+              <span><span data-icon="terminal-window"></span> Agent + ZenTao</span
               ><span class="terminal-heading-note">场景示例</span>
             </div>
             <div class="demo-tabs" role="tablist" aria-label="命令场景">
@@ -754,7 +756,7 @@
     </main>
     <footer class="footer container">
       <div class="footer-top">
-        <a class="wordmark" href="#" aria-label="返回 ZenTao CLI 首页"
+        <a class="wordmark" href="#top" aria-label="返回 ZenTao CLI 首页"
           ><img
             class="brand-light"
             src="%BASE_URL%brand/pixel-tao-terminal-blue-flat.svg"
