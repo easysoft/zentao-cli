@@ -85,6 +85,33 @@ describe('add-mcp credentials', () => {
         expect(result.stdout + result.stderr).not.toContain('legacy-password');
     });
 
+    test('Claude Code uses its user MCP file and preserves unrelated configuration', async () => {
+        const claudeConfig = join(tempDir, '.claude.json');
+        const settingsFile = join(tempDir, '.claude', 'settings.json');
+        const settings = '{"permissions":{"allow":[]}}\n';
+        mkdirSync(dirname(settingsFile), { recursive: true });
+        writeFileSync(settingsFile, settings);
+        writeFileSync(claudeConfig, JSON.stringify({
+            theme: 'dark',
+            mcpServers: { existing: { command: 'keep' } },
+        }));
+
+        const result = await runAddMcp('claude-code', true);
+        expect(result.exitCode).toBe(0);
+        expect(JSON.parse(readFileSync(claudeConfig, 'utf-8'))).toEqual({
+            theme: 'dark',
+            mcpServers: {
+                existing: { command: 'keep' },
+                'zentao-cli': {
+                    command: 'zentao', args: ['mcp'],
+                    env: { ZENTAO_URL: 'https://zentao.example.com', ZENTAO_ACCOUNT: 'admin', ZENTAO_TOKEN: SECRET_TOKEN },
+                },
+            },
+        });
+        expect(readFileSync(settingsFile, 'utf-8')).toBe(settings);
+        expect(result.stdout + result.stderr).not.toContain(SECRET_TOKEN);
+    });
+
     test('Cherry Studio instructions never print the saved token', async () => {
         const result = await runAddMcp('cherry-studio');
 

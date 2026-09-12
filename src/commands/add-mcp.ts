@@ -43,7 +43,7 @@ function platformAppData(...segments: string[]): string {
 const AGENT_TARGETS: Record<string, McpAgentTarget> = {
     'cursor':         { label: 'Cursor',         configPath: join(home, '.cursor', 'mcp.json'),                                   format: 'mcpServers' },
     'claude-desktop': { label: 'Claude Desktop',  configPath: platformAppData('Claude', 'claude_desktop_config.json'),              format: 'mcpServers' },
-    'claude-code':    { label: 'Claude Code',     configPath: join(home, '.claude', 'settings.json'),                              format: 'mcpServers' },
+    'claude-code':    { label: 'Claude Code',     configPath: join(home, '.claude.json'),                                          format: 'mcpServers' },
     'windsurf':       { label: 'Windsurf',        configPath: join(home, '.codeium', 'windsurf', 'mcp_config.json'),               format: 'mcpServers' },
     'cline':          { label: 'Cline',           configPath: join(home, '.cline', 'data', 'settings', 'cline_mcp_settings.json'), format: 'mcpServers' },
     'trae':           { label: 'Trae',            configPath: join(home, '.trae', 'mcp.json'),                                     format: 'mcpServers' },
