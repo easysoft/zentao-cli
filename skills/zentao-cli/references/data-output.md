@@ -17,7 +17,7 @@ CLI JSON 结构随操作类型变化：
 - 创建、更新、删除和状态操作：`{"status":"success","data":...}`，没有数据时可能省略 `data`。
 - 错误：stderr 输出 `{"error":{"code":"2008","message":"...","details":...}}`，退出码非零；`code` 不含 `E` 前缀，`details` 可省略。
 
-同时检查退出码、stderr 和 JSON 内容。批量请求使用另一种汇总结构，见 [writes.md](writes.md)；MCP 输出也不同，见 [mcp.md](mcp.md)。
+同时检查退出码、stderr 和 JSON 内容。批量请求使用另一种汇总结构，见 [writes.md](writes.md)。
 
 ## 当前页的数据处理
 

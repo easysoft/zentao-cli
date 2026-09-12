@@ -1,6 +1,6 @@
 ---
 name: zentao-cli
-description: 使用 zentao CLI 或已连接的禅道 MCP 查询、创建和更新禅道数据，执行需求、任务、Bug 等状态流转，汇总项目进展，并排查认证、参数与版本兼容问题。用户要求操作禅道、查询个人工作或配置 zentao-cli 接入时使用；首次体验和按角色上手可结合 zentao-tour。
+description: 使用 zentao CLI 查询、创建和更新禅道数据，执行需求、任务、Bug 等状态流转，汇总项目进展，并排查认证、参数与版本兼容问题。用户要求操作禅道、查询个人工作或安装和配置 zentao-cli 时使用；首次体验和按角色上手可结合 zentao-tour。
 license: MIT
 metadata:
   author: Sun Hao <sunhao@chandao.com>
@@ -15,7 +15,7 @@ metadata:
 
 ## 开始工作
 
-已有可用 CLI 或禅道 MCP 时直接复用。先确认用户要访问的站点、对象范围和操作；上下文已明确的内容不用重复询问。
+已有可用的 `zentao` 命令时直接复用。先确认用户要访问的站点、对象范围和操作；上下文已明确的内容不用重复询问。
 
 ```bash
 zentao --version
@@ -28,6 +28,8 @@ zentao profile --format=json
 - 未配置本地账号时 `profile` 返回 `E1006`；完整环境凭证仍可用于业务命令。不要据此断言服务不可用。
 - 未安装时按用户环境选择 `npm install -g zentao-cli`、`bun install -g zentao-cli` 或 `pnpm install -g zentao-cli`；一次性运行可用 `npx zentao-cli <参数>`。
 
+用户要求安装或更新技能时，使用 `zentao add-skill <agent>`；需要导出到自定义目录时，使用 `zentao add-skill --output ./exported-skills`。两种形式互斥，都会递归包含参考资料。只处理用户指定目标，重跑前保留同名技能中用户需要的定制。
+
 ### 认证与账号选择
 
 业务命令缺少凭证会报错，不会自动弹出登录。需要登录时让用户在自己的交互终端执行 `zentao login`，由 CLI 收集凭证。不要在对话里收集密码或 Token，不要读取、打印凭证环境变量或本地凭证文件。
@@ -38,7 +40,7 @@ zentao profile --format=json
 zentao profile 'admin@https://zentao.example.com'
 ```
 
-上述命令切换本地默认账号；完整环境凭证仍会优先，不能仅凭切换成功认定后续请求使用了该账号。需由运行环境维护者调整凭证来源；MCP 显式切换见 [references/mcp.md](references/mcp.md)。
+上述命令切换本地默认账号；完整环境凭证仍会优先，不能仅凭切换成功认定后续请求使用了该账号。需由运行环境维护者调整凭证来源。
 
 默认凭证文件为 `~/.config/zentao/zentao.json`；自定义路径可用全局 `--config <路径>` 或 `ZENTAO_CONFIG_FILE`，前者优先。沿用用户选定的配置路径，不通过直接读取文件确认身份。
 
@@ -97,7 +99,6 @@ zentao doc myDocs --spaceID=1 --libID=2
 - 更新自动补全仅在存在可用详情操作时生效，并且只补当前动作声明的可写字段；不能假设所有模块都有详情、所有字段都能保留。具体边界与示例见 [references/writes.md](references/writes.md)。
 - 删除和批量操作先落实用户授权的对象集合；自动化删除必须显式传 `--yes`。批量部分失败时分开报告成功、失败和跳过的对象，不能整体重试。
 - 根据返回的 ID 查询详情或在所属列表中核实关键字段，再宣告创建、关联、完成等结果。写入超时或返回不明确时先查询是否已生效，尤其不要盲目重试创建。
-- 已连接 MCP 时直接调用可用工具，操作发现和接入配置见 [references/mcp.md](references/mcp.md)。
 
 ## 错误处理
 
