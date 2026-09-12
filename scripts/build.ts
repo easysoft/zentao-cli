@@ -1,9 +1,16 @@
-import { mkdirSync, rmSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { mkdirSync, readFileSync, rmSync } from 'node:fs';
+import { dirname, join, sep } from 'node:path';
 import pkg from '../package.json';
-import { buildCompileOptions, parseBuildArgs } from './build-options';
+import { buildCompileOptions, parseBuildArgs } from './build-options.js';
 
 const buildArgs = parseBuildArgs(process.argv.slice(2));
+const skillFiles = buildArgs.compile
+    ? Object.fromEntries(
+        [...new Bun.Glob('**/*').scanSync({ cwd: 'skills', onlyFiles: true, dot: true })]
+            .sort()
+            .map((path) => [path.split(sep).join('/'), readFileSync(join('skills', path)).toString('base64')]),
+    )
+    : undefined;
 const commonOptions = {
     entrypoints: ['src/index.ts'],
     sourcemap: buildArgs.sourcemap,
@@ -11,6 +18,7 @@ const commonOptions = {
     minify: buildArgs.minify,
     define: {
         BUILD_VERSION: JSON.stringify(pkg.version),
+        BUILD_SKILL_FILES: skillFiles ? JSON.stringify(skillFiles) : 'undefined',
     },
 };
 

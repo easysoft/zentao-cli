@@ -1,10 +1,11 @@
 import { Command } from 'commander';
-import { cpSync, existsSync, statSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createInterface } from 'node:readline/promises';
 import type { GlobalOptions } from '../types/index.js';
+import { ZentaoError } from '../errors.js';
 
 interface AgentTarget {
     label: string;
@@ -14,6 +15,12 @@ interface AgentTarget {
 interface AddSkillOptions {
     output?: string;
 }
+
+type SkillSource =
+    | { type: 'directory'; path: string }
+    | { type: 'embedded'; files: Record<string, string> };
+
+declare const BUILD_SKILL_FILES: Record<string, string> | undefined;
 
 const SKILL_NAMES = ['zentao-cli', 'zentao-tour'] as const;
 
@@ -30,7 +37,23 @@ const AGENT_TARGETS: Record<string, AgentTarget> = {
 
 export const AGENT_NAMES = Object.keys(AGENT_TARGETS);
 
-function resolveSkillSource(skillName: string): string {
+function resolveSkillSource(skillName: string): SkillSource {
+    if (typeof BUILD_SKILL_FILES !== 'undefined') {
+        const prefix = `${skillName}/`;
+        const files = Object.fromEntries(
+            Object.entries(BUILD_SKILL_FILES)
+                .filter(([path]) => path.startsWith(prefix))
+                .map(([path, content]) => [path.slice(prefix.length), content]),
+        );
+        if (files['SKILL.md'] === undefined) {
+            throw new ZentaoError('E2009', {
+                option: 'add-skill',
+                reason: `找不到内置技能: ${skillName}，请重新安装完整的 zentao-cli。`,
+            });
+        }
+        return { type: 'embedded', files };
+    }
+
     const thisFile = fileURLToPath(import.meta.url);
     const thisDir = dirname(thisFile);
 
@@ -41,7 +64,7 @@ function resolveSkillSource(skillName: string): string {
     ];
 
     for (const candidate of candidates) {
-        if (existsSync(candidate)) return candidate;
+        if (existsSync(candidate)) return { type: 'directory', path: candidate };
     }
 
     throw new Error(
@@ -109,13 +132,29 @@ function assertDestinationOutsideSource(srcDir: string, destDir: string): void {
     }
 }
 
-function copySkillDir(srcDir: string, destDir: string): void {
-    assertDestinationOutsideSource(srcDir, destDir);
+function assertSkillDestination(source: SkillSource, destDir: string): void {
+    if (source.type === 'directory') {
+        assertDestinationOutsideSource(source.path, destDir);
+    }
 
     if (existsSync(destDir) && !statSync(destDir).isDirectory()) {
         throw new Error(`技能目标路径必须是目录: ${destDir}`);
     }
-    cpSync(srcDir, destDir, { recursive: true, dereference: true });
+}
+
+function copySkill(source: SkillSource, destDir: string): void {
+    assertSkillDestination(source, destDir);
+
+    if (source.type === 'directory') {
+        cpSync(source.path, destDir, { recursive: true, dereference: true });
+        return;
+    }
+
+    for (const [path, content] of Object.entries(source.files)) {
+        const target = join(destDir, path);
+        mkdirSync(dirname(target), { recursive: true });
+        writeFileSync(target, Buffer.from(content, 'base64'));
+    }
 }
 
 function resolveOutputDir(output: string): string {
@@ -138,10 +177,10 @@ function resolveOutputDir(output: string): string {
 
 function installSkill(agent: string, skillName: string, silent: boolean): void {
     const target = AGENT_TARGETS[agent];
-    const sourcePath = resolveSkillSource(skillName);
+    const source = resolveSkillSource(skillName);
     const destDir = join(target.dir, skillName);
 
-    copySkillDir(sourcePath, destDir);
+    copySkill(source, destDir);
 
     if (!silent) {
         console.log(`已安装 ${skillName} 技能到 ${target.label}: ${tildeDisplay(destDir)}`);
@@ -152,16 +191,16 @@ function exportSkills(output: string, silent: boolean): void {
     const outputDir = resolveOutputDir(output);
     const skills = SKILL_NAMES.map((skillName) => ({
         skillName,
-        sourcePath: resolveSkillSource(skillName),
+        source: resolveSkillSource(skillName),
         destDir: join(outputDir, skillName),
     }));
 
-    for (const { sourcePath, destDir } of skills) {
-        assertDestinationOutsideSource(sourcePath, destDir);
+    for (const { source, destDir } of skills) {
+        assertSkillDestination(source, destDir);
     }
 
-    for (const { skillName, sourcePath, destDir } of skills) {
-        copySkillDir(sourcePath, destDir);
+    for (const { skillName, source, destDir } of skills) {
+        copySkill(source, destDir);
 
         if (!silent) {
             console.log(`已导出 ${skillName} 技能到: ${tildeDisplay(destDir)}`);

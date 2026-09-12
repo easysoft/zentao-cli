@@ -43,5 +43,8 @@ jobs:
       - name: Smoke test Node.js artifact
         run: node bin/zentao.js -V
 
+      - name: Verify Node.js and standalone skill exports
+        run: bun run scripts/verify-build-artifacts.ts
+
       - name: Check npm package contents
         run: npm pack --dry-run --ignore-scripts
