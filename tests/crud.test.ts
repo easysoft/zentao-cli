@@ -84,4 +84,31 @@ describe('CLI command entry points', () => {
         expect(requests.map(({ path }) => path)).toEqual(['/products/1', '/products/2']);
         expect(JSON.parse(result.stdout).result.success).toEqual([1, 2]);
     });
+
+    test.each(['ls', 'list'])('%s preserves pagination, processing and dynamic options', async (command) => {
+        const options = ['--page=2', '--recPerPage=10', '--pick=id', '--limit=1', '--orderBy=id_desc'];
+        const direct = await run(['product', ...options]);
+        const directRequests = [...requests];
+        requests.length = 0;
+        const shortcut = await run([command, 'product', ...options]);
+
+        expect(shortcut).toEqual(direct);
+        expect(shortcut.exitCode).toBe(0);
+        expect(JSON.parse(shortcut.stdout).data).toEqual([{ id: 1 }]);
+        expect(requests).toEqual(directRequests);
+        expect(requests[0].query).toMatchObject({ pageID: '2', recPerPage: '10', orderBy: 'id_desc' });
+    });
+
+    test('ls passes scope options to scoped list actions', async () => {
+        const result = await run(['ls', 'bug', '--product=1']);
+        expect(result.exitCode).toBe(0);
+        expect(requests.map(({ path }) => path)).toEqual(['/products/1/bugs']);
+    });
+
+    test('ls refuses unsupported automatic pagination before requesting a page', async () => {
+        const result = await run(['ls', 'product', '--all']);
+        expect(result.exitCode).toBe(1);
+        expect(JSON.parse(result.stderr).error.code).toBe('2009');
+        expect(requests).toEqual([]);
+    });
 });

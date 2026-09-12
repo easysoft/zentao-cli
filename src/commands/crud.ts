@@ -17,9 +17,8 @@ export function registerCrudCommands(program: Command): void {
         .argument('[args...]', '参数');
     addDataOptions(lsCmd);
     lsCmd.allowUnknownOption(true);
-    lsCmd.action(async (moduleName: string, opts: ModuleActionOptions) => {
-        const extraArgs = lsCmd.args.slice(1);
-        await runCrudCommand(program, moduleName, 'list', opts, extraArgs);
+    lsCmd.action(async (moduleName: string, args: string[], opts: ModuleActionOptions) => {
+        await runCrudCommand(program, moduleName, 'list', opts, args);
     });
 
     // zentao get <module> <id>
