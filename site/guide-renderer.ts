@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { agentGuides, type AgentGuide } from "./src/agent-guides.ts";
 
 function escapeHtml(value: string): string {
@@ -11,6 +12,15 @@ function escapeHtml(value: string): string {
     };
     return entities[character]!;
   });
+}
+
+function renderAgentLogo(guide: AgentGuide): string {
+  // Inline the vendored monochrome SVG at build time so it inherits the theme.
+  const svg = readFileSync(
+    new URL(`./public/brand/agents/${guide.icon}.svg`, import.meta.url),
+    "utf8",
+  ).replace("<svg ", '<svg focusable="false" ');
+  return `<span class="agent-logo" aria-hidden="true">${svg}</span>`;
 }
 
 function copyButton(
@@ -67,7 +77,7 @@ function renderPanel(guide: AgentGuide, isSelected: boolean): string {
     .join("\n");
 
   return `<section class="integration-panel" id="guide-panel-${escapeHtml(guide.id)}" role="tabpanel" aria-labelledby="guide-tab-${escapeHtml(guide.id)}" tabindex="0"${isSelected ? "" : " hidden"}>
-    <div class="guide-heading"><h3>${escapeHtml(guide.name)}</h3><p>${escapeHtml(guide.summary)}</p></div>
+    <div class="guide-heading"><h3>${renderAgentLogo(guide)}<span>${escapeHtml(guide.name)}</span></h3><p>${escapeHtml(guide.summary)}</p></div>
     ${skill}
     ${renderMcp(guide)}
     <div class="guide-try">
@@ -87,7 +97,7 @@ export function renderAgentGuides(guides: AgentGuide[] = agentGuides): string {
   const tabs = orderedGuides
     .map(
       (guide, index) =>
-        `<button type="button" class="agent-option" id="guide-tab-${escapeHtml(guide.id)}" role="tab" aria-label="${escapeHtml(guide.name)}" aria-selected="${index === 0}" aria-controls="guide-panel-${escapeHtml(guide.id)}" tabindex="${index === 0 ? "0" : "-1"}" data-guide="${escapeHtml(guide.id)}"><span class="agent-selector-name">${escapeHtml(guide.name)}</span><span class="agent-selector-kind">${guide.skill ? "Skill" : "MCP"}</span><span data-icon="arrow-right"></span></button>`,
+        `<button type="button" class="agent-option" id="guide-tab-${escapeHtml(guide.id)}" role="tab" aria-label="${escapeHtml(guide.name)}" aria-selected="${index === 0}" aria-controls="guide-panel-${escapeHtml(guide.id)}" tabindex="${index === 0 ? "0" : "-1"}" data-guide="${escapeHtml(guide.id)}">${renderAgentLogo(guide)}<span class="agent-selector-name">${escapeHtml(guide.name)}</span><span class="agent-selector-kind">${guide.skill ? "Skill" : "MCP"}</span><span data-icon="arrow-right"></span></button>`,
     )
     .join("\n");
 

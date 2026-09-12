@@ -20,5 +20,18 @@ Copyright (c) 2023 Phosphor Icons
 Source: https://github.com/phosphor-icons/phosphor-core
 License: MIT; see phosphor-MIT.txt
 
+Lobe Icons — Agent logos
+Package: @lobehub/icons-static-svg 1.95.0
+Copyright (c) 2023 LobeHub
+Source: https://github.com/lobehub/lobe-icons
+Commit: 53ead06d734cc6c003db5a87860907c4bbadfbc0
+Distribution: https://registry.npmjs.org/@lobehub/icons-static-svg/-/icons-static-svg-1.95.0.tgz
+Distribution SHA-1: 6b330b35069187a3b8ca8dd6b654fa60317d3bfa
+License: MIT; see lobe-icons-MIT.txt
+License source: https://github.com/lobehub/lobe-icons/blob/53ead06d734cc6c003db5a87860907c4bbadfbc0/LICENSE
+Assets: brand/agents/{antigravity,cherrystudio,claude,claudecode,cline,codex,cursor,geminicli,githubcopilot,opencode,trae,windsurf}.svg
+The 12 monochrome SVG files are copied without modification from package/icons/.
+Brand names and logos remain the property of their respective owners.
+
 Full license texts and copyright notices are copied without modification
-from the installed packages. These files are distributed with the site.
+from their packages or pinned upstream sources. These files are distributed with the site.

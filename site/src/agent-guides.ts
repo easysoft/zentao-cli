@@ -2,6 +2,7 @@
 export type AgentGuide = {
   id: string;
   name: string;
+  icon: string;
   summary: string;
   skill?: { command: string; path: string; note: string; verify: string };
   mcp: {
@@ -43,6 +44,7 @@ export const agentGuides: AgentGuide[] = [
   {
     id: "claude-code",
     name: "Claude Code",
+    icon: "claudecode",
     summary: "让 Claude 在理解代码的同时，读取需求、分析 Bug、跟进任务。",
     skill: {
       command: "zentao add-skill claude-code",
@@ -70,6 +72,7 @@ export const agentGuides: AgentGuide[] = [
   {
     id: "cursor",
     name: "Cursor",
+    icon: "cursor",
     summary: "在编辑器的 Agent 对话中，把禅道需求和问题带到代码旁。",
     skill: {
       command: "zentao add-skill cursor",
@@ -95,6 +98,7 @@ export const agentGuides: AgentGuide[] = [
   {
     id: "codex",
     name: "Codex",
+    icon: "codex",
     summary: "让 Codex 带着禅道中的任务和需求上下文开展开发工作。",
     skill: {
       command: "zentao add-skill codex",
@@ -122,6 +126,7 @@ export const agentGuides: AgentGuide[] = [
   {
     id: "vscode",
     name: "VS Code Copilot",
+    icon: "githubcopilot",
     summary: "在 Copilot 的 Agent 模式中使用禅道技能或 MCP 工具。",
     skill: {
       command: "zentao add-skill vscode",
@@ -153,6 +158,7 @@ export const agentGuides: AgentGuide[] = [
   {
     id: "opencode",
     name: "OpenCode",
+    icon: "opencode",
     summary: "让终端中的 OpenCode 读取禅道信息，延续你的开发流程。",
     skill: {
       command: "zentao add-skill opencode",
@@ -177,6 +183,7 @@ export const agentGuides: AgentGuide[] = [
   {
     id: "gemini",
     name: "Gemini CLI",
+    icon: "geminicli",
     summary: "在 Gemini CLI 的对话中查询禅道，也可通过 MCP 暴露项目工具。",
     skill: {
       command: "zentao add-skill gemini",
@@ -209,6 +216,7 @@ export const agentGuides: AgentGuide[] = [
   {
     id: "antigravity",
     name: "Antigravity",
+    icon: "antigravity",
     summary: "在 Antigravity IDE 的项目中使用禅道技能，或通过设置添加 MCP。",
     skill: {
       command: "zentao add-skill --output .agents/skills",
@@ -236,6 +244,7 @@ export const agentGuides: AgentGuide[] = [
   {
     id: "claude-desktop",
     name: "Claude Desktop",
+    icon: "claude",
     summary: "通过本地 MCP 服务，在 Claude 桌面版对话中查询和操作禅道。",
     mcp: {
       kind: "config",
@@ -257,6 +266,7 @@ export const agentGuides: AgentGuide[] = [
   {
     id: "cherry-studio",
     name: "Cherry Studio",
+    icon: "cherrystudio",
     summary: "使用 STDIO 服务接入禅道，并在支持工具调用的会话中启用。",
     mcp: {
       kind: "fields",
@@ -278,6 +288,7 @@ export const agentGuides: AgentGuide[] = [
   {
     id: "windsurf",
     name: "Windsurf / Cascade",
+    icon: "windsurf",
     summary: "为 Windsurf 的 Cascade 添加禅道 MCP 工具。",
     mcp: {
       kind: "config",
@@ -298,6 +309,7 @@ export const agentGuides: AgentGuide[] = [
   {
     id: "cline",
     name: "Cline",
+    icon: "cline",
     summary: "在 Cline 的开发对话中，通过 MCP 查询禅道需求与任务。",
     mcp: {
       kind: "config",
@@ -331,6 +343,7 @@ export const agentGuides: AgentGuide[] = [
   {
     id: "trae",
     name: "TRAE",
+    icon: "trae",
     summary: "在 TRAE 中添加本地 MCP 服务，将禅道带入智能体工作流。",
     mcp: {
       kind: "config",
