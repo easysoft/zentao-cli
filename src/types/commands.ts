@@ -68,7 +68,7 @@ export interface ModuleActionOptions extends GlobalOptions {
     /** 对象 ID，适用于 actionType 为 get、update 和 action 操作，批量操作时多个对象 ID 用逗号分隔 */
     id?: string;
 
-    /** 产品 ID，当 scope 为 products 时，等同于 scopeID 参数 */
+    /** Product scope ID; also an alias for productID when creating a bug. */
     product?: string;
 
     /** 项目 ID，当 scope 为 projects 时，等同于 scopeID 参数 */

@@ -48,7 +48,7 @@ function buildInputSchema(mod: ModuleDefinition) {
             `${a.name}: ${getActionDescription(a)}`
         ).join('; ')),
         id: z.number().optional().describe('首个路径 ID 的简写；是否必填取决于操作，有多个路径参数时通过 params 分别传入'),
-        product: z.number().optional().describe('产品 ID（范围参数）'),
+        product: z.number().optional().describe(mod.name === 'bug' ? '产品 ID（列表范围参数，create 时为 productID 的别名）' : '产品 ID（范围参数）'),
         project: z.number().optional().describe('项目 ID（范围参数）'),
         execution: z.number().optional().describe('执行 ID（范围参数）'),
         params: z.record(z.string(), z.unknown()).optional().describe('API 路径、查询和请求体参数（如 spaceID、libID、title、contentType）；通过 zentao_action_help 查看完整定义'),

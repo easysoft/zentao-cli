@@ -435,6 +435,9 @@ export function showModuleActionHelp(mod: ModuleDefinition, action: ModuleAction
     if (firstPathId && firstPathId.name !== 'id') {
         apiParams.push({ name: 'id', placeholder: 'number', description: `${firstPathId.name} 的别名，也可作为首个位置参数传入；其他路径参数需分别指定` });
     }
+    if (mod.name === 'bug' && action.name === 'create') {
+        apiParams.push({ name: 'product', placeholder: 'number', description: 'productID 的别名；同时传入时必须指定同一个产品' });
+    }
 
     const needsBody = action.type === 'create' || action.type === 'update' || action.type === 'action';
     if (needsBody && !actionParams.some((param) => param.role === 'body' && param.name === 'data')) {

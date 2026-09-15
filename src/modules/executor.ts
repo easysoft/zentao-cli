@@ -63,6 +63,16 @@ export async function executeModuleCommand(
     }
 
     const params = resolvedParams ? { ...resolvedParams } : buildParams(options, actionName, args);
+    if (module.name === 'bug' && action.name === 'create' && params.product !== undefined) {
+        if (params.productID !== undefined && Number(params.product) !== Number(params.productID)) {
+            throw new ZentaoError('E2009', {
+                option: 'product/productID',
+                reason: '--product 与 --productID 必须指定同一个产品',
+            });
+        }
+        // Normalize the flat alias; the SDK still gives --data fields precedence.
+        if (params.productID === undefined) params.productID = params.product;
+    }
     if (action.type === 'create' || action.type === 'update' || action.type === 'action') {
         const data = params.data;
         if (data === undefined || typeof data === 'string') {
