@@ -6,6 +6,8 @@
 
 业务字段使用 `--field=value`；CLI 额外 API 参数不支持通用的 `--field value` 写法。少量标量可直接传入，数组字符串按逗号拆分；嵌套对象、数字数组和长文本优先用 JSON。
 
+用引号包裹的 `--field=value` 支持多行文本，换行、末尾换行和值中的 `=` 都会保留。参数格式无效时会报错，不会静默忽略。
+
 ```bash
 zentao story create --productID=1 --title="需求标题" --assignedTo=admin --pri=3
 zentao story update 11 --plan=1
@@ -24,6 +26,8 @@ zentao story create --productID=1 --data @- < /path/to/story.json
 也支持无 `--data` 的 JSON 管道输入。`--data @file.json` 不支持；只有 `@-` 表示 stdin。文件内为有效 JSON 请求体，复杂文本交给 JSON 编码器处理，避免手工拼接 shell 字符串。
 
 `--data` 中同名字段优先于平铺业务字段，不要同时给出互相冲突的值。`--params` 可传路径、查询及请求体参数的对象；一般操作优先用具名路径参数和 `--data`，无需另造包装层。
+
+`bug create` 的 `--product=1` 是 `--productID=1` 的别名。平铺参数同时提供两者时必须指定同一个产品，否则报错；归一化后仍以 `--data` 内的 `productID` 为准。JSON 请求体中使用正式字段 `productID`。
 
 ## 更新补全的边界
 
