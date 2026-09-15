@@ -148,4 +148,22 @@ describe('buildParams (argv parsing)', () => {
         expect(params.flag).toBe(true);
         expect(params.name).toBe('foo');
     });
+
+    test.each(['\n', '\r\n', '\r', '\u2028', '\u2029'])('preserves text with line separator %j and surrounding fields', (newline) => {
+        const desc = `第一行=a${newline}第二行=b${newline}`;
+        expect(buildParams({}, 'update', ['123', '--story=1794', `--desc=${desc}`, '--deadline=2026-09-19'])).toEqual({
+            id: '123', story: 1794, desc, deadline: '2026-09-19',
+        });
+        expect(buildParams({}, 'update', [`--desc=123${newline}`]).desc).toBe(`123${newline}`);
+    });
+
+    test('splits only at the first equals sign and preserves empty values', () => {
+        expect(buildParams({}, 'update', ['--desc=a=b=c', '--name=', '--flag=false', '--custom.field-name=x'])).toEqual({
+            desc: 'a=b=c', name: '', flag: false, 'custom.field-name': 'x',
+        });
+    });
+
+    test.each(['--desc', 'unexpected', '--=value', '--bad key=value', '--desc\n=value'])('rejects malformed arguments instead of ignoring %j', (arg) => {
+        expect(() => buildParams({}, 'update', [arg])).toThrow(expect.objectContaining({ code: '2009' }));
+    });
 });

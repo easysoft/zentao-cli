@@ -47,13 +47,19 @@ export function buildParams(
     }
 
     for (const arg of extraArgs) {
-        const match = arg.match(/^--(\w[\w.-]*)=(.*)$/);
-        if (!match) continue;
-        const key = match[1];
-        let value: unknown = match[2];
+        const separator = arg.indexOf('=');
+        const key = arg.slice(2, separator);
+        if (!arg.startsWith('--') || separator < 3 || !/^\w/.test(key) || /[^\w.-]/.test(key)) {
+            throw new ZentaoError('E2009', {
+                option: separator < 0 ? arg : arg.slice(0, separator),
+                reason: '请使用 --字段名=值 传参',
+            });
+        }
+        // Slice at the first '=' so all line breaks and further '=' remain intact.
+        let value: unknown = arg.slice(separator + 1);
         if (value === 'true') value = true;
         else if (value === 'false') value = false;
-        else if (/^\d+$/.test(value as string)) value = Number(value);
+        else if (value !== '' && !/\D/.test(value as string)) value = Number(value);
         params[key] = value;
     }
 
