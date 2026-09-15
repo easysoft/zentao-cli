@@ -12,6 +12,7 @@ maintainer: Sun Hao <sunhao@chandao.com>
 metadata:
   repository: https://github.com/easysoft/zentao-cli.git
   keywords: [zentao, 禅道, cli, project-management]
+  version: 0.3.0
 ---
 
 # 禅道 CLI
