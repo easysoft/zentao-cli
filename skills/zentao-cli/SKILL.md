@@ -1,12 +1,17 @@
 ---
 name: zentao-cli
-description: 使用 zentao CLI 查询、创建和更新禅道数据，执行需求、任务、Bug 等状态流转，汇总项目进展，并排查认证、参数与版本兼容问题。用户要求操作禅道、查询个人工作或安装和配置 zentao-cli 时使用；首次体验和按角色上手可结合 zentao-tour。
+display_name: ZenTao CLI
+display_name_en: ZenTao CLI
+description: 使用 ZenTao CLI 查询和维护禅道中的产品、项目、需求、任务与 Bug，执行状态流转并汇总进展。当用户要求操作禅道数据、查询禅道中的个人待办，或安装、配置和排查 zentao-cli 问题时使用。
+description_zh: 使用 ZenTao CLI 查询和维护禅道中的产品、项目、需求、任务与 Bug，执行状态流转并汇总进展。当用户要求操作禅道数据、查询禅道中的个人待办，或安装、配置和排查 zentao-cli 问题时使用。
+description_en: Use ZenTao CLI to query and maintain products, projects, requirements, tasks, and bugs in ZenTao, perform status transitions, and summarize progress. Use it when the user requests to operate on ZenTao data, query personal to-dos in ZenTao, or install, configure, and troubleshoot zentao-cli issues.
 license: MIT
+version: 0.3.0-beta.1
+author: 禅道软件
+maintainer: Sun Hao <sunhao@chandao.com>
 metadata:
-  author: Sun Hao <sunhao@chandao.com>
   repository: https://github.com/easysoft/zentao-cli.git
   keywords: [zentao, 禅道, cli, project-management]
-  version: 0.3.0-beta.1
 ---
 
 # 禅道 CLI
