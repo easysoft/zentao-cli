@@ -33,6 +33,15 @@ async function captureConsoleError(fn: () => Promise<void>): Promise<string[]> {
     return output;
 }
 
+function stubIsTTY(stream: { isTTY?: boolean }, value: boolean): () => void {
+    const original = Object.getOwnPropertyDescriptor(stream, 'isTTY');
+    Object.defineProperty(stream, 'isTTY', { configurable: true, enumerable: true, writable: true, value });
+    return () => {
+        if (original) Object.defineProperty(stream, 'isTTY', original);
+        else delete (stream as { isTTY?: boolean }).isTTY;
+    };
+}
+
 describe('expanded SDK actions', () => {
     test('shows every registered action and its version requirement exactly once in detailed help', async () => {
         for (const mod of getAllModules()) {
@@ -336,7 +345,7 @@ describe('delete confirmation prompt', () => {
                 return { status: 'success' };
             },
         } as unknown as ZentaoClient;
-        Object.defineProperty(process.stdin, 'isTTY', { configurable: true, value: false });
+        const restoreStdin = stubIsTTY(process.stdin, false);
 
         try {
             await expect(handleModuleCommand(
@@ -349,7 +358,7 @@ describe('delete confirmation prompt', () => {
             )).rejects.toMatchObject({ code: '2009' });
             expect(requestCount).toBe(0);
         } finally {
-            delete (process.stdin as { isTTY?: boolean }).isTTY;
+            restoreStdin();
         }
     });
 
@@ -403,20 +412,25 @@ describe('handleModuleCommand rendered output', () => {
             getZentaoConfig: async () => ({ version: '22.5' }),
             request: async () => ({ status: 'success', product: { id: 1, name: '产品1' } }),
         } as unknown as ZentaoClient;
+        const restoreStdout = stubIsTTY(process.stdout, false);
 
-        const output = await captureConsoleLog(async () => {
-            await handleModuleCommand(
-                client,
-                getModule('product')!,
-                'get' as ModuleActionName,
-                ['1'],
-                mockProfile,
-                { format: 'markdown' },
-            );
-        });
+        try {
+            const output = await captureConsoleLog(async () => {
+                await handleModuleCommand(
+                    client,
+                    getModule('product')!,
+                    'get' as ModuleActionName,
+                    ['1'],
+                    mockProfile,
+                    { format: 'markdown' },
+                );
+            });
 
-        expect(output[0]).not.toContain('\x1b');
-        expect(output[0]).toContain('* id: 1');
+            expect(output[0]).not.toContain('\x1b');
+            expect(output[0]).toContain('* id: 1');
+        } finally {
+            restoreStdout();
+        }
     });
 });
 
@@ -480,26 +494,31 @@ describe('handleModuleCommand raw output', () => {
             getZentaoConfig: async () => ({ version: '22.5' }),
             request: async () => ({ status: 'success', id: 7, message: 'created' }),
         } as unknown as ZentaoClient;
+        const restoreStdin = stubIsTTY(process.stdin, true);
 
-        const output = await captureConsoleLog(async () => {
-            await handleModuleCommand(
-                client,
-                getModule('user')!,
-                'create' as ModuleActionName,
-                [],
-                mockProfile,
-                {
-                    format: 'raw',
-                    account: 'dev1',
-                    realname: 'Dev One',
-                    password: 'secret',
-                } as any,
-            );
-        });
+        try {
+            const output = await captureConsoleLog(async () => {
+                await handleModuleCommand(
+                    client,
+                    getModule('user')!,
+                    'create' as ModuleActionName,
+                    [],
+                    mockProfile,
+                    {
+                        format: 'raw',
+                        account: 'dev1',
+                        realname: 'Dev One',
+                        password: 'secret',
+                    } as any,
+                );
+            });
 
-        const parsed = JSON.parse(output[0]);
-        expect(parsed.status).toBe('success');
-        expect(parsed.id).toBe(7);
-        expect(parsed.message).toBe('created');
+            const parsed = JSON.parse(output[0]);
+            expect(parsed.status).toBe('success');
+            expect(parsed.id).toBe(7);
+            expect(parsed.message).toBe('created');
+        } finally {
+            restoreStdin();
+        }
     });
 });
