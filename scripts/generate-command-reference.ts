@@ -189,6 +189,9 @@ for (const mod of modules) {
         } else add('此操作没有业务参数。');
         const firstId = params.find((param) => param.role === 'path' && param.name.endsWith('ID') && param.name !== 'scopeID');
         if (firstId) add(code('--' + firstId.name) + ' 可用 ' + code('--id') + ' 或首个数字位置参数代替；其余路径 ID 需分别提供。');
+        if (mod.name === 'bug' && action.name === 'create') {
+            add('可用 `--product` 代替 `--productID`；平铺参数同时提供两者时必须指定同一个产品。`--data` 内的 `productID` 仍优先，最终产品 ID 会同时发送到查询串和请求体。');
+        }
         const applicable = ['--params', '--format', '--silent'];
         if (action.type === 'list') applicable.push('--pick', '--filter', '--sort', '--search', '--search-fields', '--limit');
         if (action.type === 'get') applicable.push('--pick');

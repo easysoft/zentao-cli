@@ -26,6 +26,8 @@ zentao [全局选项] <模块> <操作> [--参数名=值 ...]
 
 推荐将全局选项放在命令前，将业务参数写成 `--参数名=值`，保留参数名的大小写，例如 `--productID=1`、`--recPerPage=50`。业务字段不要写成 `--title 标题`；这类动态参数需要等号。包含空格或 Shell 特殊字符的值使用引号，例如 `--title='登录失败'`、`--filter='pri<=2'`。
 
+引号内的参数值支持多行文本，换行、末尾换行和额外的 `=` 会原样保留。格式错误的动态参数会报错，不会静默忽略。
+
 ### 简写、别名与帮助
 
 | 写法 | 含义 |
@@ -56,6 +58,8 @@ zentao doc myDocs --spaceID=1 --libID=2
 ```
 
 带有 `scope`、`scopeID` 的操作需要指定查询范围。可以用参数表下列出的 `--product`、`--project` 或 `--execution` 简写代替这两个参数，每次选择一个范围。例如 `zentao bug --product=1`。其他操作里的同名字段按其自身定义解释，不表示所有列表都支持按产品、项目或执行筛选。
+
+`zentao bug create --product=1` 中的 `--product` 是 `--productID=1` 的别名。平铺参数同时提供两者时必须指定同一个产品，否则报错；`--data` 内的 `productID` 仍优先于平铺字段。创建 Bug 时，最终产品 ID 会同时发送到查询串和请求体，以兼容服务端的两种读取方式。
 
 ### JSON、数组与标准输入
 
@@ -170,7 +174,7 @@ zentao file create --file=/path/to/screenshot.png --objectType=bug --objectID=42
 
 ## 覆盖范围
 
-对应当前工作区：CLI **0.2.0**，API 定义 **0.6.9**；覆盖 **17 个内置一级命令**（另含 config get/set）、**26 个业务模块、229 个业务操作**。已安装版本不同时，请以本机命令的 --help 为准。
+对应当前工作区：CLI **0.3.0-beta.1**，API 定义 **0.6.9**；覆盖 **17 个内置一级命令**（另含 config get/set）、**26 个业务模块、229 个业务操作**。已安装版本不同时，请以本机命令的 --help 为准。
 
 <a id="global-options"></a>
 
@@ -2796,6 +2800,8 @@ zentao bug create --productID=<number> --title=<string> --openedBuild=<string[]>
 | `--steps` | 请求体 | `string` | 否 | 未声明 | 重现步骤 |
 | `--story` | 请求体 | `number` | 否 | 未声明 | 相关需求<br>格式：int32 |
 | `--assignedTo` | 请求体 | `string` | 否 | 未声明 | 指派给 |
+
+可用 `--product` 代替 `--productID`；平铺参数同时提供两者时必须指定同一个产品。`--data` 内的 `productID` 仍优先，最终产品 ID 会同时发送到查询串和请求体。
 
 可配合[公共选项](#data-options)：`--params`、`--format`、`--silent`、`--data`、`--batch-fail-fast`；其他全局选项见[全局选项](#global-options)。
 
