@@ -5,11 +5,12 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { getAction, getActionDescription, getAllModules, getModule } from '../modules/helper.js';
 import type { ModuleDefinition, ModuleAction, ModuleActionOptions } from '../types/index.js';
 import { executeModuleCommand } from '../modules/executor.js';
-import { ZentaoError, mapSdkError } from '../errors.js';
+import { ZentaoError } from '../errors.js';
 import type { AuthProvider } from './server.js';
 import { findProfileByKey, getProfileConfig, profileKey } from '../config/store.js';
 import { withRequestSignal } from '../api/index.js';
 import { normalizeToolParams } from './params.js';
+import { outputSchema, toolError, toolResult } from './results.js';
 
 function buildToolDescription(mod: ModuleDefinition): string {
     const actions = mod.actions.map(a => a.name);
@@ -55,9 +56,9 @@ function buildInputSchema(mod: ModuleDefinition) {
         execution: z.number().int().nonnegative().optional().describe('执行范围简写，映射到该动作的 executionID、execution 或 scope/scopeID'),
         params: z.record(z.string(), z.unknown()).optional().describe('API 路径、查询和请求体参数（如 spaceID、libID、title、contentType）；通过 zentao_action_help 查看完整定义'),
         pick: z.string().optional().describe('摘取字段（逗号分隔）'),
-        filter: z.array(z.string()).optional().describe('过滤条件组（组内逗号分隔为 AND，多组为 OR，如 status=active,severity<=2）'),
-        sort: z.string().optional().describe('排序（如 pri:asc,severity:desc；兼容下划线写法）'),
-        search: z.array(z.string()).optional().describe('搜索关键词组（组内逗号分隔为 AND，多组为 OR）'),
+        filter: z.array(z.string()).optional().describe('仅过滤当前页（组内逗号为 AND，多组为 OR，如 status=active）；远端筛选用 params.filters（如支持）'),
+        sort: z.string().optional().describe('仅排序当前页（如 pri:asc,severity:desc）'),
+        search: z.array(z.string()).optional().describe('仅搜索当前页（组内逗号为 AND，多组为 OR）'),
         searchFields: z.string().optional().describe('搜索字段（逗号分隔），配合 search 使用'),
         page: z.number().int().positive().optional().describe('页码，从 1 开始'),
         recPerPage: z.number().int().min(1).max(1000).optional().describe('每页条数，1 至 1000'),
@@ -111,12 +112,7 @@ async function handleProfileTool(auth: AuthProvider, signal?: AbortSignal): Prom
             .filter(key => user![key] !== undefined).map(key => [key, user![key]])) : null,
     };
 
-    return {
-        content: [{
-            type: 'text',
-            text: JSON.stringify(identity, null, 2),
-        }],
-    };
+    return toolResult(identity);
 }
 
 interface SwitchProfileInput {
@@ -131,15 +127,7 @@ async function handleSwitchProfileTool(input: SwitchProfileInput, auth: AuthProv
 
     const { profile: current } = await auth.getContext(profile);
     const currentKey = profileKey(current.account, current.server);
-    return {
-        content: [{
-            type: 'text',
-            text: JSON.stringify({
-                status: 'success',
-                currentProfile: currentKey,
-            }, null, 2),
-        }],
-    };
+    return toolResult({ status: 'success', currentProfile: currentKey });
 }
 
 async function handleModuleTool(
@@ -168,17 +156,22 @@ async function handleModuleTool(
     const execution = await executeModuleCommand(withRequestSignal(client, signal), mod, actionName, [], opts, config, params);
 
     if (execution.action.type === 'list') {
-        const response: Record<string, unknown> = { data: execution.data };
-        if (execution.pager) response.pager = execution.pager;
-        return { content: [{ type: 'text', text: JSON.stringify(response, null, 2) }] };
+        return toolResult(execution.data, {
+            ...(execution.pager ? { pager: execution.pager } : {}),
+            meta: {
+                processingScope: 'page',
+                returnedCount: Array.isArray(execution.data) ? execution.data.length : 0,
+                ...(execution.pager ? { totalScope: 'serverBeforeLocalProcessing' } : {}),
+            },
+        });
     }
 
     if (execution.action.type === 'get') {
-        return { content: [{ type: 'text', text: JSON.stringify(execution.data, null, 2) }] };
+        return toolResult(execution.data);
     }
 
     // create / update / delete / action
-    return { content: [{ type: 'text', text: JSON.stringify(execution.data ?? execution.rawResponse, null, 2) }] };
+    return toolResult(execution.data ?? execution.rawResponse);
 }
 
 function toolAnnotations(actions: readonly ModuleAction[]) {
@@ -191,32 +184,22 @@ function toolAnnotations(actions: readonly ModuleAction[]) {
     };
 }
 
-function toolError(error: unknown): CallToolResult {
-    error = mapSdkError(error);
-    return {
-        isError: true,
-        content: [{
-            type: 'text',
-            text: error instanceof ZentaoError
-                ? `E${error.code}: ${error.message}`
-                : error instanceof Error ? error.message : String(error),
-        }],
-    };
-}
-
 export function registerModuleTools(server: McpServer, auth: AuthProvider): void {
-    server.tool(
+    server.registerTool(
         'zentao_action_help',
-        '查看禅道操作的路径、参数定义和最低版本要求，无需登录；调用业务工具前可按需查询',
-        { module: z.string().describe('模块名，如 doc、story'), action: z.string().describe('操作名，如 createMyDoc、getGrades') },
-        { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+        {
+            description: '查看禅道操作的路径、参数定义和最低版本要求，无需登录；调用业务工具前可按需查询',
+            inputSchema: z.object({ module: z.string().describe('模块名，如 doc、story'), action: z.string().describe('操作名，如 createMyDoc、getGrades') }).strict(),
+            outputSchema,
+            annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+        },
         async ({ module, action }) => {
             try {
                 const mod = getModule(module);
                 if (!mod) throw new ZentaoError('E2001', { module });
                 const definition = getAction(mod, action);
                 if (!definition) throw new ZentaoError('E2005', { module: mod.name });
-                return { content: [{ type: 'text', text: JSON.stringify({
+                return toolResult({
                     module: mod.name,
                     action: definition.name,
                     display: definition.display,
@@ -224,34 +207,38 @@ export function registerModuleTools(server: McpServer, auth: AuthProvider): void
                     path: definition.path,
                     minVersion: definition.minVersion,
                     parameters: getModuleActionParams(mod.name, definition.name),
-                }, null, 2) }] };
+                });
             } catch (error) {
-                return toolError(error);
+                return toolError(error, { module, action });
             }
         },
     );
 
-    server.tool(
+    server.registerTool(
         'zentao_profile',
-        '获取当前 MCP 绑定的账号和站点，并查询远端用户详情；userFound=false 表示未找到详情，服务端失败会报错',
-        {},
-        { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
+        {
+            description: '获取当前 MCP 绑定的账号和站点，并查询远端用户详情；userFound=false 表示未找到详情，服务端失败会报错',
+            inputSchema: z.object({}).strict(),
+            outputSchema,
+            annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
+        },
         async (_input, extra) => {
             try {
                 return await handleProfileTool(auth, extra.signal);
             } catch (error) {
-                return toolError(error);
+                return toolError(error, { module: 'user', action: 'list' });
             }
         },
     );
 
-    server.tool(
+    server.registerTool(
         'zentao_switch_profile',
-        '切换当前 MCP 实例的登录账号，不改变 CLI 或其他 MCP 实例的账号',
         {
-            profileKey: z.string().describe('目标用户配置标识，支持 account@server、account 或 account@hostname'),
+            description: '切换当前 MCP 实例的登录账号，不改变 CLI 或其他 MCP 实例的账号',
+            inputSchema: z.object({ profileKey: z.string().describe('目标用户配置标识，支持 account@server、account 或 account@hostname') }).strict(),
+            outputSchema,
+            annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
         },
-        { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
         async (input) => {
             try {
                 return await handleSwitchProfileTool(input as SwitchProfileInput, auth);
@@ -268,11 +255,11 @@ export function registerModuleTools(server: McpServer, auth: AuthProvider): void
 
         const annotations = toolAnnotations(mod.actions);
 
-        server.registerTool(name, { description, inputSchema, annotations }, async (input, extra) => {
+        server.registerTool(name, { description, inputSchema, outputSchema, annotations }, async (input, extra) => {
             try {
                 return await handleModuleTool(mod, input as ToolInput, auth, extra.signal);
             } catch (error) {
-                return toolError(error);
+                return toolError(error, { module: mod.name, action: input.action });
             }
         });
     }

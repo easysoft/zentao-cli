@@ -107,6 +107,10 @@ MCP 在首次业务调用时绑定账号和站点，环境凭证不会写入本�
 
 `zentao_profile` 返回绑定的 `account`、`server`、远端详情 `user` 和 `userFound`。详情按账号过滤并按需翻页，仅返回 ID、账号、姓名、部门、角色；未找到时 `user=null`、`userFound=false`。远端权限、Token 或业务错误会明确报错，不使用旧缓存掩盖失败。
 
+所有工具都声明 `outputSchema`，成功时通过 `structuredContent.data` 返回数据；列表还包含 `pager` 和 `meta`。为兼容已有客户端，文本结果继续采用原有的 JSON 形态（列表带 `data`，详情直接返回对象）。业务错误设置 `isError=true` 并返回 `structuredContent.error`，包含 `code`、`message` 及适用的 `module`、`action`、帮助调用；协议和顶层 schema 校验错误由 MCP SDK 返回。
+
+`filter`、`search`、`sort` 仅处理当前页。列表的 `meta.processingScope="page"`、`meta.returnedCount` 表示实际返回条数；`pager.recTotal` 是远端总数，`meta.totalScope="serverBeforeLocalProcessing"` 明确其未经过本地筛选。需要跨页筛选时使用操作支持的 `params.filters` 等服务端参数，并逐页请求。
+
 ```bash
 # 不需要对象 ID 的命名列表
 zentao story getGrades
