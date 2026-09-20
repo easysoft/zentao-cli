@@ -181,6 +181,8 @@ $ pnpm install -g zentao-cli && zentao login && zentao add-skill all
 
 安装技能后即可在对应 Agent 工具中使用禅道 CLI 技能。
 
+WorkBuddy 的 CLI + Skill 连接器资源包使用 `bun run build:workbuddy` 生成，提交方式与首次终端登录限制见 [连接器说明](./connectors/workbuddy/README.md)。
+
 ```txt
 禅道中有哪些产品？
 

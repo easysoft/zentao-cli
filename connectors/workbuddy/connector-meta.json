@@ -1,0 +1,24 @@
+{
+  "name": "禅道",
+  "name_zh": "禅道",
+  "name_en": "ZenTao",
+  "description": "通过自然语言查询和维护禅道中的产品、项目、需求、任务与 Bug，汇总个人待办和团队进展。首次使用需在终端登录。",
+  "description_zh": "由禅道官方（https://www.zentao.net/）提供的 ZenTao CLI，可查询与维护禅道中的产品、项目、需求、任务和 Bug，支持执行状态流转并汇总进展。适用于操作禅道数据、查询个人待办，以及安装、配置和排查 zentao-cli 问题等场景。",
+  "description_en": "Official ZenTao CLI from ZenTao (https://www.zentao.net/). Query and maintain products, projects, requirements, tasks, and bugs in ZenTao; perform status transitions and summarize progress. For operating on ZenTao data, querying personal to-dos, and installing, configuring, or troubleshooting zentao-cli issues.",
+  "source": "zentao",
+  "type": "cli",
+  "version": "0.1.0",
+  "minWorkbuddyVersion": "4.24.0",
+  "examples_zh": [
+    "查看分配给我的任务和 Bug，按优先级整理待办。",
+    "汇总指定项目的执行进展和未完成任务。",
+    "在指定产品中创建一条需求，并核实保存结果。",
+    "将指定 Bug 标记为已解决，并填写实际解决方案。"
+  ],
+  "examples_en": [
+    "List my assigned tasks and bugs, ordered by priority.",
+    "Summarize execution progress and unfinished tasks for a project.",
+    "Create a requirement in a specified product and verify the saved result.",
+    "Resolve a specified bug with the actual resolution."
+  ]
+}

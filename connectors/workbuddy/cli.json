@@ -1,0 +1,33 @@
+{
+  "runtime": {
+    "type": "node",
+    "version": "22"
+  },
+  "init": {
+    "darwin": "npm install -g zentao-cli@0.3.1 --no-audit --no-fund",
+    "linux": "npm install -g zentao-cli@0.3.1 --no-audit --no-fund",
+    "win32": "npm.cmd install -g zentao-cli@0.3.1 --no-audit --no-fund"
+  },
+  "auth": {
+    "darwin": "node -e \"console.error('请先在交互终端执行：npx --yes zentao-cli@0.3.1 --config ~/.config/zentao/workbuddy.json login；完成后返回 WorkBuddy 重新连接。');process.exitCode=1\"",
+    "linux": "node -e \"console.error('请先在交互终端执行：npx --yes zentao-cli@0.3.1 --config ~/.config/zentao/workbuddy.json login；完成后返回 WorkBuddy 重新连接。');process.exitCode=1\"",
+    "win32": "node -e \"console.error('请先在交互终端执行：npx --yes zentao-cli@0.3.1 --config ~/.config/zentao/workbuddy.json login；完成后返回 WorkBuddy 重新连接。');process.exitCode=1\""
+  },
+  "status": {
+    "darwin": "zentao --config \"~/.config/zentao/workbuddy.json\" profile --format=json",
+    "linux": "zentao --config \"~/.config/zentao/workbuddy.json\" profile --format=json",
+    "win32": "zentao.cmd --config \"~/.config/zentao/workbuddy.json\" profile --format=json"
+  },
+  "statusMatch": "\"currentProfile\"\\s*:\\s*\"[^\"]+\"",
+  "unAuth": {
+    "darwin": "node -e \"require('node:fs').rmSync(require('node:path').join(require('node:os').homedir(),'.config','zentao','workbuddy.json'),{force:true});console.log('已清理 WorkBuddy 禅道登录记录')\"",
+    "linux": "node -e \"require('node:fs').rmSync(require('node:path').join(require('node:os').homedir(),'.config','zentao','workbuddy.json'),{force:true});console.log('已清理 WorkBuddy 禅道登录记录')\"",
+    "win32": "node -e \"require('node:fs').rmSync(require('node:path').join(require('node:os').homedir(),'.config','zentao','workbuddy.json'),{force:true});console.log('已清理 WorkBuddy 禅道登录记录')\""
+  },
+  "env": {
+    "ZENTAO_URL": "",
+    "ZENTAO_ACCOUNT": "",
+    "ZENTAO_PASSWORD": "",
+    "ZENTAO_TOKEN": ""
+  }
+}

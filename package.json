@@ -26,6 +26,7 @@
   "scripts": {
     "dev": "bun run src/index.ts",
     "build": "bun run scripts/build.ts --minify",
+    "build:workbuddy": "bun run scripts/build-workbuddy.ts",
     "build:sf": "bun run scripts/build.ts --compile --minify",
     "build:sf:all": "bun run scripts/build.ts --compile --minify --targets=all",
     "typecheck": "tsc --noEmit",
