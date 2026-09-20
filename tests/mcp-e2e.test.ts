@@ -211,7 +211,7 @@ describe('MCP server (stdio e2e smoke)', () => {
             expect((await client.callTool({ name: 'zentao_switch_profile', arguments: { profileKey: 'account-b' } })).isError).not.toBe(true);
 
             const currentProfile = await client.callTool({ name: 'zentao_profile', arguments: {} });
-            expect(currentProfile).toMatchObject({ content: [{ text: JSON.stringify({ account: 'account-b' }, null, 2) }] });
+            expect(JSON.parse((currentProfile.content as Array<{ text: string }>)[0].text)).toMatchObject({ account: 'account-b', server: profiles[1].server, userFound: true, user: { account: 'account-b' } });
             expect(requests.at(-1)).toMatchObject({ path: '/b/api.php/v2/users', token: 'test-token-b' });
             expect(await getProduct()).toMatchObject({ content: [{ text: expect.stringContaining('account-b') }] });
             expect(requests.at(-1)).toMatchObject({ path: '/b/api.php/v2/products/1', token: 'test-token-b' });

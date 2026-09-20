@@ -1,11 +1,11 @@
 import { z } from 'zod';
-import { getModuleActionParams } from 'zentao-api';
+import { getModuleActionParams, request } from 'zentao-api';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { getAction, getActionDescription, getAllModules, getModule } from '../modules/helper.js';
 import type { ModuleDefinition, ModuleAction, ModuleActionOptions } from '../types/index.js';
 import { executeModuleCommand } from '../modules/executor.js';
-import { ZentaoError } from '../errors.js';
+import { ZentaoError, mapSdkError } from '../errors.js';
 import type { AuthProvider } from './server.js';
 import { findProfileByKey, getProfileConfig, profileKey } from '../config/store.js';
 import { withRequestSignal } from '../api/index.js';
@@ -82,22 +82,39 @@ interface ToolInput {
 
 async function handleProfileTool(auth: AuthProvider, signal?: AbortSignal): Promise<CallToolResult> {
     const { client, profile } = await auth.getContext();
-    const account = profile.account;
-
-    const usersResp = await withRequestSignal(client, signal).get<Record<string, unknown>>('/users', {
-        query: { browseType: 'inside', recPerPage: 100 },
-    });
-
-    const usersRaw = (usersResp as Record<string, unknown>).users;
-    const users = Array.isArray(usersRaw) ? usersRaw as Array<Record<string, unknown>> : [];
-    const user = account
-        ? users.find((item) => String(item.account ?? '') === account)
-        : undefined;
+    const scopedClient = withRequestSignal(client, signal);
+    let user: Record<string, unknown> | undefined;
+    let previousPage: string | undefined;
+    for (let pageID = 1; ; pageID++) {
+        const response = await request('user/list', {
+            browseType: 'inside', orderBy: 'id_asc', recPerPage: 100, pageID,
+            filters: [{ field: 'account', operator: '=', value: profile.account }],
+        }, { client: scopedClient, throwOnFail: true });
+        const users = Array.isArray(response.data) ? response.data as Record<string, unknown>[] : [];
+        user = users.find(item => item.account === profile.account);
+        if (user || !users.length) break;
+        // Older servers may ignore filters; continue paging without silently truncating.
+        const page = JSON.stringify(users.map(item => [item.id, item.account]));
+        if (page === previousPage || (response.pager && response.pager.page !== pageID)) {
+            throw new ZentaoError('E2008', { url: profile.server, status: '', serverResponse: '用户列表分页未向前推进，无法确认当前用户详情' });
+        }
+        previousPage = page;
+        if (response.pager
+            ? pageID * response.pager.recPerPage >= response.pager.total
+            : users.length < 100) break;
+    }
+    const identity = {
+        account: profile.account,
+        server: profile.server,
+        userFound: Boolean(user),
+        user: user ? Object.fromEntries(['id', 'account', 'realname', 'dept', 'role']
+            .filter(key => user![key] !== undefined).map(key => [key, user![key]])) : null,
+    };
 
     return {
         content: [{
             type: 'text',
-            text: JSON.stringify(user ?? profile.user ?? {}, null, 2),
+            text: JSON.stringify(identity, null, 2),
         }],
     };
 }
@@ -175,6 +192,7 @@ function toolAnnotations(actions: readonly ModuleAction[]) {
 }
 
 function toolError(error: unknown): CallToolResult {
+    error = mapSdkError(error);
     return {
         isError: true,
         content: [{
@@ -215,7 +233,7 @@ export function registerModuleTools(server: McpServer, auth: AuthProvider): void
 
     server.tool(
         'zentao_profile',
-        '获取当前登录禅道账号信息',
+        '获取当前 MCP 绑定的账号和站点，并查询远端用户详情；userFound=false 表示未找到详情，服务端失败会报错',
         {},
         { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
         async (_input, extra) => {

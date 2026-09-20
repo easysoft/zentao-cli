@@ -105,6 +105,8 @@ MCP 会在发送请求前按动作定义检查必填字段、JSON 类型、明�
 
 MCP 在首次业务调用时绑定账号和站点，环境凭证不会写入本地 Profile。`zentao_switch_profile` 只切换当前 MCP 实例，不改变 CLI 或其他实例的当前账号；在 CLI 中切换账号也不会改变已运行的 MCP。显式选择的本地 Profile 会读取同一账号的 Token 和配置更新，删除该 Profile 后后续调用会报错。
 
+`zentao_profile` 返回绑定的 `account`、`server`、远端详情 `user` 和 `userFound`。详情按账号过滤并按需翻页，仅返回 ID、账号、姓名、部门、角色；未找到时 `user=null`、`userFound=false`。远端权限、Token 或业务错误会明确报错，不使用旧缓存掩盖失败。
+
 ```bash
 # 不需要对象 ID 的命名列表
 zentao story getGrades
