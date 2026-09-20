@@ -149,7 +149,7 @@ describe('MCP server (stdio e2e smoke)', () => {
         }
     }, { timeout: 20_000 });
 
-    test('follows external profile, token and client option changes without mixing identities', async () => {
+    test('pins its identity and refreshes only the explicitly selected profile', async () => {
         const requests: Array<{ path: string; token: string | null; recPerPage: string | null }> = [];
         let delayProduct = false;
         const server = Bun.serve({
@@ -206,6 +206,10 @@ describe('MCP server (stdio e2e smoke)', () => {
             });
             expect(switched.exitCode).toBe(0);
 
+            expect(await getProduct()).toMatchObject({ content: [{ text: expect.stringContaining('account-a') }] });
+            expect(requests.at(-1)).toMatchObject({ path: '/a/api.php/v2/products/1', token: 'test-token-a' });
+            expect((await client.callTool({ name: 'zentao_switch_profile', arguments: { profileKey: 'account-b' } })).isError).not.toBe(true);
+
             const currentProfile = await client.callTool({ name: 'zentao_profile', arguments: {} });
             expect(currentProfile).toMatchObject({ content: [{ text: JSON.stringify({ account: 'account-b' }, null, 2) }] });
             expect(requests.at(-1)).toMatchObject({ path: '/b/api.php/v2/users', token: 'test-token-b' });
@@ -241,6 +245,44 @@ describe('MCP server (stdio e2e smoke)', () => {
             expect(requests).toHaveLength(beforeLogout);
         } finally {
             await client.close();
+            server.stop(true);
+            rmSync(dir, { recursive: true, force: true });
+        }
+    }, { timeout: 20_000 });
+
+    test('keeps two MCP instances isolated without writing their environment credentials to shared config', async () => {
+        const server = Bun.serve({
+            hostname: '127.0.0.1', port: 0,
+            fetch(req) {
+                const url = new URL(req.url);
+                if (url.searchParams.get('mode') === 'getconfig') return Response.json({ version: '22.5' });
+                return Response.json({ product: { id: 1, name: url.pathname.split('/')[1] } });
+            },
+        });
+        const dir = mkdtempSync(join(tmpdir(), 'zentao-cli-mcp-isolation-'));
+        const configFile = join(dir, 'config.json');
+        const original = JSON.stringify({ profiles: [] });
+        writeFileSync(configFile, original);
+        const clients: Client[] = [];
+        try {
+            for (const account of ['a', 'b']) {
+                const client = new Client({ name: `isolation-${account}`, version: '0.0.0' });
+                clients.push(client);
+                await client.connect(new StdioClientTransport({
+                    command: process.execPath,
+                    args: ['--no-env-file', join(repoRoot, 'src/index.ts'), '--config', configFile, 'mcp'],
+                    cwd: dir,
+                    env: { ...process.env, ZENTAO_URL: new URL(account, server.url).toString(), ZENTAO_ACCOUNT: account, ZENTAO_TOKEN: `token-${account}`, ZENTAO_PASSWORD: '' },
+                }));
+            }
+            for (const index of [0, 1, 0, 1]) {
+                const result = await clients[index].callTool({ name: 'zentao_product', arguments: { action: 'get', id: 1 } });
+                expect(result.isError).not.toBe(true);
+                expect(JSON.parse((result.content as Array<{ text: string }>)[0].text).name).toBe(index === 0 ? 'a' : 'b');
+            }
+            expect(readFileSync(configFile, 'utf-8')).toBe(original);
+        } finally {
+            await Promise.all(clients.map(client => client.close()));
             server.stop(true);
             rmSync(dir, { recursive: true, force: true });
         }

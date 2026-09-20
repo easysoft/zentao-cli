@@ -230,7 +230,7 @@ export function registerModuleTools(server: McpServer, auth: AuthProvider): void
 
     server.tool(
         'zentao_switch_profile',
-        '切换当前登录账号（等价于 switch-profile）',
+        '切换当前 MCP 实例的登录账号，不改变 CLI 或其他 MCP 实例的账号',
         {
             profileKey: z.string().describe('目标用户配置标识，支持 account@server、account 或 account@hostname'),
         },

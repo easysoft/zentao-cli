@@ -15,7 +15,7 @@ export interface AuthContext {
  * Otherwise, prefer complete environment credentials, then the current saved
  * profile. Throw E1006 when the selected source has no usable credentials.
  */
-export async function ensureAuth(options?: { insecure?: boolean; timeout?: number; profile?: Profile }): Promise<AuthContext> {
+export async function ensureAuth(options?: { insecure?: boolean; timeout?: number; profile?: Profile; persist?: boolean }): Promise<AuthContext> {
     const env = getEnvCredentials();
     if (!options?.profile && env.url && env.account && (env.token || env.password)) {
         const server = normalizeServerUrl(env.url);
@@ -27,7 +27,7 @@ export async function ensureAuth(options?: { insecure?: boolean; timeout?: numbe
         };
         if (env.token) {
             const profile = buildProfile(server, env.account, env.token, undefined, undefined, existingProfile);
-            saveProfile(profile);
+            if (options?.persist !== false) saveProfile(profile);
             return {
                 client: createClient(server, env.token, clientOpts),
                 profile,
@@ -37,7 +37,7 @@ export async function ensureAuth(options?: { insecure?: boolean; timeout?: numbe
         if (env.password) {
             const result = await login(server, env.account, env.password, clientOpts);
             const profile = buildProfile(server, env.account, result.token, result.serverConfig, result.user, existingProfile);
-            saveProfile(profile);
+            if (options?.persist !== false) saveProfile(profile);
             return {
                 client: result.client,
                 profile,
@@ -53,7 +53,7 @@ export async function ensureAuth(options?: { insecure?: boolean; timeout?: numbe
             timeout: options?.timeout ?? config.timeout,
         };
         currentProfile.lastUsedTime = new Date().toISOString();
-        saveProfile(currentProfile);
+        if (options?.persist !== false) saveProfile(currentProfile);
         return {
             client: createClient(currentProfile.server, currentProfile.token, clientOpts),
             profile: currentProfile,
