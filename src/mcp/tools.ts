@@ -9,6 +9,7 @@ import { ZentaoError } from '../errors.js';
 import type { AuthProvider } from './server.js';
 import { findProfileByKey, getProfileConfig, profileKey } from '../config/store.js';
 import { withRequestSignal } from '../api/index.js';
+import { normalizeToolParams } from './params.js';
 
 function buildToolDescription(mod: ModuleDefinition): string {
     const actions = mod.actions.map(a => a.name);
@@ -49,9 +50,9 @@ function buildInputSchema(mod: ModuleDefinition) {
             `${a.name}: ${getActionDescription(a)}`
         ).join('; ')),
         id: z.number().optional().describe('首个路径 ID 的简写；是否必填取决于操作，有多个路径参数时通过 params 分别传入'),
-        product: z.number().optional().describe(mod.name === 'bug' ? '产品 ID（列表范围参数，create 时为 productID 的别名）' : '产品 ID（范围参数）'),
-        project: z.number().optional().describe('项目 ID（范围参数）'),
-        execution: z.number().optional().describe('执行 ID（范围参数）'),
+        product: z.number().optional().describe('产品范围简写，映射到该动作的 productID、product 或 scope/scopeID；与 params 冲突时报错'),
+        project: z.number().optional().describe('项目范围简写，映射到该动作的 projectID、project 或 scope/scopeID'),
+        execution: z.number().optional().describe('执行范围简写，映射到该动作的 executionID、execution 或 scope/scopeID'),
         params: z.record(z.string(), z.unknown()).optional().describe('API 路径、查询和请求体参数（如 spaceID、libID、title、contentType）；通过 zentao_action_help 查看完整定义'),
         pick: z.string().optional().describe('摘取字段（逗号分隔）'),
         filter: z.array(z.string()).optional().describe('过滤条件组（组内逗号分隔为 AND，多组为 OR，如 status=active,severity<=2）'),
@@ -130,28 +131,24 @@ async function handleModuleTool(
     auth: AuthProvider,
     signal?: AbortSignal,
 ): Promise<CallToolResult> {
+    const action = getAction(mod, input.action);
+    if (!action) throw new ZentaoError('E2005', { module: mod.name });
+    const params = normalizeToolParams(mod, action, input);
     const { client, profile } = await auth.getContext();
     const config = getProfileConfig(profile);
     const actionName = input.action;
 
     const opts: ModuleActionOptions = {
-        id: input.id != null ? String(input.id) : undefined,
-        product: input.product != null ? String(input.product) : undefined,
-        project: input.project != null ? String(input.project) : undefined,
-        execution: input.execution != null ? String(input.execution) : undefined,
-        params: input.params ? JSON.stringify(input.params) : undefined,
         pick: input.pick,
         filter: input.filter,
         sort: input.sort,
         search: input.search,
         searchFields: input.searchFields,
-        page: input.page != null ? String(input.page) : undefined,
         recPerPage: input.recPerPage != null ? String(input.recPerPage) : undefined,
         format: 'json',
-        yes: true,
     };
 
-    const execution = await executeModuleCommand(withRequestSignal(client, signal), mod, actionName, [], opts, config);
+    const execution = await executeModuleCommand(withRequestSignal(client, signal), mod, actionName, [], opts, config, params);
 
     if (execution.action.type === 'list') {
         const response: Record<string, unknown> = { data: execution.data };

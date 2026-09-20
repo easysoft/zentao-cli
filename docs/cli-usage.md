@@ -99,6 +99,8 @@ CLI 使用 `zentao-api 0.6.9` 的注册表，提供 26 个模块、229 个操作
 
 MCP 提供无需登录的 `zentao_action_help` 工具，传入 `module` 和 `action` 即可查询该操作的路径、必填参数、参数类型及 `minVersion`，例如 `{"module":"doc","action":"createMyDoc"}`。
 
+MCP 的业务参数使用 `params` 中的正式名称，例如任务列表 `{"action":"list","params":{"executionID":3}}`。`id`、`product`、`project`、`execution` 是按动作定义映射的兼容简写，与正式参数冲突时会报错。请求体直接使用 JSON 对象；MCP 不读取 CLI 管道或 `@-` 输入。
+
 MCP 在首次业务调用时绑定账号和站点，环境凭证不会写入本地 Profile。`zentao_switch_profile` 只切换当前 MCP 实例，不改变 CLI 或其他实例的当前账号；在 CLI 中切换账号也不会改变已运行的 MCP。显式选择的本地 Profile 会读取同一账号的 Token 和配置更新，删除该 Profile 后后续调用会报错。
 
 ```bash
