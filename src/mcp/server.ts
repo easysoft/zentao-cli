@@ -4,7 +4,7 @@ import { ensureAuth, type AuthContext } from '../auth/flow.js';
 import { getProfile, getProfileConfig } from '../config/store.js';
 import { getEnvCredentials } from '../auth/login.js';
 import { ZentaoError } from '../errors.js';
-import { registerModuleTools } from './tools.js';
+import { registerModuleTools, type McpToolOptions } from './tools.js';
 import { getCliVersion } from '../utils/version.js';
 import type { Profile } from '../types/index.js';
 
@@ -54,14 +54,14 @@ function createAuthProvider(options?: { insecure?: boolean; timeout?: number }):
     };
 }
 
-export async function startMcpServer(options?: { insecure?: boolean; timeout?: number }): Promise<void> {
+export async function startMcpServer(options?: McpToolOptions & { insecure?: boolean; timeout?: number }): Promise<void> {
     const server = new McpServer(
         { name: 'zentao-cli', version: getCliVersion() },
         { capabilities: { tools: {} } },
     );
 
     const auth = createAuthProvider(options);
-    registerModuleTools(server, auth);
+    registerModuleTools(server, auth, options);
 
     const transport = new StdioServerTransport();
     await server.connect(transport);

@@ -174,7 +174,7 @@ zentao file create --file=/path/to/screenshot.png --objectType=bug --objectID=42
 
 ## 覆盖范围
 
-对应当前工作区：CLI **0.3.0-beta.1**，API 定义 **0.6.9**；覆盖 **17 个内置一级命令**（另含 config get/set）、**26 个业务模块、229 个业务操作**。已安装版本不同时，请以本机命令的 --help 为准。
+对应当前工作区：CLI **0.3.0**，API 定义 **0.7.0**；覆盖 **17 个内置一级命令**（另含 config get/set）、**26 个业务模块、229 个业务操作**。已安装版本不同时，请以本机命令的 --help 为准。
 
 <a id="global-options"></a>
 
@@ -592,10 +592,13 @@ zentao add-mcp cursor
 zentao mcp [options]
 ```
 
-通过标准输入/输出启动 MCP 服务，由支持 MCP 的客户端运行并管理进程。账户可通过已保存登录或环境变量提供。使用细节见“在 Agents 中使用禅道”。
+通过标准输入/输出启动 MCP 服务，由支持 MCP 的客户端运行并管理进程。账号可通过已保存登录或环境变量提供，并绑定当前实例。--read-only 仅开放查询；--modules 限定业务模块；--split-tools 将工具按模块拆为 _read / _write，默认保留原工具名。
 
 | 选项 | 说明 |
 | --- | --- |
+| `--read-only` | 仅提供查询工具，禁止业务写入和账号切换 |
+| `--modules <names>` | 仅提供指定业务模块（逗号分隔，如 product,story,task） |
+| `--split-tools` | 按模块分为 _read 查询工具和 _write 写入工具 |
 | `-h, --help` | 显示命令帮助 |
 
 示例：
@@ -603,6 +606,8 @@ zentao mcp [options]
 ```bash
 zentao mcp
 zentao --config ./zentao.json mcp
+zentao mcp --read-only --modules product,story,task,bug
+zentao mcp --split-tools --modules product,story,task,bug
 ```
 
 <a id="command-ls"></a>
@@ -1179,7 +1184,7 @@ zentao product create --name=<string> [选项]
 | `--type` | 请求体 | `string` | 否 | 未声明 | 类型(normal 正常 \| branch 多分支 \| platform 多平台) |
 | `--PO` | 请求体 | `string` | 否 | 未声明 | 产品负责人 |
 | `--reviewer` | 请求体 | `string[]` | 否 | 未声明 | 评审人 |
-| `--desc` | 请求体 | `string[]` | 否 | 未声明 | 产品描述 |
+| `--desc` | 请求体 | `string` | 否 | 未声明 | 产品描述 |
 | `--QD` | 请求体 | `string` | 否 | 未声明 | 测试负责人 |
 | `--RD` | 请求体 | `string` | 否 | 未声明 | 发布负责人 |
 | `--acl` | 请求体 | `string` | 否 | `"open"` | 访问控制(open 公开 \| private 私有) |
@@ -1302,7 +1307,7 @@ zentao product update --productID=<number> --name=<string> [选项]
 | `--type` | 请求体 | `string` | 否 | 未声明 | 类型(normal 正常 \| branch 多分支 \| platform 多平台) |
 | `--PO` | 请求体 | `string` | 否 | 未声明 | 产品负责人 |
 | `--reviewer` | 请求体 | `string[]` | 否 | 未声明 | 评审人 |
-| `--desc` | 请求体 | `string[]` | 否 | 未声明 | 产品描述 |
+| `--desc` | 请求体 | `string` | 否 | 未声明 | 产品描述 |
 | `--QD` | 请求体 | `string` | 否 | 未声明 | 测试负责人 |
 | `--RD` | 请求体 | `string` | 否 | 未声明 | 发布负责人 |
 | `--acl` | 请求体 | `string` | 否 | `"open"` | 访问控制(open 公开 \| private 私有) |
@@ -2116,7 +2121,7 @@ zentao story create --productID=<number> --title=<string> [选项]
 | `--source` | 请求体 | `string` | 否 | 未声明 | 来源(customer 客户 \| user 用户 \| po 产品经理 \| market 市场 \| service 客服 \| operation 运营 \| support 技术支持 \| competitor 竞争对手 \| partner 合作伙伴 \| dev 开发人员 \| tester 测试人员 \| bug Bug \| forum 论坛 \| other 其他) |
 | `--verify` | 请求体 | `string` | 否 | 未声明 | 验收标准 |
 | `--assignedTo` | 请求体 | `string` | 否 | 未声明 | 指派给 |
-| `--reviewer` | 请求体 | `string[]` | 否 | 未声明 | 评审人，如果设置必须评审，必须填写 |
+| `--reviewer` | 请求体 | `string[]` | 否 | 未声明 | 评审人员，如果无需评审则不传 |
 | `--project` | 请求体 | `number` | 否 | 未声明 | 所属项目<br>格式：int32 |
 | `--execution` | 请求体 | `number` | 否 | 未声明 | 所属执行<br>格式：int32 |
 | `--grade` | 请求体 | `number` | 否 | 未声明 | 需求层级，可用的需求层级可以通过 story-getGrades 操作获取 |
@@ -2262,7 +2267,7 @@ zentao story change --storyID=<number> [选项]
 | --- | --- | --- | --- | --- | --- |
 | `--storyID` | 路径 | `number` | 是 | 未声明 | 需求ID |
 | `--title` | 请求体 | `string` | 否 | 未声明 | 需求名称 |
-| `--reviewer` | 请求体 | `string[]` | 否 | 未声明 | 评审人员 |
+| `--reviewer` | 请求体 | `string[]` | 否 | 未声明 | 评审人员，如果无需评审则不传 |
 | `--spec` | 请求体 | `string` | 否 | 未声明 | 需求描述 |
 | `--verify` | 请求体 | `string` | 否 | 未声明 | 验收标准 |
 
@@ -2375,7 +2380,7 @@ zentao epic create --productID=<number> --title=<string> [选项]
 | `--source` | 请求体 | `string` | 否 | 未声明 | 来源(customer 客户 \| user 用户 \| po 产品经理 \| market 市场 \| service 客服 \| operation 运营 \| support 技术支持 \| competitor 竞争对手 \| partner 合作伙伴 \| dev 开发人员 \| tester 测试人员 \| bug Bug \| forum 论坛 \| other 其他) |
 | `--verify` | 请求体 | `string` | 否 | 未声明 | 验收标准 |
 | `--assignedTo` | 请求体 | `string` | 否 | 未声明 | 指派给 |
-| `--reviewer` | 请求体 | `string[]` | 否 | 未声明 | 评审人，如果设置必须评审，必须填写 |
+| `--reviewer` | 请求体 | `string[]` | 否 | 未声明 | 评审人员，如果无需评审则不传 |
 
 可配合[公共选项](#data-options)：`--params`、`--format`、`--silent`、`--data`、`--batch-fail-fast`；其他全局选项见[全局选项](#global-options)。
 
@@ -2477,7 +2482,7 @@ zentao epic change --storyID=<number> [选项]
 | --- | --- | --- | --- | --- | --- |
 | `--storyID` | 路径 | `number` | 是 | 未声明 | 需求ID |
 | `--title` | 请求体 | `string` | 否 | 未声明 | 需求名称 |
-| `--reviewer` | 请求体 | `string[]` | 否 | 未声明 | 评审人员 |
+| `--reviewer` | 请求体 | `string[]` | 否 | 未声明 | 评审人员，如果无需评审则不传 |
 | `--spec` | 请求体 | `string` | 否 | 未声明 | 需求描述 |
 | `--verify` | 请求体 | `string` | 否 | 未声明 | 验收标准 |
 
@@ -2576,7 +2581,7 @@ zentao requirement create --productID=<number> --title=<string> [选项]
 | `--source` | 请求体 | `string` | 否 | 未声明 | 来源(customer 客户 \| user 用户 \| po 产品经理 \| market 市场 \| service 客服 \| operation 运营 \| support 技术支持 \| competitor 竞争对手 \| partner 合作伙伴 \| dev 开发人员 \| tester 测试人员 \| bug Bug \| forum 论坛 \| other 其他) |
 | `--verify` | 请求体 | `string` | 否 | 未声明 | 验收标准 |
 | `--assignedTo` | 请求体 | `string` | 否 | 未声明 | 指派给 |
-| `--reviewer` | 请求体 | `string[]` | 否 | 未声明 | 评审人，如果设置必须评审，必须填写 |
+| `--reviewer` | 请求体 | `string[]` | 否 | 未声明 | 评审人员，如果无需评审则不传 |
 
 可配合[公共选项](#data-options)：`--params`、`--format`、`--silent`、`--data`、`--batch-fail-fast`；其他全局选项见[全局选项](#global-options)。
 
@@ -2680,7 +2685,7 @@ zentao requirement change --storyID=<number> [选项]
 | `--title` | 请求体 | `string` | 否 | 未声明 | 需求名称 |
 | `--spec` | 请求体 | `string` | 否 | 未声明 | 需求描述 |
 | `--verify` | 请求体 | `string` | 否 | 未声明 | 验收标准 |
-| `--reviewer` | 请求体 | `string[]` | 否 | 未声明 | 评审人员 |
+| `--reviewer` | 请求体 | `string[]` | 否 | 未声明 | 评审人员，如果无需评审则不传 |
 
 `--storyID` 可用 `--id` 或首个数字位置参数代替；其余路径 ID 需分别提供。
 

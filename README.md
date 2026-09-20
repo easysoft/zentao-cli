@@ -225,6 +225,15 @@ $ pnpm install -g zentao-cli && zentao login && zentao add-mcp
 }
 ```
 
+可在 MCP 配置的 `args` 中追加以下启动选项：
+
+```sh
+zentao mcp --read-only --modules product,story,task,bug
+zentao mcp --split-tools --modules product,story,task,bug
+```
+
+`--read-only` 仅开放查询并在执行时拦截写入；`--modules` 限定业务模块。默认保留 `zentao_<模块>` 工具名；`--split-tools` 改为 `zentao_<模块>_read` / `_write`，方便客户端分别授权查询和写入。选项可以组合使用，详情参见 [MCP 使用说明](docs/cli-usage.md#api-覆盖与版本兼容)。
+
 `zentao add-mcp` 在 macOS/Linux 上会将写入的 Agent 配置权限收紧为 `0600`。手动配置时也应避免写入账号密码，并限制 Token 配置文件的访问权限。
 为避免破坏已有注释，包含注释或尾逗号的 JSONC 配置不会被自动重写；命令会保持原文件不变并提示手动配置。
 

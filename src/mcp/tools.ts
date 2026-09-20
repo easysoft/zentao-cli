@@ -12,6 +12,16 @@ import { withRequestSignal } from '../api/index.js';
 import { normalizeToolParams } from './params.js';
 import { outputSchema, toolError, toolResult } from './results.js';
 
+export interface McpToolOptions {
+    readOnly?: boolean;
+    modules?: string[];
+    splitTools?: boolean;
+}
+
+function isReadAction(action: ModuleAction): boolean {
+    return (action.type === 'list' || action.type === 'get') && (action.method ?? 'get').toLowerCase() === 'get';
+}
+
 function buildToolDescription(mod: ModuleDefinition): string {
     const actions = mod.actions.map(a => a.name);
     const parts: string[] = [];
@@ -175,7 +185,7 @@ async function handleModuleTool(
 }
 
 function toolAnnotations(actions: readonly ModuleAction[]) {
-    const readOnly = actions.every(action => action.type === 'list' || action.type === 'get');
+    const readOnly = actions.every(isReadAction);
     const destructive = actions.some(action => ['update', 'delete', 'action'].includes(action.type));
     return {
         readOnlyHint: readOnly,
@@ -184,7 +194,14 @@ function toolAnnotations(actions: readonly ModuleAction[]) {
     };
 }
 
-export function registerModuleTools(server: McpServer, auth: AuthProvider): void {
+export function registerModuleTools(server: McpServer, auth: AuthProvider, options: McpToolOptions = {}): void {
+    const selectedModules = options.modules ? [...new Set(options.modules)].map(name => {
+        const mod = getModule(name);
+        if (!mod) throw new ZentaoError('E2001', { module: name });
+        return mod;
+    }) : getAllModules();
+    if (!selectedModules.length) throw new ZentaoError('E2009', { option: 'modules', reason: '至少指定一个模块' });
+
     server.registerTool(
         'zentao_action_help',
         {
@@ -231,7 +248,7 @@ export function registerModuleTools(server: McpServer, auth: AuthProvider): void
         },
     );
 
-    server.registerTool(
+    if (!options.readOnly) server.registerTool(
         'zentao_switch_profile',
         {
             description: '切换当前 MCP 实例的登录账号，不改变 CLI 或其他 MCP 实例的账号',
@@ -248,19 +265,28 @@ export function registerModuleTools(server: McpServer, auth: AuthProvider): void
         },
     );
 
-    for (const mod of getAllModules()) {
-        const name = `zentao_${mod.name}`;
-        const description = buildToolDescription(mod);
-        const inputSchema = buildInputSchema(mod);
+    for (const source of new Set(selectedModules)) {
+        const actions = options.readOnly ? source.actions.filter(isReadAction) : source.actions;
+        const groups = options.splitTools
+            ? [{ suffix: '_read', actions: actions.filter(isReadAction) }, { suffix: '_write', actions: actions.filter(action => !isReadAction(action)) }]
+            : [{ suffix: '', actions }];
+        for (const group of groups) {
+            if (!group.actions.length) continue;
+            const mod = { ...source, actions: group.actions };
+            const name = `zentao_${mod.name}${group.suffix}`;
+            const description = buildToolDescription(mod);
+            const inputSchema = buildInputSchema(mod);
+            const annotations = toolAnnotations(mod.actions);
 
-        const annotations = toolAnnotations(mod.actions);
-
-        server.registerTool(name, { description, inputSchema, outputSchema, annotations }, async (input, extra) => {
-            try {
-                return await handleModuleTool(mod, input as ToolInput, auth, extra.signal);
-            } catch (error) {
-                return toolError(error, { module: mod.name, action: input.action });
-            }
-        });
+            server.registerTool(name, { description, inputSchema, outputSchema, annotations }, async (input, extra) => {
+                try {
+                    // Keep full module metadata for autoFill, but enforce this tool's subset.
+                    if (!group.actions.some(action => action.name === input.action)) throw new ZentaoError('E2006');
+                    return await handleModuleTool(source, input as ToolInput, auth, extra.signal);
+                } catch (error) {
+                    return toolError(error, { module: mod.name, action: input.action });
+                }
+            });
+        }
     }
 }

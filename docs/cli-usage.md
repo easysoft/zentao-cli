@@ -99,6 +99,8 @@ CLI 使用 `zentao-api 0.6.9` 的注册表，提供 26 个模块、229 个操作
 
 MCP 提供无需登录的 `zentao_action_help` 工具，传入 `module` 和 `action` 即可查询该操作的路径、必填参数、参数类型及 `minVersion`，例如 `{"module":"doc","action":"createMyDoc"}`。
 
+启动选项：`zentao mcp --read-only` 只开放查询工具，并在执行入口校验允许的动作；账号切换工具也不注册。`--modules product,story,task` 只注册指定业务模块，未知或空模块名会报错。`--split-tools` 按模块拆为 `_read` / `_write`，例如 `zentao_task_read` 和 `zentao_task_write`，不存在对应动作的分组不注册；默认继续使用 `zentao_task` 等原工具名。三个选项可以组合使用，只读与模块范围在进程启动时固定；服务端仍按账号权限执行授权检查。
+
 MCP 的业务参数使用 `params` 中的正式名称，例如任务列表 `{"action":"list","params":{"executionID":3}}`。`id`、`product`、`project`、`execution` 是按动作定义映射的兼容简写，与正式参数冲突时会报错。请求体直接使用 JSON 对象；MCP 不读取 CLI 管道或 `@-` 输入。
 
 MCP 会在发送请求前按动作定义检查必填字段、JSON 类型、明确枚举和未知参数。路径 ID 使用非负整数，`page` 从 1 开始，`recPerPage` 范围为 1–1000；业务字段仍按自身定义处理，例如预计工时允许小数、根模块允许 0。更新时可由详情自动补齐的请求体字段允许省略。
