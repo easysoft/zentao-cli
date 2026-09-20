@@ -6,13 +6,13 @@ description: 使用 ZenTao CLI 查询和维护禅道中的产品、项目、需�
 description_zh: 由禅道官方（https://www.zentao.net/）提供的 ZenTao CLI，可查询与维护禅道中的产品、项目、需求、任务和 Bug，支持执行状态流转并汇总进展。适用于操作禅道数据、查询个人待办，以及安装、配置和排查 zentao-cli 问题等场景。
 description_en: Official ZenTao CLI from ZenTao (https://www.zentao.net/). Query and maintain products, projects, requirements, tasks, and bugs in ZenTao; perform status transitions and summarize progress. For operating on ZenTao data, querying personal to-dos, and installing, configuring, or troubleshooting zentao-cli issues.
 license: MIT
-version: 0.3.0
+version: 0.3.1
 author: 禅道软件
 maintainer: Sun Hao <sunhao@chandao.com>
 metadata:
   repository: https://github.com/easysoft/zentao-cli.git
   keywords: [zentao, 禅道, cli, project-management]
-  version: 0.3.0
+  version: 0.3.1
 ---
 
 # 禅道 CLI
