@@ -63,6 +63,11 @@ describe('MCP server (stdio e2e smoke)', () => {
                 expect(bugTool?.annotations?.readOnlyHint).toBe(false);
                 expect(bugTool?.annotations?.destructiveHint).toBe(true);
                 expect(tools.find((tool) => tool.name === 'zentao_my')?.annotations?.readOnlyHint).toBe(true);
+                for (const name of ['zentao_risk', 'zentao_system']) {
+                    expect(tools.find(tool => tool.name === name)?.annotations).toMatchObject({ readOnlyHint: false, destructiveHint: true });
+                }
+                expect(tools.find(tool => tool.name === 'zentao_issue')?.annotations?.destructiveHint).toBe(false);
+                expect(tools.find(tool => tool.name === 'zentao_my')?.annotations?.destructiveHint).toBe(false);
             } finally {
                 await client.close();
             }

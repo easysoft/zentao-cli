@@ -183,7 +183,7 @@ async function handleModuleTool(
 
 function toolAnnotations(actions: readonly ModuleAction[]) {
     const readOnly = actions.every(action => action.type === 'list' || action.type === 'get');
-    const destructive = actions.some(action => action.type === 'delete');
+    const destructive = actions.some(action => ['update', 'delete', 'action'].includes(action.type));
     return {
         readOnlyHint: readOnly,
         destructiveHint: destructive,
