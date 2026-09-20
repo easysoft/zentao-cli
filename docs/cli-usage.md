@@ -95,9 +95,9 @@ CLI 使用 `zentao-api 0.6.9` 的注册表，提供 26 个模块、229 个操作
 
 配置获取失败默认中止调用；版本不足时返回 `E2010`，提示操作、当前版本和最低版本，更新操作的自动补全预读也不会执行。版本格式错误返回 `E2011`，配置缺少有效版本字段返回 `E2012`。`raw` 输出同样执行版本检查。
 
-帮助和自动补全在未登录时仍可使用，并列出完整注册表；CLI 帮助和 MCP 的 `action` 参数说明展示最低版本要求，执行时以实际服务器版本为准。
+帮助和自动补全在未登录时仍可使用，并列出完整注册表；CLI 帮助和 MCP 的 `zentao_action_help` 展示最低版本要求，执行时以实际服务器版本为准。
 
-MCP 提供无需登录的 `zentao_action_help` 工具，传入 `module` 和 `action` 即可查询该操作的路径、必填参数、参数类型及 `minVersion`，例如 `{"module":"doc","action":"createMyDoc"}`。
+MCP 提供无需登录的 `zentao_action_help` 工具，传入 `module` 和 `action` 即可查询该操作的路径、必填参数、参数类型、`minVersion` 和调用示例，例如 `{"module":"doc","action":"createMyDoc"}`。示例使用占位 ID 和文本，需替换为实际值；`available` 表示当前启动选项是否开放该操作。工具发现只保留简短用途说明，并仅列出各工具实际支持的参数。
 
 启动选项：`zentao mcp --read-only` 只开放查询工具，并在执行入口校验允许的动作；账号切换工具也不注册。`--modules product,story,task` 只注册指定业务模块，未知或空模块名会报错。`--split-tools` 按模块拆为 `_read` / `_write`，例如 `zentao_task_read` 和 `zentao_task_write`，不存在对应动作的分组不注册；默认继续使用 `zentao_task` 等原工具名。三个选项可以组合使用，只读与模块范围在进程启动时固定；服务端仍按账号权限执行授权检查。
 
@@ -109,7 +109,7 @@ MCP 在首次业务调用时绑定账号和站点，环境凭证不会写入本�
 
 `zentao_profile` 返回绑定的 `account`、`server`、远端详情 `user` 和 `userFound`。详情按账号过滤并按需翻页，仅返回 ID、账号、姓名、部门、角色；未找到时 `user=null`、`userFound=false`。远端权限、Token 或业务错误会明确报错，不使用旧缓存掩盖失败。
 
-所有工具都声明 `outputSchema`，成功时通过 `structuredContent.data` 返回数据；列表还包含 `pager` 和 `meta`。为兼容已有客户端，文本结果继续采用原有的 JSON 形态（列表带 `data`，详情直接返回对象）。业务错误设置 `isError=true` 并返回 `structuredContent.error`，包含 `code`、`message` 及适用的 `module`、`action`、帮助调用；协议和顶层 schema 校验错误由 MCP SDK 返回。
+所有工具都声明 `outputSchema`，成功时通过 `structuredContent.data` 返回数据；列表还包含 `pager` 和 `meta`。为兼容已有客户端，文本结果继续采用原有的 JSON 形态（列表带 `data`，详情直接返回对象）。业务错误设置 `isError=true` 并返回 `structuredContent.error`，包含 `code`、`message` 及适用的 `module`、`action`，可据此调用动作帮助；协议和顶层 schema 校验错误由 MCP SDK 返回。
 
 `filter`、`search`、`sort` 仅处理当前页。列表的 `meta.processingScope="page"`、`meta.returnedCount` 表示实际返回条数；`pager.recTotal` 是远端总数，`meta.totalScope="serverBeforeLocalProcessing"` 明确其未经过本地筛选。需要跨页筛选时使用操作支持的 `params.filters` 等服务端参数，并逐页请求。
 

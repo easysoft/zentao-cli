@@ -51,8 +51,9 @@ describe('MCP server (stdio e2e smoke)', () => {
                     expect(action.enum).toEqual(mod.actions.map((action) => action.name));
                     for (const definition of mod.actions) {
                         expect(action.description).toContain(`${definition.name}:`);
-                        expect(action.description).toContain(definition.minVersion.join(' / '));
+                        expect(action.description).toContain(definition.display ?? definition.name);
                     }
+                    expect(action.description).not.toContain('最低版本');
                 }
                 for (const t of tools) {
                     expect(t.inputSchema).toBeDefined();

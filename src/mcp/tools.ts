@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { getModuleActionParams, request } from 'zentao-api';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import { getAction, getActionDescription, getAllModules, getModule } from '../modules/helper.js';
+import { getAction, getAllModules, getModule } from '../modules/helper.js';
 import type { ModuleDefinition, ModuleAction, ModuleActionOptions } from '../types/index.js';
 import { executeModuleCommand } from '../modules/executor.js';
 import { ZentaoError } from '../errors.js';
@@ -10,7 +10,7 @@ import type { AuthProvider } from './server.js';
 import { findProfileByKey, getProfileConfig, profileKey } from '../config/store.js';
 import { withRequestSignal } from '../api/index.js';
 import { normalizeToolParams } from './params.js';
-import { outputSchema, toolError, toolResult } from './results.js';
+import { listOutputSchema, outputSchema, toolError, toolResult } from './results.js';
 
 export interface McpToolOptions {
     readOnly?: boolean;
@@ -23,30 +23,7 @@ function isReadAction(action: ModuleAction): boolean {
 }
 
 function buildToolDescription(mod: ModuleDefinition): string {
-    const actions = mod.actions.map(a => a.name);
-    const parts: string[] = [];
-    if (mod.description) {
-        parts.push(mod.description);
-    } else {
-        parts.push(`${mod.display ?? mod.name} 管理`);
-    }
-    parts.push(`支持操作: ${actions.join(', ')}`);
-    parts.push('使用 zentao_action_help 查看操作参数与最低版本，调用前自动校验当前服务器版本');
-
-    const listAction = mod.actions.find(a => a.type === 'list');
-    if (listAction?.pathParams && 'scope' in listAction.pathParams) {
-        const scopeDef = listAction.pathParams.scope;
-        if (typeof scopeDef === 'object' && scopeDef.options) {
-            const scopes = scopeDef.options.map((o: { value: unknown; label: string }) =>
-                `--${String(o.value).replace(/s$/, '')}`
-            );
-            parts.push(`列表范围参数: ${scopes.join(', ')}`);
-        } else {
-            parts.push('列表范围参数: --product, --project, --execution');
-        }
-    }
-
-    return parts.join('。');
+    return `${mod.display ?? mod.name}操作；参数、示例和最低版本见 zentao_action_help`;
 }
 
 function buildActionEnum(mod: ModuleDefinition): [string, ...string[]] {
@@ -56,23 +33,46 @@ function buildActionEnum(mod: ModuleDefinition): [string, ...string[]] {
 
 function buildInputSchema(mod: ModuleDefinition) {
     const actionEnum = buildActionEnum(mod);
-    return z.object({
-        action: z.enum(actionEnum).describe('要执行的操作。' + mod.actions.map(a =>
-            `${a.name}: ${getActionDescription(a)}`
-        ).join('; ')),
-        id: z.number().int().nonnegative().optional().describe('首个路径 ID 的简写；是否必填取决于操作，有多个路径参数时通过 params 分别传入'),
-        product: z.number().int().nonnegative().optional().describe('产品范围简写，映射到该动作的 productID、product 或 scope/scopeID；与 params 冲突时报错'),
-        project: z.number().int().nonnegative().optional().describe('项目范围简写，映射到该动作的 projectID、project 或 scope/scopeID'),
-        execution: z.number().int().nonnegative().optional().describe('执行范围简写，映射到该动作的 executionID、execution 或 scope/scopeID'),
-        params: z.record(z.string(), z.unknown()).optional().describe('API 路径、查询和请求体参数（如 spaceID、libID、title、contentType）；通过 zentao_action_help 查看完整定义'),
-        pick: z.string().optional().describe('摘取字段（逗号分隔）'),
-        filter: z.array(z.string()).optional().describe('仅过滤当前页（组内逗号为 AND，多组为 OR，如 status=active）；远端筛选用 params.filters（如支持）'),
-        sort: z.string().optional().describe('仅排序当前页（如 pri:asc,severity:desc）'),
-        search: z.array(z.string()).optional().describe('仅搜索当前页（组内逗号为 AND，多组为 OR）'),
-        searchFields: z.string().optional().describe('搜索字段（逗号分隔），配合 search 使用'),
-        page: z.number().int().positive().optional().describe('页码，从 1 开始'),
-        recPerPage: z.number().int().min(1).max(1000).optional().describe('每页条数，1 至 1000'),
-    }).strict();
+    const parameters = mod.actions.flatMap(action => getModuleActionParams(mod.name, action.name));
+    const names = new Set(parameters.map(param => param.name));
+    const shape: Record<string, z.ZodType> = {
+        action: z.enum(actionEnum).describe(mod.actions.map(action => `${action.name}: ${action.display ?? action.name}`).join('; ')),
+        params: z.record(z.string(), z.unknown()).optional().describe('路径、查询或请求体参数；必填项见 zentao_action_help'),
+    };
+    if (parameters.some(param => param.role === 'path' && param.name.endsWith('ID') && param.name !== 'scopeID')) {
+        shape.id = z.number().int().nonnegative().optional().describe('首个路径 ID 简写；多 ID 用 params');
+    }
+    for (const name of ['product', 'project', 'execution']) {
+        if (names.has(name) || names.has(`${name}ID`) || parameters.some(param => param.name === 'scope' && param.options?.some(option => option.value === `${name}s`))) {
+            shape[name] = z.number().int().nonnegative().optional().describe(`${name}ID 或 scope/scopeID 简写，冲突时报错`);
+        }
+    }
+    if (mod.actions.some(action => action.type === 'list' || action.type === 'get')) {
+        shape.pick = z.string().optional().describe('返回字段，逗号分隔');
+    }
+    if (mod.actions.some(action => action.type === 'list')) {
+        shape.filter = z.array(z.string()).optional().describe('当前页过滤，组内逗号为 AND、多组为 OR；远端筛选见 params.filters');
+        shape.sort = z.string().optional().describe('当前页排序，如 pri:asc');
+        shape.search = z.array(z.string()).optional().describe('当前页搜索，组内逗号为 AND、多组为 OR');
+        shape.searchFields = z.string().optional().describe('搜索字段，逗号分隔');
+    }
+    if (names.has('pageID')) shape.page = z.number().int().positive().optional().describe('页码，从 1 开始');
+    if (names.has('recPerPage')) shape.recPerPage = z.number().int().min(1).max(1000).optional().describe('每页 1–1000 条');
+    return z.object(shape).strict();
+}
+
+/** Examples use typed placeholders, not real object IDs or ready-to-submit business data. */
+function actionExample(mod: ModuleDefinition, action: ModuleAction, splitTools?: boolean) {
+    const params = Object.fromEntries(getModuleActionParams(mod.name, action.name)
+        .filter(param => param.required && param.defaultValue === undefined)
+        .map(param => [param.name, param.type === 'array' ? [] : param.options?.[0]?.value
+            ?? (param.type === 'number' || (param.role === 'path' && param.name.endsWith('ID')) ? 1
+                : param.type === 'boolean' ? false : param.type === 'object' ? {} : `<${param.name}>`)]));
+    return {
+        name: `zentao_${mod.name}${splitTools ? isReadAction(action) ? '_read' : '_write' : ''}`,
+        arguments: { action: action.name, ...(Object.keys(params).length ? { params } : {}) },
+        note: 'ID、文本等均为格式示例，请替换为实际值后调用。',
+    };
 }
 
 interface ToolInput {
@@ -148,6 +148,11 @@ async function handleModuleTool(
 ): Promise<CallToolResult> {
     const action = getAction(mod, input.action);
     if (!action) throw new ZentaoError('E2005', { module: mod.name });
+    for (const option of ['filter', 'sort', 'search', 'searchFields', 'pick'] as const) {
+        if (input[option] !== undefined && action.type !== 'list' && !(option === 'pick' && action.type === 'get')) {
+            throw new ZentaoError('E2009', { option, reason: `不适用于 ${mod.name}/${action.name}` });
+        }
+    }
     const params = normalizeToolParams(mod, action, input);
     const { client, profile } = await auth.getContext();
     const config = getProfileConfig(profile);
@@ -224,6 +229,8 @@ export function registerModuleTools(server: McpServer, auth: AuthProvider, optio
                     path: definition.path,
                     minVersion: definition.minVersion,
                     parameters: getModuleActionParams(mod.name, definition.name),
+                    available: selectedModules.some(selected => selected.name === mod.name) && (!options.readOnly || isReadAction(definition)),
+                    example: actionExample(mod, definition, options.splitTools),
                 });
             } catch (error) {
                 return toolError(error, { module, action });
@@ -278,7 +285,8 @@ export function registerModuleTools(server: McpServer, auth: AuthProvider, optio
             const inputSchema = buildInputSchema(mod);
             const annotations = toolAnnotations(mod.actions);
 
-            server.registerTool(name, { description, inputSchema, outputSchema, annotations }, async (input, extra) => {
+            server.registerTool(name, { description, inputSchema, outputSchema: mod.actions.some(action => action.type === 'list') ? listOutputSchema : outputSchema, annotations }, async (raw, extra) => {
+                const input = raw as unknown as ToolInput;
                 try {
                     // Keep full module metadata for autoFill, but enforce this tool's subset.
                     if (!group.actions.some(action => action.name === input.action)) throw new ZentaoError('E2006');

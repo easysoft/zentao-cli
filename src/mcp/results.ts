@@ -5,18 +5,20 @@ import type { ListPagerInfo } from '../types/index.js';
 
 export const outputSchema = z.object({
     data: z.unknown(),
-    pager: z.object({ pageID: z.number(), recPerPage: z.number(), recTotal: z.number() }).optional(),
-    meta: z.object({
-        processingScope: z.literal('page'),
-        returnedCount: z.number().int().nonnegative(),
-        totalScope: z.literal('serverBeforeLocalProcessing').optional(),
-    }).optional(),
     error: z.object({
         code: z.string(),
         message: z.string(),
         module: z.string().optional(),
         action: z.string().optional(),
-        help: z.object({ tool: z.literal('zentao_action_help'), arguments: z.object({ module: z.string(), action: z.string() }) }).optional(),
+    }).optional(),
+});
+
+export const listOutputSchema = outputSchema.extend({
+    pager: z.object({ pageID: z.number(), recPerPage: z.number(), recTotal: z.number() }).optional(),
+    meta: z.object({
+        processingScope: z.literal('page'),
+        returnedCount: z.number().int().nonnegative(),
+        totalScope: z.literal('serverBeforeLocalProcessing').optional(),
     }).optional(),
 });
 
@@ -35,7 +37,7 @@ export function toolError(error: unknown, context?: { module: string; action: st
     const message = error instanceof Error ? error.message : String(error);
     return {
         isError: true,
-        structuredContent: { data: null, error: { code, message, ...context, ...(context ? { help: { tool: 'zentao_action_help', arguments: context } } : {}) } },
+        structuredContent: { data: null, error: { code, message, ...context } },
         content: [{ type: 'text', text: `${code}: ${message}` }],
     };
 }

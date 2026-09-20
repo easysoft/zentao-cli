@@ -29,7 +29,6 @@ test('MCP returns stable structured data, contextual errors and explicit page pr
         expect(failed.isError).toBe(true);
         expect(failed.structuredContent).toMatchObject({ error: {
             code: 'E1004', module: 'product', action: 'get', message: expect.any(String),
-            help: { tool: 'zentao_action_help', arguments: { module: 'product', action: 'get' } },
         } });
         const invalid = await mcp.client.callTool({ name: 'zentao_product', arguments: { action: 'list', params: { browseType: 'invalid' } } });
         expect(invalid.structuredContent).toMatchObject({ error: { code: 'E2009', module: 'product', action: 'list' } });
