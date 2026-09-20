@@ -45,23 +45,23 @@ function buildActionEnum(mod: ModuleDefinition): [string, ...string[]] {
 
 function buildInputSchema(mod: ModuleDefinition) {
     const actionEnum = buildActionEnum(mod);
-    return {
+    return z.object({
         action: z.enum(actionEnum).describe('要执行的操作。' + mod.actions.map(a =>
             `${a.name}: ${getActionDescription(a)}`
         ).join('; ')),
-        id: z.number().optional().describe('首个路径 ID 的简写；是否必填取决于操作，有多个路径参数时通过 params 分别传入'),
-        product: z.number().optional().describe('产品范围简写，映射到该动作的 productID、product 或 scope/scopeID；与 params 冲突时报错'),
-        project: z.number().optional().describe('项目范围简写，映射到该动作的 projectID、project 或 scope/scopeID'),
-        execution: z.number().optional().describe('执行范围简写，映射到该动作的 executionID、execution 或 scope/scopeID'),
+        id: z.number().int().nonnegative().optional().describe('首个路径 ID 的简写；是否必填取决于操作，有多个路径参数时通过 params 分别传入'),
+        product: z.number().int().nonnegative().optional().describe('产品范围简写，映射到该动作的 productID、product 或 scope/scopeID；与 params 冲突时报错'),
+        project: z.number().int().nonnegative().optional().describe('项目范围简写，映射到该动作的 projectID、project 或 scope/scopeID'),
+        execution: z.number().int().nonnegative().optional().describe('执行范围简写，映射到该动作的 executionID、execution 或 scope/scopeID'),
         params: z.record(z.string(), z.unknown()).optional().describe('API 路径、查询和请求体参数（如 spaceID、libID、title、contentType）；通过 zentao_action_help 查看完整定义'),
         pick: z.string().optional().describe('摘取字段（逗号分隔）'),
         filter: z.array(z.string()).optional().describe('过滤条件组（组内逗号分隔为 AND，多组为 OR，如 status=active,severity<=2）'),
         sort: z.string().optional().describe('排序（如 pri:asc,severity:desc；兼容下划线写法）'),
         search: z.array(z.string()).optional().describe('搜索关键词组（组内逗号分隔为 AND，多组为 OR）'),
         searchFields: z.string().optional().describe('搜索字段（逗号分隔），配合 search 使用'),
-        page: z.number().optional().describe('页码'),
-        recPerPage: z.number().optional().describe('每页条数'),
-    };
+        page: z.number().int().positive().optional().describe('页码，从 1 开始'),
+        recPerPage: z.number().int().min(1).max(1000).optional().describe('每页条数，1 至 1000'),
+    }).strict();
 }
 
 interface ToolInput {
@@ -250,7 +250,7 @@ export function registerModuleTools(server: McpServer, auth: AuthProvider): void
 
         const annotations = toolAnnotations(mod.actions);
 
-        server.tool(name, description, inputSchema, annotations, async (input, extra) => {
+        server.registerTool(name, { description, inputSchema, annotations }, async (input, extra) => {
             try {
                 return await handleModuleTool(mod, input as ToolInput, auth, extra.signal);
             } catch (error) {

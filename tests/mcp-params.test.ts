@@ -40,3 +40,37 @@ test('MCP aliases resolve actual paths, reject conflicts and preserve JSON write
         await mcp.close();
     }
 }, { timeout: 10_000 });
+
+test('MCP rejects invalid fields, values and missing parameters before making HTTP requests', async () => {
+    const requests: string[] = [];
+    const mcp = await createMcpTestClient(req => {
+        requests.push(req.url);
+        return Response.json({ version: '22.5', status: 'success', id: 1 });
+    });
+    try {
+        const invalid = [
+            { action: 'get', id: -1 },
+            { action: 'get', id: 1.5 },
+            { action: 'get', params: { productID: 1.5 } },
+            { action: 'get' },
+            { action: 'list', page: 0 },
+            { action: 'list', recPerPage: 1001 },
+            { action: 'list', params: { recPerPage: -1 } },
+            { action: 'list', params: { pageID: 'two' } },
+            { action: 'list', browseType: 'closed' },
+            { action: 'list', params: { browseType: 'invalid' } },
+            { action: 'list', params: { browseTypo: 'closed' } },
+            { action: 'create', params: { name: 123 } },
+            { action: 'create', params: { data: { typo: 'value' } } },
+            { action: 'create', product: 1, params: { name: 'Name' } },
+        ];
+        for (const args of invalid) {
+            expect((await mcp.client.callTool({ name: 'zentao_product', arguments: args })).isError).toBe(true);
+        }
+        expect(requests).toEqual([]);
+        const valid = await mcp.client.callTool({ name: 'zentao_story', arguments: { action: 'create', params: { productID: 1, title: 'Decimals and root module', estimate: 1.5, module: 0, reviewer: [] } } });
+        expect(valid.isError).not.toBe(true);
+    } finally {
+        await mcp.close();
+    }
+}, { timeout: 10_000 });

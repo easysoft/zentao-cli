@@ -101,6 +101,8 @@ MCP 提供无需登录的 `zentao_action_help` 工具，传入 `module` 和 `act
 
 MCP 的业务参数使用 `params` 中的正式名称，例如任务列表 `{"action":"list","params":{"executionID":3}}`。`id`、`product`、`project`、`execution` 是按动作定义映射的兼容简写，与正式参数冲突时会报错。请求体直接使用 JSON 对象；MCP 不读取 CLI 管道或 `@-` 输入。
 
+MCP 会在发送请求前按动作定义检查必填字段、JSON 类型、明确枚举和未知参数。路径 ID 使用非负整数，`page` 从 1 开始，`recPerPage` 范围为 1–1000；业务字段仍按自身定义处理，例如预计工时允许小数、根模块允许 0。更新时可由详情自动补齐的请求体字段允许省略。
+
 MCP 在首次业务调用时绑定账号和站点，环境凭证不会写入本地 Profile。`zentao_switch_profile` 只切换当前 MCP 实例，不改变 CLI 或其他实例的当前账号；在 CLI 中切换账号也不会改变已运行的 MCP。显式选择的本地 Profile 会读取同一账号的 Token 和配置更新，删除该 Profile 后后续调用会报错。
 
 ```bash
