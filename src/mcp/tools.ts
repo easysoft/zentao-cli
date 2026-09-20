@@ -8,6 +8,7 @@ import { executeModuleCommand } from '../modules/executor.js';
 import { ZentaoError } from '../errors.js';
 import type { AuthProvider } from './server.js';
 import { findProfileByKey, getProfileConfig, profileKey } from '../config/store.js';
+import { withRequestSignal } from '../api/index.js';
 
 function buildToolDescription(mod: ModuleDefinition): string {
     const actions = mod.actions.map(a => a.name);
@@ -78,11 +79,11 @@ interface ToolInput {
     recPerPage?: number;
 }
 
-async function handleProfileTool(auth: AuthProvider): Promise<CallToolResult> {
+async function handleProfileTool(auth: AuthProvider, signal?: AbortSignal): Promise<CallToolResult> {
     const { client, profile } = await auth.getContext();
     const account = profile.account;
 
-    const usersResp = await client.get<Record<string, unknown>>('/users', {
+    const usersResp = await withRequestSignal(client, signal).get<Record<string, unknown>>('/users', {
         query: { browseType: 'inside', recPerPage: 100 },
     });
 
@@ -127,6 +128,7 @@ async function handleModuleTool(
     mod: ModuleDefinition,
     input: ToolInput,
     auth: AuthProvider,
+    signal?: AbortSignal,
 ): Promise<CallToolResult> {
     const { client, profile } = await auth.getContext();
     const config = getProfileConfig(profile);
@@ -149,7 +151,7 @@ async function handleModuleTool(
         yes: true,
     };
 
-    const execution = await executeModuleCommand(client, mod, actionName, [], opts, config);
+    const execution = await executeModuleCommand(withRequestSignal(client, signal), mod, actionName, [], opts, config);
 
     if (execution.action.type === 'list') {
         const response: Record<string, unknown> = { data: execution.data };
@@ -219,9 +221,9 @@ export function registerModuleTools(server: McpServer, auth: AuthProvider): void
         '获取当前登录禅道账号信息',
         {},
         { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
-        async () => {
+        async (_input, extra) => {
             try {
-                return await handleProfileTool(auth);
+                return await handleProfileTool(auth, extra.signal);
             } catch (error) {
                 return toolError(error);
             }
@@ -251,9 +253,9 @@ export function registerModuleTools(server: McpServer, auth: AuthProvider): void
 
         const annotations = toolAnnotations(mod.actions);
 
-        server.tool(name, description, inputSchema, annotations, async (input) => {
+        server.tool(name, description, inputSchema, annotations, async (input, extra) => {
             try {
-                return await handleModuleTool(mod, input as ToolInput, auth);
+                return await handleModuleTool(mod, input as ToolInput, auth, extra.signal);
             } catch (error) {
                 return toolError(error);
             }

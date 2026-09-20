@@ -29,6 +29,7 @@ export const ERROR_CODES = {
     // 网络通信 (50xx)
     E5001: '请求超时，请检查网络连接或禅道服务是否正常',
     E5002: 'SSL/TLS 证书验证失败，请检查禅道服务地址是否正确',
+    E5003: '请求已取消',
 } as const;
 
 /** 错误码类型，限定为 ERROR_CODES 中定义的 key */
@@ -113,6 +114,8 @@ export function mapSdkError(error: unknown): unknown {
         }
         case 'E_TIMEOUT':
             return new ZentaoError('E5001', undefined, details);
+        case 'E_ABORTED':
+            return new ZentaoError('E5003', undefined, details);
         case 'E_NETWORK_ERROR': {
             const msg = (typeof (d as { message?: unknown }).message === 'string'
                 ? (d as { message: string }).message

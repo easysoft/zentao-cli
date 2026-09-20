@@ -86,6 +86,10 @@ describe('mapSdkError', () => {
         expect((mapSdkError(new SdkZentaoError('E_TIMEOUT')) as ZentaoError).code).toBe('5001');
     });
 
+    test('maps cancellation to E5003', () => {
+        expect((mapSdkError(new SdkZentaoError('E_ABORTED')) as ZentaoError).code).toBe('5003');
+    });
+
     test('maps API failure to E2008', () => {
         const sdk = new SdkZentaoError('E_API_FAILED', { message: 'invalid params' });
         expect((mapSdkError(sdk) as ZentaoError).code).toBe('2008');

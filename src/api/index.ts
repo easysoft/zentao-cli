@@ -1,5 +1,5 @@
 import { ZentaoClient } from 'zentao-api';
-import { mapSdkError } from '../errors.js';
+import { mapSdkError, ZentaoError } from '../errors.js';
 import type { ServerConfig } from '../types/index.js';
 
 export { ZentaoClient };
@@ -23,6 +23,22 @@ export function createClient(serverUrl: string, token?: string, options?: Client
         insecure: options?.insecure,
         timeout: options?.timeout,
     });
+}
+
+/** Bind cancellation to one SDK call without changing a shared client's state. */
+export function withRequestSignal(client: ZentaoClient, signal?: AbortSignal): ZentaoClient {
+    if (!signal) return client;
+    const scoped = new ZentaoClient(client.siteUrl);
+    const optionsWithSignal = <T extends object>(options: T): T & { signal: AbortSignal } => {
+        if (signal.aborted) throw new ZentaoError('E5003');
+        return { ...options, signal };
+    };
+    // SDK 0.7 high-level requests omit signal; its public transport accepts it.
+    // Forwarding preserves credentials, transport options and the config cache.
+    scoped.request = ((path: string, options = {}) => client.request(path, optionsWithSignal(options))) as ZentaoClient['request'];
+    scoped.fetch = (url, options, token, fetchOptions) => client.fetch(url, optionsWithSignal(options), token, fetchOptions);
+    scoped.getZentaoConfig = (options = {}) => client.getZentaoConfig(optionsWithSignal(options));
+    return scoped;
 }
 
 /**
