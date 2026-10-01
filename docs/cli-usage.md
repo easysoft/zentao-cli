@@ -123,6 +123,8 @@ zentao --timeout 15000 mcp --transport http --host 127.0.0.1 --port 9090 \
   --url https://zentao.example.com --read-only --modules product,story,task,bug
 ```
 
+启动成功后，终端会输出可复制的 `mcpServers` JSON 配置示例：`url` 使用实际监听端口，全地址监听时使用对应的回环地址，`headers.token` 使用待替换的 Token 占位符，并提示可改用 `Authorization: Bearer <token>`。远程客户端连接时，应将示例 URL 替换为客户端可访问的 HTTPS 地址。
+
 HTTP 模式需要 Node.js 18.14.1 或更新版本，或 Bun。每个进程只连接启动时指定的一个禅道站点。`--url` 和 `ZENTAO_URL` 都未提供时启动失败；不会回退到本地 Profile。`ZENTAO_ACCOUNT`、`ZENTAO_PASSWORD`、`ZENTAO_TOKEN` 和服务机的登录记录不作为客户端凭证。
 
 | 选项 | 默认值 | 用途 |

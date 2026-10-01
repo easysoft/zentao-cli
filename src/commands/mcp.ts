@@ -57,6 +57,23 @@ export function registerMcpCommand(program: Command): void {
             const { startMcpHttpServer } = await import('../mcp/http.js');
             const running = await startMcpHttpServer({ ...toolOptions, url, host: options.host, port });
             process.stderr.write(`MCP HTTP 服务已启动：${running.url.href}\n`);
+            const clientUrl = new URL(running.url);
+            if (clientUrl.hostname === '0.0.0.0') clientUrl.hostname = '127.0.0.1';
+            if (clientUrl.hostname === '[::]') clientUrl.hostname = '[::1]';
+            const clientConfig = {
+                mcpServers: {
+                    'zentao-remote': {
+                        url: clientUrl.href,
+                        headers: { token: '<your-zentao-token>' },
+                    },
+                },
+            };
+            process.stderr.write([
+                '\n客户端配置示例（请替换为自己的禅道 Token）：',
+                JSON.stringify(clientConfig, null, 2),
+                '\n也可将 headers 改为 {"Authorization":"Bearer <your-zentao-token>"}，两种认证头任选其一。',
+                '远程客户端请将 url 替换为可访问的 HTTPS 服务地址。\n',
+            ].join('\n'));
             let stopping = false;
             const shutdown = () => {
                 if (stopping) return;
