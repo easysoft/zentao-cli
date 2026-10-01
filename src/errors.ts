@@ -33,6 +33,7 @@ export const ERROR_CODES = {
     E5001: '请求超时，请检查网络连接或禅道服务是否正常',
     E5002: 'SSL/TLS 证书验证失败，请检查禅道服务地址是否正确',
     E5003: '请求已取消',
+    E5004: '无法启动 MCP HTTP 服务：{reason}',
 } as const;
 
 /** 错误码类型，限定为 ERROR_CODES 中定义的 key */

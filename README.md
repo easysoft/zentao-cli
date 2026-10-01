@@ -11,7 +11,7 @@
 * ✅ 支持对数据进行摘取、过滤、排序等处理，并自动将 HTML 转换为 Markdown
 * ✅ 对 AI Agents 友好，帮助信息完善，支持输出 Markdown
 * ✅ 支持以 AI 技能的方式使用，支持通过 `zentao add-skill` 一键安装技能到 AI Agent
-* ✅ 支持 MCP 服务，使用 `npx zentao-cli mcp` 启动 MCP 服务
+* ✅ 支持 stdio 与远程 HTTP MCP 服务，多客户端可使用各自的禅道 Token
 * ✅ 使用现代的 bun 与 TypeScript 开发，具备类型安全
 * ✅ 提供完善的测试覆盖，保障代码质量
 
@@ -66,7 +66,7 @@ zentao add-skill
 
 ## 核心命令
 
-当前使用 `zentao-api 0.6.9`，支持文档、待办、地盘、问题、风险、会议和工作流等模块。各操作的最低禅道版本可通过 `zentao <模块> <操作> --help` 查看；开源版、企业版、旗舰版和 IPD 版分别比较，版本不足时会在发送业务请求前报错。详见[API 覆盖与版本兼容](docs/cli-usage.md#api-覆盖与版本兼容)。
+当前使用 `zentao-api 0.7.0`，支持文档、待办、地盘、问题、风险、会议和工作流等模块。各操作的最低禅道版本可通过 `zentao <模块> <操作> --help` 查看；开源版、企业版、旗舰版和 IPD 版分别比较，版本不足时会在发送业务请求前报错。详见[API 覆盖与版本兼容](docs/cli-usage.md#api-覆盖与版本兼容)。
 
 zentao-cli 的命令格式简单直观：`zentao <模块名> [操作] [参数]`。下面通过常见场景快速上手。
 
@@ -195,7 +195,7 @@ WorkBuddy 的 CLI + Skill 连接器资源包使用 `bun run build:workbuddy` 生
 
 ### 通过 MCP 服务使用
 
-Zentao CLI 支持一键配置 MCP 服务。先通过 `zentao login` 登录，再执行 `zentao add-mcp`；命令会复用当前 Profile 中的 Token，不会将禅道密码写入 Agent 配置。
+Zentao CLI 支持一键配置本地 stdio MCP 服务。先通过 `zentao login` 登录，再执行 `zentao add-mcp`；命令会复用当前 Profile 中的 Token，不会将禅道密码写入 Agent 配置。
 
 ```bash
 # 一键配置 MCP 服务
@@ -211,7 +211,7 @@ $ zentao add-mcp
 $ pnpm install -g zentao-cli && zentao login && zentao add-mcp
 ```
 
-支持通过 `zentao mcp` 手动启动 MCP 服务，然后通过 MCP 客户端访问和操作禅道数据。`zentao add-mcp` 会写入如下配置：
+`zentao mcp` 默认使用 stdio，由 MCP 客户端启动并管理进程。`zentao add-mcp` 会写入如下配置：
 
 ```json
 {
@@ -236,10 +236,31 @@ zentao mcp --read-only --modules product,story,task,bug
 zentao mcp --split-tools --modules product,story,task,bug
 ```
 
-`--read-only` 仅开放查询并在执行时拦截写入；`--modules` 限定业务模块。默认保留 `zentao_<模块>` 工具名；`--split-tools` 改为 `zentao_<模块>_read` / `_write`，方便客户端分别授权查询和写入。选项可以组合使用，详情参见 [MCP 使用说明](docs/cli-usage.md#api-覆盖与版本兼容)。
+`--read-only` 仅开放查询并在执行时拦截写入；`--modules` 限定业务模块。默认保留 `zentao_<模块>` 工具名；`--split-tools` 改为 `zentao_<模块>_read` / `_write`，方便客户端分别授权查询和写入。这些选项也适用于 HTTP 模式。
 
 `zentao add-mcp` 在 macOS/Linux 上会将写入的 Agent 配置权限收紧为 `0600`。手动配置时也应避免写入账号密码，并限制 Token 配置文件的访问权限。
 为避免破坏已有注释，包含注释或尾逗号的 JSONC 配置不会被自动重写；命令会保持原文件不变并提示手动配置。
+
+需要多个客户端共用远程服务时，启动 HTTP 模式并固定一个禅道站点：
+
+```bash
+zentao mcp --transport http --url https://zentao.example.com
+```
+
+默认监听 `127.0.0.1:9090`。远程部署通过 HTTPS 反向代理暴露 `/mcp`，客户端手动填写服务地址和自己的禅道 Token，例如：
+
+```json
+{
+  "mcpServers": {
+    "zentao-remote": {
+      "url": "https://mcp.example.com/mcp",
+      "headers": { "Authorization": "Bearer <your-zentao-token>" }
+    }
+  }
+}
+```
+
+客户端也可单独使用 `token` 请求头；每个请求只允许一种认证方式。HTTP 模式使用无状态 Streamable HTTP，凭证按请求隔离，不读取服务机的本地账号，也不提供账号切换。附件上传需要使用本地 CLI 或 stdio，HTTP 模式不接受读取本地路径的上传操作。需要 Node.js 18.14.1 或更新版本，或 Bun；面向原生 MCP 客户端，不支持浏览器直接跨域连接。`zentao add-mcp` 仍只配置本地 stdio。启动参数、代理配置和使用限制见 [MCP 使用说明](docs/cli-usage.md#mcp-服务)。
 
 ## 文档
 

@@ -91,11 +91,147 @@ $ ZENTAO_CONFIG_FILE=~/work/zt.json zentao product
 
 路径支持 `~` 展开与相对路径（相对当前工作目录）。当 `--config` 与 `ZENTAO_CONFIG_FILE` 同时存在时，`--config` 优先。
 
+## MCP 服务
+
+`zentao mcp` 提供 stdio 和 HTTP 两种传输方式，共用业务工具、参数校验和返回格式。
+
+### 本地 stdio 模式
+
+```bash
+zentao mcp
+zentao mcp --transport stdio
+zentao --config ./zentao.json mcp --read-only --modules product,story,task,bug
+```
+
+stdio 是默认模式，由 MCP 客户端启动并管理进程。通过 `zentao login` 保存本地账号，或在客户端启动配置中提供 `ZENTAO_URL`、`ZENTAO_ACCOUNT` 与 `ZENTAO_TOKEN`/`ZENTAO_PASSWORD`。`zentao add-mcp` 只生成这种本地配置；HTTP 客户端需要手动配置。
+
+stdio 在首次业务调用时绑定账号和站点，环境凭证不会写入本地 Profile。`zentao_switch_profile` 只切换当前 stdio MCP 实例，不改变 CLI 或其他实例的当前账号；在 CLI 中切换账号也不会改变已运行的实例。显式选择的本地 Profile 会读取同一账号的 Token 和配置更新，删除该 Profile 后后续调用会报错。
+
+stdio 的 `zentao_profile` 返回绑定的 `account`、`server`、远端详情 `user` 和 `userFound`。详情按账号过滤并按需翻页，仅返回 ID、账号、姓名、部门、角色；未找到时 `user=null`、`userFound=false`。远端权限、Token 或业务错误会明确报错。
+
+### 远程 HTTP 模式
+
+```bash
+# 固定一个禅道站点，默认监听 127.0.0.1:9090
+zentao mcp --transport http --url https://zentao.example.com
+
+# 也可由 ZENTAO_URL 提供站点，显式 --url 优先
+ZENTAO_URL=https://zentao.example.com zentao mcp --transport http
+
+# 调整监听地址、端口和上游请求超时，并限定工具范围
+zentao --timeout 15000 mcp --transport http --host 127.0.0.1 --port 9090 \
+  --url https://zentao.example.com --read-only --modules product,story,task,bug
+```
+
+HTTP 模式需要 Node.js 18.14.1 或更新版本，或 Bun。每个进程只连接启动时指定的一个禅道站点。`--url` 和 `ZENTAO_URL` 都未提供时启动失败；不会回退到本地 Profile。`ZENTAO_ACCOUNT`、`ZENTAO_PASSWORD`、`ZENTAO_TOKEN` 和服务机的登录记录不作为客户端凭证。
+
+| 选项 | 默认值 | 用途 |
+| --- | --- | --- |
+| `--transport stdio\|http` | `stdio` | MCP 传输方式 |
+| `--url <site>` | `ZENTAO_URL` | HTTP 模式的固定禅道站点地址 |
+| `--host <host>` | `127.0.0.1` | HTTP 监听地址；容器按需使用 `0.0.0.0` |
+| `--port <port>` | `9090` | HTTP 监听端口，范围 1–65535 |
+| 全局 `--timeout <ms>` | `10000` | 单次上游请求超时，毫秒 |
+| 全局 `--insecure` | 关闭 | 跳过上游禅道的 TLS 证书验证，不为 MCP 监听端提供 HTTPS |
+
+`--url`、`--host`、`--port` 仅适用于 HTTP 模式，在 stdio 模式下使用会报错。HTTP 模式使用默认业务配置，并应用启动时显式指定的 `--timeout`、`--insecure`；不会读取任何本地账号的分页或其他偏好。`--read-only`、`--modules`、`--split-tools` 在两种传输方式下均可使用。
+
+客户端连接地址为 `https://mcp.example.com/mcp`。每个请求必须携带客户端自己的**禅道 Token**，以下两种请求头任选其一。客户端的具体配置字段以其文档为准；支持 `mcpServers`、`url`、`headers` 的客户端可参考：
+
+```json
+{
+  "mcpServers": {
+    "zentao-remote": {
+      "url": "https://mcp.example.com/mcp",
+      "headers": { "token": "<your-zentao-token>" }
+    }
+  }
+}
+```
+
+或者使用 Bearer 形式：
+
+```json
+{
+  "mcpServers": {
+    "zentao-remote": {
+      "url": "https://mcp.example.com/mcp",
+      "headers": { "Authorization": "Bearer <your-zentao-token>" }
+    }
+  }
+}
+```
+
+不同客户端使用各自的 Token，禅道按该 Token 的权限处理业务请求。缺失、格式错误或同时提供两种认证头均返回 HTTP 401。凭证只从请求头读取，不接受 URL 查询参数、用户名密码、Basic 或 OAuth 登录。Token 不保存到服务机的 Profile，也不会自动刷新。
+
+HTTP 模式不注册 `zentao_switch_profile`。`zentao_profile` 仅返回固定站点信息，`account=null`、`user=null`、`userFound=false`；服务不会根据 Token 推断账号，这个工具也不验证 Token 是否有效。业务调用时由禅道验证 Token，失效后需由客户端更换。
+
+现有 `file/create` 从运行 CLI 的主机读取本地文件路径，再由 SDK 上传。HTTP 模式禁用这类 multipart/本地路径上传操作，避免远程客户端读取服务机文件；`zentao_action_help` 对这些操作返回 `available=false`，执行时会在获取业务认证上下文和调用 SDK 前拒绝。附件上传请使用本地 CLI 或 stdio；附件更新、删除及其他业务工具仍按启动选项和禅道权限执行。HTTP 模式不提供替代上传格式。
+
+### HTTP 部署与请求边界
+
+原生 MCP 客户端使用无状态 Streamable HTTP，通过 `POST /mcp` 发送请求，调用结果默认通过协议内的 SSE 流返回；客户端应按协议声明支持 `application/json` 和 `text/event-stream`。这里的 SSE 是 `/mcp` 的响应格式，不提供旧版 `/sse` 传输端点。
+
+| 请求 | 行为 |
+| --- | --- |
+| `POST /mcp` | 需要 Token；处理 MCP 请求 |
+| `GET /mcp`、`DELETE /mcp` | HTTP 405；不维护独立会话 |
+| `GET /healthz` | 无需认证；用于进程健康检查，不检测禅道可用性或 Token 权限 |
+
+服务拒绝带 `Origin` 的请求，不提供浏览器 CORS 接入。每个请求独立创建凭证上下文，不支持跨请求取消、会话恢复或事件重放；客户端断开会取消该请求的上游工作。已发送的写入可能已生效，取消或超时后应先查询结果，再决定是否重试。
+
+请求体上限为 1 MiB，接收超时为 30 秒。接收完成后，工具调用的整体执行时限为 60 秒与启动时上游超时中的较大值；上游各次调用仍受 `--timeout` 限制。收到退出信号后停止接收新请求，最多等待 5 秒再取消剩余请求。服务日志不记录 Token、认证头或请求体。
+
+远程访问使用 HTTPS 反向代理，MCP 进程保持监听回环地址。以下为 Nginx 示例，证书路径按部署环境替换：
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name mcp.example.com;
+    ssl_certificate /etc/nginx/tls/mcp.example.com.crt;
+    ssl_certificate_key /etc/nginx/tls/mcp.example.com.key;
+
+    location = /mcp {
+        proxy_pass http://127.0.0.1:9090;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header Connection "";
+        proxy_buffering off;
+        proxy_read_timeout 65s;
+        client_max_body_size 1m;
+    }
+}
+```
+
+Nginx 默认转发客户端的 `Authorization` 和 `token` 请求头；代理层不要写死某个账号的 Token，也不要将认证头加入访问日志。若增大上游超时，应相应增加 `proxy_read_timeout`。本机可通过 `curl http://127.0.0.1:9090/healthz` 检查进程。
+
+需要连接两个禅道站点时，运行两个独立实例，并在代理中配置对应的域名或路由：
+
+```bash
+# 分别在两个进程中运行
+zentao mcp --transport http --port 9090 --url https://zentao-a.example.com
+zentao mcp --transport http --port 9091 --url https://zentao-b.example.com
+```
+
+### 共用工具与返回格式
+
+`zentao_action_help` 接受 `module` 和 `action`，查询路径、必填参数、参数类型、`minVersion` 和调用示例，例如 `{"module":"doc","action":"createMyDoc"}`。查询帮助不调用禅道，也不需要本地登录；HTTP 请求仍须携带 Token 头。示例中的占位 ID 和文本需替换为实际值；`available` 表示当前启动选项是否开放该操作。
+
+`--read-only` 只开放查询工具，并在执行入口校验允许的动作；stdio 账号切换工具也不注册。`--modules product,story,task` 只注册指定业务模块，未知或空模块名会报错。`--split-tools` 按模块拆为 `_read` / `_write`，例如 `zentao_task_read` 和 `zentao_task_write`，不存在对应动作的分组不注册；默认使用 `zentao_task` 等工具名。三个选项可以组合使用，开放范围在进程启动时固定；禅道仍按账号权限授权。
+
+业务参数使用 `params` 中的正式名称，例如任务列表 `{"action":"list","params":{"executionID":3}}`。`id`、`product`、`project`、`execution` 是按动作定义映射的兼容简写，与正式参数冲突时会报错。请求体直接使用 JSON 对象；MCP 不读取 CLI 管道或 `@-` 输入。
+
+MCP 发送请求前按动作定义检查必填字段、JSON 类型、明确枚举和未知参数。路径 ID 使用非负整数，`page` 从 1 开始，`recPerPage` 范围为 1–1000；业务字段仍按自身定义处理，例如预计工时允许小数、根模块允许 0。更新时可由详情自动补齐的请求体字段允许省略。
+
+所有工具都声明 `outputSchema`，成功时通过 `structuredContent.data` 返回数据；列表还包含 `pager` 和 `meta`。文本结果保留原有 JSON 形态（列表带 `data`，详情直接返回对象）。业务错误设置 `isError=true` 并返回 `structuredContent.error`，包含 `code`、`message` 及适用的 `module`、`action`；协议和顶层 schema 校验错误由 MCP SDK 返回。
+
+`filter`、`search`、`sort` 仅处理当前页。列表的 `meta.processingScope="page"`、`meta.returnedCount` 表示实际返回条数；`pager.recTotal` 是远端总数，`meta.totalScope="serverBeforeLocalProcessing"` 表明总数未经过本地筛选。跨页筛选需使用操作支持的 `params.filters` 等服务端参数，并逐页请求。
+
 ## 禅道数据访问和操作
 
 ### API 覆盖与版本兼容
 
-CLI 使用 `zentao-api 0.6.9` 的注册表，提供 26 个模块、229 个操作。除原有模块外，新增问题（`issue`）、风险（`risk`）、会议（`meeting`）、工作流（`workflow`）、文档（`doc`）、待办（`todo`）和地盘（`my`），并支持项目集/项目/执行下的关联列表、需求层级、附件上传和 Markdown 文档正文。
+CLI 使用 `zentao-api 0.7.0` 的注册表，提供 26 个模块、229 个操作。除原有模块外，新增问题（`issue`）、风险（`risk`）、会议（`meeting`）、工作流（`workflow`）、文档（`doc`）、待办（`todo`）和地盘（`my`），并支持项目集/项目/执行下的关联列表、需求层级、附件上传和 Markdown 文档正文。
 
 每个操作都带有最低禅道版本要求。SDK 0.5.5 及之前已有的操作与之后新增的操作分别使用以下基线，具体以操作帮助为准：
 
@@ -106,27 +242,11 @@ CLI 使用 `zentao-api 0.6.9` 的注册表，提供 26 个模块、229 个操作
 
 版本只在同一系列内比较，未列出的系列不受支持。目前支持点分数字正式版本，不接受 alpha、beta、rc 等后缀。
 
-登录和业务请求通过 SDK 获取站点根地址的 `?mode=getconfig`，配置请求不携带 Token。SDK 在同一客户端内缓存配置最多 24 小时；普通 CLI 命令各自启动进程，MCP 和批量操作会复用客户端缓存，切换账户后使用目标服务器的配置。CLI 的登录记录不用于跳过版本检查。
+登录和业务请求通过 SDK 获取站点根地址的 `?mode=getconfig`，配置请求不携带 Token。SDK 在同一客户端内缓存配置最多 24 小时；普通 CLI 命令各自启动进程，stdio MCP 和批量操作会复用客户端缓存，切换账户后使用目标服务器的配置。HTTP MCP 为每个请求创建独立客户端。CLI 的登录记录不用于跳过版本检查。
 
 配置获取失败默认中止调用；版本不足时返回 `E2010`，提示操作、当前版本和最低版本，更新操作的自动补全预读也不会执行。版本格式错误返回 `E2011`，配置缺少有效版本字段返回 `E2012`。`raw` 输出同样执行版本检查。
 
 帮助和自动补全在未登录时仍可使用，并列出完整注册表；CLI 帮助和 MCP 的 `zentao_action_help` 展示最低版本要求，执行时以实际服务器版本为准。
-
-MCP 提供无需登录的 `zentao_action_help` 工具，传入 `module` 和 `action` 即可查询该操作的路径、必填参数、参数类型、`minVersion` 和调用示例，例如 `{"module":"doc","action":"createMyDoc"}`。示例使用占位 ID 和文本，需替换为实际值；`available` 表示当前启动选项是否开放该操作。工具发现只保留简短用途说明，并仅列出各工具实际支持的参数。
-
-启动选项：`zentao mcp --read-only` 只开放查询工具，并在执行入口校验允许的动作；账号切换工具也不注册。`--modules product,story,task` 只注册指定业务模块，未知或空模块名会报错。`--split-tools` 按模块拆为 `_read` / `_write`，例如 `zentao_task_read` 和 `zentao_task_write`，不存在对应动作的分组不注册；默认继续使用 `zentao_task` 等原工具名。三个选项可以组合使用，只读与模块范围在进程启动时固定；服务端仍按账号权限执行授权检查。
-
-MCP 的业务参数使用 `params` 中的正式名称，例如任务列表 `{"action":"list","params":{"executionID":3}}`。`id`、`product`、`project`、`execution` 是按动作定义映射的兼容简写，与正式参数冲突时会报错。请求体直接使用 JSON 对象；MCP 不读取 CLI 管道或 `@-` 输入。
-
-MCP 会在发送请求前按动作定义检查必填字段、JSON 类型、明确枚举和未知参数。路径 ID 使用非负整数，`page` 从 1 开始，`recPerPage` 范围为 1–1000；业务字段仍按自身定义处理，例如预计工时允许小数、根模块允许 0。更新时可由详情自动补齐的请求体字段允许省略。
-
-MCP 在首次业务调用时绑定账号和站点，环境凭证不会写入本地 Profile。`zentao_switch_profile` 只切换当前 MCP 实例，不改变 CLI 或其他实例的当前账号；在 CLI 中切换账号也不会改变已运行的 MCP。显式选择的本地 Profile 会读取同一账号的 Token 和配置更新，删除该 Profile 后后续调用会报错。
-
-`zentao_profile` 返回绑定的 `account`、`server`、远端详情 `user` 和 `userFound`。详情按账号过滤并按需翻页，仅返回 ID、账号、姓名、部门、角色；未找到时 `user=null`、`userFound=false`。远端权限、Token 或业务错误会明确报错，不使用旧缓存掩盖失败。
-
-所有工具都声明 `outputSchema`，成功时通过 `structuredContent.data` 返回数据；列表还包含 `pager` 和 `meta`。为兼容已有客户端，文本结果继续采用原有的 JSON 形态（列表带 `data`，详情直接返回对象）。业务错误设置 `isError=true` 并返回 `structuredContent.error`，包含 `code`、`message` 及适用的 `module`、`action`，可据此调用动作帮助；协议和顶层 schema 校验错误由 MCP SDK 返回。
-
-`filter`、`search`、`sort` 仅处理当前页。列表的 `meta.processingScope="page"`、`meta.returnedCount` 表示实际返回条数；`pager.recTotal` 是远端总数，`meta.totalScope="serverBeforeLocalProcessing"` 明确其未经过本地筛选。需要跨页筛选时使用操作支持的 `params.filters` 等服务端参数，并逐页请求。
 
 ```bash
 # 不需要对象 ID 的命名列表

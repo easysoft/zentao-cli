@@ -7,7 +7,6 @@ import type { ModuleDefinition, ModuleAction, ModuleActionOptions } from '../typ
 import { executeModuleCommand } from '../modules/executor.js';
 import { ZentaoError } from '../errors.js';
 import type { AuthProvider } from './server.js';
-import { findProfileByKey, getProfileConfig, profileKey } from '../config/store.js';
 import { withRequestSignal } from '../api/index.js';
 import { normalizeToolParams } from './params.js';
 import { listOutputSchema, outputSchema, toolError, toolResult } from './results.js';
@@ -16,10 +15,19 @@ export interface McpToolOptions {
     readOnly?: boolean;
     modules?: string[];
     splitTools?: boolean;
+    /** Local transports may upload paths; remote callers must never read host files. */
+    allowLocalFiles?: boolean;
 }
+
+const LOCAL_FILE_UPLOAD_UNAVAILABLE = 'HTTP MCP 不支持通过本地路径上传服务端文件，请使用本地 CLI 或 stdio MCP';
 
 function isReadAction(action: ModuleAction): boolean {
     return (action.type === 'list' || action.type === 'get') && (action.method ?? 'get').toLowerCase() === 'get';
+}
+
+function isActionAvailable(action: ModuleAction, options: McpToolOptions): boolean {
+    return (!options.readOnly || isReadAction(action))
+        && (options.allowLocalFiles !== false || action.requestBody?.mediaType !== 'multipart/form-data');
 }
 
 function buildToolDescription(mod: ModuleDefinition): string {
@@ -92,7 +100,16 @@ interface ToolInput {
 }
 
 async function handleProfileTool(auth: AuthProvider, signal?: AbortSignal): Promise<CallToolResult> {
-    const { client, profile } = await auth.getContext();
+    const { client, identity: profile } = await auth.getContext();
+    if (profile.account === undefined) {
+        return toolResult({
+            server: profile.server,
+            account: null,
+            user: null,
+            userFound: false,
+            note: '无法仅凭禅道 Token 确定账号，未查询用户详情。',
+        });
+    }
     const scopedClient = withRequestSignal(client, signal);
     let user: Record<string, unknown> | undefined;
     let previousPage: string | undefined;
@@ -130,13 +147,8 @@ interface SwitchProfileInput {
 }
 
 async function handleSwitchProfileTool(input: SwitchProfileInput, auth: AuthProvider): Promise<CallToolResult> {
-    const profile = findProfileByKey(input.profileKey);
-    if (!profile) {
-        throw new ZentaoError('E1007');
-    }
-
-    const { profile: current } = await auth.getContext(profile);
-    const currentKey = profileKey(current.account, current.server);
+    const { identity: current } = await auth.switchProfile!(input.profileKey);
+    const currentKey = `${current.account}@${current.server}`;
     return toolResult({ status: 'success', currentProfile: currentKey });
 }
 
@@ -144,18 +156,21 @@ async function handleModuleTool(
     mod: ModuleDefinition,
     input: ToolInput,
     auth: AuthProvider,
+    options: McpToolOptions,
     signal?: AbortSignal,
 ): Promise<CallToolResult> {
     const action = getAction(mod, input.action);
     if (!action) throw new ZentaoError('E2005', { module: mod.name });
+    if (!isActionAvailable(action, options)) {
+        throw new ZentaoError('E2009', { option: `${mod.name}/${action.name}`, reason: LOCAL_FILE_UPLOAD_UNAVAILABLE });
+    }
     for (const option of ['filter', 'sort', 'search', 'searchFields', 'pick'] as const) {
         if (input[option] !== undefined && action.type !== 'list' && !(option === 'pick' && action.type === 'get')) {
             throw new ZentaoError('E2009', { option, reason: `不适用于 ${mod.name}/${action.name}` });
         }
     }
     const params = normalizeToolParams(mod, action, input);
-    const { client, profile } = await auth.getContext();
-    const config = getProfileConfig(profile);
+    const { client, config } = await auth.getContext();
     const actionName = input.action;
 
     const opts: ModuleActionOptions = {
@@ -229,7 +244,9 @@ export function registerModuleTools(server: McpServer, auth: AuthProvider, optio
                     path: definition.path,
                     minVersion: definition.minVersion,
                     parameters: getModuleActionParams(mod.name, definition.name),
-                    available: selectedModules.some(selected => selected.name === mod.name) && (!options.readOnly || isReadAction(definition)),
+                    available: selectedModules.some(selected => selected.name === mod.name) && isActionAvailable(definition, options),
+                    ...(options.allowLocalFiles === false && definition.requestBody?.mediaType === 'multipart/form-data'
+                        ? { unavailableReason: LOCAL_FILE_UPLOAD_UNAVAILABLE } : {}),
                     example: actionExample(mod, definition, options.splitTools),
                 });
             } catch (error) {
@@ -241,7 +258,7 @@ export function registerModuleTools(server: McpServer, auth: AuthProvider, optio
     server.registerTool(
         'zentao_profile',
         {
-            description: '获取当前 MCP 绑定的账号和站点，并查询远端用户详情；userFound=false 表示未找到详情，服务端失败会报错',
+            description: '获取当前 MCP 绑定的账号和站点；已知账号时查询远端用户详情，仅 Token 认证时账号未知。userFound=false 表示无用户详情，服务端失败会报错',
             inputSchema: z.object({}).strict(),
             outputSchema,
             annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
@@ -255,7 +272,7 @@ export function registerModuleTools(server: McpServer, auth: AuthProvider, optio
         },
     );
 
-    if (!options.readOnly) server.registerTool(
+    if (auth.switchProfile && !options.readOnly) server.registerTool(
         'zentao_switch_profile',
         {
             description: '切换当前 MCP 实例的登录账号，不改变 CLI 或其他 MCP 实例的账号',
@@ -290,7 +307,7 @@ export function registerModuleTools(server: McpServer, auth: AuthProvider, optio
                 try {
                     // Keep full module metadata for autoFill, but enforce this tool's subset.
                     if (!group.actions.some(action => action.name === input.action)) throw new ZentaoError('E2006');
-                    return await handleModuleTool(source, input as ToolInput, auth, extra.signal);
+                    return await handleModuleTool(source, input as ToolInput, auth, options, extra.signal);
                 } catch (error) {
                     return toolError(error, { module: mod.name, action: input.action });
                 }

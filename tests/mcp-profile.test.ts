@@ -1,5 +1,42 @@
 import { expect, test } from 'bun:test';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
+import { createClient } from '../src/api/index.js';
+import { DEFAULT_CONFIG } from '../src/config/defaults.js';
+import { createMcpServer } from '../src/mcp/server.js';
 import { createMcpTestClient, toolData } from './mcp-helpers.js';
+
+test('token-only context reports unknown identity without looking up users or exposing account switching', async () => {
+    let requests = 0;
+    const api = Bun.serve({
+        hostname: '127.0.0.1', port: 0,
+        fetch() { requests++; return Response.json({ users: [{ account: 'unrelated' }] }); },
+    });
+    const serverUrl = api.url.toString();
+    const server = createMcpServer({
+        async getContext() {
+            return { client: createClient(serverUrl, 'remote-token'), config: DEFAULT_CONFIG, identity: { server: serverUrl } };
+        },
+    }, { modules: ['product'] });
+    const client = new Client({ name: 'token-context-test', version: '0.0.0' });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    try {
+        await server.connect(serverTransport);
+        await client.connect(clientTransport);
+        const { tools } = await client.listTools();
+        expect(tools.map(tool => tool.name).sort()).toEqual(['zentao_action_help', 'zentao_product', 'zentao_profile']);
+        expect(toolData(await client.callTool({ name: 'zentao_profile', arguments: {} }))).toEqual({
+            account: null, server: serverUrl, userFound: false, user: null,
+            note: '无法仅凭禅道 Token 确定账号，未查询用户详情。',
+        });
+        expect((await client.callTool({ name: 'zentao_switch_profile', arguments: { profileKey: 'local-user' } })).isError).toBe(true);
+        expect(requests).toBe(0);
+    } finally {
+        await client.close();
+        await server.close();
+        api.stop(true);
+    }
+});
 
 test('MCP profile pages beyond 100 users, limits identity fields and never masks remote errors', async () => {
     let scenario = 'paged';

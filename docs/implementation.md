@@ -115,12 +115,24 @@
 
 ## 用户验证过程
 
-调用禅道 API 需要在请求头中增加 `token` 字段，其值为获取到的 TOKEN。获取 TOKEN 的过程如下：
+调用禅道 API 需要在请求头中增加 `token` 字段，其值为获取到的 TOKEN。CLI 命令和 stdio MCP 使用以下凭证解析过程：
 
 1. 若 `ZENTAO_URL`、`ZENTAO_ACCOUNT` 以及 `ZENTAO_TOKEN`/`ZENTAO_PASSWORD` 之一齐全，优先使用这组显式身份；如果只有密码，则先登录获取 Token；
 2. 否则读取 `~/.config/zentao/zentao.json` 中的当前 Profile 及其 Token；
 3. 使用解析出的 Token 发起请求；
 4. 若两种来源都不完整，提示执行 `zentao login --web`，由用户在本机浏览器完成验证并保存 Token；终端交互登录可使用 `zentao login --no-browser`。
+
+## HTTP MCP 的请求隔离
+
+`zentao mcp --transport http` 使用 MCP SDK 的无状态 Streamable HTTP 传输。Node 运行时使用 `node:http` 和 `StreamableHTTPServerTransport`；Bun 运行时使用原生 `Bun.serve` 和 Web Standard 传输，以正确处理客户端断开。两种运行时共用工具、认证和请求处理逻辑。一个进程在启动时固定一个禅道站点，每个 `POST /mcp` 独立创建 MCP server、transport 和 SDK client，业务工具注册与 stdio 共用。请求结束后关闭该请求的 MCP 资源。
+
+凭证仅取自当前请求的 `token` 或 `Authorization: Bearer` 请求头；缺失、重复或格式错误的凭证被拒绝。远程模式不进入 CLI 的环境凭证和本地 Profile 选择流程，不保存 Token，不开放 `zentao_switch_profile`。MCP 上下文单独提供 client、业务配置和站点信息；HTTP 的账号为空，因此 `zentao_profile` 不查询用户列表，也不验证 Token。
+
+HTTP 模式强制关闭本地文件上传能力。现有 `file/create` 的文件参数是服务端本地路径，SDK 会读取该路径，因此 multipart/本地路径上传操作在获取业务认证上下文和调用 SDK 前被拒绝，动作帮助的 `available` 同步为 `false`。CLI 和 stdio 仍可上传本地文件；附件更新、删除等操作不受此限制。
+
+上游客户端使用默认配置和启动时的 `--timeout`、`--insecure`，不会继承本地账号的偏好。取消信号绑定到当前请求，上游配置获取、更新预读和业务写入均使用该信号；一个客户端断开不会取消其他客户端的请求。服务不重放失败或已取消的写操作，也不保存跨请求会话。
+
+HTTP 层限制请求体为 1 MiB、接收时长为 30 秒；接收完成后的工具调用整体执行时限为 60 秒与上游超时中的较大值。退出时停止接收新请求，最多等待 5 秒，再取消仍在运行的请求。日志不包含认证头或请求体。部署示例、认证头和协议边界见 [HTTP MCP 使用说明](cli-usage.md#远程-http-模式)。
 
 ## 禅道 API 调用
 

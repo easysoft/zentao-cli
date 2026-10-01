@@ -1,2 +1,2 @@
-export { startMcpServer } from './server.js';
-export type { AuthProvider } from './server.js';
+export { createMcpServer, startMcpServer } from './server.js';
+export type { AuthProvider, McpAuthContext } from './server.js';

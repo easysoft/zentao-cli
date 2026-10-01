@@ -208,7 +208,7 @@ zentao file create --file=/path/to/screenshot.png --objectType=bug --objectID=42
 | ZENTAO_TOKEN | 登录 Token；完整环境凭证中同时存在密码与 Token 时优先使用 Token |
 | ZENTAO_CONFIG_FILE | 自定义配置文件路径；显式 --config 优先 |
 
-业务调用优先使用完整环境凭证（地址、账号以及 Token 或密码），否则使用当前本地登录记录。zentao login 的 --useEnv 专门用于强制使用环境变量登录。配置文件路径支持 ~ 和相对路径；更改配置路径会隔离登录记录与账号配置。
+CLI 业务调用和 stdio MCP 优先使用完整环境凭证（地址、账号以及 Token 或密码），否则使用当前本地登录记录。HTTP MCP 仅用 ZENTAO_URL 作为站点地址的后备值，凭证必须来自当前请求头。zentao login 的 --useEnv 专门用于强制使用环境变量登录。配置文件路径支持 ~ 和相对路径；更改配置路径会隔离登录记录与账号配置。
 
 <a id="data-options"></a>
 
@@ -274,7 +274,7 @@ zentao file create --file=/path/to/screenshot.png --objectType=bug --objectID=42
 | [autocomplete](#command-autocomplete) | 生成 shell 自动补全脚本 |
 | [add-skill](#command-add-skill) | 安装禅道 CLI 技能到 AI Agent，或导出至指定目录 |
 | [add-mcp](#command-add-mcp) | 配置禅道 MCP 服务到 AI Agent |
-| [mcp](#command-mcp) | 启动 MCP (Model Context Protocol) 服务，供 AI Agents 通过 stdio 访问禅道数据 |
+| [mcp](#command-mcp) | 启动 MCP 服务，支持本地 stdio 或多客户端 HTTP 访问禅道数据 |
 | [ls](#command-ls) | 获取对象列表 |
 | [get](#command-get) | 获取单个对象 |
 | [create](#command-create) | 创建对象 |
@@ -573,7 +573,7 @@ zentao add-skill --output ./exported-skills
 zentao add-mcp [options] [agent]
 ```
 
-使用已登录账号配置目标 Agent 的 MCP 服务；省略 agent 时交互选择，all 表示全部目标。多数目标写入包含服务地址、账号和 Token 的配置；Cherry Studio 打印手动添加说明。包含注释或尾逗号的 JSONC 配置会提示手动处理。支持的 Agent 见参数表。
+使用已登录账号配置目标 Agent 的本地 stdio MCP 服务；HTTP MCP 需要手动配置。省略 agent 时交互选择，all 表示全部目标。多数目标写入包含服务地址、账号和 Token 的配置；Cherry Studio 打印手动添加说明。包含注释或尾逗号的 JSONC 配置会提示手动处理。支持的 Agent 见参数表。
 
 | 位置参数 | 必填 | 说明 |
 | --- | --- | --- |
@@ -594,16 +594,20 @@ zentao add-mcp cursor
 
 ### `zentao mcp`
 
-启动 MCP (Model Context Protocol) 服务，供 AI Agents 通过 stdio 访问禅道数据
+启动 MCP 服务，支持本地 stdio 或多客户端 HTTP 访问禅道数据
 
 ```text
 zentao mcp [options]
 ```
 
-通过标准输入/输出启动 MCP 服务，由支持 MCP 的客户端运行并管理进程。账号可通过已保存登录或环境变量提供，并绑定当前实例。--read-only 仅开放查询；--modules 限定业务模块；--split-tools 将工具按模块拆为 _read / _write，默认保留原工具名。
+默认使用 stdio，由客户端管理进程并使用本地登录或环境凭证。--transport http 启动无状态 Streamable HTTP 服务，默认监听 127.0.0.1:9090；--url（回退到 ZENTAO_URL）固定一个禅道站点，不使用本地账号。--url、--host、--port 仅适用于 HTTP 模式，端口为 1–65535。每个 POST /mcp 请求须单独提供 token 或 Authorization: Bearer 禅道 Token，不能同时提供；不接受密码、OAuth、查询参数凭证或浏览器 Origin。GET /healthz 无需认证，GET/DELETE /mcp 返回 405，不提供旧 /sse。HTTP 模式不提供账号切换，zentao_profile 的 account 为 null；运行需要 Node.js 18.14.1+ 或 Bun，远程访问应使用 HTTPS 反向代理。两种模式均支持 --read-only、--modules、--split-tools 和全局 --timeout、--insecure。完整部署与客户端示例见 [MCP 使用说明](cli-usage.md#mcp-服务)。
 
 | 选项 | 说明 |
 | --- | --- |
+| `--transport <type>` | 传输方式 (stdio\|http) |
+| `--host <host>` | HTTP 监听地址（默认 127.0.0.1） |
+| `--port <port>` | HTTP 监听端口（默认 9090） |
+| `--url <url>` | HTTP 模式的固定禅道站点地址（亦可通过 ZENTAO_URL 设置） |
 | `--read-only` | 仅提供查询工具，禁止业务写入和账号切换 |
 | `--modules <names>` | 仅提供指定业务模块（逗号分隔，如 product,story,task） |
 | `--split-tools` | 按模块分为 _read 查询工具和 _write 写入工具 |
@@ -616,6 +620,8 @@ zentao mcp
 zentao --config ./zentao.json mcp
 zentao mcp --read-only --modules product,story,task,bug
 zentao mcp --split-tools --modules product,story,task,bug
+zentao mcp --transport http --url https://zentao.example.com
+zentao --timeout 15000 mcp --transport http --host 127.0.0.1 --port 9090 --url https://zentao.example.com --read-only
 ```
 
 <a id="command-ls"></a>
