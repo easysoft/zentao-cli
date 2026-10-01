@@ -10,27 +10,42 @@
 
 ### 登录验证
 
-首次执行 `zentao` 时，会提示输入禅道 URL、用户名和密码完成登录。登录成功后会记住用户信息（包括禅道 URL、账号和 Token，不包括密码），方便后续使用。
+执行 `zentao login` 时，桌面环境会打开本机浏览器，在页面填写禅道地址、用户名和密码完成登录。登录成功后会记住用户信息（包括禅道 URL、账号和 Token，不包括密码），方便后续使用。业务命令缺少凭证时只提示登录，不会自行弹出页面。
 
-也可以通过 `zentao login` 命令登录，支持使用 `-s <zentao_url> -u <account> -p <password>` 参数指定禅道 URL、用户名和密码，例如：
+可以显式选择浏览器或终端交互登录：
 
 ```bash
-# 登录禅道
-zentao login -s https://zentao.example.com -u admin -p 123456
+# 浏览器登录（适合由 Agent 发起，再由用户填写）
+zentao login --web
+
+# 终端交互登录
+zentao login --no-browser
 ```
+
+浏览器页面仅由本机临时服务提供，登录完成、取消或超时后关闭服务。浏览器未自动打开时，手动访问命令输出的链接，并保持 CLI 进程运行。通过 `--server` 和 `--user` 可预填地址和账号；密码和 Token 不会预填。远程服务器或容器中的本机链接指 CLI 执行端，可在同一执行环境使用终端交互登录。
+
+登录页副标题默认为“完成登录后，回到 ZenTao CLI 即可继续使用禅道。”，可通过 `--message <text>` 设置纯文本提示，例如指引用户回到当前 Agent：
+
+```bash
+zentao login --web --message "完成登录后，回到 Codex 即可继续使用禅道。"
+```
+
+默认 `zentao login` 若打开浏览器失败且当前有交互终端，会关闭临时服务并改用终端登录；显式 `--web` 始终保留链接供手动打开。登录页面最多等待 5 分钟。
+
+完整参数 `--server <url> --user <account> --password <password>`（或 `--token <token>`）仍可直接登录，同时提供密码和 Token 时优先使用 Token。`--web` 不能与 `--no-browser`、`--useEnv`、`--password` 或 `--token` 混用。非交互环境未选择浏览器且没有完整凭证时，会报错而不等待终端输入。
 
 ### 环境变量
 
-`zentao-cli` 支持从环境变量中读取禅道服务地址、用户账号和密码。如果已经显式指定了 `-s`、`-u`、`-p` 参数，则优先使用这些参数，环境变量不会生效。
+`zentao-cli` 支持从环境变量中读取禅道服务地址、用户账号和密码或 Token。业务命令优先使用完整环境凭证，再回退到当前本地登录记录；`zentao login` 则通过 `--useEnv` 显式选择环境变量登录。
 
-有时即使已经设置了环境变量，之前手动登录过的身份信息仍可能被优先使用。如果希望忽略已有身份信息并强制使用环境变量重新验证，可以通过 `zentao login --useEnv` 来实现。
+需要使用环境变量重新验证并保存登录记录时，执行 `zentao login --useEnv`。
 
 支持如下环境变量：
 
 * `ZENTAO_URL`：禅道服务地址
 * `ZENTAO_ACCOUNT`：用户账号
 * `ZENTAO_PASSWORD`：密码
-* `ZENTAO_TOKEN`：TOKEN，当未提供密码时，可通过该环境变量读取 TOKEN
+* `ZENTAO_TOKEN`：Token，同时提供密码时优先使用 Token
 
 ### 账户切换
 

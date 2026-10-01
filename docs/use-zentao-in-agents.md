@@ -67,23 +67,19 @@ $ zentao add-skill --output ./skills
 
 ## 账号登录
 
-安装完成后，需要进行一次登录，目前有如下方式：
+安装完成后，推荐让 Agent 发起浏览器登录：
 
-1. 在环境变量中配置禅道 URL、用户名和密码信息，命令行工具在首次执行时会自动进行登录，并记住用户信息，下面为环境变量设置示例：
+```sh
+zentao login --web
+```
 
-    ```sh
-    export ZENTAO_URL=https://zentao.example.com
-    export ZENTAO_ACCOUNT=admin
-    export ZENTAO_PASSWORD=123456
-    ```
+Agent 应保持命令进程运行，提示用户在本机浏览器中输入禅道地址、用户名和密码。浏览器没有自动打开时，将命令输出的本机链接交给用户手动打开。登录成功后 CLI 保存 Token 并退出，Agent 再重试原业务命令。不要在对话中收集密码或 Token，也不要替用户读取浏览器表单中的凭据。
 
-2. 通过 `zentao login` 命令手动登录，例如：
+可添加 `--message "完成登录后，回到 Codex 即可继续使用禅道。"` 自定义登录页副标题，指引用户回到当前 Agent；提示按纯文本显示。
 
-    ```sh
-    zentao login -s https://zentao.example.com -u admin -p 123456
-    ```
+桌面环境直接运行 `zentao login` 也会自动打开浏览器。远程服务器或容器中的本机链接属于 CLI 执行端，不能在另一台电脑上直接打开；此时可让用户在相同执行环境中运行 `zentao login --no-browser` 完成终端交互登录。沿用原业务命令的 `--config` 或 `ZENTAO_CONFIG_FILE`，确保登录记录保存在相同位置。
 
-推荐使用环境变量的方式进行登录，这样即便 Token 失效也会自动从环境变量获取相关信息重新进行登录。虽然 Agents 工具也能代替用户进行登录，但强烈建议不要将账号密码发送给 AI Agents 工具，以保证账号安全。
+已有自动化环境仍可提供 `ZENTAO_URL`、`ZENTAO_ACCOUNT` 以及 `ZENTAO_TOKEN` 或 `ZENTAO_PASSWORD`；使用 `zentao login --useEnv` 可验证并保存环境凭证。业务命令缺少凭证时只报错，Agent 应显式启动登录，不会自动弹出页面。
 
 ## 使用示例
 

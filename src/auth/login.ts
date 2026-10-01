@@ -26,26 +26,37 @@ export async function login(
     serverUrl: string,
     account: string,
     password: string,
-    options?: { insecure?: boolean; timeout?: number },
+    options?: { insecure?: boolean; timeout?: number; signal?: AbortSignal },
 ): Promise<LoginResult> {
     const client = createClient(serverUrl, undefined, options);
-
-    let token: string;
-    try {
-        token = await client.login(account, password);
-    } catch (error) {
-        throw mapSdkError(error);
+    const originalFetch = client.fetch;
+    if (options?.signal) {
+        // This client belongs to this login attempt; cover every SDK request, including config loading.
+        client.fetch = (url, request, token, fetchOptions) => originalFetch.call(client, url,
+            { ...request, signal: options.signal }, token, fetchOptions);
     }
 
-    let user: Record<string, unknown> | undefined;
-    const serverConfig = await getServerConfig(client);
     try {
-        ({ user } = await verifyToken(client, account));
-    } catch {
-        // Token valid but couldn't fetch user details - not fatal
-    }
+        let token: string;
+        try {
+            token = await client.login(account, password);
+        } catch (error) {
+            throw mapSdkError(error);
+        }
 
-    return { client, token, user, serverConfig };
+        let user: Record<string, unknown> | undefined;
+        const serverConfig = await getServerConfig(client);
+        try {
+            ({ user } = await verifyToken(client, account));
+        } catch {
+            // Token valid but couldn't fetch user details - not fatal
+        }
+
+        if (options?.signal?.aborted) throw new ZentaoError('E5003');
+        return { client, token, user, serverConfig };
+    } finally {
+        client.fetch = originalFetch;
+    }
 }
 
 /**

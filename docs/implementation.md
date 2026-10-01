@@ -120,7 +120,7 @@
 1. 若 `ZENTAO_URL`、`ZENTAO_ACCOUNT` 以及 `ZENTAO_TOKEN`/`ZENTAO_PASSWORD` 之一齐全，优先使用这组显式身份；如果只有密码，则先登录获取 Token；
 2. 否则读取 `~/.config/zentao/zentao.json` 中的当前 Profile 及其 Token；
 3. 使用解析出的 Token 发起请求；
-4. 若两种来源都不完整，在终端提示用户执行 `zentao login`。
+4. 若两种来源都不完整，提示执行 `zentao login --web`，由用户在本机浏览器完成验证并保存 Token；终端交互登录可使用 `zentao login --no-browser`。
 
 ## 禅道 API 调用
 

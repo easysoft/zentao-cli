@@ -33,13 +33,15 @@ flowchart LR
 npm install -g zentao-cli
 ```
 
-让用户在自己的交互终端登录，按提示输入服务地址、账号和凭证：
+需要登录时，由 Agent 发起浏览器登录并保持命令进程运行，让用户在本机浏览器中填写服务地址、用户名和密码：
 
 ```bash
-zentao login
+zentao login --web
 ```
 
-不要让用户把密码或 Token 发到聊天里，也不要把真实凭证写进命令参数、示例、日志或仓库文件。无法进行交互输入时，使用用户已安全注入的 `ZENTAO_URL`、`ZENTAO_ACCOUNT` 和 `ZENTAO_PASSWORD` / `ZENTAO_TOKEN`；需要强制按这些环境变量登录时使用 `zentao login --useEnv`。不要为检查变量而打印值。
+未自动打开浏览器时，将命令输出的本机链接交给用户手动打开。等待命令报告登录成功后，再重试原业务命令。远程服务器或容器中的本机链接属于 CLI 执行端；无法在该执行端打开页面时，让用户在相同执行环境的交互终端运行 `zentao login --no-browser`，不要反复启动登录进程。
+
+不要让用户把密码或 Token 发到聊天里，也不要读取浏览器表单或把真实凭证写进命令参数、示例、日志或仓库文件。已有自动化环境可使用安全注入的 `ZENTAO_URL`、`ZENTAO_ACCOUNT` 和 `ZENTAO_PASSWORD` / `ZENTAO_TOKEN`；需要强制按这些环境变量登录时使用 `zentao login --useEnv`。不要为检查变量而打印值。
 
 默认配置在 `~/.config/zentao/zentao.json`，保存账号、服务器和 Token，不保存密码。`--config` / `ZENTAO_CONFIG_FILE` 可指定其他配置文件；沿用用户当前配置，不读取或展示整份凭证文件。
 

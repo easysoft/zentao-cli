@@ -174,7 +174,7 @@ zentao file create --file=/path/to/screenshot.png --objectType=bug --objectID=42
 
 ## 覆盖范围
 
-对应当前工作区：CLI **0.3.0**，API 定义 **0.7.0**；覆盖 **17 个内置一级命令**（另含 config get/set）、**26 个业务模块、229 个业务操作**。已安装版本不同时，请以本机命令的 --help 为准。
+对应当前工作区：CLI **0.3.1**，API 定义 **0.7.0**；覆盖 **17 个内置一级命令**（另含 config get/set）、**26 个业务模块、229 个业务操作**。已安装版本不同时，请以本机命令的 --help 为准。
 
 <a id="global-options"></a>
 
@@ -322,7 +322,9 @@ zentao doc createMyDoc --help
 zentao login [options]
 ```
 
-省略完整凭证时进入交互登录。非交互调用需同时提供 server、user，以及 password 或 token；同时提供两者时优先使用 token。--useEnv 强制从环境变量读取完整凭证。成功后保存服务地址、账号和 Token，并设为当前账号，不保存密码。
+省略完整凭证时，桌面环境默认打开本机浏览器登录，否则使用终端交互；非交互且未检测到桌面环境时返回 E1006。默认浏览器启动明确失败且有交互终端时，会关闭临时服务并回退到终端登录。`--web` 显式启动浏览器登录，打开失败时保留服务，供手动访问输出的链接。`--no-browser` 强制终端交互。浏览器页面支持通过 server 和 user 预填地址和账号，不预填密码或 Token。`--message <text>` 仅设置登录页的纯文本副标题，默认为“完成登录后，回到 ZenTao CLI 即可继续使用禅道。”。
+
+完整参数 server、user，以及 password 或 token 仍直接登录；同时提供两者时优先使用 token。--useEnv 强制从环境变量读取完整凭证。`--web` 不能与 `--no-browser`、`--useEnv`、`--password` 或 `--token` 混用。成功后保存服务地址、账号和 Token，并设为当前账号，不保存密码。浏览器登录期间应保持命令运行；远程或容器中的本机链接指 CLI 执行端。
 
 | 选项 | 说明 |
 | --- | --- |
@@ -331,12 +333,18 @@ zentao login [options]
 | `-p, --password <password>` | 密码 |
 | `-t, --token <token>` | Token |
 | `--useEnv` | 强制使用环境变量登录 |
+| `--web` | 通过本机浏览器页面登录 |
+| `--message <text>` | 自定义浏览器登录页面的副标题提示语 |
+| `--no-browser` | 使用终端交互登录，不打开浏览器 |
 | `-h, --help` | 显示命令帮助 |
 
 示例：
 
 ```bash
 zentao login
+zentao login --web
+zentao login --web --message "完成登录后，回到 Codex 即可继续使用禅道。"
+zentao login --no-browser
 zentao login --server=https://zentao.example.com --user=admin --token='替换为实际Token'
 zentao login --useEnv
 ```

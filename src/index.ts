@@ -70,7 +70,7 @@ registerAllCommands(program);
 program.addHelpText('after', () => {
     try {
         if (getAllProfiles().length === 0) {
-            return '\n提示：尚未登录禅道服务，请先执行以下命令登录：\n\n  zentao login -s <zentao_url> -u <account> -p <password>\n';
+            return '\n提示：尚未登录禅道服务，请先通过本机浏览器登录：\n\n  zentao login --web\n\n终端交互登录可使用 zentao login --no-browser。\n';
         }
     } catch {
         // 配置文件不可读时静默忽略，不影响帮助输出

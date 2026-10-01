@@ -9,8 +9,11 @@ export const ERROR_CODES = {
     E1003: '当前用户名和密码不正确',
     E1004: '所提供的 Token 已失效，请提供密码重新登录，或提供新的 TOKEN',
     E1005: '配置文件损坏或无法读取，请检查 {path}',
-    E1006: '未找到指定的用户配置，请先使用 `zentao login -s <zentao_url> -u <account> -p <password> -t <token>` 登录',
+    E1006: '未找到可用的用户配置，请执行 `zentao login --web` 在浏览器中登录；终端登录使用 `zentao login --no-browser`',
     E1007: '指定的用户配置不存在，请通过 `zentao profile` 查看可用配置',
+    E1008: '浏览器登录已取消',
+    E1009: '浏览器登录等待超时，请重新执行 `zentao login --web`',
+    E1010: '无法启动本地登录服务，请检查本机网络权限，或使用 `zentao login --no-browser`',
 
     // API 调用 (20xx)
     E2001: '未找到指定的模块 {module}，请通过 `zentao help` 查看支持的模块',

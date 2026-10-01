@@ -37,8 +37,8 @@ npm install -g zentao-cli
 # npx zentao-cli             # ← 通过 npx 免安装运行
 # pnpm dlx zentao-cli        # ← 通过 pnpm 免安装运行
 
-# 首次使用需要进行登录
-zentao login -s https://zentao.example.com -u admin -p 123456
+# 首次使用：在本机浏览器中输入禅道地址、用户名和密码
+zentao login --web
 
 # 直接执行获取可用命令帮助
 zentao
@@ -61,6 +61,8 @@ zentao product help
 # 安装 zentao-cli 技能
 zentao add-skill
 ```
+
+桌面环境执行 `zentao login` 会自动打开浏览器，登录后保存 Token，不保存密码。Agent 可执行 `zentao login --web` 并保持进程运行，让用户在浏览器完成验证后继续工作。终端交互登录使用 `zentao login --no-browser`；浏览器未自动打开时，可手动访问命令输出的本机链接。远程或容器中的链接属于 CLI 执行端。
 
 ## 核心命令
 

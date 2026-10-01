@@ -43,7 +43,10 @@ const actionId = (mod: string, action: string) => 'action-' + mod + '-' + action
 
 const commandNotes: Record<string, { text: string; examples: string[] }> = {
     help: { text: '模块名会展开该模块全部操作；内置命令名会显示该命令帮助。支持离线使用。', examples: ['zentao help', 'zentao help bug', 'zentao help login', 'zentao doc createMyDoc --help'] },
-    login: { text: '省略完整凭证时进入交互登录。非交互调用需同时提供 server、user，以及 password 或 token；同时提供两者时优先使用 token。--useEnv 强制从环境变量读取完整凭证。成功后保存服务地址、账号和 Token，并设为当前账号，不保存密码。', examples: ['zentao login', "zentao login --server=https://zentao.example.com --user=admin --token='替换为实际Token'", 'zentao login --useEnv'] },
+    login: {
+        text: '省略完整凭证时，桌面环境默认打开本机浏览器登录，否则使用终端交互；非交互且未检测到桌面环境时返回 E1006。默认浏览器启动明确失败且有交互终端时，会关闭临时服务并回退到终端登录。`--web` 显式启动浏览器登录，打开失败时保留服务，供手动访问输出的链接。`--no-browser` 强制终端交互。浏览器页面支持通过 server 和 user 预填地址和账号，不预填密码或 Token。`--message <text>` 仅设置登录页的纯文本副标题，默认为“完成登录后，回到 ZenTao CLI 即可继续使用禅道。”。\n\n完整参数 server、user，以及 password 或 token 仍直接登录；同时提供两者时优先使用 token。--useEnv 强制从环境变量读取完整凭证。`--web` 不能与 `--no-browser`、`--useEnv`、`--password` 或 `--token` 混用。成功后保存服务地址、账号和 Token，并设为当前账号，不保存密码。浏览器登录期间应保持命令运行；远程或容器中的本机链接指 CLI 执行端。',
+        examples: ['zentao login', 'zentao login --web', 'zentao login --web --message "完成登录后，回到 Codex 即可继续使用禅道。"', 'zentao login --no-browser', "zentao login --server=https://zentao.example.com --user=admin --token='替换为实际Token'", 'zentao login --useEnv'],
+    },
     logout: { text: '不传 profileKey 时退出当前账号；传入时删除指定的本地登录记录。', examples: ['zentao logout', "zentao logout 'admin@https://zentao.example.com'"] },
     profile: { text: '不传参数时列出已保存的账号并标记当前账号；传入 account@server 可切换账号。支持 --format=json 和 --format=raw。业务调用存在完整环境变量凭证时，会优先使用环境变量对应的账号。', examples: ['zentao profile', "zentao profile 'admin@https://zentao.example.com'", 'zentao --format=json profile'] },
     config: { text: '配置保存在当前账号下，需要先登录。使用 get 查看、set 修改，见上方配置项表。', examples: ['zentao config get', 'zentao config set defaultOutputFormat json'] },
