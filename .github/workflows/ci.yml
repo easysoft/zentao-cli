@@ -6,6 +6,7 @@ on:
       - main
       - master
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -13,10 +14,14 @@ permissions:
 jobs:
   test:
     name: Typecheck, Test, Build
-    runs-on: ubuntu-latest
+    # Keep pull request code off the persistent VPS that runs other services.
+    runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-latest' || 'zentao-cli-sgp' }}
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
