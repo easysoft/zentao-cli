@@ -149,6 +149,8 @@ zentao bug --help
 
 支持通过 `zentao-cli` 技能访问和操作禅道数据。安装技能可以通过 `zentao add-skill` 一键安装技能到 AI Agent，目前支持 Claude Code、Cursor、Cherry Studio、Codex、OpenCode、VS Code 等 AI Agent。
 
+Agent 可先执行 `zentao profile --effective --format=json` 查看业务命令实际使用的账号与凭据来源，输出不包含 Token 或密码，也不会发起登录。支持环境凭据注入、只读配置挂载和通过 `--config`、`ZENTAO_CONFIG_FILE`、`XDG_CONFIG_HOME` 指定配置位置，示例见 [Agent 接入指南](docs/use-zentao-in-agents.md#agentci-与容器中的凭据)。
+
 详细使用可以参考：[在 Agents 中使用禅道](docs/use-zentao-in-agents.md)，下面简单介绍。
 
 ```bash

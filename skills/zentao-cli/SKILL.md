@@ -26,12 +26,13 @@ metadata:
 ```bash
 zentao --version
 zentao help
-zentao profile --format=json
+zentao profile --help
+zentao profile --effective --format=json
 ```
 
 - `help`、模块/操作 `--help`、`props` 无需登录。先查帮助再准备请求，不必为查看参数连接服务器。
-- `profile` 只列出本地保存的账号和站点，不校验 Token、网络或业务角色。需要验证连接时，在用户要访问的范围内执行一个只读查询。
-- 未配置本地账号时 `profile` 返回 `E1006`；完整环境凭证仍可用于业务命令。不要据此断言服务不可用。
+- 先确认安装版本支持 `profile --effective`。它只读显示业务命令实际使用的 `source`（`environment` / `profile`）、站点、账号和凭据类型，不输出凭据、不发起网络请求。环境来源的 `configFile=null`；`verified=false` 表示尚未验证，需要时在用户指定范围内执行只读业务查询。
+- 不带 `--effective` 的 `profile` 只列出本地账号；本地未配置时的 `E1006` 不代表完整环境凭据不可用。旧版本不支持新选项时，保留这一区分，不读取凭据文件或打印环境变量来代替诊断。
 - 未安装时按用户环境选择 `npm install -g zentao-cli`、`bun install -g zentao-cli` 或 `pnpm install -g zentao-cli`；一次性运行可用 `npx zentao-cli <参数>`。
 
 用户要求安装或更新技能时，使用 `zentao add-skill <agent>`；需要导出到自定义目录时，使用 `zentao add-skill --output ./exported-skills`。两种形式互斥，都会递归包含参考资料。只处理用户指定目标，重跑前保留同名技能中用户需要的定制。
@@ -48,15 +49,15 @@ zentao profile --format=json
 
 自动化凭证由运行环境提供：`ZENTAO_URL` + `ZENTAO_ACCOUNT` + `ZENTAO_TOKEN` 或 `ZENTAO_PASSWORD`。同源同时提供 Token 和密码时优先 Token。业务命令优先使用完整环境凭证，再回退到当前保存的 Profile。
 
-完整环境凭证用于业务命令时不读取或写入本地 Profile，不改变本地默认账号，也不继承本地 Profile 的配置；需要时通过命令行选项覆盖 CLI 默认配置。仅在用户要求验证并保存环境凭证时执行 `zentao login --useEnv`。使用已保存 Profile 的业务命令不会更新最近使用时间或重写配置文件，可在配置目录只读时运行。
+完整环境凭证用于业务命令时不读取或写入本地 Profile，不改变本地默认账号，也不继承本地 Profile 的配置；需要时通过命令行选项覆盖 CLI 默认配置。仅在用户要求验证并保存环境凭证时执行 `zentao login --useEnv`。使用已保存 Profile 的业务命令不会更新最近使用时间、重写配置文件或修改权限，可在配置目录只读时运行；登录、退出、切换账号和修改配置仍需要写入权限。
 
 ```bash
 zentao profile 'admin@https://zentao.example.com'
 ```
 
-上述命令切换本地默认账号；完整环境凭证仍会优先，不能仅凭切换成功认定后续请求使用了该账号。需由运行环境维护者调整凭证来源。
+上述命令切换本地默认账号；完整环境凭证仍会优先，不能仅凭切换成功认定后续请求使用了该账号。切换后可单独执行 `zentao profile --effective --format=json` 核对，`--effective` 不能与切换账号同时使用。需由运行环境维护者调整凭证来源。
 
-默认凭证文件为 `~/.config/zentao/zentao.json`；自定义路径可用全局 `--config <路径>` 或 `ZENTAO_CONFIG_FILE`，前者优先。沿用用户选定的配置路径，不通过直接读取文件确认身份。
+配置路径优先级为 `--config` → `ZENTAO_CONFIG_FILE` → `$XDG_CONFIG_HOME/zentao/zentao.json` → `~/.config/zentao/zentao.json`。XDG 仅接受绝对路径，未设置、为空或为相对路径时使用最后一项。设置 XDG 后不会迁移或回退读取旧文件，沿用用户选定的路径，不通过直接读取文件确认身份。Agent 无权访问默认目录时，可由运行环境注入完整凭据，或挂载一个可读配置目录并用 `--config` 指定；访问权限由运行环境配置，凭据不提交到仓库。
 
 ## 查找命令与参数
 

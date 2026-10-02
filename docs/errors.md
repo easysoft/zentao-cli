@@ -13,12 +13,13 @@
 | 1002 | 所提供的禅道服务地址 xxx 无法访问 |
 | 1003 | 当前用户名和密码不正确 |
 | 1004 | 所提供的 Token 已失效，请提供密码重新登录，或提供新的 TOKEN |
-| 1005 | 配置文件损坏或无法读取，请检查 {path}（默认路径为 `~/.config/zentao/zentao.json`，可能被 `--config` 或 `ZENTAO_CONFIG_FILE` 覆盖） |
+| 1005 | 配置文件损坏或无法读取，请检查 {path}；JSON 输出的 `error.details.reason` 区分 `invalid_json`、`invalid_structure`、`unreadable` |
 | 1006 | 未找到可用的用户配置，请执行 `zentao login --web` 在浏览器中登录；终端登录使用 `zentao login --no-browser` |
 | 1007 | 指定的用户配置不存在，请通过 `zentao profile` 查看可用配置 |
 | 1008 | 浏览器登录已取消 |
 | 1009 | 浏览器登录等待超时，请重新执行 `zentao login --web` |
 | 1010 | 无法启动本地登录服务，请检查本机网络权限，或使用 `zentao login --no-browser` |
+| 1011 | 配置文件写入失败，请检查目录权限和磁盘空间；`error.details.systemCode` 提供 `EACCES`、`ENOSPC` 等系统错误码 |
 | **API 调用 (20xx)** | |
 | 2001 | 未找到指定的模块（moduleName），请通过 `zentao help` 查看支持的模块 |
 | 2002 | 未找到指定的对象（objectType #id），请检查对象 ID 是否正确 |
@@ -56,6 +57,19 @@ $ zentao product --format=json
     }
 }
 ```
+
+## 配置与认证来源排查
+
+使用 `zentao profile --effective --format=json` 查看业务命令实际采用的来源与账号，不显示凭据、不发起登录或网络验证。`source=environment` 时不读取本地配置；`source=profile` 时，`configFile` 是实际使用的文件路径。`verified=false` 不表示 Token 无效，只表示诊断命令没有验证它。
+
+配置文件优先级为 `--config`、`ZENTAO_CONFIG_FILE`、绝对路径 `$XDG_CONFIG_HOME/zentao/zentao.json`、`~/.config/zentao/zentao.json`。更换路径后不会自动迁移或回退读取旧配置。
+
+- `E1005` 的 `invalid_json` 或 `invalid_structure`：保留原文件，修复格式或恢复备份；不要用重新登录覆盖损坏的配置。
+- `E1005` 的 `unreadable`：检查 `error.details.path` 及运行用户的目录访问、文件读取权限；有原系统错误码时会放在 `systemCode` 中。
+- `E1006`：检查实际选中的路径与凭据来源，沿用同一路径登录或由运行环境注入完整凭据。普通 `profile` 的 `E1006` 只表示没有本地账号，不影响完整环境凭据。
+- `E1011`：读取和业务认证可以使用只读配置，但保存登录记录、退出、切换账号或修改配置需要写入权限。修复目录权限或磁盘空间后再重试原操作。
+
+配置错误不包含 Token、密码或文件内容。接入示例见 [Agent 凭据配置](use-zentao-in-agents.md#agentci-与容器中的凭据)。
 
 ## HTTP MCP 排查
 

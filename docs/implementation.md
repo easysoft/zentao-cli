@@ -4,7 +4,9 @@
 
 ## 用户配置管理
 
-用户配置使用 [configstore](https://github.com/sindresorhus/configstore) 管理，配置文件保存在 `~/.config/zentao/zentao.json` 中。首次创建该文件时，会强制设置文件权限为 `600`，以防止同一主机上的其他用户越权读取。
+用户配置使用 [configstore](https://github.com/sindresorhus/configstore) 管理，默认文件为 `$XDG_CONFIG_HOME/zentao/zentao.json`；没有有效的绝对 XDG 路径时，保存在 `~/.config/zentao/zentao.json` 中。在支持 POSIX 权限的平台上，创建或保存文件后权限为 `0600`，新建目录为 `0700`；读取不会修改文件权限。
+
+配置读取通过 Zod 校验已知字段，保留未知字段及缺少时间戳的旧 Profile；文件缺失按空配置处理，格式错误、结构错误或不可读分别以 `E1005` 的结构化原因返回。保存、删除 Profile 时，将 `profiles` 与 `currentProfile` 一次传给 configstore，复用其原子文件替换；写入失败返回 `E1011` 和系统错误码。这保证单次更新不留下两个字段分别写入的中间状态，不提供跨进程更新锁。
 
 下面是一个配置文件示例：
 
@@ -99,30 +101,35 @@
 ## 自定义配置文件
 
 用户可以通过全局选项 `--config <config_file>` 指定自定义配置文件路径，并执行后续流程。
-当有自定义配置文件时，则不使用默认的 `~/.config/zentao/zentao.json` 文件。
+当有自定义配置文件时，所有读写都使用选中的文件。
 
 路径解析规则：
 
 - 支持 `~` 展开，`~/foo/zt.json` 会被展开为用户家目录下的 `foo/zt.json`；
 - 相对路径基于当前工作目录解析为绝对路径；
-- 若自定义文件不存在，会按默认流程由 configstore 自动创建；首次写入后同样会把权限收紧为 `600`。
+- 若自定义文件不存在，读取返回空配置，首次写入时才创建目录与文件；写入后将文件权限收紧为 `0600`。
 
-除了 `--config` 选项，也可以通过环境变量 `ZENTAO_CONFIG_FILE` 指定自定义配置文件路径。当二者同时存在时，`--config` 选项优先。三者优先级从高到低为：
+除了 `--config` 选项，也可以通过环境变量 `ZENTAO_CONFIG_FILE` 指定自定义配置文件路径。优先级从高到低为：
 
 1. 全局选项 `--config <config_file>`
 2. 环境变量 `ZENTAO_CONFIG_FILE`
-3. 默认路径 `~/.config/zentao/zentao.json`
+3. `XDG_CONFIG_HOME` 为绝对路径时的 `$XDG_CONFIG_HOME/zentao/zentao.json`
+4. `XDG_CONFIG_HOME` 未设置、为空或为相对路径时的 `~/.config/zentao/zentao.json`
+
+XDG 不做 `~` 展开，不读取其他目录作为后备配置，也不自动迁移旧文件。补全脚本使用相同的 XDG 默认目录；指定账号配置文件不改变补全脚本位置。
 
 ## 用户验证过程
 
 调用禅道 API 需要在请求头中增加 `token` 字段，其值为获取到的 TOKEN。CLI 命令和 stdio MCP 使用以下凭证解析过程：
 
 1. 若 `ZENTAO_URL`、`ZENTAO_ACCOUNT` 以及 `ZENTAO_TOKEN`/`ZENTAO_PASSWORD` 之一齐全，优先使用这组显式身份；如果只有密码，则先登录获取 Token；
-2. 否则读取 `~/.config/zentao/zentao.json` 中的当前 Profile 及其 Token；
+2. 否则读取所选配置文件中的当前 Profile 及其 Token；
 3. 使用解析出的 Token 发起请求；
 4. 若两种来源都不完整，提示执行 `zentao login --web`，由用户在本机浏览器完成验证并保存 Token；终端交互登录可使用 `zentao login --no-browser`。
 
 认证过程不保存 Profile，也不更新已保存 Profile 的最近使用时间。完整环境凭证直接构建进程内的认证上下文，不读取本地 Profile 或继承其配置；显式命令行选项覆盖 CLI 默认配置。需要将环境凭证验证并保存到本地时，执行 `zentao login --useEnv`。
+
+`resolveAuthSource` 共用于业务认证和 `profile --effective`，只解析来源而不请求网络。诊断命令按白名单输出来源、站点、账号、凭据类型及所用配置文件，`verified` 固定为 `false`。显式传入的 Profile（如 stdio MCP 已绑定的账号）优先于环境凭据。
 
 ## HTTP MCP 的请求隔离
 
