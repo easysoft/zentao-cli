@@ -36,7 +36,7 @@ function createAuthProvider(options?: { insecure?: boolean; timeout?: number }):
     return {
         async getContext(): Promise<McpAuthContext> {
             if (!context) {
-                const initial = ensureAuth({ ...options, persist: false });
+                const initial = ensureAuth(options);
                 context = initial;
                 // Share concurrent login attempts, but allow retry after a failed login.
                 void initial.catch(() => { if (context === initial) context = undefined; });
@@ -55,7 +55,7 @@ function createAuthProvider(options?: { insecure?: boolean; timeout?: number }):
                 && (options?.insecure ?? currentConfig.insecure) === (options?.insecure ?? cachedConfig.insecure)) {
                 return toMcpContext({ client: cached.client, profile: current });
             }
-            const refreshed = ensureAuth({ ...options, profile: current, persist: false });
+            const refreshed = ensureAuth({ ...options, profile: current });
             // A concurrent explicit switch must remain selected for future calls.
             if (context === selected) context = refreshed;
             return toMcpContext(await refreshed);
@@ -63,7 +63,7 @@ function createAuthProvider(options?: { insecure?: boolean; timeout?: number }):
         async switchProfile(key: string): Promise<McpAuthContext> {
             const profile = findProfileByKey(key);
             if (!profile) throw new ZentaoError('E1007');
-            const selected = await ensureAuth({ ...options, profile, persist: false });
+            const selected = await ensureAuth({ ...options, profile });
             context = Promise.resolve(selected);
             environmentPinned = false;
             return toMcpContext(selected);

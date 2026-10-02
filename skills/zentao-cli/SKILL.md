@@ -48,6 +48,8 @@ zentao profile --format=json
 
 自动化凭证由运行环境提供：`ZENTAO_URL` + `ZENTAO_ACCOUNT` + `ZENTAO_TOKEN` 或 `ZENTAO_PASSWORD`。同源同时提供 Token 和密码时优先 Token。业务命令优先使用完整环境凭证，再回退到当前保存的 Profile。
 
+完整环境凭证用于业务命令时不读取或写入本地 Profile，不改变本地默认账号，也不继承本地 Profile 的配置；需要时通过命令行选项覆盖 CLI 默认配置。仅在用户要求验证并保存环境凭证时执行 `zentao login --useEnv`。使用已保存 Profile 的业务命令不会更新最近使用时间或重写配置文件，可在配置目录只读时运行。
+
 ```bash
 zentao profile 'admin@https://zentao.example.com'
 ```

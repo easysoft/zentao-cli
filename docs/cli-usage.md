@@ -38,6 +38,8 @@ zentao login --web --message "完成登录后，回到 Codex 即可继续使用�
 
 `zentao-cli` 支持从环境变量中读取禅道服务地址、用户账号和密码或 Token。业务命令优先使用完整环境凭证，再回退到当前本地登录记录；`zentao login` 则通过 `--useEnv` 显式选择环境变量登录。
 
+使用完整环境凭证执行业务命令时，不读取或写入本地 Profile，也不改变本地默认账号。即使配置文件缺失、损坏或不可访问，也可以运行。此时使用 CLI 默认配置，可通过 `--timeout`、`--insecure`、`--format` 等命令行选项覆盖，不继承本地 Profile 的配置。
+
 需要使用环境变量重新验证并保存登录记录时，执行 `zentao login --useEnv`。
 
 支持如下环境变量：

@@ -1,7 +1,7 @@
 import type { Profile } from '../types/index.js';
 import { ZentaoClient, createClient } from '../api/index.js';
 import { ZentaoError } from '../errors.js';
-import { getCurrentProfile, getProfile, saveProfile, getProfileConfig, buildProfile, normalizeServerUrl } from '../config/store.js';
+import { getCurrentProfile, getProfileConfig, buildProfile, normalizeServerUrl } from '../config/store.js';
 import { login, getEnvCredentials } from './login.js';
 
 /** 已通过鉴权后的运行时上下文，供命令层发起 API 调用 */
@@ -14,33 +14,25 @@ export interface AuthContext {
  * An explicitly selected profile overrides all other credential sources.
  * Otherwise, prefer complete environment credentials, then the current saved
  * profile. Throw E1006 when the selected source has no usable credentials.
+ * Environment credentials never access local profiles, and authentication
+ * never persists credentials or changes the saved default profile.
  */
-export async function ensureAuth(options?: { insecure?: boolean; timeout?: number; profile?: Profile; persist?: boolean }): Promise<AuthContext> {
+export async function ensureAuth(options?: { insecure?: boolean; timeout?: number; profile?: Profile }): Promise<AuthContext> {
     const env = getEnvCredentials();
     if (!options?.profile && env.url && env.account && (env.token || env.password)) {
         const server = normalizeServerUrl(env.url);
-        const existingProfile = getProfile(env.account, server);
-        const config = existingProfile ? getProfileConfig(existingProfile) : undefined;
-        const clientOpts = {
-            insecure: options?.insecure ?? config?.insecure,
-            timeout: options?.timeout ?? config?.timeout,
-        };
         if (env.token) {
-            const profile = buildProfile(server, env.account, env.token, undefined, undefined, existingProfile);
-            if (options?.persist !== false) saveProfile(profile);
             return {
-                client: createClient(server, env.token, clientOpts),
-                profile,
+                client: createClient(server, env.token, options),
+                profile: buildProfile(server, env.account, env.token),
             };
         }
 
         if (env.password) {
-            const result = await login(server, env.account, env.password, clientOpts);
-            const profile = buildProfile(server, env.account, result.token, result.serverConfig, result.user, existingProfile);
-            if (options?.persist !== false) saveProfile(profile);
+            const result = await login(server, env.account, env.password, options);
             return {
                 client: result.client,
-                profile,
+                profile: buildProfile(server, env.account, result.token, result.serverConfig, result.user),
             };
         }
     }

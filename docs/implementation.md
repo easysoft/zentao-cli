@@ -122,6 +122,8 @@
 3. 使用解析出的 Token 发起请求；
 4. 若两种来源都不完整，提示执行 `zentao login --web`，由用户在本机浏览器完成验证并保存 Token；终端交互登录可使用 `zentao login --no-browser`。
 
+认证过程不保存 Profile，也不更新已保存 Profile 的最近使用时间。完整环境凭证直接构建进程内的认证上下文，不读取本地 Profile 或继承其配置；显式命令行选项覆盖 CLI 默认配置。需要将环境凭证验证并保存到本地时，执行 `zentao login --useEnv`。
+
 ## HTTP MCP 的请求隔离
 
 `zentao mcp --transport http` 使用 MCP SDK 的无状态 Streamable HTTP 传输。Node 运行时使用 `node:http` 和 `StreamableHTTPServerTransport`；Bun 运行时使用原生 `Bun.serve` 和 Web Standard 传输，以正确处理客户端断开。两种运行时共用工具、认证和请求处理逻辑。一个进程在启动时固定一个禅道站点，每个 `POST /mcp` 独立创建 MCP server、transport 和 SDK client，业务工具注册与 stdio 共用。请求结束后关闭该请求的 MCP 资源。

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ensureAuth } from '../src/auth/flow';
@@ -104,12 +104,14 @@ describe('Profile authentication resolution', () => {
         expect(readFileSync(configFile, 'utf8')).toBe(original);
     });
 
-    test('complete environment token overrides current profile without duplicating profiles', async () => {
+    test('complete environment token ignores saved settings without changing local profiles', async () => {
         const envProfile: Profile = {
             ...mockProfile,
             account: 'env-user',
             token: 'old-env-token',
             config: { timeout: 4321 },
+            serverConfig: oldServerConfig,
+            user: { account: 'env-user', realname: 'Saved User' },
         };
         saveProfile(envProfile);
         saveProfile({
@@ -118,18 +120,83 @@ describe('Profile authentication resolution', () => {
             account: 'current-user',
             token: 'current-token',
         });
+        const configFile = join(tempDir, 'config.json');
+        const original = readFileSync(configFile, 'utf8');
 
         process.env.ZENTAO_URL = `${envProfile.server}/`;
         process.env.ZENTAO_ACCOUNT = envProfile.account;
         process.env.ZENTAO_TOKEN = 'new-env-token';
+        process.env.ZENTAO_PASSWORD = 'unused-password';
 
         const { profile } = await ensureAuth();
 
         expect(profile.account).toBe(envProfile.account);
         expect(profile.server).toBe(envProfile.server);
         expect(profile.token).toBe('new-env-token');
-        expect(profile.config).toEqual(envProfile.config);
-        expect(getCurrentProfile()?.account).toBe(envProfile.account);
-        expect(getAllProfiles()).toHaveLength(2);
+        expect(profile.config).toBeUndefined();
+        expect(profile.serverConfig).toBeUndefined();
+        expect(profile.user).toBeUndefined();
+        expect(getCurrentProfile()?.account).toBe('current-user');
+        expect(readFileSync(configFile, 'utf8')).toBe(original);
+    });
+
+    test('environment token authentication does not create a local config', async () => {
+        process.env.ZENTAO_URL = mockProfile.server;
+        process.env.ZENTAO_ACCOUNT = mockProfile.account;
+        process.env.ZENTAO_TOKEN = mockProfile.token;
+
+        expect((await ensureAuth()).profile.token).toBe(mockProfile.token);
+        expect(existsSync(join(tempDir, 'config.json'))).toBe(false);
+    });
+
+    test.each(['token', 'password'])('business CLI uses environment %s despite invalid local config', async (credential) => {
+        const configFile = join(tempDir, 'config.json');
+        const original = '{ invalid local config';
+        writeFileSync(configFile, original);
+        let logins = 0;
+        const productTokens: Array<string | null> = [];
+        const server = Bun.serve({
+            hostname: '127.0.0.1', port: 0,
+            async fetch(request) {
+                const url = new URL(request.url);
+                if (url.searchParams.get('mode') === 'getconfig') return Response.json({ version: '22.5' });
+                if (url.pathname === '/api.php/v2/users/login') {
+                    logins++;
+                    expect(await request.json()).toEqual({ account: 'env-user', password: 'test-password' });
+                    return Response.json({ status: 'success', token: 'login-token' });
+                }
+                if (url.pathname === '/api.php/v2/users') return Response.json({ users: [{ account: 'env-user' }] });
+                if (url.pathname === '/api.php/v2/products') {
+                    productTokens.push(request.headers.get('Token'));
+                    return Response.json({ products: [{ id: 1, name: 'Test Product' }] });
+                }
+                return new Response('Not found', { status: 404 });
+            },
+        });
+
+        try {
+            const child = Bun.spawn({
+                cmd: [process.execPath, '--no-env-file', 'src/index.ts', '--config', configFile, '--format=json', 'product'],
+                env: {
+                    ...process.env,
+                    ZENTAO_URL: server.url.toString(),
+                    ZENTAO_ACCOUNT: 'env-user',
+                    ZENTAO_TOKEN: credential === 'token' ? 'env-token' : '',
+                    ZENTAO_PASSWORD: 'test-password',
+                },
+                stdin: 'ignore', stdout: 'pipe', stderr: 'pipe',
+            });
+            const [stdout, stderr, exitCode] = await Promise.all([
+                new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited,
+            ]);
+            expect(stderr).toBe('');
+            expect(exitCode).toBe(0);
+            expect(JSON.parse(stdout).data).toEqual([{ id: 1, name: 'Test Product' }]);
+            expect(productTokens).toEqual([credential === 'token' ? 'env-token' : 'login-token']);
+            expect(logins).toBe(credential === 'token' ? 0 : 1);
+            expect(readFileSync(configFile, 'utf8')).toBe(original);
+        } finally {
+            server.stop(true);
+        }
     });
 });
