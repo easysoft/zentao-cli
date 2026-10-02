@@ -1,5 +1,8 @@
 import { describe, expect, test } from 'bun:test';
 import { Command } from 'commander';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { AGENT_NAMES as MCP_AGENT_NAMES } from '../src/commands/add-mcp.js';
 import { AGENT_NAMES as SKILL_AGENT_NAMES } from '../src/commands/add-skill.js';
 import { generateCompletionScript } from '../src/commands/autocomplete.js';
@@ -17,6 +20,28 @@ function makeProgram(): Command {
 }
 
 describe('autocomplete scripts', () => {
+    test('writes completion under XDG_CONFIG_HOME and quotes its source path', async () => {
+        const directory = mkdtempSync(join(tmpdir(), 'zentao-completion-'));
+        const xdg = join(directory, "config's directory");
+        const file = join(xdg, 'zentao', '.zentao-completion.bash');
+        try {
+            const child = Bun.spawn({
+                cmd: [process.execPath, '--no-env-file', 'src/index.ts', '--config', join(directory, 'other.json'), 'autocomplete', 'bash'],
+                env: { ...process.env, XDG_CONFIG_HOME: xdg },
+                stdin: 'ignore', stdout: 'pipe', stderr: 'pipe',
+            });
+            const [stdout, stderr, exitCode] = await Promise.all([
+                new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited,
+            ]);
+            expect(exitCode).toBe(0);
+            expect(stderr).toBe('');
+            expect(readFileSync(file, 'utf8')).toContain('# bash completion for zentao');
+            expect(stdout).toContain(`source '${file.replaceAll("'", "'\\''")}'`);
+        } finally {
+            rmSync(directory, { recursive: true, force: true });
+        }
+    });
+
     for (const shell of ['bash', 'zsh', 'fish']) {
         test(`${shell} uses registered commands, global options, and agent names`, () => {
             const script = generateCompletionScript(shell, makeProgram());

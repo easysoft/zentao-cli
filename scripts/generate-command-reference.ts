@@ -53,7 +53,7 @@ const commandNotes: Record<string, { text: string; examples: string[] }> = {
     'config get': { text: '省略 key 时返回当前账号的全部配置，包括未显式设置的默认值。', examples: ['zentao config get', 'zentao --format=json config get pagers'] },
     'config set': { text: '布尔值只接受 true/false；数值与 pagers 的有效范围见配置项表。', examples: ['zentao config set timeout 30000', 'zentao config set defaultRecPerPage 50', 'zentao config set pagers \'{"product":50,"bug":100}\''] },
     version: { text: '显示 CLI 版本以及本地已保存的当前服务器信息，不用于实时探测服务器。--version / -V 只输出 CLI 版本号。JSON/raw 输出包含 CLI 版本和已保存的服务器地址。', examples: ['zentao version', 'zentao --version', 'zentao --format=json version'] },
-    autocomplete: { text: '支持 bash、zsh、fish，省略 shell 时在交互终端选择。脚本写入 ~/.config/zentao/.zentao-completion.<shell>，命令会打印启用方式；不会将脚本正文直接输出到标准输出。Bash 使用生成脚本时需要提供 _init_completion 的 bash-completion 环境。', examples: ['zentao autocomplete zsh', 'source ~/.config/zentao/.zentao-completion.zsh'] },
+    autocomplete: { text: '支持 bash、zsh、fish，省略 shell 时在交互终端选择。脚本写入 $XDG_CONFIG_HOME/zentao/.zentao-completion.<shell>；XDG_CONFIG_HOME 未设置、为空或为相对路径时，根目录回退到 ~/.config。--config 和 ZENTAO_CONFIG_FILE 不改变补全脚本目录。命令会打印启用方式，不会将脚本正文直接输出到标准输出。Bash 使用生成脚本时需要提供 _init_completion 的 bash-completion 环境。', examples: ['zentao autocomplete zsh', 'source ~/.config/zentao/.zentao-completion.zsh'] },
     'add-skill': { text: '安装或更新内置的 zentao-cli 和 zentao-tour 两个技能。省略 agent 时交互选择，all 表示全部目标。--output 导出到指定目录，与 agent 不能同时使用；重复运行会覆盖目标中的同名技能文件。支持的 Agent 见参数表。', examples: ['zentao add-skill codex', 'zentao add-skill all', 'zentao add-skill --output ./exported-skills'] },
     'add-mcp': { text: '使用已登录账号配置目标 Agent 的本地 stdio MCP 服务；HTTP MCP 需要手动配置。省略 agent 时交互选择，all 表示全部目标。多数目标写入包含服务地址、账号和 Token 的配置；Cherry Studio 打印手动添加说明。包含注释或尾逗号的 JSONC 配置会提示手动处理。支持的 Agent 见参数表。', examples: ['zentao add-mcp codex', 'zentao add-mcp cursor'] },
     mcp: { text: '默认使用 stdio，由客户端管理进程并使用本地登录或环境凭证。--transport http 启动无状态 Streamable HTTP 服务，默认监听 127.0.0.1:9090；--url（回退到 ZENTAO_URL）固定一个禅道站点，不使用本地账号。--url、--host、--port 仅适用于 HTTP 模式，端口为 1–65535。每个 POST /mcp 请求须单独提供 token 或 Authorization: Bearer 禅道 Token，不能同时提供；不接受密码、OAuth、查询参数凭证或浏览器 Origin。GET /healthz 无需认证，GET/DELETE /mcp 返回 405，不提供旧 /sse。HTTP 模式不提供账号切换，zentao_profile 的 account 为 null；运行需要 Node.js 18.14.1+ 或 Bun，远程访问应使用 HTTPS 反向代理。两种模式均支持 --read-only、--modules、--split-tools 和全局 --timeout、--insecure。完整部署与客户端示例见 [MCP 使用说明](cli-usage.md#mcp-服务)。', examples: ['zentao mcp', 'zentao --config ./zentao.json mcp', 'zentao mcp --read-only --modules product,story,task,bug', 'zentao mcp --split-tools --modules product,story,task,bug', 'zentao mcp --transport http --url https://zentao.example.com', 'zentao --timeout 15000 mcp --transport http --host 127.0.0.1 --port 9090 --url https://zentao.example.com --read-only'] },
@@ -101,6 +101,7 @@ add('### 环境变量', table(['变量', '用途'], [
     ['ZENTAO_PASSWORD', '登录密码'],
     ['ZENTAO_TOKEN', '登录 Token；完整环境凭证中同时存在密码与 Token 时优先使用 Token'],
     ['ZENTAO_CONFIG_FILE', '自定义配置文件路径；显式 --config 优先'],
+    ['XDG_CONFIG_HOME', '配置根目录；仅接受绝对路径，未设置、为空或相对路径时使用 ~/.config；--config 和 ZENTAO_CONFIG_FILE 优先'],
 ]));
 add('CLI 业务调用和 stdio MCP 优先使用完整环境凭证（地址、账号以及 Token 或密码），否则使用当前本地登录记录。HTTP MCP 仅用 ZENTAO_URL 作为站点地址的后备值，凭证必须来自当前请求头。zentao login 的 --useEnv 专门用于强制使用环境变量登录。配置文件路径支持 ~ 和相对路径；更改配置路径会隔离登录记录与账号配置。');
 

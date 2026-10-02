@@ -207,6 +207,7 @@ zentao file create --file=/path/to/screenshot.png --objectType=bug --objectID=42
 | ZENTAO_PASSWORD | 登录密码 |
 | ZENTAO_TOKEN | 登录 Token；完整环境凭证中同时存在密码与 Token 时优先使用 Token |
 | ZENTAO_CONFIG_FILE | 自定义配置文件路径；显式 --config 优先 |
+| XDG_CONFIG_HOME | 配置根目录；仅接受绝对路径，未设置、为空或相对路径时使用 ~/.config；--config 和 ZENTAO_CONFIG_FILE 优先 |
 
 CLI 业务调用和 stdio MCP 优先使用完整环境凭证（地址、账号以及 Token 或密码），否则使用当前本地登录记录。HTTP MCP 仅用 ZENTAO_URL 作为站点地址的后备值，凭证必须来自当前请求头。zentao login 的 --useEnv 专门用于强制使用环境变量登录。配置文件路径支持 ~ 和相对路径；更改配置路径会隔离登录记录与账号配置。
 
@@ -518,7 +519,7 @@ zentao --format=json version
 zentao autocomplete [options] [shell]
 ```
 
-支持 bash、zsh、fish，省略 shell 时在交互终端选择。脚本写入 ~/.config/zentao/.zentao-completion.<shell>，命令会打印启用方式；不会将脚本正文直接输出到标准输出。Bash 使用生成脚本时需要提供 _init_completion 的 bash-completion 环境。
+支持 bash、zsh、fish，省略 shell 时在交互终端选择。脚本写入 $XDG_CONFIG_HOME/zentao/.zentao-completion.<shell>；XDG_CONFIG_HOME 未设置、为空或为相对路径时，根目录回退到 ~/.config。--config 和 ZENTAO_CONFIG_FILE 不改变补全脚本目录。命令会打印启用方式，不会将脚本正文直接输出到标准输出。Bash 使用生成脚本时需要提供 _init_completion 的 bash-completion 环境。
 
 | 位置参数 | 必填 | 说明 |
 | --- | --- | --- |

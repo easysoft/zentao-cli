@@ -26,7 +26,7 @@ export interface UserConfig {
 
 /**
  * 用户配置（Profile），对应一个禅道服务上的一个账号。
- * 存储在 ~/.config/zentao/zentao.json 的 profiles 数组中。
+ * Stored in the profiles array of the selected config file.
  */
 export interface Profile {
     /** 禅道服务地址，例如 https://zentao.example.com */
@@ -47,7 +47,7 @@ export interface Profile {
     serverConfig?: ServerConfig;
 }
 
-/** 顶层配置数据结构，对应 ~/.config/zentao/zentao.json 文件 */
+/** Top-level data in the selected config file. */
 export interface ConfigData {
     /** 当前使用的 Profile 标识，格式为 account@server */
     currentProfile?: string;

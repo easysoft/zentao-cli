@@ -75,7 +75,7 @@ $ zentao profile dev1@https://zentao.example.com
 
 ### 退出登录
 
-使用 `zentao logout` 可退出当前用户，同时移除 `~/.config/zentao/zentao.json` 文件中的对应用户信息。
+使用 `zentao logout` 可退出当前用户，同时移除当前配置文件中的对应用户信息。
 
 ```bash
 # 退出当前用户
@@ -87,7 +87,16 @@ $ zentao logout dev1@https://zentao.example.com
 
 ### 自定义配置文件
 
-默认情况下，zentao-cli 会将用户配置保存在 `~/.config/zentao/zentao.json`。也可以通过全局选项 `--config <config_file>` 或环境变量 `ZENTAO_CONFIG_FILE` 指定自定义配置文件路径；此时所有读写均作用于该文件，不再使用默认路径。
+配置文件按以下优先级选择，所有读写均作用于选中的文件：
+
+1. 全局选项 `--config <config_file>`。
+2. 环境变量 `ZENTAO_CONFIG_FILE`。
+3. `XDG_CONFIG_HOME` 为绝对路径时，使用 `$XDG_CONFIG_HOME/zentao/zentao.json`。
+4. `XDG_CONFIG_HOME` 未设置、为空或为相对路径时，使用 `~/.config/zentao/zentao.json`。
+
+未设置 XDG 时，原有配置路径保持不变。显式设置 XDG 后不会迁移、覆盖或回退读取旧路径；如需继续使用旧配置，可指定 `--config "$HOME/.config/zentao/zentao.json"`。这能避免新目录尚未登录时意外使用另一个目录中的账号。XDG 路径中的 `~` 不会展开，应使用如 `XDG_CONFIG_HOME="$HOME/work/config"` 的绝对路径。
+
+`autocomplete` 的补全脚本也跟随 XDG 配置根目录，未设置时仍位于 `~/.config/zentao/`；`--config` 和 `ZENTAO_CONFIG_FILE` 仅改变账号配置文件的位置。
 
 使用已保存的 Profile 执行业务命令时，不会更新最近使用时间、重写配置文件或修改文件权限，因此配置文件及其所在目录可以只读。登录、退出、切换账号和修改配置仍需写入权限；在支持 POSIX 权限的平台上，写入后的配置文件权限为 `0600`（仅当前用户可读写），新建配置目录权限为 `0700`。
 

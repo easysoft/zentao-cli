@@ -2,7 +2,7 @@ import { describe, test, expect, beforeEach, afterEach } from 'bun:test';
 import Configstore from 'configstore';
 import { homedir, tmpdir } from 'node:os';
 import { isAbsolute, join, resolve } from 'node:path';
-import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { DEFAULT_CONFIG, VALID_CONFIG_KEYS } from '../src/config/defaults';
 import {
     getConfigPath,
@@ -80,22 +80,87 @@ describe('Profile type validation', () => {
 
 describe('setConfigPath', () => {
     let tempDir: string;
+    let previousXdg: string | undefined;
 
     beforeEach(() => {
+        previousXdg = process.env.XDG_CONFIG_HOME;
+        delete process.env.XDG_CONFIG_HOME;
         resetConfigStore();
         tempDir = mkdtempSync(join(tmpdir(), 'zentao-cli-test-'));
     });
 
     afterEach(() => {
+        if (previousXdg === undefined) delete process.env.XDG_CONFIG_HOME;
+        else process.env.XDG_CONFIG_HOME = previousXdg;
         resetConfigStore();
         if (tempDir && existsSync(tempDir)) {
             rmSync(tempDir, { recursive: true, force: true });
         }
     });
 
-    test('默认路径为 ~/.config/zentao/zentao.json', () => {
+    test.each([undefined, '', 'relative/config', '~/config'])('keeps the legacy default for unset, empty or relative XDG: %s', (xdg) => {
+        if (xdg !== undefined) process.env.XDG_CONFIG_HOME = xdg;
+        resetConfigStore();
         expect(getDefaultConfigPath()).toBe(join(homedir(), '.config', 'zentao', 'zentao.json'));
         expect(getConfigPath()).toBe(getDefaultConfigPath());
+    });
+
+    test('uses absolute XDG_CONFIG_HOME without creating directories', () => {
+        process.env.XDG_CONFIG_HOME = join(tempDir, 'xdg config');
+        resetConfigStore();
+        const expected = join(process.env.XDG_CONFIG_HOME, 'zentao', 'zentao.json');
+        expect(getDefaultConfigPath()).toBe(expected);
+        expect(getConfigPath()).toBe(expected);
+        expect(getAllProfiles()).toEqual([]);
+        expect(existsSync(process.env.XDG_CONFIG_HOME)).toBe(false);
+    });
+
+    test('CLI respects explicit paths before XDG and preserves the old configuration', async () => {
+        const legacyDirectory = join(tempDir, '.config', 'zentao');
+        const xdgRoot = join(tempDir, 'xdg');
+        const xdgDirectory = join(xdgRoot, 'zentao');
+        mkdirSync(legacyDirectory, { recursive: true });
+        mkdirSync(xdgDirectory, { recursive: true });
+        const files = {
+            legacy: join(legacyDirectory, 'zentao.json'), xdg: join(xdgDirectory, 'zentao.json'),
+            env: join(tempDir, 'env.json'), flag: join(tempDir, 'flag.json'),
+        };
+        for (const [account, file] of Object.entries(files)) {
+            writeFileSync(file, JSON.stringify({
+                currentProfile: profileKey(account, mockProfile.server), profiles: [{ ...mockProfile, account }],
+            }));
+        }
+        for (const scenario of [
+            { args: [], envFile: '', xdg: xdgRoot, expected: 'xdg' },
+            { args: [], envFile: files.env, xdg: xdgRoot, expected: 'env' },
+            { args: ['--config', files.flag], envFile: files.env, xdg: xdgRoot, expected: 'flag' },
+            { args: [`--config=${files.flag}`], envFile: files.env, xdg: xdgRoot, expected: 'flag' },
+            { args: [], envFile: '', xdg: 'relative/path', expected: 'legacy' },
+            { args: [], envFile: '', xdg: join(tempDir, 'missing-xdg'), expected: undefined },
+        ]) {
+            const child = Bun.spawn({
+                cmd: [process.execPath, '--no-env-file', 'src/index.ts', ...scenario.args, 'profile', '--effective', '--format=json'],
+                env: {
+                    ...process.env, HOME: tempDir, USERPROFILE: tempDir, XDG_CONFIG_HOME: scenario.xdg,
+                    ZENTAO_CONFIG_FILE: scenario.envFile, ZENTAO_URL: '', ZENTAO_ACCOUNT: '', ZENTAO_TOKEN: '', ZENTAO_PASSWORD: '',
+                },
+                stdin: 'ignore', stdout: 'pipe', stderr: 'pipe',
+            });
+            const [stdout, stderr, exitCode] = await Promise.all([
+                new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited,
+            ]);
+            expect(exitCode).toBe(scenario.expected ? 0 : 1);
+            if (scenario.expected) {
+                expect(stderr).toBe('');
+                expect(JSON.parse(stdout)).toMatchObject({
+                    account: scenario.expected, configFile: files[scenario.expected as keyof typeof files],
+                });
+            } else {
+                expect(JSON.parse(stderr).error.code).toBe('1006');
+                expect(existsSync(scenario.xdg)).toBe(false);
+            }
+        }
+        expect(JSON.parse(readFileSync(files.legacy, 'utf8')).profiles[0].account).toBe('legacy');
     });
 
     test('展开路径中首段的 ~ 为家目录', () => {

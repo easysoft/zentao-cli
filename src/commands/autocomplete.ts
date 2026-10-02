@@ -1,11 +1,11 @@
 import { Command } from 'commander';
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { getModule, getModuleNames } from '../modules/index.js';
 import { AGENT_NAMES as SKILL_AGENT_NAMES } from './add-skill.js';
 import { AGENT_NAMES as MCP_AGENT_NAMES } from './add-mcp.js';
+import { getDefaultConfigPath } from '../config/store.js';
 
 const CONFIG_SUBCOMMANDS = ['get', 'set'];
 
@@ -181,7 +181,7 @@ export function generateCompletionScript(shell: string, program: Command): strin
 }
 
 function getCompletionFilePath(shell: string): string {
-    return join(homedir(), '.config', 'zentao', `.zentao-completion.${shell}`);
+    return join(dirname(getDefaultConfigPath()), `.zentao-completion.${shell}`);
 }
 
 async function promptShellSelection(): Promise<string> {
@@ -224,12 +224,12 @@ export function registerAutocompleteCommand(program: Command): void {
 
             const script = generateCompletionScript(normalized, program);
             const completionFile = getCompletionFilePath(normalized);
-            const completionDir = join(homedir(), '.config', 'zentao');
+            const completionDir = dirname(completionFile);
 
-            mkdirSync(completionDir, { recursive: true });
+            mkdirSync(completionDir, { recursive: true, mode: 0o700 });
             writeFileSync(completionFile, script, 'utf-8');
 
             console.log(`自动补全脚本已保存到: ${completionFile}`);
-            console.log(`请在终端配置中追加: source ${completionFile}`);
+            console.log(`请在终端配置中追加: source '${completionFile.replaceAll("'", "'\\''")}'`);
         });
 }

@@ -34,9 +34,10 @@ const configSchema = z.object({
     }).passthrough()).optional(),
 }).passthrough();
 
-/** 默认配置文件路径：~/.config/zentao/zentao.json */
+/** Use an absolute XDG config root, otherwise retain the legacy ~/.config location. */
 function defaultConfigPath(): string {
-    return join(homedir(), '.config', 'zentao', 'zentao.json');
+    const xdg = process.env.XDG_CONFIG_HOME;
+    return join(xdg && isAbsolute(xdg) ? xdg : join(homedir(), '.config'), 'zentao', 'zentao.json');
 }
 
 /** 当前生效的配置文件路径，可通过 setConfigPath 在首次使用前覆盖 */

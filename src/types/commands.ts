@@ -14,7 +14,7 @@ export interface GlobalOptions {
     /** 请求超时时间（毫秒） */
     timeout?: number;
 
-    /** 自定义配置文件路径，覆盖默认的 ~/.config/zentao/zentao.json */
+    /** Custom config file path, overriding the XDG/default location. */
     config?: string;
 
     /** 是否禁用 Markdown ANSI 渲染与隐式交互确认 */
