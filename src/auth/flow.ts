@@ -52,8 +52,6 @@ export async function ensureAuth(options?: { insecure?: boolean; timeout?: numbe
             insecure: options?.insecure ?? config.insecure,
             timeout: options?.timeout ?? config.timeout,
         };
-        currentProfile.lastUsedTime = new Date().toISOString();
-        if (options?.persist !== false) saveProfile(currentProfile);
         return {
             client: createClient(currentProfile.server, currentProfile.token, clientOpts),
             profile: currentProfile,

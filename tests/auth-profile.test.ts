@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ensureAuth } from '../src/auth/flow';
@@ -74,6 +74,34 @@ describe('Profile authentication resolution', () => {
         expect(rebuilt.serverConfig).toEqual(newServerConfig);
         saveProfile(rebuilt);
         expect(getAllProfiles()).toHaveLength(1);
+    });
+
+    test('saved profile authentication works without writing to its read-only directory', async () => {
+        saveProfile(mockProfile);
+        const configFile = join(tempDir, 'config.json');
+        const original = readFileSync(configFile, 'utf8');
+        if (process.platform !== 'win32') chmodSync(tempDir, 0o500);
+
+        try {
+            const { profile } = await ensureAuth();
+            expect(profile).toEqual(mockProfile);
+            expect(readFileSync(configFile, 'utf8')).toBe(original);
+        } finally {
+            if (process.platform !== 'win32') chmodSync(tempDir, 0o700);
+        }
+    });
+
+    test('explicit profile authentication preserves the saved default and profile timestamps', async () => {
+        saveProfile(mockProfile);
+        const configFile = join(tempDir, 'config.json');
+        const original = readFileSync(configFile, 'utf8');
+        const selected = { ...mockProfile, account: 'selected-user' };
+
+        const { profile } = await ensureAuth({ profile: selected });
+
+        expect(profile).toEqual({ ...mockProfile, account: 'selected-user' });
+        expect(selected.lastUsedTime).toBe(mockProfile.lastUsedTime);
+        expect(readFileSync(configFile, 'utf8')).toBe(original);
     });
 
     test('complete environment token overrides current profile without duplicating profiles', async () => {
