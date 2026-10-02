@@ -2,9 +2,37 @@ import Configstore from 'configstore';
 import { chmodSync, existsSync } from 'node:fs';
 import { isAbsolute, join, resolve } from 'node:path';
 import { homedir } from 'node:os';
+import { z } from 'zod';
 import type { ConfigData, Profile, ServerConfig, UserConfig } from '../types/index.js';
 import { ZentaoError } from '../errors.js';
 import { DEFAULT_CONFIG } from './defaults.js';
+
+const userConfigSchema = z.object({
+    defaultOutputFormat: z.enum(['markdown', 'json', 'raw']),
+    defaultRecPerPage: z.number().int().positive().max(1000),
+    insecure: z.boolean(),
+    timeout: z.number().int().positive(),
+    htmlToMarkdown: z.boolean(),
+    batchFailFast: z.boolean(),
+    pagers: z.record(z.string(), z.number().int().positive().max(1000)),
+    silent: z.boolean(),
+    jsonPretty: z.boolean(),
+}).partial().passthrough();
+
+const configSchema = z.object({
+    currentProfile: z.string().optional(),
+    profiles: z.array(z.object({
+        server: z.string().url(),
+        account: z.string(),
+        token: z.string(),
+        // Older profiles may omit timestamps; preserve them and any unknown fields.
+        loginTime: z.string().optional(),
+        lastUsedTime: z.string().optional(),
+        user: z.record(z.string(), z.unknown()).optional(),
+        config: userConfigSchema.optional(),
+        serverConfig: z.object({ version: z.string() }).passthrough().optional(),
+    }).passthrough()).optional(),
+}).passthrough();
 
 /** 默认配置文件路径：~/.config/zentao/zentao.json */
 function defaultConfigPath(): string {
@@ -33,6 +61,20 @@ function enforcePermissions(): void {
         }
     } catch {
         // Ignore permission errors on platforms that don't support chmod
+    }
+}
+
+/** Report persistence failures without including credential-bearing error messages. */
+function writeConfig(data: Partial<ConfigData>): void {
+    try {
+        getStore().set(data);
+        enforcePermissions();
+    } catch (error) {
+        const systemCode = (error as NodeJS.ErrnoException | undefined)?.code;
+        throw new ZentaoError('E1011', { path: configPath }, {
+            operation: 'write', reason: 'write_failed', path: configPath,
+            ...(systemCode ? { systemCode } : {}),
+        });
     }
 }
 
@@ -76,15 +118,22 @@ export function __resetConfigStoreForTests(): void {
 
 /** 读取完整配置数据，读取失败时抛出 E1005 */
 export function getConfigData(): ConfigData {
+    let data: unknown;
     try {
-        const data = getStore().all;
-        return {
-            currentProfile: data.currentProfile as string | undefined,
-            profiles: data.profiles as Profile[] | undefined,
-        };
-    } catch {
-        throw new ZentaoError('E1005', { path: configPath });
+        data = getStore().all;
+    } catch (error) {
+        const systemCode = (error as NodeJS.ErrnoException | undefined)?.code;
+        throw new ZentaoError('E1005', { path: configPath }, {
+            operation: 'read', reason: error instanceof SyntaxError ? 'invalid_json' : 'unreadable', path: configPath,
+            ...(systemCode ? { systemCode } : {}),
+        });
     }
+    if (!configSchema.safeParse(data).success) {
+        throw new ZentaoError('E1005', { path: configPath }, {
+            operation: 'read', reason: 'invalid_structure', path: configPath,
+        });
+    }
+    return data as ConfigData;
 }
 
 /** 生成 Profile 唯一标识，格式为 account@server */
@@ -131,7 +180,6 @@ export function findProfileByKey(key: string): Profile | undefined {
 /** 保存或更新 Profile（按 account+server 去重），并将其设为当前 Profile */
 export function saveProfile(profile: Profile): void {
     const profiles = getConfigData().profiles ?? [];
-    const s = getStore();
     const normalizedProfile = profile.server === normalizeServerUrl(profile.server)
         ? profile
         : { ...profile, server: normalizeServerUrl(profile.server) };
@@ -149,26 +197,23 @@ export function saveProfile(profile: Profile): void {
     }
     if (!saved) nextProfiles.push(normalizedProfile);
 
-    s.set('profiles', nextProfiles);
-    s.set('currentProfile', profileKey(normalizedProfile.account, normalizedProfile.server));
-    enforcePermissions();
+    writeConfig({ profiles: nextProfiles });
+    writeConfig({ currentProfile: profileKey(normalizedProfile.account, normalizedProfile.server) });
 }
 
 /** 按 profileKey 删除 Profile。若删除的是当前 Profile，则自动切换到第一个 */
 export function removeProfile(key: string): boolean {
     const data = getConfigData();
-    const s = getStore();
     const profiles = data.profiles ?? [];
     const idx = profiles.findIndex(
         (p) => profileKey(p.account, p.server) === key,
     );
     if (idx < 0) return false;
     profiles.splice(idx, 1);
-    s.set('profiles', profiles);
+    writeConfig({ profiles });
     if (data.currentProfile === key) {
-        s.set('currentProfile', profiles.length > 0 ? profileKey(profiles[0].account, profiles[0].server) : undefined);
+        writeConfig({ currentProfile: profiles.length > 0 ? profileKey(profiles[0].account, profiles[0].server) : undefined });
     }
-    enforcePermissions();
     return true;
 }
 
@@ -176,8 +221,7 @@ export function removeProfile(key: string): boolean {
 export function setCurrentProfile(key: string): boolean {
     const profile = findProfileByKey(key);
     if (!profile) return false;
-    const s = getStore();
-    s.set('currentProfile', profileKey(profile.account, profile.server));
+    writeConfig({ currentProfile: profileKey(profile.account, profile.server) });
     return true;
 }
 

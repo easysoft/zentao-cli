@@ -1,10 +1,11 @@
 import { describe, test, expect, beforeEach, afterEach } from 'bun:test';
 import { homedir, tmpdir } from 'node:os';
 import { isAbsolute, join, resolve } from 'node:path';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { DEFAULT_CONFIG, VALID_CONFIG_KEYS } from '../src/config/defaults';
 import {
     getConfigPath,
+    getConfigData,
     getDefaultConfigPath,
     saveProfile,
     setConfigPath,
@@ -22,6 +23,7 @@ import {
 } from '../src/config/store';
 import type { UserConfig, Profile } from '../src/types/config';
 import { mockProfile, resetConfigStore } from './helpers';
+import { ZentaoError, formatError } from '../src/errors.js';
 
 describe('DEFAULT_CONFIG', () => {
     test('has correct default values', () => {
@@ -173,6 +175,88 @@ describe('profile management', () => {
         expect(getCurrentProfile()).toBeUndefined();
         expect(getAllProfiles()).toEqual([]);
         expect(existsSync(join(tempDir, 'config.json'))).toBe(false);
+    });
+
+    test.each([
+        null, [], 'invalid-root', { currentProfile: 1 }, { profiles: {} }, { profiles: [null] },
+        { profiles: [{ ...mockProfile, account: null }] },
+        { profiles: [{ ...mockProfile, server: 'invalid-url' }] },
+        { profiles: [{ ...mockProfile, token: 123 }] },
+        { profiles: [{ ...mockProfile, config: { timeout: '1000' } }] },
+        { profiles: [{ ...mockProfile, serverConfig: { version: 22.5 } }] },
+    ].map(data => ({ data })))('rejects invalid config structure without overwriting it: %#', ({ data }) => {
+        const file = join(tempDir, 'config.json');
+        const original = JSON.stringify(data);
+        writeFileSync(file, original);
+        for (const operation of [getConfigData, () => saveProfile(mockProfile)]) {
+            try {
+                operation();
+                throw new Error('Expected a config error');
+            } catch (error) {
+                expect(error).toBeInstanceOf(ZentaoError);
+                expect(error).toMatchObject({ code: '1005', details: { operation: 'read', reason: 'invalid_structure', path: file } });
+                expect(JSON.stringify(error)).not.toContain(mockProfile.token);
+            }
+            expect(readFileSync(file, 'utf8')).toBe(original);
+        }
+    });
+
+    test('distinguishes malformed JSON from an unreadable path without exposing content', () => {
+        const file = join(tempDir, 'config.json');
+        writeFileSync(file, `{"token":"${mockProfile.token}",`);
+        try {
+            getConfigData();
+            throw new Error('Expected malformed JSON');
+        } catch (error) {
+            expect(error).toMatchObject({ code: '1005', details: { operation: 'read', reason: 'invalid_json', path: file } });
+            expect(JSON.stringify(error)).not.toContain(mockProfile.token);
+        }
+        resetConfigStore();
+        setConfigPath(tempDir);
+        try {
+            expect(getConfigData).toThrow(expect.objectContaining({
+                code: '1005', details: { operation: 'read', reason: 'unreadable', path: tempDir, systemCode: 'EISDIR' },
+            }));
+        } finally {
+            if (process.platform !== 'win32') chmodSync(tempDir, 0o700);
+        }
+    });
+
+    test('preserves legacy profiles without timestamps and unknown fields', () => {
+        const file = join(tempDir, 'config.json');
+        const legacy = { server: mockProfile.server, account: mockProfile.account, token: mockProfile.token, extra: 'preserved' };
+        writeFileSync(file, JSON.stringify({ currentProfile: profileKey(legacy.account, legacy.server), profiles: [legacy], extra: true }));
+        expect(getCurrentProfile()).toMatchObject(legacy);
+        setProfileConfig(getCurrentProfile()!, 'timeout', 2000);
+        expect(JSON.parse(readFileSync(file, 'utf8'))).toMatchObject({ extra: true, profiles: [{ extra: 'preserved' }] });
+    });
+
+    test.skipIf(process.platform === 'win32')('reports structured save errors for every profile mutation', () => {
+        saveProfile(mockProfile);
+        saveProfile({ ...mockProfile, account: 'another-user' });
+        const file = join(tempDir, 'config.json');
+        const original = readFileSync(file, 'utf8');
+        chmodSync(tempDir, 0o500);
+        try {
+            for (const operation of [
+                () => saveProfile({ ...mockProfile, token: 'new-token' }),
+                () => removeProfile(profileKey(mockProfile.account, mockProfile.server)),
+                () => setCurrentProfile(mockProfile.account),
+            ]) {
+                try {
+                    operation();
+                    throw new Error('Expected a save error');
+                } catch (error) {
+                    expect(error).toBeInstanceOf(ZentaoError);
+                    expect(JSON.parse(formatError(error as ZentaoError, 'json')).error).toMatchObject({
+                        code: '1011', details: { operation: 'write', reason: 'write_failed', path: file, systemCode: 'EACCES' },
+                    });
+                }
+                expect(readFileSync(file, 'utf8')).toBe(original);
+            }
+        } finally {
+            chmodSync(tempDir, 0o700);
+        }
     });
 
     test.each([false, true])('preserves malformed config with an initialized store: %s', (initialized) => {

@@ -14,6 +14,7 @@ export const ERROR_CODES = {
     E1008: '浏览器登录已取消',
     E1009: '浏览器登录等待超时，请重新执行 `zentao login --web`',
     E1010: '无法启动本地登录服务，请检查本机网络权限，或使用 `zentao login --no-browser`',
+    E1011: '配置文件写入失败，请检查 {path} 的目录权限和磁盘空间',
 
     // API 调用 (20xx)
     E2001: '未找到指定的模块 {module}，请通过 `zentao help` 查看支持的模块',

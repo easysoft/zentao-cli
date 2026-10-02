@@ -87,6 +87,8 @@ $ zentao logout dev1@https://zentao.example.com
 
 使用已保存的 Profile 执行业务命令时，不会更新最近使用时间或重写配置文件，因此配置文件及其所在目录可以只读。登录、退出、切换账号和修改配置仍需写入权限。
 
+配置读取失败返回 `E1005`；使用 `--format=json` 时，`error.details.reason` 区分 `invalid_json`（JSON 格式错误）、`invalid_structure`（配置结构错误）和 `unreadable`（文件无法读取）。配置写入失败返回 `E1011`，原系统错误码（如 `EACCES`）放在 `error.details.systemCode`，错误信息不包含凭据内容。缺失的配置文件仍视为尚未配置；损坏的文件不会自动清空或覆盖。
+
 ```bash
 # 通过 --config 选项使用自定义配置文件
 $ zentao --config /path/to/zt.json profile
