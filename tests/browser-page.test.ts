@@ -112,10 +112,16 @@ describe('browser login page client behavior', () => {
         expect(page.bootstrapTheme).toBe('dark');
         expect(page.element('theme').value).toBe('dark');
         expect(page.document.documentElement.lang).toBe('zh-TW');
-        for (const theme of ['light', 'dark', 'system']) {
+        expect(page.element('language').tag).toBe('select');
+        expect(page.element('theme').tag).toBe('select');
+        expect(page.element('language').attributes.get('aria-label')).toBe('語言');
+        expect(page.element('theme').attributes.get('aria-label')).toBe('外觀');
+        expect(page.element('language').attributes.get('title')).toBe('語言: zh-TW');
+        for (const [theme, label] of [['light', '淺色'], ['dark', '深色'], ['system', '跟隨系統']]) {
             await page.change('theme', theme);
             expect(page.document.documentElement.dataset.theme).toBe(theme);
             expect(page.storage.get('zentao-login-theme')).toBe(theme);
+            expect(page.element('theme').attributes.get('title')).toBe(`外觀: ${label}`);
         }
         const system = loadPage({ saved: { 'zentao-login-theme': 'system' } });
         expect(system.bootstrapTheme).toBeUndefined();
@@ -152,6 +158,10 @@ describe('browser login page client behavior', () => {
         expect(element('fields').disabled).toBe(false);
         expect(element('feedback').textContent).toBe('使用者名稱或密碼不正確，請檢查後重試。');
         await page.change('language', 'en');
+        expect(element('language').attributes.get('aria-label')).toBe('Language');
+        expect(element('theme').attributes.get('aria-label')).toBe('Appearance');
+        expect(element('language').attributes.get('title')).toBe('Language: en');
+        expect(element('theme').attributes.get('title')).toBe('Appearance: Dark');
         expect(element('feedback').textContent).toContain('The username or password is incorrect.');
         expect(element('intro').textContent).toBe(customMessage);
         expect(element('server').value).toBe('https://zentao.example.com/zentao');
