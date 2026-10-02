@@ -1,4 +1,5 @@
 import { describe, test, expect, beforeEach, afterEach } from 'bun:test';
+import Configstore from 'configstore';
 import { homedir, tmpdir } from 'node:os';
 import { isAbsolute, join, resolve } from 'node:path';
 import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
@@ -342,6 +343,61 @@ describe('profile management', () => {
         expect(current).toBeDefined();
         expect(current!.account).toBe('admin');
         expect(current!.server).toBe('https://zentao.example.com');
+    });
+
+    test('persists each profile change as one complete config snapshot', () => {
+        const file = join(tempDir, 'config.json');
+        writeFileSync(file, JSON.stringify({ extra: 'preserved' }));
+        const another = { ...mockProfile, account: 'another-user' };
+        const firstKey = profileKey(mockProfile.account, mockProfile.server);
+        const anotherKey = profileKey(another.account, another.server);
+        const snapshots: unknown[] = [];
+        const property = Object.getOwnPropertyDescriptor(Configstore.prototype, 'all')!;
+        Object.defineProperty(Configstore.prototype, 'all', {
+            ...property,
+            set(this: Configstore, value: unknown) {
+                property.set!.call(this, value);
+                snapshots.push(JSON.parse(readFileSync(this.path, 'utf8')));
+            },
+        });
+        try {
+            saveProfile(mockProfile);
+            saveProfile(another);
+            removeProfile(anotherKey);
+            removeProfile(firstKey);
+        } finally {
+            Object.defineProperty(Configstore.prototype, 'all', property);
+        }
+        expect(snapshots).toEqual([
+            { extra: 'preserved', profiles: [mockProfile], currentProfile: firstKey },
+            { extra: 'preserved', profiles: [mockProfile, another], currentProfile: anotherKey },
+            { extra: 'preserved', profiles: [mockProfile], currentProfile: firstKey },
+            { extra: 'preserved', profiles: [] },
+        ]);
+    });
+
+    test.each([
+        { name: 'save', operation: () => saveProfile({ ...mockProfile, account: 'another-user' }) },
+        { name: 'remove', operation: () => removeProfile(profileKey(mockProfile.account, mockProfile.server)) },
+    ])('preserves the previous snapshot when $name cannot commit', ({ operation }) => {
+        saveProfile(mockProfile);
+        const file = join(tempDir, 'config.json');
+        const original = readFileSync(file, 'utf8');
+        const property = Object.getOwnPropertyDescriptor(Configstore.prototype, 'all')!;
+        Object.defineProperty(Configstore.prototype, 'all', {
+            ...property,
+            set() { throw Object.assign(new Error('Simulated storage failure'), { code: 'ENOSPC' }); },
+        });
+        try {
+            expect(operation).toThrow(expect.objectContaining({
+                code: '1011', details: { operation: 'write', reason: 'write_failed', path: file, systemCode: 'ENOSPC' },
+            }));
+            expect(readFileSync(file, 'utf8')).toBe(original);
+            expect(getCurrentProfile()).toEqual(mockProfile);
+        } finally {
+            Object.defineProperty(Configstore.prototype, 'all', property);
+        }
+        expect(operation).not.toThrow();
     });
 
     test('getAllProfiles returns all saved profiles', () => {

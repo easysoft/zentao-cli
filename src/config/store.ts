@@ -63,7 +63,7 @@ function enforcePermissions(): void {
     }
 }
 
-/** Report persistence failures without including credential-bearing error messages. */
+/** Atomically persist related fields without exposing credential-bearing error messages. */
 function writeConfig(data: Partial<ConfigData>): void {
     try {
         getStore().set(data);
@@ -196,8 +196,10 @@ export function saveProfile(profile: Profile): void {
     }
     if (!saved) nextProfiles.push(normalizedProfile);
 
-    writeConfig({ profiles: nextProfiles });
-    writeConfig({ currentProfile: profileKey(normalizedProfile.account, normalizedProfile.server) });
+    writeConfig({
+        profiles: nextProfiles,
+        currentProfile: profileKey(normalizedProfile.account, normalizedProfile.server),
+    });
 }
 
 /** 按 profileKey 删除 Profile。若删除的是当前 Profile，则自动切换到第一个 */
@@ -209,10 +211,10 @@ export function removeProfile(key: string): boolean {
     );
     if (idx < 0) return false;
     profiles.splice(idx, 1);
-    writeConfig({ profiles });
     if (data.currentProfile === key) {
-        writeConfig({ currentProfile: profiles.length > 0 ? profileKey(profiles[0].account, profiles[0].server) : undefined });
+        data.currentProfile = profiles.length > 0 ? profileKey(profiles[0].account, profiles[0].server) : undefined;
     }
+    writeConfig({ profiles, currentProfile: data.currentProfile });
     return true;
 }
 

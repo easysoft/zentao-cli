@@ -87,6 +87,8 @@ $ zentao logout dev1@https://zentao.example.com
 
 使用已保存的 Profile 执行业务命令时，不会更新最近使用时间、重写配置文件或修改文件权限，因此配置文件及其所在目录可以只读。登录、退出、切换账号和修改配置仍需写入权限；在支持 POSIX 权限的平台上，写入后的配置文件权限为 `0600`（仅当前用户可读写），新建配置目录权限为 `0700`。
 
+保存或删除 Profile 时，账号列表与当前账号会在一次原子写入中更新，避免出现只更新其中一项的中间状态。
+
 配置读取失败返回 `E1005`；使用 `--format=json` 时，`error.details.reason` 区分 `invalid_json`（JSON 格式错误）、`invalid_structure`（配置结构错误）和 `unreadable`（文件无法读取）。配置写入失败返回 `E1011`，原系统错误码（如 `EACCES`）放在 `error.details.systemCode`，错误信息不包含凭据内容。缺失的配置文件仍视为尚未配置；损坏的文件不会自动清空或覆盖。
 
 ```bash
