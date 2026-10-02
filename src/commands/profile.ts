@@ -1,5 +1,6 @@
 import { Command } from 'commander';
-import { getAllProfiles, getCurrentProfile, setCurrentProfile, profileKey } from '../config/store.js';
+import { getAllProfiles, getCurrentProfile, setCurrentProfile, profileKey, getConfigPath } from '../config/store.js';
+import { resolveAuthSource } from '../auth/flow.js';
 import { ZentaoError } from '../errors.js';
 import type { GlobalOptions } from '../types/index.js';
 import { renderMarkdown } from '../utils/render.js';
@@ -10,8 +11,35 @@ export function registerProfileCommand(program: Command): void {
         .command('profile')
         .description('查看或切换用户配置')
         .argument('[profileKey]', '要切换到的用户配置（格式：account@server，例如 admin@https://zentao.example.com）')
-        .action((key: string | undefined) => {
+        .option('--effective', '显示业务命令实际使用的认证来源（不验证凭据）')
+        .action((key: string | undefined, options: { effective?: boolean }) => {
             const globalOpts = program.opts() as GlobalOptions;
+            if (options.effective) {
+                if (key) throw new ZentaoError('E2009', { option: '--effective', reason: '不能与切换账号同时使用' });
+                const auth = resolveAuthSource();
+                const result = {
+                    status: 'success',
+                    source: auth.source,
+                    server: auth.server,
+                    account: auth.account,
+                    credentialType: auth.token ? 'token' : 'password',
+                    configFile: auth.source === 'profile' ? getConfigPath() : null,
+                    verified: false,
+                };
+                if (globalOpts.format === 'json' || globalOpts.format === 'raw') {
+                    console.log(JSON.stringify(result, null, 4));
+                } else {
+                    console.log(renderMarkdown([
+                        `* 认证来源: ${result.source === 'environment' ? '环境变量' : '本地 Profile'}`,
+                        `* 禅道地址: ${result.server}`,
+                        `* 账号: ${result.account}`,
+                        `* 凭据类型: ${result.credentialType === 'token' ? 'Token' : '密码'}`,
+                        `* 配置文件: ${result.configFile ?? '未使用'}`,
+                        '* 凭据尚未进行网络验证',
+                    ].join('\n')));
+                }
+                return;
+            }
             if (key) {
                 const success = setCurrentProfile(key);
                 if (!success) throw new ZentaoError('E1007');

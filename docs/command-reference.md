@@ -386,7 +386,7 @@ zentao logout 'admin@https://zentao.example.com'
 zentao profile [options] [profileKey]
 ```
 
-不传参数时列出已保存的账号并标记当前账号；传入 account@server 可切换账号。支持 --format=json 和 --format=raw。业务调用存在完整环境变量凭证时，会优先使用环境变量对应的账号。
+不传参数时列出已保存的账号并标记当前账号；传入 account@server 可切换账号。--effective 只读显示业务命令实际使用的认证来源、站点、账号、凭据类型和配置路径，不能与切换账号同时使用。完整环境凭证优先于当前本地账号，使用环境凭证时 configFile 为 null 且不读取本地配置。不会显示 Token 或密码，不发起网络请求，verified 固定为 false。支持 --format=json 和 --format=raw。
 
 | 位置参数 | 必填 | 说明 |
 | --- | --- | --- |
@@ -394,6 +394,7 @@ zentao profile [options] [profileKey]
 
 | 选项 | 说明 |
 | --- | --- |
+| `--effective` | 显示业务命令实际使用的认证来源（不验证凭据） |
 | `-h, --help` | 显示命令帮助 |
 
 示例：
@@ -401,7 +402,7 @@ zentao profile [options] [profileKey]
 ```bash
 zentao profile
 zentao profile 'admin@https://zentao.example.com'
-zentao --format=json profile
+zentao profile --effective --format=json
 ```
 
 <a id="command-config"></a>

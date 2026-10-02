@@ -48,7 +48,7 @@ const commandNotes: Record<string, { text: string; examples: string[] }> = {
         examples: ['zentao login', 'zentao login --web', 'zentao login --web --message "完成登录后，回到 Codex 即可继续使用禅道。"', 'zentao login --no-browser', "zentao login --server=https://zentao.example.com --user=admin --token='替换为实际Token'", 'zentao login --useEnv'],
     },
     logout: { text: '不传 profileKey 时退出当前账号；传入时删除指定的本地登录记录。', examples: ['zentao logout', "zentao logout 'admin@https://zentao.example.com'"] },
-    profile: { text: '不传参数时列出已保存的账号并标记当前账号；传入 account@server 可切换账号。支持 --format=json 和 --format=raw。业务调用存在完整环境变量凭证时，会优先使用环境变量对应的账号。', examples: ['zentao profile', "zentao profile 'admin@https://zentao.example.com'", 'zentao --format=json profile'] },
+    profile: { text: '不传参数时列出已保存的账号并标记当前账号；传入 account@server 可切换账号。--effective 只读显示业务命令实际使用的认证来源、站点、账号、凭据类型和配置路径，不能与切换账号同时使用。完整环境凭证优先于当前本地账号，使用环境凭证时 configFile 为 null 且不读取本地配置。不会显示 Token 或密码，不发起网络请求，verified 固定为 false。支持 --format=json 和 --format=raw。', examples: ['zentao profile', "zentao profile 'admin@https://zentao.example.com'", 'zentao profile --effective --format=json'] },
     config: { text: '配置保存在当前账号下，需要先登录。使用 get 查看、set 修改，见上方配置项表。', examples: ['zentao config get', 'zentao config set defaultOutputFormat json'] },
     'config get': { text: '省略 key 时返回当前账号的全部配置，包括未显式设置的默认值。', examples: ['zentao config get', 'zentao --format=json config get pagers'] },
     'config set': { text: '布尔值只接受 true/false；数值与 pagers 的有效范围见配置项表。', examples: ['zentao config set timeout 30000', 'zentao config set defaultRecPerPage 50', 'zentao config set pagers \'{"product":50,"bug":100}\''] },

@@ -69,6 +69,10 @@ $ zentao profile dev1@https://zentao.example.com
 * dev1@https://zentao.example.com (当前)
 ```
 
+执行 `zentao profile --effective --format=json` 可只读查看业务命令实际使用的认证来源。输出包含 `source`（`environment` 或 `profile`）、`server`、`account`、`credentialType`（`token` 或 `password`）和 `configFile`。环境凭证完整时优先使用环境变量，`configFile` 为 `null`，且不会读取本地配置；环境凭证不完整时回退到当前保存的 Profile。
+
+此命令不显示 Token 或密码，不发起网络请求或登录，`verified` 固定为 `false`；如需验证连接，应执行目标范围内的只读业务查询。`--effective` 不能与切换账号的参数同时使用；不加该选项时，`profile` 仍只查看或切换本地账号。
+
 ### 退出登录
 
 使用 `zentao logout` 可退出当前用户，同时移除 `~/.config/zentao/zentao.json` 文件中的对应用户信息。

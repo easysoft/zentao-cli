@@ -96,6 +96,9 @@ describe('Profile authentication resolution', () => {
         const configFile = join(tempDir, 'config.json');
         const original = readFileSync(configFile, 'utf8');
         const selected = { ...mockProfile, account: 'selected-user' };
+        process.env.ZENTAO_URL = 'https://environment.example.com';
+        process.env.ZENTAO_ACCOUNT = 'environment-user';
+        process.env.ZENTAO_TOKEN = 'environment-token';
 
         const { profile } = await ensureAuth({ profile: selected });
 

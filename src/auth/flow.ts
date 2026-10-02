@@ -17,38 +17,53 @@ export interface AuthContext {
  * Environment credentials never access local profiles, and authentication
  * never persists credentials or changes the saved default profile.
  */
-export async function ensureAuth(options?: { insecure?: boolean; timeout?: number; profile?: Profile }): Promise<AuthContext> {
+export function resolveAuthSource(profile?: Profile) {
     const env = getEnvCredentials();
-    if (!options?.profile && env.url && env.account && (env.token || env.password)) {
-        const server = normalizeServerUrl(env.url);
-        if (env.token) {
-            return {
-                client: createClient(server, env.token, options),
-                profile: buildProfile(server, env.account, env.token),
-            };
-        }
-
-        if (env.password) {
-            const result = await login(server, env.account, env.password, options);
-            return {
-                client: result.client,
-                profile: buildProfile(server, env.account, result.token, result.serverConfig, result.user),
-            };
-        }
-    }
-
-    const currentProfile = options?.profile ?? getCurrentProfile();
-    if (currentProfile?.token) {
-        const config = getProfileConfig(currentProfile);
-        const clientOpts = {
-            insecure: options?.insecure ?? config.insecure,
-            timeout: options?.timeout ?? config.timeout,
-        };
+    if (!profile && env.url && env.account && (env.token || env.password)) {
         return {
-            client: createClient(currentProfile.server, currentProfile.token, clientOpts),
-            profile: currentProfile,
+            source: 'environment' as const,
+            server: normalizeServerUrl(env.url), account: env.account,
+            token: env.token, password: env.password,
         };
     }
 
+    const currentProfile = profile ?? getCurrentProfile();
+    if (currentProfile?.token) {
+        return {
+            source: 'profile' as const,
+            server: currentProfile.server, account: currentProfile.account,
+            token: currentProfile.token, profile: currentProfile,
+        };
+    }
     throw new ZentaoError('E1006');
+}
+
+/** Resolve credentials first; only environment password authentication requires a login request. */
+export async function ensureAuth(options?: { insecure?: boolean; timeout?: number; profile?: Profile }): Promise<AuthContext> {
+    const auth = resolveAuthSource(options?.profile);
+    if (auth.source === 'environment') {
+        const { server, account, token, password } = auth;
+        if (token) {
+            return {
+                client: createClient(server, token, options),
+                profile: buildProfile(server, account, token),
+            };
+        }
+
+        const result = await login(server, account, password!, options);
+        return {
+            client: result.client,
+            profile: buildProfile(server, account, result.token, result.serverConfig, result.user),
+        };
+    }
+
+    const config = getProfileConfig(auth.profile);
+    const clientOpts = {
+        insecure: options?.insecure ?? config.insecure,
+        timeout: options?.timeout ?? config.timeout,
+    };
+    return {
+        client: createClient(auth.server, auth.token, clientOpts),
+        profile: auth.profile,
+    };
 }
