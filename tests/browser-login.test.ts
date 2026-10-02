@@ -106,8 +106,6 @@ describe('browser login session', () => {
         });
         saveProfile({ ...mockProfile, server, config: { defaultRecPerPage: 23 }, user: { oldField: 'preserved' } });
         const session = await start();
-        const page = await (await fetch(new URL('/', session.url))).text();
-        expect(page).toContain('<p class="intro" id="intro">完成登录后，回到 ZenTao CLI 即可继续使用禅道。</p>');
         const response = await submit(session, { server: `${server}/`, account: ' admin ', password });
         expect(response.status).toBe(200);
         const feedback = await response.text();
@@ -128,20 +126,26 @@ describe('browser login session', () => {
 
     test('keeps failed login retryable and never renders upstream error details', async () => {
         let attempts = 0;
-        const server = mockZentao(() => ++attempts === 1
-            ? new Response(`<script>${password} ${token}</script>`, { status: 500 })
-            : Response.json({ status: 'success', token }));
+        const server = mockZentao(() => {
+            attempts++;
+            return attempts <= 2
+                ? new Response(`<script>${password} ${token}</script>`, { status: attempts === 1 ? 500 : 401 })
+                : Response.json({ status: 'success', token });
+        });
         const session = await start();
-        const failure = await submit(session, { server, account: 'admin', password });
-        expect(failure.status).toBe(400);
-        const message = await failure.text();
-        expect(message).not.toContain(password);
-        expect(message).not.toContain(token);
-        expect(message).not.toContain('<script>');
-        expect(getAllProfiles()).toEqual([]);
+        for (const errorCode of ['loginFailed', 'invalidCredentials']) {
+            const failure = await submit(session, { server, account: 'admin', password });
+            expect(failure.status).toBe(400);
+            const message = await failure.text();
+            expect(JSON.parse(message)).toEqual({ errorCode, error: expect.any(String) });
+            expect(message).not.toContain(password);
+            expect(message).not.toContain(token);
+            expect(message).not.toContain('<script>');
+            expect(getAllProfiles()).toEqual([]);
+        }
         expect((await submit(session, { server, account: 'admin', password })).status).toBe(200);
         expect((await session.result).token).toBe(token);
-        expect(attempts).toBe(2);
+        expect(attempts).toBe(3);
     });
 
     test('rejects cross-origin, missing capability and rebound host requests before authentication', async () => {
@@ -153,7 +157,9 @@ describe('browser login session', () => {
             { 'X-Zentao-Login': null }, { 'X-Zentao-Login': 'wrong-session' }, { Host: 'attacker.example' },
         ];
         for (const headers of invalidHeaders) {
-            expect((await submit(session, { server, account: 'admin', password }, headers)).status).toBe(403);
+            const response = await submit(session, { server, account: 'admin', password }, headers);
+            expect(response.status).toBe(403);
+            expect(await response.json()).toMatchObject({ errorCode: headers.Host ? 'localOnly' : 'invalidSession' });
             expect((await submit(session, {}, headers, '/cancel')).status).toBe(403);
         }
         const missingHost = await new Promise<string>((resolveResponse, reject) => {
@@ -174,13 +180,24 @@ describe('browser login session', () => {
         let attempts = 0;
         const server = mockZentao(() => { attempts++; return Response.json({ status: 'success', token }); });
         const session = await start();
-        for (const body of [
-            '{', null, [], {}, { server, account: 'admin', password: '' },
-            ...['not-a-url', 'file:///etc/passwd', 'https://user:pass@example.com', `${server}?x=1`, `${server}#x`]
-                .map(server => ({ server, account: 'admin', password })),
-        ]) expect((await submit(session, body)).status).toBe(400);
-        expect((await submit(session, { server, account: 'admin', password }, { 'Content-Type': 'text/plain' })).status).toBe(415);
-        expect((await submit(session, { server, account: 'admin', password: 'x'.repeat(17_000) })).status).toBe(413);
+        const invalidBodies: Array<[unknown, string]> = [
+            ['{', 'invalidJson'], [null, 'required'], [[], 'required'], [{}, 'required'],
+            [{ server, account: 'admin', password: '' }, 'required'],
+            [{ server: 'not-a-url', account: 'admin', password }, 'invalidUrl'],
+            ...['file:///etc/passwd', 'https://user:pass@example.com', `${server}?x=1`, `${server}#x`]
+                .map(server => [{ server, account: 'admin', password }, 'unsafeUrl'] as [unknown, string]),
+        ];
+        for (const [body, errorCode] of invalidBodies) {
+            const response = await submit(session, body);
+            expect(response.status).toBe(400);
+            expect(await response.json()).toEqual({ errorCode, error: expect.any(String) });
+        }
+        const wrongType = await submit(session, { server, account: 'admin', password }, { 'Content-Type': 'text/plain' });
+        expect(wrongType.status).toBe(415);
+        expect(await wrongType.json()).toMatchObject({ errorCode: 'invalidRequest' });
+        const oversized = await submit(session, { server, account: 'admin', password: 'x'.repeat(17_000) });
+        expect(oversized.status).toBe(413);
+        expect(await oversized.json()).toMatchObject({ errorCode: 'tooLarge' });
         expect(attempts).toBe(0);
         expect(getAllProfiles()).toEqual([]);
         expect((await submit(session, { server, account: 'admin', password })).status).toBe(200);
@@ -201,7 +218,9 @@ describe('browser login session', () => {
         const session = await start({ waitTimeoutMs: mode === 'timeout' ? 300 : undefined });
         const first = submit(session, { server, account: 'admin', password }).catch(() => undefined);
         await started;
-        expect((await submit(session, { server, account: 'admin', password })).status).toBe(409);
+        const duplicate = await submit(session, { server, account: 'admin', password });
+        expect(duplicate.status).toBe(409);
+        expect(await duplicate.json()).toMatchObject({ errorCode: 'busy' });
         if (mode === 'cancel') expect((await submit(session, {}, {}, '/cancel')).status).toBe(200);
         await expect(session.result).rejects.toMatchObject({ code: mode === 'cancel' ? '1008' : '1009' });
         release();
@@ -234,7 +253,6 @@ describe('browser login session', () => {
         expect(nonce).toBeTruthy();
         expect(page).toContain(`<script nonce="${nonce}">`);
         expect(page).toContain('&lt;img src=x onerror=&quot;alert(1)&quot;&gt;&amp;');
-        expect(page).toContain('<p class="intro" id="intro">&quot;&gt;&lt;img src=x onerror=&quot;alert(1)&quot;&gt;&amp;</p>');
         expect(page).not.toContain(injection);
         expect(page).not.toContain(token);
         expect(page).not.toContain(new URL(session.url).hash.slice(1));
@@ -280,7 +298,7 @@ describe('CLI login mode selection', () => {
         const result = await runCli(['login', '--web', '--message', message], {}, async url => {
             loginUrl = url;
             const page = await (await fetch(new URL('/', url))).text();
-            expect(page).toContain(`<p class="intro" id="intro">${message}</p>`);
+            expect(page).toContain(message);
             const response = await submit({ url }, {}, {}, '/cancel');
             expect(response.status).toBe(200);
             expect(await response.json()).toEqual({ ok: true });

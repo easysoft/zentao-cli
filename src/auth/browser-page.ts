@@ -1,4 +1,5 @@
 import { getCliVersion } from '../utils/version.js';
+import { browserMessages } from './browser-messages.js';
 
 /** Render a self-contained login page without external assets. */
 export function renderBrowserLoginPage(options: {
@@ -11,6 +12,15 @@ export function renderBrowserLoginPage(options: {
     const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (character) => ({
         '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
     }[character]!));
+    const t = (key: keyof typeof browserMessages['zh-CN']) => escapeHtml(browserMessages['zh-CN'][key]);
+    const darkColors = `
+      color-scheme: dark;
+      --page-start: #142746; --page-end: #0c1629; --surface: #1a2639; --brand-surface: #1e304c;
+      --ink: #eef3fc; --muted: #acb9cf; --accent: #80afff; --button: #2f6dd4; --button-hover: #245fc5;
+      --border: #52617a; --input: #152135; --footer: #162133; --brand: #a6c8ff;
+      --error: #ffb4b4; --error-bg: #432931; --notice: #f3d392; --notice-bg: #3a3223;
+      --success: #9ddbbb; --success-bg: #193c32;
+    `;
 
     return `<!doctype html>
 <html lang="zh-CN">
@@ -19,112 +29,149 @@ export function renderBrowserLoginPage(options: {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
   <meta name="referrer" content="no-referrer">
-  <title>登录禅道 · ZenTao CLI</title>
+  <title>${t('title')} · ZenTao CLI</title>
+  <script nonce="${escapeHtml(options.nonce)}">
+    try {
+      const theme = localStorage.getItem('zentao-login-theme');
+      if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme;
+    } catch {}
+  </script>
   <style nonce="${escapeHtml(options.nonce)}">
     :root {
-      color-scheme: light dark;
-      --page: #f3f6f7; --surface: #fff; --ink: #0b2a43; --muted: #496374;
-      --accent: #174d70; --button-ink: #fff; --border: #bccbd2;
+      color-scheme: light;
+      --page-start: #3883fa; --page-end: #2b67e5; --surface: #fff; --brand-surface: #f0f6ff;
+      --ink: #30394a; --muted: #596780; --accent: #245fc5; --button: #2563d5; --button-hover: #1d54bd;
+      --border: #bec8d9; --input: #fff; --footer: #f7f9fc; --brand: #0b3a59;
       --error: #a32024; --error-bg: #fff1f0; --notice: #76500e; --notice-bg: #fff7e5;
       --success: #176345; --success-bg: #edf8f1;
-      font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
-      color: var(--ink); background: var(--page); font-size: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--ink); background: var(--page-end); font-size: 14px;
     }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { ${darkColors} } }
+    :root[data-theme="dark"] { ${darkColors} }
     * { box-sizing: border-box; }
     [hidden] { display: none !important; }
-    body { margin: 0; min-height: 100svh; padding: 64px 24px 32px; }
-    main { width: 100%; max-width: 480px; margin: 0 auto; }
-    h1 { margin: 0 0 12px; font-size: 28px; line-height: 1.3; letter-spacing: -.02em; }
-    p { margin: 0; line-height: 1.7; }
-    .intro { color: var(--muted); margin-bottom: 28px; }
-    .panel { padding: 28px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; }
+    body {
+      margin: 0; min-height: 100svh; padding: 40px 24px; display: grid; place-items: center;
+      background: linear-gradient(110deg, var(--page-start), var(--page-end));
+    }
+    main {
+      width: 100%; max-width: 760px; display: grid; grid-template-columns: 220px minmax(0, 1fr);
+      background: var(--surface); border-radius: 4px; overflow: hidden;
+      box-shadow: 0 16px 48px rgb(8 34 87 / 18%);
+    }
+    .brand { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 18px; padding: 40px 24px; background: var(--brand-surface); color: var(--brand); }
+    .brand svg { width: 88px; height: 88px; }
+    .brand-name { font-size: 22px; font-weight: 650; letter-spacing: -.02em; white-space: nowrap; }
+    .content { padding: 24px 40px 32px; min-width: 0; }
+    .preferences { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px 16px; margin-bottom: 28px; }
+    .preference { display: flex; align-items: center; gap: 6px; }
+    .preference label { margin: 0; font-size: 12px; font-weight: 400; color: var(--muted); }
+    select { min-height: 36px; max-width: 150px; border: 1px solid var(--border); border-radius: 3px; padding: 5px 6px; color: var(--ink); background: var(--input); font: inherit; font-size: 12px; cursor: pointer; }
+    h1 { margin: 0 0 10px; font-size: 24px; line-height: 1.35; font-weight: 650; }
+    p { margin: 0; line-height: 1.65; }
+    .intro { color: var(--muted); margin-bottom: 26px; overflow-wrap: anywhere; }
     fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
-    .field + .field { margin-top: 22px; }
-    label { display: block; margin-bottom: 8px; font-size: 15px; font-weight: 600; }
+    .field + .field { margin-top: 20px; }
+    label { display: block; margin-bottom: 7px; font-size: 14px; font-weight: 500; }
     input {
-      display: block; width: 100%; min-height: 46px; padding: 10px 12px; border: 1px solid var(--border);
-      border-radius: 3px; background: var(--surface); color: var(--ink); font: inherit; caret-color: var(--accent);
+      display: block; width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--border);
+      border-radius: 3px; background: var(--input); color: var(--ink); font: inherit; font-size: 16px; caret-color: var(--accent);
     }
     input::placeholder { color: var(--muted); opacity: 1; }
-    input:hover:not(:disabled) { border-color: var(--accent); }
-    input:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
-    .hint { margin-top: 8px; font-size: 13px; color: var(--muted); }
-    .notice { padding: 12px 14px; margin-top: 16px; border-radius: 3px; color: var(--notice); background: var(--notice-bg); font-size: 13px; }
+    input:hover:not(:disabled), select:hover { border-color: var(--accent); }
+    :where(input, button, select, a):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    .hint { margin-top: 7px; font-size: 12px; color: var(--muted); }
+    .notice { padding: 12px 14px; margin-top: 12px; border-radius: 3px; color: var(--notice); background: var(--notice-bg); font-size: 13px; }
     .notice.insecure { margin: 0 0 22px; }
-    .actions { display: flex; gap: 12px; margin-top: 28px; }
-    button { min-height: 46px; padding: 10px 18px; border: 1px solid var(--accent); border-radius: 3px; font: inherit; font-weight: 600; cursor: pointer; }
-    .primary { flex: 1; color: var(--button-ink); background: var(--accent); }
-    .secondary { color: var(--accent); background: var(--surface); }
-    button:hover:not(:disabled) { filter: brightness(.9); }
-    button:disabled { opacity: .6; cursor: wait; }
+    .actions { display: flex; gap: 12px; margin-top: 26px; }
+    button { min-height: 44px; padding: 10px 18px; border: 1px solid transparent; border-radius: 3px; font: inherit; font-weight: 600; cursor: pointer; }
+    .primary { flex: 1; color: #fff; background: var(--button); }
+    .primary:hover:not(:disabled) { background: var(--button-hover); }
+    .secondary { color: var(--ink); background: var(--surface); border-color: var(--border); }
+    .secondary:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+    button:disabled { opacity: .65; cursor: wait; }
     input:disabled { opacity: .7; }
     .feedback { margin-top: 20px; padding: 12px 14px; border-radius: 3px; font-size: 14px; overflow-wrap: anywhere; }
     .feedback.error { color: var(--error); background: var(--error-bg); }
     .feedback.success { color: var(--success); background: var(--success-bg); }
-    .privacy { margin: 20px 0 0; color: var(--muted); font-size: 13px; }
-    footer { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-top: 24px; color: var(--muted); font-size: 13px; }
-    footer a { display: inline-flex; align-items: center; min-height: 24px; color: var(--accent); text-underline-offset: 3px; }
-    footer a:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
-    ::selection { color: var(--button-ink); background: var(--accent); }
-    html { scrollbar-color: var(--border) var(--page); }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --page: #06111e; --surface: #0d2031; --ink: #e0ebef; --muted: #a6bcc8;
-        --accent: #91b9cb; --button-ink: #06111e; --border: #496374;
-        --error: #ffb3af; --error-bg: #432125; --notice: #edca85; --notice-bg: #342c1d;
-        --success: #9ddbbb; --success-bg: #16352b;
-      }
-    }
-    @media (max-width: 480px) {
-      body { padding: 32px 20px 24px; }
-      .panel { padding: 22px 18px; }
-      h1 { font-size: 26px; }
+    .privacy { margin-top: 20px; color: var(--muted); font-size: 12px; }
+    footer { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px 20px; padding: 16px 24px; background: var(--footer); color: var(--muted); font-size: 12px; }
+    footer a { display: inline-flex; align-items: center; min-height: 28px; color: var(--accent); text-underline-offset: 3px; }
+    ::selection { color: #fff; background: var(--button); }
+    html { scrollbar-color: var(--border) var(--surface); }
+    @media (max-width: 640px) {
+      body { padding: 24px 16px; }
+      main { max-width: 460px; grid-template-columns: minmax(0, 1fr); }
+      .brand { flex-direction: row; justify-content: flex-start; padding: 22px 24px; gap: 12px; }
+      .brand svg { width: 38px; height: 38px; }
+      .brand-name { font-size: 20px; }
+      .content { padding: 18px 24px 28px; }
+      .preferences { justify-content: flex-start; margin-bottom: 24px; }
+      footer { gap: 4px 16px; padding: 14px 20px; }
     }
     @media (prefers-reduced-motion: no-preference) {
-      button, input { transition: border-color 120ms ease-out, filter 120ms ease-out; }
+      button, input, select { transition: border-color 120ms ease-out, background-color 120ms ease-out; }
     }
+    @media (forced-colors: active) { main { border: 1px solid CanvasText; } }
   </style>
 </head>
 <body>
   <main>
-    <h1 id="title">登录禅道</h1>
-    <p class="intro" id="intro">${escapeHtml(options.message ?? '完成登录后，回到 ZenTao CLI 即可继续使用禅道。')}</p>
-    <div class="panel">
-      ${options.insecure ? '<p class="notice insecure">当前已关闭 HTTPS 证书验证。请确认禅道地址属于你信任的服务器。</p>' : ''}
+    <div class="brand">
+      <!-- Original Pixel Tao geometry from site/public/brand/pixel-tao-terminal-blue-flat.svg. -->
+      <svg viewBox="0 0 16 16" aria-hidden="true" fill="currentColor" shape-rendering="crispEdges"><path d="M6 1h4v1H6z M4 2h8v1H4z M3 3h10v1H3z M2 4h2v1H2z M9 4h5v1H9z M2 5h1v1H2z M4 5h2v1H4z M10 5h4v1h-4z M1 6h5v1H1z M11 6h4v1h-4z M1 7h4v1H1z M6 7h4v1H6z M13 7h2v1h-2z M1 8h3v1H1z M5 8h3v1H5z M10 8h5v1h-5z M1 9h3v1H1z M5 9h2v1H5z M8 9h1v1H8z M11 9h4v1h-4z M2 10h2v1H2z M5 10h5v1H5z M11 10h3v1h-3z M2 11h2v1H2z M6 11h3v1H6z M11 11h3v1h-3z M3 12h2v1H3z M10 12h3v1h-3z M4 13h8v1H4z M6 14h4v1H6z"/></svg>
+      <span class="brand-name">ZenTao CLI</span>
+    </div>
+    <section class="content" aria-labelledby="title">
+      <div class="preferences">
+        <div class="preference">
+          <label for="language" data-i18n="language">${t('language')}</label>
+          <select id="language"><option value="zh-CN" lang="zh-CN">简体中文</option><option value="zh-TW" lang="zh-TW">繁體中文</option><option value="en" lang="en">English</option></select>
+        </div>
+        <div class="preference">
+          <label for="theme" data-i18n="theme">${t('theme')}</label>
+          <select id="theme"><option value="system" data-i18n="system">${t('system')}</option><option value="light" data-i18n="light">${t('light')}</option><option value="dark" data-i18n="dark">${t('dark')}</option></select>
+        </div>
+      </div>
+      <h1 id="title">${t('title')}</h1>
+      <p class="intro" id="intro">${escapeHtml(options.message ?? browserMessages['zh-CN'].intro)}</p>
+      ${options.insecure ? `<p class="notice insecure" data-i18n="insecureNotice">${t('insecureNotice')}</p>` : ''}
       <form id="login-form" method="post" action="/login">
         <fieldset id="fields" disabled>
           <div class="field">
-            <label for="server">禅道地址</label>
+            <label for="server" data-i18n="server">${t('server')}</label>
             <input id="server" name="server" type="url" autocomplete="url" inputmode="url" spellcheck="false" required placeholder="https://zentao.example.com" value="${escapeHtml(options.server ?? '')}" aria-describedby="server-hint http-notice">
-            <p class="hint" id="server-hint">填写平时访问禅道的完整地址，保留 /zentao 等子目录。</p>
-            <p class="notice" id="http-notice" hidden>此地址使用 HTTP，账号和密码将通过未加密的连接发送。请确认网络环境可信。</p>
+            <p class="hint" id="server-hint" data-i18n="serverHint">${t('serverHint')}</p>
+            <p class="notice" id="http-notice" data-i18n="httpNotice" hidden>${t('httpNotice')}</p>
           </div>
           <div class="field">
-            <label for="account">用户名</label>
+            <label for="account" data-i18n="account">${t('account')}</label>
             <input id="account" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required value="${escapeHtml(options.account ?? '')}">
           </div>
           <div class="field">
-            <label for="password">密码</label>
+            <label for="password" data-i18n="password">${t('password')}</label>
             <input id="password" name="password" type="password" autocomplete="current-password" required>
           </div>
           <div class="actions">
-            <button class="primary" id="submit" type="submit">登录并保存</button>
-            <button class="secondary" id="cancel" type="button">取消</button>
+            <button class="primary" id="submit" type="submit">${t('submit')}</button>
+            <button class="secondary" id="cancel" type="button">${t('cancel')}</button>
           </div>
         </fieldset>
       </form>
-      <noscript><p class="notice">请启用浏览器的 JavaScript，然后重新从 Agent 发起登录。</p></noscript>
+      <noscript><p class="notice">${t('noScript')} / Please enable JavaScript and restart login from ZenTao CLI.</p></noscript>
       <p class="feedback" id="feedback" role="status" aria-live="polite" tabindex="-1" hidden></p>
-      <p class="privacy" id="privacy">登录状态保存在本机。密码仅用于本次登录，不会保存到 CLI 配置。</p>
-    </div>
+      <p class="privacy" id="privacy" data-i18n="privacy">${t('privacy')}</p>
+    </section>
     <footer>
       <span>ZenTao CLI v${escapeHtml(getCliVersion())}</span>
-      <a href="https://www.zentao.net/" target="_blank" rel="noopener noreferrer" aria-label="禅道官网（新标签页打开）">禅道官网</a>
-      <a href="https://github.com/easysoft/zentao-cli" target="_blank" rel="noopener noreferrer" aria-label="GitHub 项目（新标签页打开）">GitHub</a>
+      <a href="https://www.zentao.net/" target="_blank" rel="noopener noreferrer" data-i18n="website" data-i18n-label="websiteLabel" aria-label="${t('websiteLabel')}">${t('website')}</a>
+      <a href="https://github.com/easysoft/zentao-cli" target="_blank" rel="noopener noreferrer" data-i18n-label="githubLabel" aria-label="${t('githubLabel')}">GitHub</a>
     </footer>
   </main>
   <script nonce="${escapeHtml(options.nonce)}">
     (() => {
+      const messages = ${JSON.stringify(browserMessages).replace(/</g, '\\u003c')};
       let sessionKey = location.hash.slice(1);
       history.replaceState(null, '', location.pathname);
       const form = document.getElementById('login-form');
@@ -135,86 +182,127 @@ export function renderBrowserLoginPage(options: {
       const submit = document.getElementById('submit');
       const cancel = document.getElementById('cancel');
       const feedback = document.getElementById('feedback');
-      const expired = '此登录页面已失效，请回到 Agent 重新发起登录。';
+      const language = document.getElementById('language');
+      const theme = document.getElementById('theme');
+      const intro = document.getElementById('intro');
+      const customMessage = ${options.message !== undefined} ? intro.textContent : null;
+      let locale;
+      try { locale = localStorage.getItem('zentao-login-language'); } catch {}
+      if (!Object.hasOwn(messages, locale)) {
+        locale = (navigator.languages || [navigator.language]).map(value => {
+          if (/^zh(?:-|$)/i.test(value)) return /^zh-(?:TW|HK|MO|Hant)(?:-|$)/i.test(value) ? 'zh-TW' : 'zh-CN';
+          if (/^en(?:-|$)/i.test(value)) return 'en';
+        }).find(Boolean) || 'en';
+      }
+      language.value = locale;
+      theme.value = document.documentElement.dataset.theme || 'system';
+      let stage = 'login';
+      let pending = '';
+      let feedbackState;
+      const translate = (key, args = {}) => messages[locale][key].replace(/\{(account|server)\}/g, (_, name) => args[name] ?? '');
 
-      function showFeedback(message, state) {
-        feedback.textContent = message;
+      function render() {
+        document.documentElement.lang = locale;
+        document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = translate(el.dataset.i18n); });
+        document.querySelectorAll('[data-i18n-label]').forEach(el => { el.setAttribute('aria-label', translate(el.dataset.i18nLabel)); });
+        const title = translate(stage === 'login' ? 'title' : stage === 'success' ? 'successTitle' : 'cancelTitle');
+        document.getElementById('title').textContent = title;
+        document.title = title + ' · ZenTao CLI';
+        intro.textContent = stage === 'login' ? (customMessage ?? translate('intro')) : translate('finishedIntro');
+        submit.textContent = translate(pending === 'submit' ? 'submitting' : 'submit');
+        cancel.textContent = translate(pending === 'cancel' ? 'cancelling' : 'cancel');
+        if (feedbackState) feedback.textContent = translate(feedbackState.key, feedbackState.args);
+      }
+      function savePreference(name, value) {
+        try { localStorage.setItem('zentao-login-' + name, value); } catch {}
+      }
+      language.addEventListener('change', () => {
+        if (!Object.hasOwn(messages, language.value)) return;
+        locale = language.value;
+        savePreference('language', locale);
+        render();
+      });
+      theme.addEventListener('change', () => {
+        document.documentElement.dataset.theme = theme.value;
+        savePreference('theme', theme.value);
+      });
+      render();
+
+      function showFeedback(key, state, args) {
+        feedbackState = { key, args };
         feedback.className = 'feedback ' + state;
         feedback.hidden = false;
+        render();
       }
-
-      function finish(title, message, state) {
+      function finish(nextStage, messageKey, args) {
+        stage = nextStage;
         password.value = '';
         sessionKey = '';
         form.hidden = true;
         document.getElementById('privacy').hidden = true;
-        document.getElementById('title').textContent = title;
-        document.getElementById('intro').textContent = '你可以关闭此页面，回到 Agent 继续操作。';
-        showFeedback(message, state);
+        showFeedback(messageKey, 'success', args);
         feedback.focus();
       }
-
       async function request(path, body) {
         const response = await fetch(path, {
-          method: 'POST',
-          mode: 'same-origin',
-          credentials: 'omit',
-          cache: 'no-store',
-          redirect: 'error',
+          method: 'POST', mode: 'same-origin', credentials: 'omit', cache: 'no-store', redirect: 'error',
           headers: { 'Content-Type': 'application/json', 'X-Zentao-Login': sessionKey },
           body: JSON.stringify(body),
         });
         const result = await response.json();
-        if (!response.ok || !result.ok) throw new Error(result.error || expired);
+        if (!response.ok || !result.ok) {
+          throw new Error(Object.hasOwn(messages[locale], result.errorCode) ? result.errorCode : 'requestFailed');
+        }
         return result;
       }
-
       function updateHttpNotice() {
         document.getElementById('http-notice').hidden = !server.value.trim().toLowerCase().startsWith('http://');
       }
       server.addEventListener('input', updateHttpNotice);
       updateHttpNotice();
-
       if (!sessionKey) {
-        showFeedback(expired, 'error');
+        showFeedback('expired', 'error');
         return;
       }
       fields.disabled = false;
       (server.value ? (account.value ? password : account) : server).focus();
-
       form.addEventListener('submit', async (event) => {
         event.preventDefault();
         if (fields.disabled) return;
         fields.disabled = true;
         form.setAttribute('aria-busy', 'true');
-        submit.textContent = '正在登录…';
+        pending = 'submit';
         feedback.hidden = true;
+        render();
         try {
           const result = await request('/login', { server: server.value.trim(), account: account.value.trim(), password: password.value });
-          finish('登录成功', '已登录账号 ' + result.account + '（' + result.server + '）。登录状态已保存，可以返回 Agent 继续操作。', 'success');
+          finish('success', 'successMessage', { account: result.account, server: result.server });
         } catch (error) {
           password.value = '';
-          showFeedback(error instanceof TypeError ? '无法连接登录服务，页面可能已过期。请回到 Agent 重新发起登录。' : error.message, 'error');
+          showFeedback(Object.hasOwn(messages[locale], error.message) ? error.message : 'connectionFailed', 'error');
           fields.disabled = false;
           password.focus();
         } finally {
-          submit.textContent = '登录并保存';
+          pending = '';
+          render();
           form.removeAttribute('aria-busy');
         }
       });
-
       cancel.addEventListener('click', async () => {
+        if (fields.disabled) return;
         password.value = '';
         fields.disabled = true;
-        cancel.textContent = '正在取消…';
+        pending = 'cancel';
+        render();
         try {
           await request('/cancel', {});
-          finish('已取消登录', '本次登录已取消。需要使用禅道时，可让 Agent 重新发起登录。', 'success');
+          finish('cancel', 'cancelMessage');
         } catch {
-          showFeedback('无法连接登录服务，页面可能已过期。请关闭此页面，回到 Agent 查看登录状态。', 'error');
+          showFeedback('cancelFailed', 'error');
           fields.disabled = false;
         } finally {
-          cancel.textContent = '取消';
+          pending = '';
+          render();
         }
       });
     })();
