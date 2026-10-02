@@ -48,12 +48,11 @@ let store: Configstore | null = null;
 function getStore(): Configstore {
     if (!store) {
         store = new Configstore('zentao-cli', undefined, { configPath, clearInvalidConfig: false });
-        enforcePermissions();
     }
     return store;
 }
 
-/** 将配置文件权限收紧为仅当前用户可读（平台不支持 chmod 时静默忽略） */
+/** Restrict file access to the current user after a successful write. */
 function enforcePermissions(): void {
     try {
         if (existsSync(configPath)) {

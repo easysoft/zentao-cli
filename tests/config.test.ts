@@ -1,7 +1,7 @@
 import { describe, test, expect, beforeEach, afterEach } from 'bun:test';
 import { homedir, tmpdir } from 'node:os';
 import { isAbsolute, join, resolve } from 'node:path';
-import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { DEFAULT_CONFIG, VALID_CONFIG_KEYS } from '../src/config/defaults';
 import {
     getConfigPath,
@@ -177,6 +177,47 @@ describe('profile management', () => {
         expect(existsSync(join(tempDir, 'config.json'))).toBe(false);
     });
 
+    test.skipIf(process.platform === 'win32')('reading config preserves file permissions, timestamps and content', () => {
+        const file = join(tempDir, 'config.json');
+        const original = JSON.stringify({
+            currentProfile: profileKey(mockProfile.account, mockProfile.server), profiles: [mockProfile],
+        });
+        writeFileSync(file, original);
+        for (const mode of [0o400, 0o640]) {
+            chmodSync(file, mode);
+            resetConfigStore();
+            setConfigPath(file);
+            const before = statSync(file);
+            expect(getCurrentProfile()).toEqual(mockProfile);
+            expect(getAllProfiles()).toEqual([mockProfile]);
+            const after = statSync(file);
+            expect(after.mode & 0o777).toBe(mode);
+            expect(after.mtimeMs).toBe(before.mtimeMs);
+            expect(after.ctimeMs).toBe(before.ctimeMs);
+            expect(readFileSync(file, 'utf8')).toBe(original);
+        }
+    });
+
+    test.skipIf(process.platform === 'win32')('restricts file permissions when creating or updating config', () => {
+        const directory = join(tempDir, 'private');
+        const file = join(directory, 'config.json');
+        setConfigPath(file);
+        saveProfile(mockProfile);
+        expect(statSync(directory).mode & 0o777).toBe(0o700);
+        expect(statSync(file).mode & 0o777).toBe(0o600);
+
+        for (const operation of [
+            () => saveProfile({ ...mockProfile, account: 'another-user' }),
+            () => setCurrentProfile(mockProfile.account),
+            () => setProfileConfig(getCurrentProfile()!, 'timeout', 2000),
+            () => removeProfile(profileKey('another-user', mockProfile.server)),
+        ]) {
+            chmodSync(file, 0o644);
+            operation();
+            expect(statSync(file).mode & 0o777).toBe(0o600);
+        }
+    });
+
     test.each([
         null, [], 'invalid-root', { currentProfile: 1 }, { profiles: {} }, { profiles: [null] },
         { profiles: [{ ...mockProfile, account: null }] },
@@ -217,6 +258,7 @@ describe('profile management', () => {
             expect(getConfigData).toThrow(expect.objectContaining({
                 code: '1005', details: { operation: 'read', reason: 'unreadable', path: tempDir, systemCode: 'EISDIR' },
             }));
+            if (process.platform !== 'win32') expect(statSync(tempDir).mode & 0o777).toBe(0o700);
         } finally {
             if (process.platform !== 'win32') chmodSync(tempDir, 0o700);
         }
