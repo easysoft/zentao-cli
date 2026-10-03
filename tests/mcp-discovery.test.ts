@@ -3,12 +3,13 @@ import { getAllModules } from '../src/modules/helper.js';
 import { normalizeToolParams } from '../src/mcp/params.js';
 import { createMcpTestClient, toolData } from './mcp-helpers.js';
 
-test('action help examples satisfy every action contract without authentication', async () => {
+test('action help examples and processing schemas match every action contract without authentication', async () => {
     let requests = 0;
     const mcp = await createMcpTestClient(() => { requests++; return Response.json({}); }, ['--split-tools']);
     try {
         const { tools } = await mcp.client.listTools();
-        for (const mod of getAllModules()) for (const action of mod.actions) {
+        const modules = getAllModules();
+        for (const mod of modules) for (const action of mod.actions) {
             const result = await mcp.client.callTool({ name: 'zentao_action_help', arguments: { module: mod.name, action: action.name } });
             expect(result.isError).not.toBe(true);
             const help = toolData(result);
@@ -20,9 +21,14 @@ test('action help examples satisfy every action contract without authentication'
         }
         expect(requests).toBe(0);
         for (const tool of tools.filter(tool => tool.name.endsWith('_write'))) {
-            expect(tool.inputSchema.properties).not.toHaveProperty('filter');
-            expect(tool.inputSchema.properties).not.toHaveProperty('pick');
-            expect(tool.outputSchema?.properties).not.toHaveProperty('pager');
+            const mod = modules.find(mod => tool.name === `zentao_${mod.name}_write`)!;
+            const names = (tool.inputSchema.properties!.action as { enum: string[] }).enum;
+            const actions = mod.actions.filter(action => names.includes(action.name));
+            // POST actions can return lists while remaining in the write tool group.
+            const hasList = actions.some(action => action.type === 'list');
+            expect(Object.hasOwn(tool.inputSchema.properties!, 'filter')).toBe(hasList);
+            expect(Object.hasOwn(tool.inputSchema.properties!, 'pick')).toBe(hasList || actions.some(action => action.type === 'get'));
+            expect(Object.hasOwn(tool.outputSchema?.properties ?? {}, 'pager')).toBe(hasList);
         }
     } finally {
         await mcp.close();

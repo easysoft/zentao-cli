@@ -11,7 +11,7 @@ describe('module registry (zentao-api)', () => {
         expect(names).toContain('task');
         expect(names).toContain('story');
         expect(names).toContain('user');
-        for (const name of ['issue', 'risk', 'meeting', 'workflow', 'doc', 'todo', 'my']) {
+        for (const name of ['issue', 'risk', 'meeting', 'workflow', 'doc', 'todo', 'my', 'db', 'knowledge', 'knowledgelib']) {
             expect(names).toContain(name);
         }
     });
@@ -44,10 +44,9 @@ describe('module registry (zentao-api)', () => {
         expect(props.name).toBe('产品名称');
     });
 
-    test('every registered module has object property definitions', () => {
-        for (const name of getModuleNames()) {
-            expect(Object.keys(getObjectProps(name)).length).toBeGreaterThan(0);
-        }
+    test('only modules without SDK property metadata have empty definitions', () => {
+        const missing = getModuleNames().filter(name => Object.keys(getObjectProps(name)).length === 0);
+        expect(missing.sort()).toEqual(['db', 'knowledge', 'knowledgelib']);
     });
 
     test('isModuleName identifies valid modules', () => {
