@@ -39,7 +39,7 @@ export function renderBrowserLoginPage(options: {
   <style nonce="${escapeHtml(options.nonce)}">
     :root {
       color-scheme: light;
-      --page-start: #3883fa; --page-end: #2b67e5; --surface: #fff;
+      --page-start: #3273dc; --page-end: #2b67e5; --surface: #fff;
       --ink: #30394a; --muted: #596780; --accent: #245fc5; --button: #2563d5; --button-hover: #1d54bd;
       --border: #bec8d9; --input: #fff; --footer: #f7f9fc; --brand: #0b3a59;
       --error: #a32024; --error-bg: #fff1f0; --notice: #76500e; --notice-bg: #fff7e5;
@@ -55,8 +55,9 @@ export function renderBrowserLoginPage(options: {
       margin: 0; min-height: 100svh; padding: 40px 24px; display: grid; place-items: center;
       background: linear-gradient(110deg, var(--page-start), var(--page-end));
     }
+    .login-shell { width: 100%; max-width: 480px; }
     main {
-      width: 100%; max-width: 480px;
+      width: 100%;
       background: var(--surface); border-radius: 4px; overflow: hidden;
       box-shadow: 0 16px 48px rgb(8 34 87 / 18%);
     }
@@ -102,8 +103,9 @@ export function renderBrowserLoginPage(options: {
     .feedback.error { color: var(--error); background: var(--error-bg); }
     .feedback.success { color: var(--success); background: var(--success-bg); }
     .privacy { margin-top: 20px; color: var(--muted); font-size: 12px; }
-    footer { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px 20px; padding: 16px 24px; background: var(--footer); color: var(--muted); font-size: 12px; }
-    footer a { display: inline-flex; align-items: center; min-height: 28px; color: var(--accent); text-underline-offset: 3px; }
+    footer { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px 16px; margin-top: 12px; padding: 0 8px; color: #fff; font-size: 12px; }
+    footer a { display: inline-flex; align-items: center; min-height: 28px; color: inherit; text-underline-offset: 3px; }
+    footer a:focus-visible { outline-color: currentColor; }
     ::selection { color: #fff; background: var(--button); }
     html { scrollbar-color: var(--border) var(--surface); }
     @media (max-width: 480px) {
@@ -112,7 +114,6 @@ export function renderBrowserLoginPage(options: {
       .brand svg { width: 32px; height: 32px; }
       .brand-name { font-size: 18px; }
       .content { padding: 24px 20px; }
-      footer { gap: 4px 16px; padding: 14px 20px; }
     }
     @media (pointer: coarse) { .preference { width: 44px; height: 44px; } }
     @media (prefers-reduced-motion: no-preference) {
@@ -122,6 +123,7 @@ export function renderBrowserLoginPage(options: {
   </style>
 </head>
 <body>
+  <div class="login-shell">
   <main>
     <header class="page-header">
       <div class="brand">
@@ -172,12 +174,13 @@ export function renderBrowserLoginPage(options: {
       <p class="feedback" id="feedback" role="status" aria-live="polite" tabindex="-1" hidden></p>
       <p class="privacy" id="privacy" data-i18n="privacy">${t('privacy')}</p>
     </section>
+  </main>
     <footer>
       <span>ZenTao CLI v${escapeHtml(getCliVersion())}</span>
       <a href="https://www.zentao.net/" target="_blank" rel="noopener noreferrer" data-i18n="website" data-i18n-label="websiteLabel" aria-label="${t('websiteLabel')}">${t('website')}</a>
       <a href="https://github.com/easysoft/zentao-cli" target="_blank" rel="noopener noreferrer" data-i18n-label="githubLabel" aria-label="${t('githubLabel')}">GitHub</a>
     </footer>
-  </main>
+  </div>
   <script nonce="${escapeHtml(options.nonce)}">
     (() => {
       const messages = ${JSON.stringify(browserMessages).replace(/</g, '\\u003c')};
