@@ -78,7 +78,7 @@ const configDescriptions: Record<string, string> = {
     jsonPretty: '是否缩进输出业务命令的 JSON',
 };
 
-add('## 覆盖范围', `对应当前工作区：CLI **${packageInfo.version}**，API 定义 **${sdkVersion}**；覆盖 **${builtins.length} 个内置一级命令**（另含 config get/set）、**${modules.length} 个业务模块、${modules.reduce((sum, mod) => sum + mod.actions.length, 0)} 个业务操作**。已安装版本不同时，请以本机命令的 --help 为准。`);
+add(anchor('coverage'), '## 覆盖范围', `对应当前工作区：CLI **${packageInfo.version}**，API 定义 **${sdkVersion}**；覆盖 **${builtins.length} 个内置一级命令**（另含 config get/set）、**${modules.length} 个业务模块、${modules.reduce((sum, mod) => sum + mod.actions.length, 0)} 个业务操作**。已安装版本不同时，请以本机命令的 --help 为准。`);
 
 // Read only root help against a temporary empty config, never the user's saved credentials.
 const temporaryDirectory = mkdtempSync(join(tmpdir(), 'zentao-command-reference-'));
@@ -107,7 +107,7 @@ add('CLI 业务调用和 stdio MCP 优先使用完整环境凭证（地址、账
 
 add(anchor('data-options'), '## 业务命令公共选项', '以下选项由业务模块与通用增删改查入口共用。参数是否适用于当前操作，仍由结果类型和操作参数表决定。');
 add(table(['选项', '说明'], commonOptions.map((option) => [code(option.flags), option.description])));
-add('列表操作支持客户端筛选、搜索、排序、字段摘取和数量限制；详情操作支持字段摘取；写操作可提交 --data；删除可使用 --yes。--params 接受路径、查询和请求体的业务参数，不应作为 --filter、--sort、--format 等客户端选项的替代入口。');
+add('列表操作支持客户端筛选、搜索、排序、字段摘取和数量限制；详情操作支持字段摘取；具有请求体的操作可提交 --data JSON；删除可使用 --yes。--params 接受路径、查询和请求体的业务参数，不应作为 --filter、--sort、--format 等客户端选项的替代入口。db query 等操作的 page、limit 也是业务字段，具体传法见对应操作说明。');
 add('分页、raw 输出、批量处理和动态字段的等号写法见前文。--silent 对业务命令省略正常结果，仍报告错误；--batch-fail-fast 只控制当前批次，不回滚已完成的操作。');
 
 add(anchor('configuration'), '## 配置项', '以下默认值用于当前账号尚未配置的项目。命令行中显式指定的对应选项优先。');
@@ -153,6 +153,7 @@ let parameterCount = 0;
 const roles = { path: '路径', query: '查询', body: '请求体' };
 for (const mod of modules) {
     add(anchor('module-' + mod.name), '### ' + mod.name + ' · ' + (mod.display ?? mod.name));
+    if (mod.description) add(mod.description);
     const shortcuts = ['zentao ' + mod.name + ' props --format=json', 'zentao help ' + mod.name];
     if (mod.actions.some((action) => action.name === 'list')) shortcuts.unshift('zentao ' + mod.name + ' [列表参数]');
     if (mod.actions.some((action) => action.name === 'get')) shortcuts.unshift('zentao ' + mod.name + ' <id>');
@@ -179,6 +180,8 @@ for (const mod of modules) {
         add('最低禅道版本：' + action.minVersion.map(code).join(' / ') + '。');
         if (action.description && action.description !== action.display) add(action.description);
         add(fence(['zentao ' + mod.name + ' ' + action.name, ...required, '[选项]'].join(' ')));
+        const bodyExample = action.requestBody?.example ?? action.requestBody?.schema.example;
+        if (action.type === 'list' && bodyExample) add('请求体示例（数组使用 JSON，以保留元素类型）：', fence('zentao ' + mod.name + ' ' + action.name + " --data '" + JSON.stringify(bodyExample).replaceAll("'", "'\\''") + "'", 'bash'));
         if (scopeOptions.length) add('范围必填：用法中以 ' + code('--' + scopeOptions[0].name) + ' 为例，也可从 ' + scopeOptions.map((option) => code('--' + option.name + '=<id>') + '（' + option.label + '）').join('、') + ' 中选择一个，代替 scope 与 scopeID。');
         if (params.length) {
             add(table(['参数', '位置', '类型', '必填', '默认值', '说明与可选值'], params.map((param) => {
@@ -186,7 +189,19 @@ for (const mod of modules) {
                 const description = [param.description ?? param.name];
                 if (param.options?.length) description.push('可选值：' + param.options.map((option) => String(option.value) + '（' + option.label + '）').join('；'));
                 if (param.format) description.push('格式：' + param.format);
-                if (param.name === 'pageID') description.push('也可使用 --page');
+                const bodyProperties = action.requestBody?.schema.properties as Record<string, { type?: string }> | undefined;
+                if (param.role === 'body' && bodyProperties?.[param.name]?.type === 'integer') description.push('必须为整数');
+                // The SDK preserves schema constraints at runtime beyond its public parameter type.
+                const schema = param as typeof param & Record<string, unknown> & { items?: { type?: string; minimum?: number; minLength?: number } };
+                for (const [key, label] of Object.entries({ minimum: '最小值', maximum: '最大值', minLength: '最小长度', maxLength: '最大长度', minItems: '最少元素数', maxItems: '最多元素数' })) {
+                    if (schema[key] !== undefined) description.push(label + '：' + schema[key]);
+                }
+                if (schema.items) {
+                    if (schema.items.type) description.push('数组元素类型：' + schema.items.type);
+                    if (schema.items.minimum !== undefined) description.push('数组元素最小值：' + schema.items.minimum);
+                    if (schema.items.minLength !== undefined) description.push('数组元素最小长度：' + schema.items.minLength);
+                }
+                if (param.name === 'pageID') description.push(param.role === 'query' ? '也可使用 --page' : '请使用 --pageID 或 --data 中的 pageID；此请求体字段不支持 --page 别名');
                 return [code('--' + param.name), roles[param.role], code(type(param)), param.required ? '是' : '否',
                     param.defaultValue === undefined ? '未声明' : code(JSON.stringify(param.defaultValue)), description.join('\n')];
             })));
@@ -199,11 +214,15 @@ for (const mod of modules) {
         const applicable = ['--params', '--format', '--silent'];
         if (action.type === 'list') applicable.push('--pick', '--filter', '--sort', '--search', '--search-fields', '--limit');
         if (action.type === 'get') applicable.push('--pick');
-        if (params.some((param) => param.name === 'pageID')) applicable.push('--page');
-        if (action.type === 'create' || action.type === 'update' || action.type === 'action') applicable.push('--data', '--batch-fail-fast');
+        if (params.some((param) => param.name === 'pageID' && param.role === 'query')) applicable.push('--page');
+        if (params.some((param) => param.role === 'body')) applicable.push('--data');
+        if (action.type === 'create' || action.type === 'update' || action.type === 'action') applicable.push('--batch-fail-fast');
         if (action.type === 'delete') applicable.push('--yes', '--batch-fail-fast');
         add('可配合[公共选项](#data-options)：' + applicable.map(code).join('、') + '；其他全局选项见[全局选项](#global-options)。');
         if (action.type === 'update') add('未提供的更新字段会从当前对象自动补全；上表必填请求体字段可由原值补齐。');
+        if (action.type === 'list' && params.some((param) => param.role === 'body')) add('这是带请求体的查询操作。可直接传 --data JSON 或使用 --params 中的正式字段名；当前不支持此类操作的 --data @- 或隐式标准输入。参数约束来自 SDK 定义，部分规则由服务端校验。');
+        if (params.some((param) => param.name === 'limit' && param.role === 'body')) add('此处 limit 是服务端请求体字段，建议放入 --data JSON。非 raw 输出时，平铺 --limit 会同时参与请求体组装和客户端截取；--data 中的 limit 覆盖请求体同名值，但不覆盖客户端 --limit。');
+        if (mod.name === 'db' && action.name === 'query') add('SDK 描述中的 raw: true 在 CLI 中对应 --format=raw，可查看原始响应的 SQL、列信息与执行耗时。');
     }
 }
 
@@ -219,6 +238,7 @@ type ReferenceEntry = {
 };
 const entryMetadata = new Map<string, ReferenceEntry>();
 const guides: Record<string, [string, string]> = {
+    coverage: ['覆盖范围', '当前工作区 CLI / SDK 版本与自动生成的命令数量'],
     usage: ['命令格式与传参', '简写、别名、ID、JSON、数组、管道和批量操作'],
     examples: ['常用示例', '登录、查询、筛选、业务操作、文档和附件的实际用法'],
     errors: ['错误处理与版本兼容', '输出格式、失败处理、版本要求和参考文档覆盖范围'],
@@ -229,6 +249,14 @@ const guides: Record<string, [string, string]> = {
     modules: ['业务模块索引', '查看全部模块、别名和业务操作数量'],
 };
 for (const [id, [title, description]] of Object.entries(guides)) entryMetadata.set(id, { title, description, group: 'guides', type: 'guide' });
+const reviews: Record<string, [string, string]> = {
+    'review-summary': ['更新与优化总览', '2026-10-03 · 当前基线、已完成改进、优先级与验证范围'],
+    'review-input': ['P1 · 参数与请求体契约', '按操作定义校验输入，处理 page / limit 冲突和查询请求体'],
+    'review-output': ['P1 · CLI 机器输出一致性', '复用 MCP 结果契约，统一 JSON 错误和分页语义'],
+    'review-mcp': ['P1 / P2 · MCP 能力与约束', '补齐 SDK 字段约束，准确表达 POST 查询与传输限制'],
+    'review-maintenance': ['P2 · 文档与发现机制', '复用注册表提供离线机器帮助，把文档一致性纳入 CI'],
+};
+for (const [id, [title, description]] of Object.entries(reviews)) entryMetadata.set(id, { title, description, group: 'review', type: 'review' });
 function indexCommand(command: Command, path: string): void {
     entryMetadata.set(commandId(path), { title: 'zentao ' + path, description: command.description(), group: 'builtin', type: 'builtin', aliases: command.aliases().join(' ') });
     for (const child of command.commands) indexCommand(child, path + ' ' + child.name());

@@ -205,7 +205,7 @@
             <option value="">全部操作类型</option><option value="list">查询列表</option><option value="get">查看详情</option>
             <option value="create">创建</option><option value="update">更新</option><option value="delete">删除</option>
             <option value="action">其他业务操作</option><option value="builtin">内置命令</option>
-            <option value="guide">使用指南</option><option value="overview">模块概览</option>
+            <option value="guide">使用指南</option><option value="overview">模块概览</option><option value="review">优化建议</option>
           </select>
           <button id="reset-filters" class="reset-button" title="清空搜索及筛选">重置</button>
         </div>
@@ -242,9 +242,9 @@
     const data = JSON.parse(document.getElementById('reference-data').textContent);
     const byId = new Map(data.entries.map(entry => [entry.id, entry]));
     const $ = id => document.getElementById(id);
-    const types = { guide: '使用指南', overview: '模块概览', builtin: '内置命令', list: '查询列表', get: '查看详情', create: '创建', update: '更新', delete: '删除', action: '其他业务操作' };
+    const types = { guide: '使用指南', review: '优化建议', overview: '模块概览', builtin: '内置命令', list: '查询列表', get: '查看详情', create: '创建', update: '更新', delete: '删除', action: '其他业务操作' };
     const scopes = [
-      { id: 'all', label: '全部内容' }, { id: 'guides', label: '使用指南' }, { id: 'builtin', label: '内置命令' },
+      { id: 'all', label: '全部内容' }, { id: 'guides', label: '使用指南' }, { id: 'review', label: '优化建议' }, { id: 'builtin', label: '内置命令' },
       ...data.modules.map(mod => ({ id: mod.name, label: mod.display, code: mod.name })),
     ];
     const template = document.createElement('template');
@@ -267,7 +267,7 @@
     $('theme').addEventListener('change', () => { applyTheme(); try { localStorage.setItem('zentao-reference-theme', $('theme').value); } catch {} });
     systemTheme.addEventListener('change', applyTheme);
     applyTheme();
-    $('version-info').textContent = 'CLI ' + data.version + ' · ' + data.actionCount + ' 个业务操作 · 离线可用';
+    $('version-info').textContent = 'CLI ' + data.version + ' · SDK ' + data.sdkVersion + ' · ' + data.modules.length + ' 个模块 · ' + data.actionCount + ' 个业务操作 · 离线可用';
     function element(tag, className, text) {
       const node = document.createElement(tag);
       if (className) node.className = className;

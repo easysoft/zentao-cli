@@ -12,6 +12,7 @@
 - [内置命令](#builtin-commands)
 - [业务模块索引](#modules)
 - [错误处理与版本兼容](#errors)
+- [更新与优化总览（2026-10-03）](#review-summary)
 
 <a id="usage"></a>
 
@@ -26,7 +27,7 @@ zentao [全局选项] <模块> <操作> [--参数名=值 ...]
 
 推荐将全局选项放在命令前，将业务参数写成 `--参数名=值`，保留参数名的大小写，例如 `--productID=1`、`--recPerPage=50`。业务字段不要写成 `--title 标题`；这类动态参数需要等号。包含空格或 Shell 特殊字符的值使用引号，例如 `--title='登录失败'`、`--filter='pri<=2'`。
 
-引号内的参数值支持多行文本，换行、末尾换行和额外的 `=` 会原样保留。格式错误的动态参数会报错，不会静默忽略。
+引号内的参数值支持多行文本，换行、末尾换行和额外的 `=` 会原样保留。格式错误的动态参数会报错，但拼写合法的未知字段仍可能被 SDK 忽略。平铺动态值 `00123`、`true`、`false` 会被转换成数字或布尔值；需要保留字符串、数组或小数的准确类型时，优先使用 JSON。
 
 ### 简写、别名与帮助
 
@@ -63,7 +64,7 @@ zentao doc myDocs --spaceID=1 --libID=2
 
 ### JSON、数组与标准输入
 
-`--params` 接受一个 JSON 对象，可同时传路径、查询和请求体字段；`--data` 接受请求体 JSON，适用于创建、更新和状态流转。数组和包含嵌套结构的字段优先使用 JSON，以保留类型。
+`--params` 应传一个 JSON 对象，可同时传路径、查询和请求体字段；`--data` 接受请求体 JSON，适用于创建、更新、状态流转，以及数据库查询和知识搜索等带请求体的查询操作。数组和包含嵌套结构的字段优先使用 JSON，以保留类型。
 
 ```bash
 zentao bug resolve --params '{"bugID":42,"resolution":"fixed"}'
@@ -73,6 +74,8 @@ zentao product create --data @- < product.json
 ```
 
 最后一个示例读取本地 `product.json`，其内容可以是 `{"name":"团队知识库"}`。未提供 `--data` 时，写操作也会尝试读取标准输入中的 JSON。`--data @-` 明确要求从标准输入读取；空输入或非法 JSON 会报错。读取文件请使用输入重定向，`--data @文件名` 不支持。
+
+上述标准输入规则目前仅覆盖创建、更新和状态流转。`db query`、`knowledge search`、`knowledge embeddingsSearch` 需要直接提供 JSON 或平铺业务字段，不能使用 `--data @-` 或隐式标准输入。此类查询的非法 JSON 目前还可能被忽略，调用前应自行检查 JSON；对应优化建议见后文。
 
 同一字段尽量只用一种传法。混用时，`--params` 覆盖已解析的公共选项，动态 `--key=value` 再覆盖 `--params` 中的同名值；首个数字位置参数最后写入 `id`。组装请求体时，`--data` 内的字段优先于外层的同名字段，其次才使用参数定义中的默认值。
 
@@ -97,8 +100,10 @@ zentao product delete --id=1,2 --yes
 ### 登录并查看数据
 
 ```bash
-# 在终端交互输入服务地址、账号和凭证
+# 在桌面环境打开本机浏览器登录
 zentao login
+# 明确使用终端交互登录
+zentao login --no-browser
 
 # 查看本地账号，切换当前账号
 zentao profile
@@ -124,7 +129,7 @@ zentao --format=json bug --product=1 --page=1 --recPerPage=50
 zentao --format=json bug --product=1 --page=2 --recPerPage=50
 ```
 
-`--filter`、`--search`、`--sort`、`--pick`、`--limit` 是客户端处理；服务端查询参数（如 `browseType`、`orderBy`、`filters`）按操作参数表传入。客户端筛选只作用于当前页，不会改变服务器的总数，也不会自动补足匹配数量。
+`--filter`、`--search`、`--sort`、`--pick` 是客户端处理；`--limit` 用于客户端截取，但在 `db query`、`knowledge embeddingsSearch` 中也与同名请求体字段重叠。服务端查询参数（如 `browseType`、`orderBy`、`filters`）按操作参数表传入。客户端筛选只作用于当前页，不会改变服务器的总数，也不会自动补足匹配数量。
 
 | 选项 | 值的写法 |
 | --- | --- |
@@ -136,7 +141,7 @@ zentao --format=json bug --product=1 --page=2 --recPerPage=50
 
 过滤值含逗号时，可在表达式内保留引号，例如 `--filter='title~"登录,注册"'`；外层引号交给 Shell，内层引号用于区分值中的逗号与条件分隔符。
 
-仅当操作参数表列出 `pageID` / `recPerPage` 时使用对应分页选项。`--page` 是 `pageID` 的别名，`--limit` 只截取当前页，`--all` 尚未实现并会报错。需要全部数据时，应逐页读取直到覆盖返回的总数。
+分页必须按操作参数表的字段名和位置传入。查询串中的 `pageID` 可简写为 `--page`；`knowledge search` 的请求体 `pageID` 不支持这个别名，请写入 `--data` 或显式传 `--pageID=2`。`db query` 使用请求体 `page` / `limit`。`--all` 尚未实现并会报错，需要全部数据时应按服务端分页逐页读取，不能因当前页本地筛选后为空就判定检索结束。
 
 ### 创建与处理业务对象
 
@@ -160,6 +165,23 @@ zentao file create --file=/path/to/screenshot.png --objectType=bug --objectID=42
 
 文档的 `contentType=doc` 将 Markdown 正文转换为协作文档内容，`contentType=html` 保存旧格式 HTML。附件上传的 `file` 是本地文件路径，默认大小上限为 50 MiB。
 
+### 数据库与知识库（SDK 0.7.2）
+
+```bash
+zentao db tables
+zentao db table --table=zt_task --type=meta
+zentao --format=raw db query --data '{"sql":"SELECT id, name FROM zt_task ORDER BY id","page":1,"limit":20}'
+zentao knowledgelib list --type=team --page=1 --recPerPage=20
+zentao knowledge list --libID=12 --page=1 --recPerPage=20
+zentao knowledge search --data '{"keywords":["登录","超时"],"libIDs":[12],"matchMode":"all","pageID":1,"recPerPage":20}'
+zentao knowledge embeddingsSearch --data '{"keyword":"如何处理接口请求超时","libIDs":[12],"minSimilarity":0.7,"limit":5}'
+zentao knowledge get --knowledgeID=42
+```
+
+数据库操作要求 22.7 / biz13.7 / max8.7 / ipd5.7 或更新版本。知识库与知识操作要求商业知识库扩展及 biz13.7 / max8.7 / ipd5.7 或更新版本；搜索还需 `ai.searchknowledgelib` 权限。上述表名和 ID 仅为示例，访问仍受服务端权限控制。
+
+`knowledge search` 是对标题或已保存正文的关键词匹配：`any` 表示任一关键词命中，`all` 表示全部关键词命中同一条知识，可以分别命中标题与正文。它与本地当前页的 `--search` 不同。`embeddingsSearch` 只检索已有索引，按匹配度返回片段且不分页；读取完整正文使用结果中的 `knowledgeID`，不能使用 `chunkID` 或来源对象 ID。三个新增模块目前没有 `props` 字段元数据，需查看具体操作帮助。
+
 <a id="errors"></a>
 
 ## 错误处理与版本兼容
@@ -170,11 +192,156 @@ zentao file create --file=/path/to/screenshot.png --objectType=bug --objectID=42
 
 每个业务操作下方都列出最低禅道版本，开源版、企业版（`biz`）、旗舰版（`max`）与 IPD 版分别比较。版本不足时会在业务请求前报 `E2010`。帮助与 `props` 可以离线使用；文档中列出某个操作，不代表当前服务器版本和当前账号权限均允许执行。
 
+<a id="review-summary"></a>
+
+## 更新与优化总览
+
+评估日期：**2026-10-03（Asia/Singapore）**。基线为当前工作区 CLI **0.3.1**、已安装 SDK **0.7.2**、提交 `dfce324`，包括工作区已有的 SDK 升级及其测试调整；这不是对 npm 已发布版本的判断。参考 0906 的命令文档与评估，重新检查当前实现，下面的建议均为待实施方案。本次仅更新文档及生成器。
+
+本版覆盖 **17 个内置一级命令、29 个模块、237 个业务操作、1071 条参数定义**。相比原清单新增 `db`、`knowledgelib`、`knowledge` 三个模块和 8 个操作；同时保留并核对浏览器登录、`profile --effective`、XDG 配置目录与 HTTP MCP 的说明。新操作的部署条件、请求体、数组约束和分页差异已补入参考表及示例。
+
+### 旧建议的当前状态
+
+| 主题 | 当前核验结果 | 后续处理 |
+| --- | --- | --- |
+| 动态参数静默丢失 | 多行文本、额外等号和格式错误处理已修正；未知字段、类型误转换和非对象 JSON 仍有缺口 | 优先收紧输入契约 |
+| 无人值守登录假成功 | 已有浏览器登录、桌面环境检测；无桌面且非交互时返回 E1006 | 不再沿用旧版“stdin EOF 成功退出”的结论 |
+| 认证改变当前账号 | 普通认证不再写回 Profile；完整环境凭据与本地配置隔离；MCP 账号绑定实例 | 保留现有行为，补简写歧义处理即可 |
+| MCP 只有宽泛 Schema 和文本结果 | 已有按动作校验、结构化结果、outputSchema、当前页处理元数据、只读/模块筛选及读写拆分 | 补深层约束和新 POST 查询适配 |
+| CLI JSON / 分页 / 机器帮助 | 输出仍有多种形状，只有当前页处理，没有独立的 CLI 操作 Schema 入口 | 复用现有 MCP 与 SDK 定义 |
+
+### 推荐顺序
+
+| 优先级 | 工作项 | 收益与最小范围 |
+| --- | --- | --- |
+| P1 | [参数与请求体契约](#review-input) | 避免用户输入被改变、忽略或发送到错误页；覆盖 CLI 与 MCP 的同一操作 |
+| P1 | [CLI 机器输出一致性](#review-output) | 让 Agent 按稳定字段判断成功、失败和分页完整性 |
+| P1 | [MCP 完整参数约束](#review-mcp) | 拦截非法知识搜索参数，确保示例可以直接使用 |
+| P2 | [文档与发现机制](#review-maintenance) | 用现有注册表和 --check 降低维护成本，避免 SDK 升级后遗漏 |
+| P2 / P3 | [账号简写、可用工具与重复查找](#review-mcp) | 小范围消除歧义和重复实现，无需重建架构 |
+
+建议先完成 P1，再按真实 Agent 任务中的失败率、纠错次数、返回量和遗漏分页情况决定后续投入。新命令、选项、返回结构均应先定义兼容策略；文中示意方案不代表已经实现。
+
+验证依据包括当前源码、SDK 注册表、隔离配置的 CLI 子进程、本地 mock HTTP 和 MCP handler。未调用真实禅道业务接口，因此不声称已验证服务端权限、数据库查询限制或线上性能。类型检查和文档一致性检查通过；首次全套测试为 **405 通过、1 失败**，失败项是 HTTP 分块请求体限制测试；该文件单独复跑 **14 通过、0 失败**，随后完整复跑 **406 通过、0 失败**（36 个文件、4140 次断言）。首次失败原因仍未确认，不能将复跑通过当作已修复。
+
+评估原则参考 [CLI Guidelines](https://clig.dev/#arguments-and-flags) 的参数一致性、[MCP 工具规范](https://modelcontextprotocol.io/specification/2025-11-25/server/tools#structured-content) 的结构化结果，以及 [Anthropic 工具设计文章](https://www.anthropic.com/engineering/writing-tools-for-agents) 的清晰参数、有效返回量和真实任务评估。优先级与具体修订方案来自本项目代码及离线复现。
+
+<a id="review-input"></a>
+
+## P1 · 参数与请求体契约
+
+### 1. 按请求体定义处理输入，避免用返回类型推断输入能力
+
+**已复现：** `db query`、`knowledge search`、`knowledge embeddingsSearch` 都是 `type=list` 的 POST 操作。直接 JSON `--data` 可以工作，但 `--data @-` 和隐式 stdin 不读取请求体；`db query --sql='select 1' --data='{broken'` 甚至成功发送仅包含 SQL 的请求，非法 JSON 被忽略。
+
+根因在 `src/modules/executor.ts:76–82`：只有 create/update/action 才调用 `resolveData()`；MCP 的 `src/mcp/params.ts:59–78` 又只允许这些类型使用 `params.data`，导致同一查询的合法嵌套 JSON 被拒绝。返回列表与是否具有请求体是两个独立属性。
+
+**最小建议：** 根据 `action.requestBody` / body 参数元数据判断 JSON 支持，统一解析和对象形状校验；autoFill 等行为继续按更新语义判断。MCP 保留 JSON 对象输入边界，不引入 CLI stdin 语法。当前使用者先直接传合法 JSON，知识库 ID 数组使用 `[12,18]`，不要用会产生字符串元素的 `--libIDs=12,18`。
+
+**验收：** 三个 POST 查询的平铺字段、JSON、CLI stdin 得到一致请求体；非法 JSON、数组/null 根值在认证和业务 HTTP 前失败；已有创建/更新/文件上传行为保持兼容。
+
+### 2. 删除猜测式类型转换，并拒绝无效参数
+
+**已复现：** `product create --name=007 --desc=true` 的字段会变成数字 `7` 和布尔值 `true`；`product list --paeg=2` 与 `--params=[]` 都可以正常执行，输入错误没有提示；同时指定 Bug 的产品、项目、执行范围时，最终选中 execution 范围。
+
+根因在 `src/modules/args.ts:41–63`：`Object.assign(JSON.parse(...))` 未要求对象，动态字段对所有纯数字/布尔文本做统一转换，且未按操作字段名校验。`src/commands/register-modules.ts:121` 附近先认证再进入动作处理，使许多本可离线发现的错误晚于鉴权。
+
+**最小建议：** 先要求 `--params` 为非数组对象；保留原始文本，让 SDK 按字段声明转换，删除会破坏字符串的启发式转换；复用按动作的字段清单和冲突检查，在鉴权前拒绝未知字段与多范围冲突。不要额外建立一套平行 Schema。兼容支持 `--key value` 可以随后做，先确保现有等号语法不改变用户意图。
+
+**验收：** 字符串 `007`/`true` 保真，数字按声明转换；未知字段显示字段名与候选；非对象 JSON、多范围和不同 ID 来源冲突均零网络请求失败；现有别名和批量 ID 有回归覆盖。
+
+### 3. 明确服务端分页与客户端截取
+
+**已复现：** `knowledge search --page=3` 仍提交请求体 `pageID:1`，因为 SDK 的 page→pageID 别名仅处理查询串。MCP 顶层 page 会自行映射为 pageID，此问题属于 CLI。`db query --page=2 --limit=1` 则正确发送请求体 page/limit，但非 raw 输出时同一个 `--limit` 还会本地截取结果；将 limit 放入 `--params` / `--data` 时不会单独触发同样的本地截取。
+
+证据：`src/modules/args.ts:20` 将公共选项拷入业务参数；`src/modules/executor.ts:103–108` 再将 limit 等选项传入本地处理；SDK `dist/modules/resolve.js:160` 附近仅转换查询串中的 pageID。
+
+**最小建议：** 按当前 action 的字段角色映射分页别名，先对重名参数明确报错或说明；业务请求值与本地处理值应有独立来源。统一推荐 JSON 请求体中的业务分页字段，避免直接改动旧 `--limit` 语义造成脚本行为变化。
+
+**验收：** query pageID、body pageID、body page 三种分页分别验证；记录实际请求体和本地返回条数，覆盖混合输入与冲突。自动翻页可后置，先返回下一页提示，避免把当前页筛选为空解释为没有匹配项。
+
+<a id="review-output"></a>
+
+## P1 · CLI 机器输出一致性
+
+**现状：** 列表和写入的 JSON 使用 `{status,data,pager?}`，详情直接返回对象，批量返回 `{status,result}`；未知一级命令即使传入 `--format=json` 仍是 Commander 文本错误。`--machine-readable` 只影响 Markdown ANSI 渲染，不代表 JSON 或禁止交互。
+
+证据：`src/commands/module-handler.ts:46–95,128–133`、`src/utils/render.ts:25`、`src/utils/format.ts:69–75`、`src/index.ts:47–49,85–100`。隔离配置调用未知命令已验证非零退出，但 stderr 不是 JSON。
+
+**最小建议：** 复用 `src/mcp/results.ts` 已有的 data/error/context 和页内处理语义，定义一个面向 CLI 的稳定结果契约，统一处理 Commander 错误及内置命令结果。保持 stdout 为可解析结果、stderr 为诊断；先用兼容选项或明确版本迁移，不能直接把详情对象再包一层而不告知脚本使用者。`--json` 仅在需要便捷入口时再增加。
+
+分页元数据可先补 `returnedCount`、`processingScope=page`、服务器总数含义及可计算的下一页信息；没有服务端 pager 时明确未知。`hasMore` 应根据服务端分页信息判断，不能依据本地过滤后的条数。当前 MCP 已有其中一部分，不必重复实现处理流程。
+
+**验收：** 列表、详情、写入、批量部分失败、参数错误、未知命令、认证失败都可按固定契约解析，并保持失败非零退出；筛选后空页仍能提示后续服务端页面；raw 保留原始响应的约定不变。
+
+<a id="review-mcp"></a>
+
+## P1 / P2 · MCP 能力与约束
+
+### P1：按 SDK 原始定义补全边界校验与示例
+
+当前 MCP 已验证顶层字段、操作范围、基本类型和枚举，但 `src/mcp/params.ts:94–114` 未覆盖 `minimum`、`maximum`、`minLength`、`minItems` 和数组元素。通用 `recPerPage≤1000` 也不能替代知识接口声明的上限 100。
+
+**已复现：** `knowledge/embeddingsSearch` 的 `keyword:""`、`libIDs:["12"]`、`minSimilarity:2`、`limit:101` 原样到达 mock；关键词搜索的空数组和 `recPerPage:101` 也通过。`src/mcp/tools.ts:73–78` 给必填数组生成 `[]`，与新的非空约束冲突；现有发现测试使用同一浅层校验器，因此测试通过并不证明示例满足完整契约。
+
+**最小建议：** 扩展已有校验器，复用原始 `requestBody.schema` 的约束和 SDK 示例；保留 integer 信息，避免 `getModuleActionParams()` 转成 number 后丢失整数要求。先覆盖注册表实际使用的约束，不引入新的通用校验框架。
+
+**验收：** 非空、边界、整数和数组元素错误在认证前拒绝；每条生成示例通过完整字段约束；合法例子与实际请求体一致。此处仅验证客户端缺口，不能据此推断真实服务端也接受非法值。
+
+### P2：操作风险按能力定义，继续使用已有读写拆分
+
+现有 `--read-only`、`--modules`、`--split-tools`、`structuredContent` 和 `outputSchema` 已可使用。`src/mcp/tools.ts:24–25` 同时检查 action 类型与 GET 方法，因此 SQL 查询和 POST 知识搜索当前都在 `_write` 工具组，`--read-only` 不暴露它们。这是保守分类，不代表 SQL 接口支持写入。
+
+若需要只读 Agent 使用 POST 搜索，应先在 SDK 定义中明确副作用，再让筛选、annotations 和帮助共用该信息；不要仅因 HTTP 方法为 POST 就认定写入，也不要仅因返回列表就认定只读。继续按模块读写拆分即可，无需一次注册 237 个动作工具。
+
+### 其余小范围优化
+
+| 优先级 | 已核验问题与定位 | 最小建议与验收 |
+| --- | --- | --- |
+| P2 | `src/config/store.ts:171–177` 用 find 取首个简写匹配；同账号在同域不同路径时存在歧义 | 完整 key 优先；简写必须唯一，多匹配列候选，不切换、不写盘；唯一简写保持兼容 |
+| P3 | HTTP 禁用本地文件上传，但 `src/mcp/tools.ts:293` 的发现列表仍包含上传 action | 复用现有可用性判断过滤发现列表，保留执行守卫；HTTP 不列不可用上传，stdio 继续可用 |
+| P3 | `src/auth/login.ts:68–82` 只查前 100 名用户；`src/mcp/tools.ts:114–133` 另有翻页查找 | 复用现有用户查询小函数，保持认证和可选用户详情的不同错误策略，覆盖第 100 名以后的账号 |
+
+<a id="review-maintenance"></a>
+
+## P2 · 文档与发现机制
+
+### 复用现有生成器，加入一致性检查
+
+本次 SDK 0.7.0→0.7.2 后，原参考清单遗漏了 3 个模块和 8 个操作。生成器已经提供 `--check`，但 `.github/workflows/ci.yml` 当前未执行它。最小后续调整是在依赖安装后运行现有检查，不增加文档框架：
+
+```bash
+# 本地更新文档
+bun run scripts/generate-command-reference.ts
+# CI 仅执行此行；不要先生成覆盖旧文件，否则无法发现文档过期
+bun run scripts/generate-command-reference.ts --check
+```
+
+本次已修订生成器：输出模块部署说明、参数边界和数组元素约束；按 body 字段列出 `--data`；仅对查询串 pageID 宣称支持 `--page`。HTML 的“优化建议”分组也由同一份 Markdown 生成，后续再生成不会丢失报告。
+
+**验收：** 更新 SDK 后，新增/删除操作、参数变化和模板变化都会使旧文档检查失败；重新生成后通过。覆盖检查与离线请求示例都需要，不能只确认命令数量。报告带日期，重新评估时更新基线和状态，避免旧结论长期混入命令规范。
+
+### 提供按需机器帮助，避免维护多份定义
+
+目前 `props` 是返回字段说明，CLI 操作帮助主要是文本；MCP 的 `zentao_action_help` 已能免登录输出定义。建议复用 SDK 注册表及现有帮助组装，给 CLI 增加按操作输出 JSON 的入口，例如 `zentao schema knowledge search`（**建议语法，当前不存在**）。应包含字段角色、类型、边界、必填/autoFill、版本、示例及可用性。
+
+**验收：** 无凭据也能查询；CLI、MCP、HTML 对同一动作给出一致参数与约束；不运行登录或 API。先满足按需查一个动作，无需建立第二份元数据或新的发现服务。
+
+### 暂不优先或不建议删除
+
+- 参数重命名、全部命令 kebab-case、`--data @file`、自动翻页和写入预览可以后置。输入正确性与结果契约稳定后，再按实际需求添加；新增别名优先兼容现有命令。
+- 全局禁止交互选项仍可评估，但不要为此撤销已实现的桌面浏览器登录；给无人值守调用定义明确行为即可。
+- executor 已将路径、autoFill、响应提取和列表处理交给 SDK，无需再造执行层。
+- `withRequestSignal` 和 raw 失败守卫暂时保留：SDK 0.7.2 高层请求仍未贯通 signal，raw 又在 throwOnFail 前返回。删除这些适配需要先有 SDK 能力和回归证据。
+- 本次首次全套测试有一条 HTTP 分块请求体限制测试失败，单文件及完整复跑均通过；若后续再现，应保留完整失败日志并对比隔离/整套运行定位原因，不能凭一次结果直接归咎业务代码或降低断言。
+
 <!-- BEGIN GENERATED COMMAND REFERENCE -->
+
+<a id="coverage"></a>
 
 ## 覆盖范围
 
-对应当前工作区：CLI **0.3.1**，API 定义 **0.7.0**；覆盖 **17 个内置一级命令**（另含 config get/set）、**26 个业务模块、229 个业务操作**。已安装版本不同时，请以本机命令的 --help 为准。
+对应当前工作区：CLI **0.3.1**，API 定义 **0.7.2**；覆盖 **17 个内置一级命令**（另含 config get/set）、**29 个业务模块、237 个业务操作**。已安装版本不同时，请以本机命令的 --help 为准。
 
 <a id="global-options"></a>
 
@@ -238,7 +405,7 @@ CLI 业务调用和 stdio MCP 优先使用完整环境凭证（地址、账号�
 | `--project <id>` | 项目 ID |
 | `--execution <id>` | 执行 ID |
 
-列表操作支持客户端筛选、搜索、排序、字段摘取和数量限制；详情操作支持字段摘取；写操作可提交 --data；删除可使用 --yes。--params 接受路径、查询和请求体的业务参数，不应作为 --filter、--sort、--format 等客户端选项的替代入口。
+列表操作支持客户端筛选、搜索、排序、字段摘取和数量限制；详情操作支持字段摘取；具有请求体的操作可提交 --data JSON；删除可使用 --yes。--params 接受路径、查询和请求体的业务参数，不应作为 --filter、--sort、--format 等客户端选项的替代入口。db query 等操作的 page、limit 也是业务字段，具体传法见对应操作说明。
 
 分页、raw 输出、批量处理和动态字段的等号写法见前文。--silent 对业务命令省略正常结果，仍报告错误；--batch-fail-fast 只控制当前批次，不回滚已完成的操作。
 
@@ -866,10 +1033,15 @@ zentao upgrade --yes
 | [doc](#module-doc) | 文档 | — | 41 |
 | [todo](#module-todo) | 待办 | — | 3 |
 | [my](#module-my) | 地盘 | — | 14 |
+| [db](#module-db) | 数据库 | — | 3 |
+| [knowledgelib](#module-knowledgelib) | 知识库 | — | 1 |
+| [knowledge](#module-knowledge) | 知识 | — | 4 |
 
 <a id="module-user"></a>
 
 ### user · 用户
+
+用户管理，支持获取用户列表、创建用户、获取用户详情、修改用户信息、删除用户
 
 快捷用法与字段查询：
 
@@ -959,11 +1131,11 @@ zentao user update --userID=<number> [选项]
 | --- | --- | --- | --- | --- | --- |
 | `--userID` | 路径 | `number` | 是 | 未声明 | 用户ID |
 | `--realname` | 请求体 | `string` | 否 | 未声明 | 真实姓名 |
-| `--dept` | 请求体 | `number` | 否 | 未声明 | 部门<br>格式：int32 |
+| `--dept` | 请求体 | `number` | 否 | 未声明 | 部门<br>格式：int32<br>必须为整数 |
 | `--join` | 请求体 | `string` | 否 | 未声明 | 入职日期 |
-| `--group` | 请求体 | `string[]` | 否 | 未声明 | 权限分组 |
+| `--group` | 请求体 | `string[]` | 否 | 未声明 | 权限分组<br>数组元素类型：string |
 | `--email` | 请求体 | `string` | 否 | 未声明 | 邮箱 |
-| `--visions` | 请求体 | `string[]` | 否 | 未声明 | 界面类型(研发综合界面 rnd \| 运营管理界面 lite) |
+| `--visions` | 请求体 | `string[]` | 否 | 未声明 | 界面类型(研发综合界面 rnd \| 运营管理界面 lite)<br>数组元素类型：string |
 | `--mobile` | 请求体 | `string` | 否 | 未声明 | 手机 |
 | `--weixin` | 请求体 | `string` | 否 | 未声明 | 微信 |
 | `--password` | 请求体 | `string` | 否 | 未声明 | 密码 |
@@ -995,6 +1167,8 @@ zentao user delete --userID=<number> [选项]
 <a id="module-program"></a>
 
 ### program · 项目集
+
+项目集管理，支持获取项目集列表、创建项目集、获取项目集详情、修改项目集、删除项目集
 
 快捷用法与字段查询：
 
@@ -1119,6 +1293,8 @@ zentao program delete --programID=<number> [选项]
 
 ### product · 产品
 
+产品管理，支持获取产品列表、获取项目集的产品列表、创建产品、关闭产品、创建产品的需求模块、创建产品的Bug模块、创建产品的用例模块、获取产品详情、修改产品、删除产品
+
 快捷用法与字段查询：
 
 ```text
@@ -1195,11 +1371,11 @@ zentao product create --name=<string> [选项]
 | 参数 | 位置 | 类型 | 必填 | 默认值 | 说明与可选值 |
 | --- | --- | --- | --- | --- | --- |
 | `--name` | 请求体 | `string` | 是 | 未声明 | 产品名称 |
-| `--program` | 请求体 | `number` | 否 | 未声明 | 所属项目集<br>格式：int32 |
-| `--line` | 请求体 | `number` | 否 | 未声明 | 所属产品线<br>格式：int32 |
+| `--program` | 请求体 | `number` | 否 | 未声明 | 所属项目集<br>格式：int32<br>必须为整数 |
+| `--line` | 请求体 | `number` | 否 | 未声明 | 所属产品线<br>格式：int32<br>必须为整数 |
 | `--type` | 请求体 | `string` | 否 | 未声明 | 类型(normal 正常 \| branch 多分支 \| platform 多平台) |
 | `--PO` | 请求体 | `string` | 否 | 未声明 | 产品负责人 |
-| `--reviewer` | 请求体 | `string[]` | 否 | 未声明 | 评审人 |
+| `--reviewer` | 请求体 | `string[]` | 否 | 未声明 | 评审人<br>数组元素类型：string |
 | `--desc` | 请求体 | `string` | 否 | 未声明 | 产品描述 |
 | `--QD` | 请求体 | `string` | 否 | 未声明 | 测试负责人 |
 | `--RD` | 请求体 | `string` | 否 | 未声明 | 发布负责人 |
@@ -1240,7 +1416,7 @@ zentao product createStoryModule --productID=<number> [选项]
 | --- | --- | --- | --- | --- | --- |
 | `--productID` | 路径 | `number` | 是 | 未声明 | 产品ID |
 | `--name` | 请求体 | `string` | 否 | 未声明 | 模块名称 |
-| `--parentID` | 请求体 | `number` | 否 | 未声明 | 父模块<br>格式：int32 |
+| `--parentID` | 请求体 | `number` | 否 | 未声明 | 父模块<br>格式：int32<br>必须为整数 |
 
 `--productID` 可用 `--id` 或首个数字位置参数代替；其余路径 ID 需分别提供。
 
@@ -1260,7 +1436,7 @@ zentao product createBugModule --productID=<number> [选项]
 | --- | --- | --- | --- | --- | --- |
 | `--productID` | 路径 | `number` | 是 | 未声明 | 产品ID |
 | `--name` | 请求体 | `string` | 否 | 未声明 | 模块名称 |
-| `--parentID` | 请求体 | `number` | 否 | 未声明 | 父模块<br>格式：int32 |
+| `--parentID` | 请求体 | `number` | 否 | 未声明 | 父模块<br>格式：int32<br>必须为整数 |
 
 `--productID` 可用 `--id` 或首个数字位置参数代替；其余路径 ID 需分别提供。
 
@@ -1280,7 +1456,7 @@ zentao product createTestcaseModule --productID=<number> [选项]
 | --- | --- | --- | --- | --- | --- |
 | `--productID` | 路径 | `number` | 是 | 未声明 | 产品ID |
 | `--name` | 请求体 | `string` | 否 | 未声明 | 模块名称 |
-| `--parentID` | 请求体 | `number` | 否 | 未声明 | 父模块<br>格式：int32 |
+| `--parentID` | 请求体 | `number` | 否 | 未声明 | 父模块<br>格式：int32<br>必须为整数 |
 
 `--productID` 可用 `--id` 或首个数字位置参数代替；其余路径 ID 需分别提供。
 
@@ -1318,11 +1494,11 @@ zentao product update --productID=<number> --name=<string> [选项]
 | --- | --- | --- | --- | --- | --- |
 | `--productID` | 路径 | `number` | 是 | 未声明 | 产品ID |
 | `--name` | 请求体 | `string` | 是 | 未声明 | 产品名称 |
-| `--program` | 请求体 | `number` | 否 | 未声明 | 所属项目集<br>格式：int32 |
-| `--line` | 请求体 | `number` | 否 | 未声明 | 所属产品线<br>格式：int32 |
+| `--program` | 请求体 | `number` | 否 | 未声明 | 所属项目集<br>格式：int32<br>必须为整数 |
+| `--line` | 请求体 | `number` | 否 | 未声明 | 所属产品线<br>格式：int32<br>必须为整数 |
 | `--type` | 请求体 | `string` | 否 | 未声明 | 类型(normal 正常 \| branch 多分支 \| platform 多平台) |
 | `--PO` | 请求体 | `string` | 否 | 未声明 | 产品负责人 |
-| `--reviewer` | 请求体 | `string[]` | 否 | 未声明 | 评审人 |
+| `--reviewer` | 请求体 | `string[]` | 否 | 未声明 | 评审人<br>数组元素类型：string |
 | `--desc` | 请求体 | `string` | 否 | 未声明 | 产品描述 |
 | `--QD` | 请求体 | `string` | 否 | 未声明 | 测试负责人 |
 | `--RD` | 请求体 | `string` | 否 | 未声明 | 发布负责人 |
@@ -1355,6 +1531,8 @@ zentao product delete --productID=<number> [选项]
 <a id="module-project"></a>
 
 ### project · 项目
+
+项目管理，支持获取项目列表、获取项目集的项目列表、获取项目团队列表、获取项目成员列表、创建项目、关闭项目、创建项目需求、创建项目Bug、创建项目任务、修改项目、删除项目、维护项目成员
 
 快捷用法与字段查询：
 
@@ -1472,9 +1650,9 @@ zentao project create --name=<string> --model=<string> --begin=<string> --end=<s
 | `--model` | 请求体 | `string` | 是 | 未声明 | 项目管理方式(scrum 敏捷 \| waterfall 瀑布 \| kanban 看板 \| agileplus 融合敏捷 \| waterfallplus 融合瀑布) |
 | `--begin` | 请求体 | `string` | 是 | 未声明 | 开始日期 |
 | `--end` | 请求体 | `string` | 是 | 未声明 | 结束日期 |
-| `--products` | 请求体 | `string[]` | 否 | 未声明 | 关联产品 |
-| `--parent` | 请求体 | `number` | 否 | 未声明 | 所属项目集<br>格式：int32 |
-| `--workflowGroup` | 请求体 | `number` | 是 | 未声明 | 项目流程，付费版功能，开源版可以不填<br>格式：int32 |
+| `--products` | 请求体 | `string[]` | 否 | 未声明 | 关联产品<br>数组元素类型：string |
+| `--parent` | 请求体 | `number` | 否 | 未声明 | 所属项目集<br>格式：int32<br>必须为整数 |
+| `--workflowGroup` | 请求体 | `number` | 是 | 未声明 | 项目流程，付费版功能，开源版可以不填<br>格式：int32<br>必须为整数 |
 | `--PM` | 请求体 | `string` | 否 | 未声明 | 项目负责人 |
 
 可配合[公共选项](#data-options)：`--params`、`--format`、`--silent`、`--data`、`--batch-fail-fast`；其他全局选项见[全局选项](#global-options)。
@@ -1512,12 +1690,12 @@ zentao project createStory --projectID=<number> --title=<string> [选项]
 | 参数 | 位置 | 类型 | 必填 | 默认值 | 说明与可选值 |
 | --- | --- | --- | --- | --- | --- |
 | `--projectID` | 路径 | `number` | 是 | 未声明 | 项目ID |
-| `--productID` | 请求体 | `number` | 否 | 未声明 | 所属产品；项目型项目可不传，产品型项目必须传<br>格式：int32 |
+| `--productID` | 请求体 | `number` | 否 | 未声明 | 所属产品；项目型项目可不传，产品型项目必须传<br>格式：int32<br>必须为整数 |
 | `--title` | 请求体 | `string` | 是 | 未声明 | 需求标题 |
 | `--spec` | 请求体 | `string` | 否 | 未声明 | 需求描述 |
-| `--pri` | 请求体 | `number` | 否 | 未声明 | 优先级<br>格式：int32 |
+| `--pri` | 请求体 | `number` | 否 | 未声明 | 优先级<br>格式：int32<br>必须为整数 |
 | `--category` | 请求体 | `string` | 否 | 未声明 | 类别 |
-| `--reviewer` | 请求体 | `string[]` | 否 | 未声明 | 评审人 |
+| `--reviewer` | 请求体 | `string[]` | 否 | 未声明 | 评审人<br>数组元素类型：string |
 
 `--projectID` 可用 `--id` 或首个数字位置参数代替；其余路径 ID 需分别提供。
 
@@ -1536,11 +1714,11 @@ zentao project createBug --projectID=<number> --title=<string> --openedBuild=<st
 | 参数 | 位置 | 类型 | 必填 | 默认值 | 说明与可选值 |
 | --- | --- | --- | --- | --- | --- |
 | `--projectID` | 路径 | `number` | 是 | 未声明 | 项目ID |
-| `--productID` | 请求体 | `number` | 否 | 未声明 | 所属产品；项目型项目可不传，产品型项目必须传<br>格式：int32 |
+| `--productID` | 请求体 | `number` | 否 | 未声明 | 所属产品；项目型项目可不传，产品型项目必须传<br>格式：int32<br>必须为整数 |
 | `--title` | 请求体 | `string` | 是 | 未声明 | Bug标题 |
-| `--openedBuild` | 请求体 | `string[]` | 是 | 未声明 | 影响版本，主干是trunk，其他版本使用版本ID |
-| `--severity` | 请求体 | `number` | 否 | 未声明 | 严重程度<br>格式：int32 |
-| `--pri` | 请求体 | `number` | 否 | 未声明 | 优先级<br>格式：int32 |
+| `--openedBuild` | 请求体 | `string[]` | 是 | 未声明 | 影响版本，主干是trunk，其他版本使用版本ID<br>数组元素类型：string |
+| `--severity` | 请求体 | `number` | 否 | 未声明 | 严重程度<br>格式：int32<br>必须为整数 |
+| `--pri` | 请求体 | `number` | 否 | 未声明 | 优先级<br>格式：int32<br>必须为整数 |
 | `--type` | 请求体 | `string` | 否 | 未声明 | Bug类型 |
 | `--steps` | 请求体 | `string` | 否 | 未声明 | 重现步骤 |
 
@@ -1562,15 +1740,15 @@ zentao project createTask --projectID=<number> --name=<string> [选项]
 | --- | --- | --- | --- | --- | --- |
 | `--projectID` | 路径 | `number` | 是 | 未声明 | 项目ID |
 | `--name` | 请求体 | `string` | 是 | 未声明 | 任务名称 |
-| `--executionID` | 请求体 | `number` | 否 | 未声明 | 所属执行；无执行项目可不传，有执行项目必须传<br>格式：int32 |
+| `--executionID` | 请求体 | `number` | 否 | 未声明 | 所属执行；无执行项目可不传，有执行项目必须传<br>格式：int32<br>必须为整数 |
 | `--type` | 请求体 | `string` | 否 | 未声明 | 任务类型 |
 | `--assignedTo` | 请求体 | `string` | 否 | 未声明 | 指派给 |
 | `--estStarted` | 请求体 | `string` | 否 | 未声明 | 预计开始 |
 | `--deadline` | 请求体 | `string` | 否 | 未声明 | 截止日期 |
-| `--pri` | 请求体 | `number` | 否 | 未声明 | 优先级<br>格式：int32 |
+| `--pri` | 请求体 | `number` | 否 | 未声明 | 优先级<br>格式：int32<br>必须为整数 |
 | `--estimate` | 请求体 | `number` | 否 | 未声明 | 预计工时<br>格式：float |
-| `--module` | 请求体 | `number` | 否 | 未声明 | 所属模块<br>格式：int32 |
-| `--story` | 请求体 | `number` | 否 | 未声明 | 相关需求<br>格式：int32 |
+| `--module` | 请求体 | `number` | 否 | 未声明 | 所属模块<br>格式：int32<br>必须为整数 |
+| `--story` | 请求体 | `number` | 否 | 未声明 | 相关需求<br>格式：int32<br>必须为整数 |
 | `--desc` | 请求体 | `string` | 否 | 未声明 | 任务描述 |
 
 `--projectID` 可用 `--id` 或首个数字位置参数代替；其余路径 ID 需分别提供。
@@ -1594,9 +1772,9 @@ zentao project update --projectID=<number> --name=<string> --model=<string> --be
 | `--model` | 请求体 | `string` | 是 | 未声明 | 项目管理方式(scrum 敏捷 \| waterfall 瀑布 \| kanban 看板 \| agileplus 融合敏捷 \| waterfallplus 融合瀑布) |
 | `--begin` | 请求体 | `string` | 是 | 未声明 | 开始日期 |
 | `--end` | 请求体 | `string` | 是 | 未声明 | 结束日期 |
-| `--products` | 请求体 | `string[]` | 否 | 未声明 | 关联产品 |
-| `--parent` | 请求体 | `number` | 否 | 未声明 | 所属项目集<br>格式：int32 |
-| `--workflowGroup` | 请求体 | `number` | 是 | 未声明 | 项目流程，付费版功能，开源版可以不填<br>格式：int32 |
+| `--products` | 请求体 | `string[]` | 否 | 未声明 | 关联产品<br>数组元素类型：string |
+| `--parent` | 请求体 | `number` | 否 | 未声明 | 所属项目集<br>格式：int32<br>必须为整数 |
+| `--workflowGroup` | 请求体 | `number` | 是 | 未声明 | 项目流程，付费版功能，开源版可以不填<br>格式：int32<br>必须为整数 |
 | `--PM` | 请求体 | `string` | 否 | 未声明 | 项目负责人 |
 
 `--projectID` 可用 `--id` 或首个数字位置参数代替；其余路径 ID 需分别提供。
@@ -1636,11 +1814,11 @@ zentao project members --projectID=<number> --account=<string[]> [选项]
 | 参数 | 位置 | 类型 | 必填 | 默认值 | 说明与可选值 |
 | --- | --- | --- | --- | --- | --- |
 | `--projectID` | 路径 | `number` | 是 | 未声明 | 项目ID |
-| `--account` | 请求体 | `string[]` | 是 | 未声明 | 成员账号，多人时按顺序设置。例如 account=["admin","dev1"] 时，role[0] 对应 admin，role[1] 对应 dev1 |
-| `--role` | 请求体 | `string[]` | 否 | 未声明 | 成员角色，与account顺序一一对应 |
-| `--days` | 请求体 | `string[]` | 否 | 未声明 | 可用工作日，与account顺序一一对应 |
-| `--hours` | 请求体 | `string[]` | 否 | 未声明 | 每日工时，与account顺序一一对应 |
-| `--limited` | 请求体 | `string[]` | 否 | 未声明 | 是否限制日期，与account顺序一一对应 |
+| `--account` | 请求体 | `string[]` | 是 | 未声明 | 成员账号，多人时按顺序设置。例如 account=["admin","dev1"] 时，role[0] 对应 admin，role[1] 对应 dev1<br>数组元素类型：string |
+| `--role` | 请求体 | `string[]` | 否 | 未声明 | 成员角色，与account顺序一一对应<br>数组元素类型：string |
+| `--days` | 请求体 | `string[]` | 否 | 未声明 | 可用工作日，与account顺序一一对应<br>数组元素类型：string |
+| `--hours` | 请求体 | `string[]` | 否 | 未声明 | 每日工时，与account顺序一一对应<br>数组元素类型：string |
+| `--limited` | 请求体 | `string[]` | 否 | 未声明 | 是否限制日期，与account顺序一一对应<br>数组元素类型：string |
 
 `--projectID` 可用 `--id` 或首个数字位置参数代替；其余路径 ID 需分别提供。
 
@@ -1649,6 +1827,8 @@ zentao project members --projectID=<number> --account=<string[]> [选项]
 <a id="module-execution"></a>
 
 ### execution · 执行
+
+执行管理，支持获取执行列表、获取项目的执行列表、获取执行团队列表、获取执行成员列表、创建执行（迭代/阶段/看板）、关闭执行、创建执行的任务模块、获取执行详情、修改执行、删除执行、维护执行成员
 
 快捷用法与字段查询：
 
@@ -1762,23 +1942,23 @@ zentao execution create --project=<number> --name=<string> --begin=<string> --en
 
 | 参数 | 位置 | 类型 | 必填 | 默认值 | 说明与可选值 |
 | --- | --- | --- | --- | --- | --- |
-| `--project` | 请求体 | `number` | 是 | 未声明 | 所属项目<br>格式：int32 |
+| `--project` | 请求体 | `number` | 是 | 未声明 | 所属项目<br>格式：int32<br>必须为整数 |
 | `--name` | 请求体 | `string` | 是 | 未声明 | 迭代/阶段名称 |
 | `--type` | 请求体 | `string` | 否 | 未声明 | 类型(sprint 迭代 \| stage 阶段 \| kanban 看板)。默认按项目模型推导：scrum→sprint、kanban→kanban、waterfall/waterfallplus→stage；IPD 项目创建阶段时必须显式传 stage |
-| `--parent` | 请求体 | `number` | 否 | 未声明 | 父执行/父阶段ID；创建子阶段时传父阶段ID，不传为顶层阶段<br>格式：int32 |
+| `--parent` | 请求体 | `number` | 否 | 未声明 | 父执行/父阶段ID；创建子阶段时传父阶段ID，不传为顶层阶段<br>格式：int32<br>必须为整数 |
 | `--attribute` | 请求体 | `string` | 否 | 未声明 | 阶段类型(mix 综合 \| request 需求 \| design 设计 \| dev 开发 \| qa 测试 \| release 发布 \| review 总结评审 \| other 其他；IPD: concept 概念 \| plan 计划 \| develop 开发 \| qualify 验证 \| launch 发布)。不传为空，有 parent 时继承父阶段 |
 | `--lifetime` | 请求体 | `string` | 否 | 未声明 | 周期(short 短期，迭代 \| long 长期，阶段 \| ops 运维) |
 | `--begin` | 请求体 | `string` | 是 | 未声明 | 开始日期 |
 | `--end` | 请求体 | `string` | 是 | 未声明 | 结束日期 |
-| `--days` | 请求体 | `number` | 否 | 未声明 | 可用工作日<br>格式：int32 |
-| `--products` | 请求体 | `string[]` | 是 | 未声明 | 关联产品；waterfall/waterfallplus 项目创建阶段时必填 |
-| `--plans` | 请求体 | `string[]` | 否 | 未声明 | 关联计划，必须是产品+planID的二维数组 |
+| `--days` | 请求体 | `number` | 否 | 未声明 | 可用工作日<br>格式：int32<br>必须为整数 |
+| `--products` | 请求体 | `string[]` | 是 | 未声明 | 关联产品；waterfall/waterfallplus 项目创建阶段时必填<br>数组元素类型：string |
+| `--plans` | 请求体 | `string[]` | 否 | 未声明 | 关联计划，必须是产品+planID的二维数组<br>数组元素类型：string |
 | `--PO` | 请求体 | `string` | 否 | 未声明 | 产品负责人 |
 | `--QD` | 请求体 | `string` | 否 | 未声明 | 测试负责人 |
 | `--PM` | 请求体 | `string` | 否 | 未声明 | 执行负责人 |
 | `--RD` | 请求体 | `string` | 否 | 未声明 | 发布负责人 |
 | `--acl` | 请求体 | `string` | 否 | `"open"` | 访问控制(open 公开 \| private 私有) |
-| `--milestone` | 请求体 | `number` | 否 | 未声明 | 是否里程碑(0 否\| 1 是)<br>格式：int32 |
+| `--milestone` | 请求体 | `number` | 否 | 未声明 | 是否里程碑(0 否\| 1 是)<br>格式：int32<br>必须为整数 |
 
 可配合[公共选项](#data-options)：`--params`、`--format`、`--silent`、`--data`、`--batch-fail-fast`；其他全局选项见[全局选项](#global-options)。
 
@@ -1816,7 +1996,7 @@ zentao execution createTaskModule --executionID=<number> [选项]
 | --- | --- | --- | --- | --- | --- |
 | `--executionID` | 路径 | `number` | 是 | 未声明 | 执行ID |
 | `--name` | 请求体 | `string` | 否 | 未声明 | 模块名称 |
-| `--parentID` | 请求体 | `number` | 否 | 未声明 | 父模块<br>格式：int32 |
+| `--parentID` | 请求体 | `number` | 否 | 未声明 | 父模块<br>格式：int32<br>必须为整数 |
 
 `--executionID` 可用 `--id` 或首个数字位置参数代替；其余路径 ID 需分别提供。
 
@@ -1853,14 +2033,14 @@ zentao execution update --executionID=<number> --name=<string> --begin=<string> 
 | 参数 | 位置 | 类型 | 必填 | 默认值 | 说明与可选值 |
 | --- | --- | --- | --- | --- | --- |
 | `--executionID` | 路径 | `number` | 是 | 未声明 | 执行ID |
-| `--project` | 请求体 | `number` | 否 | 未声明 | 所属项目<br>格式：int32 |
+| `--project` | 请求体 | `number` | 否 | 未声明 | 所属项目<br>格式：int32<br>必须为整数 |
 | `--name` | 请求体 | `string` | 是 | 未声明 | 迭代名称 |
 | `--lifetime` | 请求体 | `string` | 否 | 未声明 | 执行类型(short 短期 \| long 长期 \| ops 运维) |
 | `--begin` | 请求体 | `string` | 是 | 未声明 | 开始日期 |
 | `--end` | 请求体 | `string` | 是 | 未声明 | 结束日期 |
-| `--days` | 请求体 | `number` | 否 | 未声明 | 可用工作日<br>格式：int32 |
-| `--products` | 请求体 | `string[]` | 否 | 未声明 | 关联产品 |
-| `--plans` | 请求体 | `string[]` | 否 | 未声明 | 关联计划，必须是产品+planID的二维数组 |
+| `--days` | 请求体 | `number` | 否 | 未声明 | 可用工作日<br>格式：int32<br>必须为整数 |
+| `--products` | 请求体 | `string[]` | 否 | 未声明 | 关联产品<br>数组元素类型：string |
+| `--plans` | 请求体 | `string[]` | 否 | 未声明 | 关联计划，必须是产品+planID的二维数组<br>数组元素类型：string |
 | `--PO` | 请求体 | `string` | 否 | 未声明 | 产品负责人 |
 | `--QD` | 请求体 | `string` | 否 | 未声明 | 测试负责人 |
 | `--PM` | 请求体 | `string` | 否 | 未声明 | 执行负责人 |
@@ -1904,11 +2084,11 @@ zentao execution members --executionID=<number> --account=<string[]> [选项]
 | 参数 | 位置 | 类型 | 必填 | 默认值 | 说明与可选值 |
 | --- | --- | --- | --- | --- | --- |
 | `--executionID` | 路径 | `number` | 是 | 未声明 | 执行ID |
-| `--account` | 请求体 | `string[]` | 是 | 未声明 | 成员账号，多人时按顺序设置。例如 account=["admin","dev1"] 时，role[0] 对应 admin，role[1] 对应 dev1 |
-| `--role` | 请求体 | `string[]` | 否 | 未声明 | 成员角色，与account顺序一一对应 |
-| `--days` | 请求体 | `string[]` | 否 | 未声明 | 可用工作日，与account顺序一一对应 |
-| `--hours` | 请求体 | `string[]` | 否 | 未声明 | 每日工时，与account顺序一一对应 |
-| `--limited` | 请求体 | `string[]` | 否 | 未声明 | 是否限制日期，与account顺序一一对应 |
+| `--account` | 请求体 | `string[]` | 是 | 未声明 | 成员账号，多人时按顺序设置。例如 account=["admin","dev1"] 时，role[0] 对应 admin，role[1] 对应 dev1<br>数组元素类型：string |
+| `--role` | 请求体 | `string[]` | 否 | 未声明 | 成员角色，与account顺序一一对应<br>数组元素类型：string |
+| `--days` | 请求体 | `string[]` | 否 | 未声明 | 可用工作日，与account顺序一一对应<br>数组元素类型：string |
+| `--hours` | 请求体 | `string[]` | 否 | 未声明 | 每日工时，与account顺序一一对应<br>数组元素类型：string |
+| `--limited` | 请求体 | `string[]` | 否 | 未声明 | 是否限制日期，与account顺序一一对应<br>数组元素类型：string |
 
 `--executionID` 可用 `--id` 或首个数字位置参数代替；其余路径 ID 需分别提供。
 
@@ -1917,6 +2097,8 @@ zentao execution members --executionID=<number> --account=<string[]> [选项]
 <a id="module-productplan"></a>
 
 ### productplan · 产品计划
+
+产品计划管理，支持获取产品计划列表，支持获取产品下的产品计划、创建产品计划、获取产品计划详情、修改产品计划、删除产品计划
 
 快捷用法与字段查询：
 
@@ -1971,12 +2153,12 @@ zentao productplan create --productID=<number> --title=<string> [选项]
 
 | 参数 | 位置 | 类型 | 必填 | 默认值 | 说明与可选值 |
 | --- | --- | --- | --- | --- | --- |
-| `--productID` | 请求体 | `number` | 是 | 未声明 | 产品ID<br>格式：int32 |
+| `--productID` | 请求体 | `number` | 是 | 未声明 | 产品ID<br>格式：int32<br>必须为整数 |
 | `--title` | 请求体 | `string` | 是 | 未声明 | 计划名称 |
-| `--parent` | 请求体 | `number` | 否 | 未声明 | 父计划ID<br>格式：int32 |
+| `--parent` | 请求体 | `number` | 否 | 未声明 | 父计划ID<br>格式：int32<br>必须为整数 |
 | `--begin` | 请求体 | `string` | 否 | 未声明 | 开始日期 |
 | `--end` | 请求体 | `string` | 否 | 未声明 | 结束日期 |
-| `--branchID` | 请求体 | `number` | 否 | 未声明 | 分支ID<br>格式：int32 |
+| `--branchID` | 请求体 | `number` | 否 | 未声明 | 分支ID<br>格式：int32<br>必须为整数 |
 | `--desc` | 请求体 | `string` | 否 | 未声明 | 计划描述 |
 
 可配合[公共选项](#data-options)：`--params`、`--format`、`--silent`、`--data`、`--batch-fail-fast`；其他全局选项见[全局选项](#global-options)。
@@ -2013,10 +2195,10 @@ zentao productplan update --planID=<number> --title=<string> [选项]
 | --- | --- | --- | --- | --- | --- |
 | `--planID` | 路径 | `number` | 是 | 未声明 | 产品计划ID |
 | `--title` | 请求体 | `string` | 是 | 未声明 | 计划名称 |
-| `--parent` | 请求体 | `number` | 否 | 未声明 | 父计划<br>格式：int32 |
+| `--parent` | 请求体 | `number` | 否 | 未声明 | 父计划<br>格式：int32<br>必须为整数 |
 | `--begin` | 请求体 | `string` | 否 | 未声明 | 开始日期 |
 | `--end` | 请求体 | `string` | 否 | 未声明 | 结束日期 |
-| `--branchID` | 请求体 | `number` | 否 | 未声明 | 分支ID<br>格式：int32 |
+| `--branchID` | 请求体 | `number` | 否 | 未声明 | 分支ID<br>格式：int32<br>必须为整数 |
 | `--desc` | 请求体 | `string` | 否 | 未声明 | 计划描述 |
 
 `--planID` 可用 `--id` 或首个数字位置参数代替；其余路径 ID 需分别提供。
@@ -2046,6 +2228,8 @@ zentao productplan delete --planID=<number> [选项]
 <a id="module-story"></a>
 
 ### story · 需求
+
+需求管理，支持获取需求列表，支持获取项目/产品/执行下的需求、产品的需求模块树、创建需求、获取需求详情、修改需求、修改需求模块、删除需求、删除需求模块、激活需求、变更需求、关闭需求
 
 快捷用法与字段查询：
 
@@ -2126,21 +2310,21 @@ zentao story create --productID=<number> --title=<string> [选项]
 
 | 参数 | 位置 | 类型 | 必填 | 默认值 | 说明与可选值 |
 | --- | --- | --- | --- | --- | --- |
-| `--productID` | 请求体 | `number` | 是 | 未声明 | 产品ID<br>格式：int32 |
+| `--productID` | 请求体 | `number` | 是 | 未声明 | 产品ID<br>格式：int32<br>必须为整数 |
 | `--title` | 请求体 | `string` | 是 | 未声明 | title |
-| `--pri` | 请求体 | `number` | 否 | 未声明 | 优先级，默认是3<br>格式：int32 |
-| `--module` | 请求体 | `number` | 否 | 未声明 | 所属模块<br>格式：int32 |
-| `--parent` | 请求体 | `number` | 否 | 未声明 | 父需求<br>格式：int32 |
+| `--pri` | 请求体 | `number` | 否 | 未声明 | 优先级，默认是3<br>格式：int32<br>必须为整数 |
+| `--module` | 请求体 | `number` | 否 | 未声明 | 所属模块<br>格式：int32<br>必须为整数 |
+| `--parent` | 请求体 | `number` | 否 | 未声明 | 父需求<br>格式：int32<br>必须为整数 |
 | `--estimate` | 请求体 | `number` | 否 | 未声明 | 预计工时<br>格式：float |
 | `--spec` | 请求体 | `string` | 否 | 未声明 | 需求描述 |
-| `--category` | 请求体 | `number` | 否 | 未声明 | 类别(feature 功能 \| interface 接口 \| performance 性能 \| safe 安全 \| experience 体验 \| improve 改进 \| other 其他)<br>格式：int32 |
+| `--category` | 请求体 | `number` | 否 | 未声明 | 类别(feature 功能 \| interface 接口 \| performance 性能 \| safe 安全 \| experience 体验 \| improve 改进 \| other 其他)<br>格式：int32<br>必须为整数 |
 | `--source` | 请求体 | `string` | 否 | 未声明 | 来源(customer 客户 \| user 用户 \| po 产品经理 \| market 市场 \| service 客服 \| operation 运营 \| support 技术支持 \| competitor 竞争对手 \| partner 合作伙伴 \| dev 开发人员 \| tester 测试人员 \| bug Bug \| forum 论坛 \| other 其他) |
 | `--verify` | 请求体 | `string` | 否 | 未声明 | 验收标准 |
 | `--assignedTo` | 请求体 | `string` | 否 | 未声明 | 指派给 |
-| `--reviewer` | 请求体 | `string[]` | 否 | 未声明 | 评审人员，如果无需评审则不传 |
-| `--project` | 请求体 | `number` | 否 | 未声明 | 所属项目<br>格式：int32 |
-| `--execution` | 请求体 | `number` | 否 | 未声明 | 所属执行<br>格式：int32 |
-| `--grade` | 请求体 | `number` | 否 | 未声明 | 需求层级，可用的需求层级可以通过 story-getGrades 操作获取 |
+| `--reviewer` | 请求体 | `string[]` | 否 | 未声明 | 评审人员，如果无需评审则不传<br>数组元素类型：string |
+| `--project` | 请求体 | `number` | 否 | 未声明 | 所属项目<br>格式：int32<br>必须为整数 |
+| `--execution` | 请求体 | `number` | 否 | 未声明 | 所属执行<br>格式：int32<br>必须为整数 |
+| `--grade` | 请求体 | `number` | 否 | 未声明 | 需求层级，可用的需求层级可以通过 story-getGrades 操作获取<br>必须为整数 |
 
 可配合[公共选项](#data-options)：`--params`、`--format`、`--silent`、`--data`、`--batch-fail-fast`；其他全局选项见[全局选项](#global-options)。
 
@@ -2176,14 +2360,14 @@ zentao story update --storyID=<number> --title=<string> [选项]
 | --- | --- | --- | --- | --- | --- |
 | `--storyID` | 路径 | `number` | 是 | 未声明 | 需求ID |
 | `--title` | 请求体 | `string` | 是 | 未声明 | title |
-| `--pri` | 请求体 | `number` | 否 | 未声明 | 优先级，默认是3<br>格式：int32 |
-| `--module` | 请求体 | `number` | 否 | 未声明 | 所属模块<br>格式：int32 |
-| `--parent` | 请求体 | `number` | 否 | 未声明 | 父需求<br>格式：int32 |
+| `--pri` | 请求体 | `number` | 否 | 未声明 | 优先级，默认是3<br>格式：int32<br>必须为整数 |
+| `--module` | 请求体 | `number` | 否 | 未声明 | 所属模块<br>格式：int32<br>必须为整数 |
+| `--parent` | 请求体 | `number` | 否 | 未声明 | 父需求<br>格式：int32<br>必须为整数 |
 | `--estimate` | 请求体 | `number` | 否 | 未声明 | 预计工时<br>格式：float |
 | `--category` | 请求体 | `string` | 否 | 未声明 | 类别 |
 | `--source` | 请求体 | `string` | 否 | 未声明 | 来源(customer 客户 \| user 用户 \| po 产品经理 \| market 市场 \| service 客服 \| operation 运营 \| support 技术支持 \| competitor 竞争对手 \| partner 合作伙伴 \| dev 开发人员 \| tester 测试人员 \| bug Bug \| forum 论坛 \| other 其他) |
 | `--assignedTo` | 请求体 | `string` | 否 | 未声明 | 指派给 |
-| `--plan` | 请求体 | `number` | 否 | 未声明 | 所属计划<br>格式：int32 |
+| `--plan` | 请求体 | `number` | 否 | 未声明 | 所属计划<br>格式：int32<br>必须为整数 |
 
 `--storyID` 可用 `--id` 或首个数字位置参数代替；其余路径 ID 需分别提供。
 
@@ -2205,7 +2389,7 @@ zentao story updateModule --moduleID=<number> [选项]
 | --- | --- | --- | --- | --- | --- |
 | `--moduleID` | 路径 | `number` | 是 | 未声明 | 模块ID |
 | `--name` | 请求体 | `string` | 否 | 未声明 | 模块名称 |
-| `--parent` | 请求体 | `number` | 否 | 未声明 | 父模块<br>格式：int32 |
+| `--parent` | 请求体 | `number` | 否 | 未声明 | 父模块<br>格式：int32<br>必须为整数 |
 
 `--moduleID` 可用 `--id` 或首个数字位置参数代替；其余路径 ID 需分别提供。
 
@@ -2283,7 +2467,7 @@ zentao story change --storyID=<number> [选项]
 | --- | --- | --- | --- | --- | --- |
 | `--storyID` | 路径 | `number` | 是 | 未声明 | 需求ID |
 | `--title` | 请求体 | `string` | 否 | 未声明 | 需求名称 |
-| `--reviewer` | 请求体 | `string[]` | 否 | 未声明 | 评审人员，如果无需评审则不传 |
+| `--reviewer` | 请求体 | `string[]` | 否 | 未声明 | 评审人员，如果无需评审则不传<br>数组元素类型：string |
 | `--spec` | 请求体 | `string` | 否 | 未声明 | 需求描述 |
 | `--verify` | 请求体 | `string` | 否 | 未声明 | 验收标准 |
 
@@ -2328,6 +2512,8 @@ zentao story getGrades [选项]
 <a id="module-epic"></a>
 
 ### epic · 业务需求
+
+业务需求管理，支持获取业务需求列表，支持获取产品下的业务需求、创建业务需求、获取业务需求详情、修改业务需求、删除业务需求、激活业务需求、变更业务需求、关闭业务需求
 
 快捷用法与字段查询：
 
@@ -2385,18 +2571,18 @@ zentao epic create --productID=<number> --title=<string> [选项]
 
 | 参数 | 位置 | 类型 | 必填 | 默认值 | 说明与可选值 |
 | --- | --- | --- | --- | --- | --- |
-| `--productID` | 请求体 | `number` | 是 | 未声明 | 产品ID<br>格式：int32 |
+| `--productID` | 请求体 | `number` | 是 | 未声明 | 产品ID<br>格式：int32<br>必须为整数 |
 | `--title` | 请求体 | `string` | 是 | 未声明 | title |
-| `--pri` | 请求体 | `number` | 否 | 未声明 | 优先级，默认是3<br>格式：int32 |
-| `--module` | 请求体 | `number` | 否 | 未声明 | 所属模块<br>格式：int32 |
-| `--parent` | 请求体 | `number` | 否 | 未声明 | 父业务需求<br>格式：int32 |
+| `--pri` | 请求体 | `number` | 否 | 未声明 | 优先级，默认是3<br>格式：int32<br>必须为整数 |
+| `--module` | 请求体 | `number` | 否 | 未声明 | 所属模块<br>格式：int32<br>必须为整数 |
+| `--parent` | 请求体 | `number` | 否 | 未声明 | 父业务需求<br>格式：int32<br>必须为整数 |
 | `--estimate` | 请求体 | `number` | 否 | 未声明 | 预计工时<br>格式：float |
 | `--spec` | 请求体 | `string` | 否 | 未声明 | 业务需求描述 |
-| `--category` | 请求体 | `number` | 否 | 未声明 | 类别(feature 功能 \| interface 接口 \| performance 性能 \| safe 安全 \| experience 体验 \| improve 改进 \| other 其他)<br>格式：int32 |
+| `--category` | 请求体 | `number` | 否 | 未声明 | 类别(feature 功能 \| interface 接口 \| performance 性能 \| safe 安全 \| experience 体验 \| improve 改进 \| other 其他)<br>格式：int32<br>必须为整数 |
 | `--source` | 请求体 | `string` | 否 | 未声明 | 来源(customer 客户 \| user 用户 \| po 产品经理 \| market 市场 \| service 客服 \| operation 运营 \| support 技术支持 \| competitor 竞争对手 \| partner 合作伙伴 \| dev 开发人员 \| tester 测试人员 \| bug Bug \| forum 论坛 \| other 其他) |
 | `--verify` | 请求体 | `string` | 否 | 未声明 | 验收标准 |
 | `--assignedTo` | 请求体 | `string` | 否 | 未声明 | 指派给 |
-| `--reviewer` | 请求体 | `string[]` | 否 | 未声明 | 评审人员，如果无需评审则不传 |
+| `--reviewer` | 请求体 | `string[]` | 否 | 未声明 | 评审人员，如果无需评审则不传<br>数组元素类型：string |
 
 可配合[公共选项](#data-options)：`--params`、`--format`、`--silent`、`--data`、`--batch-fail-fast`；其他全局选项见[全局选项](#global-options)。
 
@@ -2432,11 +2618,11 @@ zentao epic update --storyID=<number> --title=<string> [选项]
 | --- | --- | --- | --- | --- | --- |
 | `--storyID` | 路径 | `number` | 是 | 未声明 | 需求ID |
 | `--title` | 请求体 | `string` | 是 | 未声明 | 需求名称 |
-| `--pri` | 请求体 | `number` | 否 | 未声明 | 优先级，默认是3<br>格式：int32 |
-| `--module` | 请求体 | `number` | 否 | 未声明 | 所属模块<br>格式：int32 |
-| `--parent` | 请求体 | `number` | 否 | 未声明 | 父业务需求<br>格式：int32 |
+| `--pri` | 请求体 | `number` | 否 | 未声明 | 优先级，默认是3<br>格式：int32<br>必须为整数 |
+| `--module` | 请求体 | `number` | 否 | 未声明 | 所属模块<br>格式：int32<br>必须为整数 |
+| `--parent` | 请求体 | `number` | 否 | 未声明 | 父业务需求<br>格式：int32<br>必须为整数 |
 | `--estimate` | 请求体 | `number` | 否 | 未声明 | 预计工时<br>格式：float |
-| `--category` | 请求体 | `number` | 否 | 未声明 | 类别(feature 功能 \| interface 接口 \| performance 性能 \| safe 安全 \| experience 体验 \| improve 改进 \| other 其他)<br>格式：int32 |
+| `--category` | 请求体 | `number` | 否 | 未声明 | 类别(feature 功能 \| interface 接口 \| performance 性能 \| safe 安全 \| experience 体验 \| improve 改进 \| other 其他)<br>格式：int32<br>必须为整数 |
 | `--source` | 请求体 | `string` | 否 | 未声明 | 来源(customer 客户 \| user 用户 \| po 产品经理 \| market 市场 \| service 客服 \| operation 运营 \| support 技术支持 \| competitor 竞争对手 \| partner 合作伙伴 \| dev 开发人员 \| tester 测试人员 \| bug Bug \| forum 论坛 \| other 其他) |
 | `--assignedTo` | 请求体 | `string` | 否 | 未声明 | 指派给 |
 
@@ -2498,7 +2684,7 @@ zentao epic change --storyID=<number> [选项]
 | --- | --- | --- | --- | --- | --- |
 | `--storyID` | 路径 | `number` | 是 | 未声明 | 需求ID |
 | `--title` | 请求体 | `string` | 否 | 未声明 | 需求名称 |
-| `--reviewer` | 请求体 | `string[]` | 否 | 未声明 | 评审人员，如果无需评审则不传 |
+| `--reviewer` | 请求体 | `string[]` | 否 | 未声明 | 评审人员，如果无需评审则不传<br>数组元素类型：string |
 | `--spec` | 请求体 | `string` | 否 | 未声明 | 需求描述 |
 | `--verify` | 请求体 | `string` | 否 | 未声明 | 验收标准 |
 
@@ -2529,6 +2715,8 @@ zentao epic close --storyID=<number> --closedReason=<string> [选项]
 <a id="module-requirement"></a>
 
 ### requirement · 用户需求
+
+用户需求管理，支持获取用户需求列表，支持获取产品下的用户需求、创建用户需求、获取用户需求详情、修改用户需求、删除用户需求、激活用户需求、变更用户需求、关闭用户需求
 
 快捷用法与字段查询：
 
@@ -2586,18 +2774,18 @@ zentao requirement create --productID=<number> --title=<string> [选项]
 
 | 参数 | 位置 | 类型 | 必填 | 默认值 | 说明与可选值 |
 | --- | --- | --- | --- | --- | --- |
-| `--productID` | 请求体 | `number` | 是 | 未声明 | 产品ID<br>格式：int32 |
+| `--productID` | 请求体 | `number` | 是 | 未声明 | 产品ID<br>格式：int32<br>必须为整数 |
 | `--title` | 请求体 | `string` | 是 | 未声明 | title |
-| `--pri` | 请求体 | `number` | 否 | 未声明 | 优先级，默认是3<br>格式：int32 |
-| `--module` | 请求体 | `number` | 否 | 未声明 | 所属模块<br>格式：int32 |
-| `--parent` | 请求体 | `number` | 否 | 未声明 | 父用户需求<br>格式：int32 |
+| `--pri` | 请求体 | `number` | 否 | 未声明 | 优先级，默认是3<br>格式：int32<br>必须为整数 |
+| `--module` | 请求体 | `number` | 否 | 未声明 | 所属模块<br>格式：int32<br>必须为整数 |
+| `--parent` | 请求体 | `number` | 否 | 未声明 | 父用户需求<br>格式：int32<br>必须为整数 |
 | `--estimate` | 请求体 | `number` | 否 | 未声明 | 预计工时<br>格式：float |
 | `--spec` | 请求体 | `string` | 否 | 未声明 | 用户需求描述 |
-| `--category` | 请求体 | `number` | 否 | 未声明 | 类别(feature 功能 \| interface 接口 \| performance 性能 \| safe 安全 \| experience 体验 \| improve 改进 \| other 其他)<br>格式：int32 |
+| `--category` | 请求体 | `number` | 否 | 未声明 | 类别(feature 功能 \| interface 接口 \| performance 性能 \| safe 安全 \| experience 体验 \| improve 改进 \| other 其他)<br>格式：int32<br>必须为整数 |
 | `--source` | 请求体 | `string` | 否 | 未声明 | 来源(customer 客户 \| user 用户 \| po 产品经理 \| market 市场 \| service 客服 \| operation 运营 \| support 技术支持 \| competitor 竞争对手 \| partner 合作伙伴 \| dev 开发人员 \| tester 测试人员 \| bug Bug \| forum 论坛 \| other 其他) |
 | `--verify` | 请求体 | `string` | 否 | 未声明 | 验收标准 |
 | `--assignedTo` | 请求体 | `string` | 否 | 未声明 | 指派给 |
-| `--reviewer` | 请求体 | `string[]` | 否 | 未声明 | 评审人员，如果无需评审则不传 |
+| `--reviewer` | 请求体 | `string[]` | 否 | 未声明 | 评审人员，如果无需评审则不传<br>数组元素类型：string |
 
 可配合[公共选项](#data-options)：`--params`、`--format`、`--silent`、`--data`、`--batch-fail-fast`；其他全局选项见[全局选项](#global-options)。
 
@@ -2633,11 +2821,11 @@ zentao requirement update --storyID=<number> --title=<string> [选项]
 | --- | --- | --- | --- | --- | --- |
 | `--storyID` | 路径 | `number` | 是 | 未声明 | 需求ID |
 | `--title` | 请求体 | `string` | 是 | 未声明 | title |
-| `--pri` | 请求体 | `number` | 否 | 未声明 | 优先级，默认是3<br>格式：int32 |
-| `--module` | 请求体 | `number` | 否 | 未声明 | 所属模块<br>格式：int32 |
-| `--parent` | 请求体 | `number` | 否 | 未声明 | 父用户需求<br>格式：int32 |
+| `--pri` | 请求体 | `number` | 否 | 未声明 | 优先级，默认是3<br>格式：int32<br>必须为整数 |
+| `--module` | 请求体 | `number` | 否 | 未声明 | 所属模块<br>格式：int32<br>必须为整数 |
+| `--parent` | 请求体 | `number` | 否 | 未声明 | 父用户需求<br>格式：int32<br>必须为整数 |
 | `--estimate` | 请求体 | `number` | 否 | 未声明 | 预计工时<br>格式：float |
-| `--category` | 请求体 | `number` | 否 | 未声明 | 类别(feature 功能 \| interface 接口 \| performance 性能 \| safe 安全 \| experience 体验 \| improve 改进 \| other 其他)<br>格式：int32 |
+| `--category` | 请求体 | `number` | 否 | 未声明 | 类别(feature 功能 \| interface 接口 \| performance 性能 \| safe 安全 \| experience 体验 \| improve 改进 \| other 其他)<br>格式：int32<br>必须为整数 |
 | `--source` | 请求体 | `string` | 否 | 未声明 | 来源(customer 客户 \| user 用户 \| po 产品经理 \| market 市场 \| service 客服 \| operation 运营 \| support 技术支持 \| competitor 竞争对手 \| partner 合作伙伴 \| dev 开发人员 \| tester 测试人员 \| bug Bug \| forum 论坛 \| other 其他) |
 | `--assignedTo` | 请求体 | `string` | 否 | 未声明 | 指派给 |
 
@@ -2701,7 +2889,7 @@ zentao requirement change --storyID=<number> [选项]
 | `--title` | 请求体 | `string` | 否 | 未声明 | 需求名称 |
 | `--spec` | 请求体 | `string` | 否 | 未声明 | 需求描述 |
 | `--verify` | 请求体 | `string` | 否 | 未声明 | 验收标准 |
-| `--reviewer` | 请求体 | `string[]` | 否 | 未声明 | 评审人员，如果无需评审则不传 |
+| `--reviewer` | 请求体 | `string[]` | 否 | 未声明 | 评审人员，如果无需评审则不传<br>数组元素类型：string |
 
 `--storyID` 可用 `--id` 或首个数字位置参数代替；其余路径 ID 需分别提供。
 
@@ -2730,6 +2918,8 @@ zentao requirement close --storyID=<number> --closedReason=<string> [选项]
 <a id="module-bug"></a>
 
 ### bug · Bug
+
+Bug管理，支持获取Bug列表，支持获取项目/产品/执行下的Bug、产品的Bug模块树、创建Bug、获取Bug详情、修改Bug、修改Bug模块、删除Bug、删除Bug模块、激活Bug、关闭Bug、确认Bug、解决Bug
 
 快捷用法与字段查询：
 
@@ -2810,16 +3000,16 @@ zentao bug create --productID=<number> --title=<string> --openedBuild=<string[]>
 
 | 参数 | 位置 | 类型 | 必填 | 默认值 | 说明与可选值 |
 | --- | --- | --- | --- | --- | --- |
-| `--productID` | 请求体 | `number` | 是 | 未声明 | 所属产品<br>格式：int32 |
+| `--productID` | 请求体 | `number` | 是 | 未声明 | 所属产品<br>格式：int32<br>必须为整数 |
 | `--title` | 请求体 | `string` | 是 | 未声明 | Bug标题 |
-| `--openedBuild` | 请求体 | `string[]` | 是 | 未声明 | 影响版本,主干是trunk，其他版本使用版本ID |
-| `--project` | 请求体 | `number` | 否 | 未声明 | 所属项目<br>格式：int32 |
-| `--execution` | 请求体 | `number` | 否 | 未声明 | 所属执行<br>格式：int32 |
-| `--severity` | 请求体 | `number` | 否 | 未声明 | 严重程度，默认是3<br>格式：int32 |
-| `--pri` | 请求体 | `number` | 否 | 未声明 | 优先级，默认是3<br>格式：int32 |
+| `--openedBuild` | 请求体 | `string[]` | 是 | 未声明 | 影响版本,主干是trunk，其他版本使用版本ID<br>数组元素类型：string |
+| `--project` | 请求体 | `number` | 否 | 未声明 | 所属项目<br>格式：int32<br>必须为整数 |
+| `--execution` | 请求体 | `number` | 否 | 未声明 | 所属执行<br>格式：int32<br>必须为整数 |
+| `--severity` | 请求体 | `number` | 否 | 未声明 | 严重程度，默认是3<br>格式：int32<br>必须为整数 |
+| `--pri` | 请求体 | `number` | 否 | 未声明 | 优先级，默认是3<br>格式：int32<br>必须为整数 |
 | `--type` | 请求体 | `string` | 否 | 未声明 | Bug类型(codeerror 代码错误 \| config 配置相关 \| install 安装部署 \| security 安全相关 \| performance 性能问题 \| standard 标准规范 \| automation 测试脚本 \| designdefect 设计缺陷 \| others 其他) |
 | `--steps` | 请求体 | `string` | 否 | 未声明 | 重现步骤 |
-| `--story` | 请求体 | `number` | 否 | 未声明 | 相关需求<br>格式：int32 |
+| `--story` | 请求体 | `number` | 否 | 未声明 | 相关需求<br>格式：int32<br>必须为整数 |
 | `--assignedTo` | 请求体 | `string` | 否 | 未声明 | 指派给 |
 
 可用 `--product` 代替 `--productID`；平铺参数同时提供两者时必须指定同一个产品。`--data` 内的 `productID` 仍优先，最终产品 ID 会同时发送到查询串和请求体。
@@ -2858,14 +3048,14 @@ zentao bug update --bugID=<number> [选项]
 | --- | --- | --- | --- | --- | --- |
 | `--bugID` | 路径 | `number` | 是 | 未声明 | Bug ID |
 | `--title` | 请求体 | `string` | 否 | 未声明 | Bug标题 |
-| `--severity` | 请求体 | `number` | 否 | 未声明 | 严重程度，默认是3<br>格式：int32 |
-| `--pri` | 请求体 | `number` | 否 | 未声明 | 优先级，默认是3<br>格式：int32 |
+| `--severity` | 请求体 | `number` | 否 | 未声明 | 严重程度，默认是3<br>格式：int32<br>必须为整数 |
+| `--pri` | 请求体 | `number` | 否 | 未声明 | 优先级，默认是3<br>格式：int32<br>必须为整数 |
 | `--type` | 请求体 | `string` | 否 | 未声明 | Bug类型(codeerror 代码错误 \| config 配置相关 \| install 安装部署 \| security 安全相关 \| performance 性能问题 \| standard 标准规范 \| automation 测试脚本 \| designdefect 设计缺陷 \| others 其他) |
-| `--openedBuild` | 请求体 | `string[]` | 否 | 未声明 | 影响版本,主干是trunk，其他版本使用版本ID |
+| `--openedBuild` | 请求体 | `string[]` | 否 | 未声明 | 影响版本,主干是trunk，其他版本使用版本ID<br>数组元素类型：string |
 | `--steps` | 请求体 | `string` | 否 | 未声明 | 重现步骤 |
-| `--project` | 请求体 | `number` | 否 | 未声明 | 所属项目<br>格式：int32 |
-| `--execution` | 请求体 | `number` | 否 | 未声明 | 所属执行<br>格式：int32 |
-| `--story` | 请求体 | `number` | 否 | 未声明 | 相关需求<br>格式：int32 |
+| `--project` | 请求体 | `number` | 否 | 未声明 | 所属项目<br>格式：int32<br>必须为整数 |
+| `--execution` | 请求体 | `number` | 否 | 未声明 | 所属执行<br>格式：int32<br>必须为整数 |
+| `--story` | 请求体 | `number` | 否 | 未声明 | 相关需求<br>格式：int32<br>必须为整数 |
 | `--assignedTo` | 请求体 | `string` | 否 | 未声明 | 指派给 |
 
 `--bugID` 可用 `--id` 或首个数字位置参数代替；其余路径 ID 需分别提供。
@@ -2888,7 +3078,7 @@ zentao bug updateModule --moduleID=<number> [选项]
 | --- | --- | --- | --- | --- | --- |
 | `--moduleID` | 路径 | `number` | 是 | 未声明 | 模块ID |
 | `--name` | 请求体 | `string` | 否 | 未声明 | 模块名称 |
-| `--parent` | 请求体 | `number` | 否 | 未声明 | 父模块<br>格式：int32 |
+| `--parent` | 请求体 | `number` | 否 | 未声明 | 父模块<br>格式：int32<br>必须为整数 |
 
 `--moduleID` 可用 `--id` 或首个数字位置参数代替；其余路径 ID 需分别提供。
 
@@ -2945,7 +3135,7 @@ zentao bug activate --bugID=<number> [选项]
 | 参数 | 位置 | 类型 | 必填 | 默认值 | 说明与可选值 |
 | --- | --- | --- | --- | --- | --- |
 | `--bugID` | 路径 | `number` | 是 | 未声明 | Bug ID |
-| `--openedBuild` | 请求体 | `string[]` | 否 | 未声明 | 影响版本, trunk为主干 |
+| `--openedBuild` | 请求体 | `string[]` | 否 | 未声明 | 影响版本, trunk为主干<br>数组元素类型：string |
 | `--assignedTo` | 请求体 | `string` | 否 | 未声明 | 指派给 |
 | `--comment` | 请求体 | `string` | 否 | 未声明 | 备注 |
 
@@ -2987,10 +3177,10 @@ zentao bug confirm --bugID=<number> [选项]
 | `--bugID` | 路径 | `number` | 是 | 未声明 | Bug ID |
 | `--assignedTo` | 请求体 | `string` | 否 | 未声明 | 指派给 |
 | `--type` | 请求体 | `string` | 否 | 未声明 | Bug类型(codeerror 代码错误 \| config 配置相关 \| install 安装部署 \| security 安全相关 \| performance 性能问题 \| standard 标准规范 \| automation 测试脚本 \| designdefect 设计缺陷 \| others 其他) |
-| `--pri` | 请求体 | `number` | 否 | 未声明 | 优先级，默认是3<br>格式：int32 |
+| `--pri` | 请求体 | `number` | 否 | 未声明 | 优先级，默认是3<br>格式：int32<br>必须为整数 |
 | `--deadline` | 请求体 | `string` | 否 | 未声明 | 截止日期 |
 | `--status` | 请求体 | `string` | 否 | 未声明 | 状态 |
-| `--mailto` | 请求体 | `string[]` | 否 | 未声明 | 抄送给 |
+| `--mailto` | 请求体 | `string[]` | 否 | 未声明 | 抄送给<br>数组元素类型：string |
 | `--comment` | 请求体 | `string` | 否 | 未声明 | 备注 |
 
 `--bugID` 可用 `--id` 或首个数字位置参数代替；其余路径 ID 需分别提供。
@@ -3023,6 +3213,8 @@ zentao bug resolve --bugID=<number> --resolution=<string> [选项]
 <a id="module-testcase"></a>
 
 ### testcase · 测试用例
+
+测试用例管理，支持获取测试用例列表，支持获取产品/项目/执行下的测试用例、产品的用例模块树、创建测试用例、获取测试用例详情、修改测试用例、修改用例模块、删除测试用例、删除用例模块
 
 快捷用法与字段查询：
 
@@ -3099,18 +3291,18 @@ zentao testcase create --productID=<number> --title=<string> [选项]
 
 | 参数 | 位置 | 类型 | 必填 | 默认值 | 说明与可选值 |
 | --- | --- | --- | --- | --- | --- |
-| `--productID` | 请求体 | `number` | 是 | 未声明 | 所属产品<br>格式：int32 |
+| `--productID` | 请求体 | `number` | 是 | 未声明 | 所属产品<br>格式：int32<br>必须为整数 |
 | `--title` | 请求体 | `string` | 是 | 未声明 | 用例标题 |
-| `--module` | 请求体 | `number` | 否 | 未声明 | 所属模块<br>格式：int32 |
-| `--story` | 请求体 | `number` | 否 | 未声明 | 相关需求<br>格式：int32 |
-| `--pri` | 请求体 | `number` | 否 | 未声明 | 优先级<br>格式：int32 |
+| `--module` | 请求体 | `number` | 否 | 未声明 | 所属模块<br>格式：int32<br>必须为整数 |
+| `--story` | 请求体 | `number` | 否 | 未声明 | 相关需求<br>格式：int32<br>必须为整数 |
+| `--pri` | 请求体 | `number` | 否 | 未声明 | 优先级<br>格式：int32<br>必须为整数 |
 | `--type` | 请求体 | `string` | 否 | 未声明 | 用例类型(unit 单元测试 \| interface 接口测试 \| feature 功能测试 \| install 安装部署 \| config 配置相关 \| performance 性能测试 \| security 安全相关 \| other 其他) |
 | `--precondition` | 请求体 | `string` | 否 | 未声明 | 前置条件 |
-| `--steps` | 请求体 | `string[]` | 否 | 未声明 | 用例步骤, 如果是嵌套用例，可以通过key表示嵌套关系 {"1": "分组1", "1.1": "子分组1.1", "1.1.1": "步骤1.1.1"} |
-| `--expects` | 请求体 | `string[]` | 否 | 未声明 | 用例步骤期望, 如果是嵌套用例步骤，可以通过key表示嵌套关系 {"1": "", "1.1": "", "1.1.1": "步骤1.1.1的期望"} |
-| `--stepType` | 请求体 | `string[]` | 否 | 未声明 | 用例步骤类型(step 步骤 \| group 父级步骤), 如果是嵌套用例步骤，可以通过key表示嵌套关系 {"1": "group", "1.1": "group", "1.1.1": "step"} |
-| `--project` | 请求体 | `number` | 否 | 未声明 | 所属项目<br>格式：int32 |
-| `--execution` | 请求体 | `number` | 否 | 未声明 | 所属执行<br>格式：int32 |
+| `--steps` | 请求体 | `string[]` | 否 | 未声明 | 用例步骤, 如果是嵌套用例，可以通过key表示嵌套关系 {"1": "分组1", "1.1": "子分组1.1", "1.1.1": "步骤1.1.1"}<br>数组元素类型：string |
+| `--expects` | 请求体 | `string[]` | 否 | 未声明 | 用例步骤期望, 如果是嵌套用例步骤，可以通过key表示嵌套关系 {"1": "", "1.1": "", "1.1.1": "步骤1.1.1的期望"}<br>数组元素类型：string |
+| `--stepType` | 请求体 | `string[]` | 否 | 未声明 | 用例步骤类型(step 步骤 \| group 父级步骤), 如果是嵌套用例步骤，可以通过key表示嵌套关系 {"1": "group", "1.1": "group", "1.1.1": "step"}<br>数组元素类型：string |
+| `--project` | 请求体 | `number` | 否 | 未声明 | 所属项目<br>格式：int32<br>必须为整数 |
+| `--execution` | 请求体 | `number` | 否 | 未声明 | 所属执行<br>格式：int32<br>必须为整数 |
 
 可配合[公共选项](#data-options)：`--params`、`--format`、`--silent`、`--data`、`--batch-fail-fast`；其他全局选项见[全局选项](#global-options)。
 
@@ -3146,14 +3338,14 @@ zentao testcase update --caseID=<number> --title=<string> [选项]
 | --- | --- | --- | --- | --- | --- |
 | `--caseID` | 路径 | `number` | 是 | 未声明 | 测试用例ID |
 | `--title` | 请求体 | `string` | 是 | 未声明 | 用例标题 |
-| `--module` | 请求体 | `number` | 否 | 未声明 | 所属模块<br>格式：int32 |
-| `--story` | 请求体 | `number` | 否 | 未声明 | 相关需求<br>格式：int32 |
-| `--pri` | 请求体 | `number` | 否 | 未声明 | 优先级<br>格式：int32 |
+| `--module` | 请求体 | `number` | 否 | 未声明 | 所属模块<br>格式：int32<br>必须为整数 |
+| `--story` | 请求体 | `number` | 否 | 未声明 | 相关需求<br>格式：int32<br>必须为整数 |
+| `--pri` | 请求体 | `number` | 否 | 未声明 | 优先级<br>格式：int32<br>必须为整数 |
 | `--type` | 请求体 | `string` | 否 | 未声明 | 用例类型(unit 单元测试 \| interface 接口测试 \| feature 功能测试 \| install 安装部署 \| config 配置相关 \| performance 性能测试 \| security 安全相关 \| other 其他) |
 | `--precondition` | 请求体 | `string` | 否 | 未声明 | 前置条件 |
-| `--steps` | 请求体 | `string[]` | 否 | 未声明 | 用例步骤, 如果是嵌套用例，可以通过key表示嵌套关系 {"1": "分组1", "1.1": "子分组1.1", "1.1.1": "步骤1.1.1"} |
-| `--expects` | 请求体 | `string[]` | 否 | 未声明 | 用例步骤期望, 如果是嵌套用例步骤，可以通过key表示嵌套关系 {"1": "", "1.1": "", "1.1.1": "步骤1.1.1的期望"} |
-| `--stepType` | 请求体 | `string[]` | 否 | 未声明 | 用例步骤类型(step 步骤 \| group 父级步骤), 如果是嵌套用例步骤，可以通过key表示嵌套关系 {"1": "group", "1.1": "group", "1.1.1": "step"} |
+| `--steps` | 请求体 | `string[]` | 否 | 未声明 | 用例步骤, 如果是嵌套用例，可以通过key表示嵌套关系 {"1": "分组1", "1.1": "子分组1.1", "1.1.1": "步骤1.1.1"}<br>数组元素类型：string |
+| `--expects` | 请求体 | `string[]` | 否 | 未声明 | 用例步骤期望, 如果是嵌套用例步骤，可以通过key表示嵌套关系 {"1": "", "1.1": "", "1.1.1": "步骤1.1.1的期望"}<br>数组元素类型：string |
+| `--stepType` | 请求体 | `string[]` | 否 | 未声明 | 用例步骤类型(step 步骤 \| group 父级步骤), 如果是嵌套用例步骤，可以通过key表示嵌套关系 {"1": "group", "1.1": "group", "1.1.1": "step"}<br>数组元素类型：string |
 
 `--caseID` 可用 `--id` 或首个数字位置参数代替；其余路径 ID 需分别提供。
 
@@ -3175,7 +3367,7 @@ zentao testcase updateModule --moduleID=<number> [选项]
 | --- | --- | --- | --- | --- | --- |
 | `--moduleID` | 路径 | `number` | 是 | 未声明 | 模块ID |
 | `--name` | 请求体 | `string` | 否 | 未声明 | 模块名称 |
-| `--parent` | 请求体 | `number` | 否 | 未声明 | 父模块<br>格式：int32 |
+| `--parent` | 请求体 | `number` | 否 | 未声明 | 父模块<br>格式：int32<br>必须为整数 |
 
 `--moduleID` 可用 `--id` 或首个数字位置参数代替；其余路径 ID 需分别提供。
 
@@ -3222,6 +3414,8 @@ zentao testcase deleteModule --moduleID=<number> [选项]
 <a id="module-task"></a>
 
 ### task · 任务
+
+任务管理，支持获取任务列表，支持获取执行下的任务、执行的任务模块树、创建任务、获取任务详情、修改任务、修改任务模块、删除任务、删除任务模块、激活任务、关闭任务、完成任务、启动任务
 
 快捷用法与字段查询：
 
@@ -3300,17 +3494,17 @@ zentao task create --name=<string> --executionID=<number> [选项]
 | 参数 | 位置 | 类型 | 必填 | 默认值 | 说明与可选值 |
 | --- | --- | --- | --- | --- | --- |
 | `--name` | 请求体 | `string` | 是 | 未声明 | 任务名称 |
-| `--executionID` | 请求体 | `number` | 是 | 未声明 | 所属执行<br>格式：int32 |
+| `--executionID` | 请求体 | `number` | 是 | 未声明 | 所属执行<br>格式：int32<br>必须为整数 |
 | `--type` | 请求体 | `string` | 否 | 未声明 | 任务类型 |
 | `--assignedTo` | 请求体 | `string` | 否 | 未声明 | 指派给 |
 | `--estStarted` | 请求体 | `string` | 否 | 未声明 | 预计开始 |
 | `--deadline` | 请求体 | `string` | 否 | 未声明 | 截止日期 |
-| `--pri` | 请求体 | `number` | 否 | 未声明 | 优先级<br>格式：int32 |
+| `--pri` | 请求体 | `number` | 否 | 未声明 | 优先级<br>格式：int32<br>必须为整数 |
 | `--estimate` | 请求体 | `number` | 否 | 未声明 | 预计工时<br>格式：float |
-| `--module` | 请求体 | `number` | 否 | 未声明 | 所属模块<br>格式：int32 |
-| `--story` | 请求体 | `number` | 否 | 未声明 | 相关需求<br>格式：int32 |
+| `--module` | 请求体 | `number` | 否 | 未声明 | 所属模块<br>格式：int32<br>必须为整数 |
+| `--story` | 请求体 | `number` | 否 | 未声明 | 相关需求<br>格式：int32<br>必须为整数 |
 | `--desc` | 请求体 | `string` | 否 | 未声明 | 任务描述 |
-| `--parent` | 请求体 | `number` | 否 | 未声明 | 父任务<br>格式：int32 |
+| `--parent` | 请求体 | `number` | 否 | 未声明 | 父任务<br>格式：int32<br>必须为整数 |
 
 可配合[公共选项](#data-options)：`--params`、`--format`、`--silent`、`--data`、`--batch-fail-fast`；其他全局选项见[全局选项](#global-options)。
 
@@ -3350,12 +3544,12 @@ zentao task update --taskID=<number> [选项]
 | `--assignedTo` | 请求体 | `string` | 否 | 未声明 | 指派给 |
 | `--estStarted` | 请求体 | `string` | 否 | 未声明 | 预计开始 |
 | `--deadline` | 请求体 | `string` | 否 | 未声明 | 截止日期 |
-| `--pri` | 请求体 | `number` | 否 | 未声明 | 优先级<br>格式：int32 |
+| `--pri` | 请求体 | `number` | 否 | 未声明 | 优先级<br>格式：int32<br>必须为整数 |
 | `--estimate` | 请求体 | `number` | 否 | 未声明 | 预计工时<br>格式：float |
-| `--module` | 请求体 | `number` | 否 | 未声明 | 所属模块<br>格式：int32 |
-| `--story` | 请求体 | `number` | 否 | 未声明 | 相关需求<br>格式：int32 |
+| `--module` | 请求体 | `number` | 否 | 未声明 | 所属模块<br>格式：int32<br>必须为整数 |
+| `--story` | 请求体 | `number` | 否 | 未声明 | 相关需求<br>格式：int32<br>必须为整数 |
 | `--desc` | 请求体 | `string` | 否 | 未声明 | 任务描述 |
-| `--parent` | 请求体 | `number` | 否 | 未声明 | 父任务<br>格式：int32 |
+| `--parent` | 请求体 | `number` | 否 | 未声明 | 父任务<br>格式：int32<br>必须为整数 |
 
 `--taskID` 可用 `--id` 或首个数字位置参数代替；其余路径 ID 需分别提供。
 
@@ -3377,7 +3571,7 @@ zentao task updateModule --moduleID=<number> [选项]
 | --- | --- | --- | --- | --- | --- |
 | `--moduleID` | 路径 | `number` | 是 | 未声明 | 模块ID |
 | `--name` | 请求体 | `string` | 否 | 未声明 | 模块名称 |
-| `--parent` | 请求体 | `number` | 否 | 未声明 | 父模块<br>格式：int32 |
+| `--parent` | 请求体 | `number` | 否 | 未声明 | 父模块<br>格式：int32<br>必须为整数 |
 
 `--moduleID` 可用 `--id` 或首个数字位置参数代替；其余路径 ID 需分别提供。
 
@@ -3512,6 +3706,8 @@ zentao task start --taskID=<number> --realStarted=<string> [选项]
 
 ### issue · 问题
 
+问题管理，支持获取问题列表、获取项目问题列表、获取执行问题列表、创建问题、获取问题详情
+
 快捷用法与字段查询：
 
 ```text
@@ -3610,13 +3806,13 @@ zentao issue create --objectID=<number> --title=<string> --type=<string> --sever
 
 | 参数 | 位置 | 类型 | 必填 | 默认值 | 说明与可选值 |
 | --- | --- | --- | --- | --- | --- |
-| `--objectID` | 请求体 | `number` | 是 | 未声明 | 所属项目<br>格式：int32 |
-| `--from` | 请求体 | `number` | 否 | 未声明 | 来源，0 表示直接创建<br>格式：int32 |
+| `--objectID` | 请求体 | `number` | 是 | 未声明 | 所属项目<br>格式：int32<br>必须为整数 |
+| `--from` | 请求体 | `number` | 否 | 未声明 | 来源，0 表示直接创建<br>格式：int32<br>必须为整数 |
 | `--title` | 请求体 | `string` | 是 | 未声明 | 问题名称 |
 | `--type` | 请求体 | `string` | 是 | 未声明 | 类型(design 设计问题 \| code 程序缺陷 \| performance 性能问题 \| version 版本控制 \| storyadd 需求新增 \| storychanged 需求修改 \| storyremoved 需求删除 \| data 数据问题) |
-| `--severity` | 请求体 | `number` | 是 | 未声明 | 严重程度(1 严重 \| 2 较严重 \| 3 较小 \| 4 建议)<br>格式：int32 |
-| `--pri` | 请求体 | `number` | 否 | 未声明 | 优先级(1-4)<br>格式：int32 |
-| `--execution` | 请求体 | `number` | 否 | 未声明 | 所属执行<br>格式：int32 |
+| `--severity` | 请求体 | `number` | 是 | 未声明 | 严重程度(1 严重 \| 2 较严重 \| 3 较小 \| 4 建议)<br>格式：int32<br>必须为整数 |
+| `--pri` | 请求体 | `number` | 否 | 未声明 | 优先级(1-4)<br>格式：int32<br>必须为整数 |
+| `--execution` | 请求体 | `number` | 否 | 未声明 | 所属执行<br>格式：int32<br>必须为整数 |
 | `--assignedTo` | 请求体 | `string` | 否 | 未声明 | 指派给 |
 | `--owner` | 请求体 | `string` | 否 | 未声明 | 提出人 |
 | `--deadline` | 请求体 | `string` | 否 | 未声明 | 计划解决日期 |
@@ -3645,6 +3841,8 @@ zentao issue get --issueID=<number> [选项]
 <a id="module-risk"></a>
 
 ### risk · 风险
+
+风险管理，支持获取风险列表、获取项目风险列表、获取执行风险列表、创建风险、获取风险详情、修改风险
 
 快捷用法与字段查询：
 
@@ -3745,16 +3943,16 @@ zentao risk create --project=<number> --name=<string> --impact=<number> --probab
 
 | 参数 | 位置 | 类型 | 必填 | 默认值 | 说明与可选值 |
 | --- | --- | --- | --- | --- | --- |
-| `--project` | 请求体 | `number` | 是 | 未声明 | 所属项目<br>格式：int32 |
+| `--project` | 请求体 | `number` | 是 | 未声明 | 所属项目<br>格式：int32<br>必须为整数 |
 | `--name` | 请求体 | `string` | 是 | 未声明 | 风险名称 |
-| `--execution` | 请求体 | `number` | 否 | 未声明 | 所属执行<br>格式：int32 |
+| `--execution` | 请求体 | `number` | 否 | 未声明 | 所属执行<br>格式：int32<br>必须为整数 |
 | `--source` | 请求体 | `string` | 否 | 未声明 | 来源(business 业务部门 \| team 项目组 \| logistic 项目保障科室 \| manage 管理层 \| sourcing 供应商-采购 \| outsourcing 供应商-外包 \| customer 外部客户 \| others 其他) |
 | `--category` | 请求体 | `string` | 否 | 未声明 | 类型(technical 技术类 \| manage 管理类 \| business 业务类 \| requirement 需求类 \| resource 资源类 \| others 其他) |
 | `--strategy` | 请求体 | `string` | 否 | 未声明 | 策略(avoidance 规避 \| mitigation 缓解 \| transference 转移 \| acceptance 接受) |
-| `--impact` | 请求体 | `number` | 是 | 未声明 | 影响程度(1-5)<br>格式：int32 |
-| `--probability` | 请求体 | `number` | 是 | 未声明 | 发生概率(1-5)<br>格式：int32 |
-| `--rate` | 请求体 | `number` | 否 | 未声明 | 风险系数<br>格式：int32 |
-| `--pri` | 请求体 | `number` | 是 | 未声明 | 优先级(1 高 \| 2 中 \| 3 低)<br>格式：int32 |
+| `--impact` | 请求体 | `number` | 是 | 未声明 | 影响程度(1-5)<br>格式：int32<br>必须为整数 |
+| `--probability` | 请求体 | `number` | 是 | 未声明 | 发生概率(1-5)<br>格式：int32<br>必须为整数 |
+| `--rate` | 请求体 | `number` | 否 | 未声明 | 风险系数<br>格式：int32<br>必须为整数 |
+| `--pri` | 请求体 | `number` | 是 | 未声明 | 优先级(1 高 \| 2 中 \| 3 低)<br>格式：int32<br>必须为整数 |
 | `--identifiedDate` | 请求体 | `string` | 否 | 未声明 | 识别日期 |
 | `--plannedClosedDate` | 请求体 | `string` | 否 | 未声明 | 计划关闭日期 |
 | `--assignedTo` | 请求体 | `string` | 否 | 未声明 | 指派给 |
@@ -3798,10 +3996,10 @@ zentao risk update --riskID=<number> --name=<string> [选项]
 | `--source` | 请求体 | `string` | 否 | 未声明 | 来源(business 业务部门 \| team 项目组 \| logistic 项目保障科室 \| manage 管理层 \| sourcing 供应商-采购 \| outsourcing 供应商-外包 \| customer 外部客户 \| others 其他) |
 | `--category` | 请求体 | `string` | 否 | 未声明 | 类型(technical 技术类 \| manage 管理类 \| business 业务类 \| requirement 需求类 \| resource 资源类 \| others 其他) |
 | `--strategy` | 请求体 | `string` | 否 | 未声明 | 策略(avoidance 规避 \| mitigation 缓解 \| transference 转移 \| acceptance 接受) |
-| `--impact` | 请求体 | `number` | 否 | 未声明 | 影响程度(1-5)<br>格式：int32 |
-| `--probability` | 请求体 | `number` | 否 | 未声明 | 发生概率(1-5)<br>格式：int32 |
-| `--rate` | 请求体 | `number` | 否 | 未声明 | 风险系数<br>格式：int32 |
-| `--pri` | 请求体 | `number` | 否 | 未声明 | 优先级(1 高 \| 2 中 \| 3 低)<br>格式：int32 |
+| `--impact` | 请求体 | `number` | 否 | 未声明 | 影响程度(1-5)<br>格式：int32<br>必须为整数 |
+| `--probability` | 请求体 | `number` | 否 | 未声明 | 发生概率(1-5)<br>格式：int32<br>必须为整数 |
+| `--rate` | 请求体 | `number` | 否 | 未声明 | 风险系数<br>格式：int32<br>必须为整数 |
+| `--pri` | 请求体 | `number` | 否 | 未声明 | 优先级(1 高 \| 2 中 \| 3 低)<br>格式：int32<br>必须为整数 |
 | `--identifiedDate` | 请求体 | `string` | 否 | 未声明 | 识别日期 |
 | `--plannedClosedDate` | 请求体 | `string` | 否 | 未声明 | 计划关闭日期 |
 | `--assignedTo` | 请求体 | `string` | 否 | 未声明 | 指派给 |
@@ -3818,6 +4016,8 @@ zentao risk update --riskID=<number> --name=<string> [选项]
 <a id="module-meeting"></a>
 
 ### meeting · 会议
+
+会议管理，支持获取会议列表、获取项目会议列表、获取执行会议列表、创建会议、获取会议详情、修改会议、删除会议、编辑会议纪要
 
 快捷用法与字段查询：
 
@@ -3920,18 +4120,18 @@ zentao meeting create --project=<number> --name=<string> --begin=<string> --end=
 
 | 参数 | 位置 | 类型 | 必填 | 默认值 | 说明与可选值 |
 | --- | --- | --- | --- | --- | --- |
-| `--project` | 请求体 | `number` | 是 | 未声明 | 所属项目<br>格式：int32 |
-| `--execution` | 请求体 | `number` | 否 | 未声明 | 所属执行<br>格式：int32 |
+| `--project` | 请求体 | `number` | 是 | 未声明 | 所属项目<br>格式：int32<br>必须为整数 |
+| `--execution` | 请求体 | `number` | 否 | 未声明 | 所属执行<br>格式：int32<br>必须为整数 |
 | `--name` | 请求体 | `string` | 是 | 未声明 | 会议名称 |
 | `--begin` | 请求体 | `string` | 是 | 未声明 | 开始时间 |
 | `--end` | 请求体 | `string` | 是 | 未声明 | 结束时间 |
 | `--mode` | 请求体 | `string` | 是 | 未声明 | 会议模式(online 线上 \| outline 线下 \| both 线上+线下) |
 | `--host` | 请求体 | `string` | 是 | 未声明 | 主持人 |
-| `--participant` | 请求体 | `string[]` | 是 | 未声明 | 参会人员 |
-| `--room` | 请求体 | `number` | 否 | 未声明 | 会议室<br>格式：int32 |
-| `--dept` | 请求体 | `number` | 否 | 未声明 | 所属部门<br>格式：int32 |
+| `--participant` | 请求体 | `string[]` | 是 | 未声明 | 参会人员<br>数组元素类型：string |
+| `--room` | 请求体 | `number` | 否 | 未声明 | 会议室<br>格式：int32<br>必须为整数 |
+| `--dept` | 请求体 | `number` | 否 | 未声明 | 所属部门<br>格式：int32<br>必须为整数 |
 | `--objectType` | 请求体 | `string` | 否 | 未声明 | 关联类型(story \| task \| bug \| issue \| risk \| opportunity) |
-| `--objectID` | 请求体 | `number` | 否 | 未声明 | 关联对象<br>格式：int32 |
+| `--objectID` | 请求体 | `number` | 否 | 未声明 | 关联对象<br>格式：int32<br>必须为整数 |
 
 可配合[公共选项](#data-options)：`--params`、`--format`、`--silent`、`--data`、`--batch-fail-fast`；其他全局选项见[全局选项](#global-options)。
 
@@ -3971,11 +4171,11 @@ zentao meeting update --meetingID=<number> --name=<string> --begin=<string> --en
 | `--end` | 请求体 | `string` | 是 | 未声明 | 结束时间 |
 | `--mode` | 请求体 | `string` | 是 | 未声明 | 会议模式(online 线上 \| outline 线下 \| both 线上+线下) |
 | `--host` | 请求体 | `string` | 是 | 未声明 | 主持人 |
-| `--participant` | 请求体 | `string[]` | 是 | 未声明 | 参会人员 |
-| `--room` | 请求体 | `number` | 否 | 未声明 | 会议室<br>格式：int32 |
-| `--dept` | 请求体 | `number` | 否 | 未声明 | 所属部门<br>格式：int32 |
+| `--participant` | 请求体 | `string[]` | 是 | 未声明 | 参会人员<br>数组元素类型：string |
+| `--room` | 请求体 | `number` | 否 | 未声明 | 会议室<br>格式：int32<br>必须为整数 |
+| `--dept` | 请求体 | `number` | 否 | 未声明 | 所属部门<br>格式：int32<br>必须为整数 |
 | `--objectType` | 请求体 | `string` | 否 | 未声明 | 关联类型(story \| task \| bug \| issue \| risk \| opportunity) |
-| `--objectID` | 请求体 | `number` | 否 | 未声明 | 关联对象<br>格式：int32 |
+| `--objectID` | 请求体 | `number` | 否 | 未声明 | 关联对象<br>格式：int32<br>必须为整数 |
 
 `--meetingID` 可用 `--id` 或首个数字位置参数代替；其余路径 ID 需分别提供。
 
@@ -4023,6 +4223,8 @@ zentao meeting minutes --meetingID=<number> [选项]
 <a id="module-feedback"></a>
 
 ### feedback · 反馈
+
+反馈管理，支持获取反馈列表，支持获取产品下的反馈、创建反馈、反馈转Bug、反馈转工单、反馈转待办、反馈转需求、反馈转任务、获取反馈详情、修改反馈、删除反馈、激活反馈、关闭反馈
 
 快捷用法与字段查询：
 
@@ -4084,9 +4286,9 @@ zentao feedback create --product=<number> --title=<string> [选项]
 
 | 参数 | 位置 | 类型 | 必填 | 默认值 | 说明与可选值 |
 | --- | --- | --- | --- | --- | --- |
-| `--product` | 请求体 | `number` | 是 | 未声明 | 所属产品<br>格式：int32 |
+| `--product` | 请求体 | `number` | 是 | 未声明 | 所属产品<br>格式：int32<br>必须为整数 |
 | `--title` | 请求体 | `string` | 是 | 未声明 | 标题 |
-| `--module` | 请求体 | `number` | 否 | 未声明 | 所属模块<br>格式：int32 |
+| `--module` | 请求体 | `number` | 否 | 未声明 | 所属模块<br>格式：int32<br>必须为整数 |
 | `--type` | 请求体 | `string` | 否 | 未声明 | 类型(story 需求 \| task 任务 \| bug Bug \| todo 待办 \| advice 建议 \| issue 问题 \| risk 风险 \| opportunity 机会) |
 | `--desc` | 请求体 | `string` | 否 | 未声明 | 描述 |
 | `--feedbackBy` | 请求体 | `string` | 否 | 未声明 | 反馈者 |
@@ -4107,11 +4309,11 @@ zentao feedback createBug --feedbackID=<number> --productID=<number> --title=<st
 | 参数 | 位置 | 类型 | 必填 | 默认值 | 说明与可选值 |
 | --- | --- | --- | --- | --- | --- |
 | `--feedbackID` | 路径 | `number` | 是 | 未声明 | 反馈ID |
-| `--productID` | 请求体 | `number` | 是 | 未声明 | 所属产品<br>格式：int32 |
+| `--productID` | 请求体 | `number` | 是 | 未声明 | 所属产品<br>格式：int32<br>必须为整数 |
 | `--title` | 请求体 | `string` | 是 | 未声明 | Bug标题 |
-| `--openedBuild` | 请求体 | `string[]` | 是 | 未声明 | 影响版本，主干是trunk，其他版本使用版本ID |
-| `--severity` | 请求体 | `number` | 否 | 未声明 | 严重程度(1-4)<br>格式：int32 |
-| `--pri` | 请求体 | `number` | 否 | 未声明 | 优先级<br>格式：int32 |
+| `--openedBuild` | 请求体 | `string[]` | 是 | 未声明 | 影响版本，主干是trunk，其他版本使用版本ID<br>数组元素类型：string |
+| `--severity` | 请求体 | `number` | 否 | 未声明 | 严重程度(1-4)<br>格式：int32<br>必须为整数 |
+| `--pri` | 请求体 | `number` | 否 | 未声明 | 优先级<br>格式：int32<br>必须为整数 |
 | `--type` | 请求体 | `string` | 否 | 未声明 | Bug类型(codeerror 代码错误 \| config 配置相关 \| install 安装部署 \| security 安全相关 \| performance 性能问题 \| standard 标准规范 \| automation 测试脚本 \| designdefect 设计缺陷 \| others 其他) |
 | `--steps` | 请求体 | `string` | 否 | 未声明 | 重现步骤 |
 
@@ -4132,8 +4334,8 @@ zentao feedback createTicket --feedbackID=<number> --product=<number> --module=<
 | 参数 | 位置 | 类型 | 必填 | 默认值 | 说明与可选值 |
 | --- | --- | --- | --- | --- | --- |
 | `--feedbackID` | 路径 | `number` | 是 | 未声明 | 反馈ID |
-| `--product` | 请求体 | `number` | 是 | 未声明 | 所属产品<br>格式：int32 |
-| `--module` | 请求体 | `number` | 是 | 未声明 | 所属模块<br>格式：int32 |
+| `--product` | 请求体 | `number` | 是 | 未声明 | 所属产品<br>格式：int32<br>必须为整数 |
+| `--module` | 请求体 | `number` | 是 | 未声明 | 所属模块<br>格式：int32<br>必须为整数 |
 | `--title` | 请求体 | `string` | 是 | 未声明 | 工单标题 |
 | `--type` | 请求体 | `string` | 否 | 未声明 | 类型(code 程序报错 \| data 数据错误 \| stuck 流程卡断 \| security 安全问题 \| affair 事务) |
 | `--desc` | 请求体 | `string` | 否 | 未声明 | 工单描述 |
@@ -4175,10 +4377,10 @@ zentao feedback createStory --feedbackID=<number> --productID=<number> --title=<
 | 参数 | 位置 | 类型 | 必填 | 默认值 | 说明与可选值 |
 | --- | --- | --- | --- | --- | --- |
 | `--feedbackID` | 路径 | `number` | 是 | 未声明 | 反馈ID |
-| `--productID` | 请求体 | `number` | 是 | 未声明 | 所属产品<br>格式：int32 |
+| `--productID` | 请求体 | `number` | 是 | 未声明 | 所属产品<br>格式：int32<br>必须为整数 |
 | `--title` | 请求体 | `string` | 是 | 未声明 | 需求标题 |
 | `--spec` | 请求体 | `string` | 否 | 未声明 | 需求描述 |
-| `--pri` | 请求体 | `number` | 否 | 未声明 | 优先级<br>格式：int32 |
+| `--pri` | 请求体 | `number` | 否 | 未声明 | 优先级<br>格式：int32<br>必须为整数 |
 | `--category` | 请求体 | `string` | 否 | 未声明 | 类别 |
 
 `--feedbackID` 可用 `--id` 或首个数字位置参数代替；其余路径 ID 需分别提供。
@@ -4198,7 +4400,7 @@ zentao feedback createTask --feedbackID=<number> --executionID=<number> --name=<
 | 参数 | 位置 | 类型 | 必填 | 默认值 | 说明与可选值 |
 | --- | --- | --- | --- | --- | --- |
 | `--feedbackID` | 路径 | `number` | 是 | 未声明 | 反馈ID |
-| `--executionID` | 请求体 | `number` | 是 | 未声明 | 所属执行<br>格式：int32 |
+| `--executionID` | 请求体 | `number` | 是 | 未声明 | 所属执行<br>格式：int32<br>必须为整数 |
 | `--name` | 请求体 | `string` | 是 | 未声明 | 任务名称 |
 | `--type` | 请求体 | `string` | 否 | 未声明 | 任务类型 |
 | `--assignedTo` | 请求体 | `string` | 否 | 未声明 | 指派给 |
@@ -4241,8 +4443,8 @@ zentao feedback update --feedbackID=<number> --product=<number> --title=<string>
 | 参数 | 位置 | 类型 | 必填 | 默认值 | 说明与可选值 |
 | --- | --- | --- | --- | --- | --- |
 | `--feedbackID` | 路径 | `number` | 是 | 未声明 | 反馈ID |
-| `--product` | 请求体 | `number` | 是 | 未声明 | 所属产品<br>格式：int32 |
-| `--module` | 请求体 | `number` | 否 | 未声明 | 所属模块<br>格式：int32 |
+| `--product` | 请求体 | `number` | 是 | 未声明 | 所属产品<br>格式：int32<br>必须为整数 |
+| `--module` | 请求体 | `number` | 否 | 未声明 | 所属模块<br>格式：int32<br>必须为整数 |
 | `--title` | 请求体 | `string` | 是 | 未声明 | 标题 |
 | `--type` | 请求体 | `string` | 否 | 未声明 | 类型(story 需求 \| task 任务 \| bug Bug \| todo 待办 \| advice 建议 \| issue 问题 \| risk 风险 \| opportunity 机会) |
 | `--desc` | 请求体 | `string` | 否 | 未声明 | 描述 |
@@ -4318,6 +4520,8 @@ zentao feedback close --feedbackID=<number> --closedReason=<string> [选项]
 
 ### ticket · 工单
 
+工单管理，支持获取工单列表，支持获取产品下的工单、创建工单、工单转需求、工单转Bug、获取工单详情、修改工单、删除工单、激活工单、关闭工单
+
 快捷用法与字段查询：
 
 ```text
@@ -4375,14 +4579,14 @@ zentao ticket create --product=<number> --title=<string> [选项]
 
 | 参数 | 位置 | 类型 | 必填 | 默认值 | 说明与可选值 |
 | --- | --- | --- | --- | --- | --- |
-| `--product` | 请求体 | `number` | 是 | 未声明 | 所属产品<br>格式：int32 |
-| `--module` | 请求体 | `number` | 否 | 未声明 | 所属模块<br>格式：int32 |
+| `--product` | 请求体 | `number` | 是 | 未声明 | 所属产品<br>格式：int32<br>必须为整数 |
+| `--module` | 请求体 | `number` | 否 | 未声明 | 所属模块<br>格式：int32<br>必须为整数 |
 | `--title` | 请求体 | `string` | 是 | 未声明 | 标题 |
 | `--type` | 请求体 | `string` | 否 | 未声明 | 类型(code 程序报错 \| data 数据错误 \| stuck 流程卡断 \| security 安全问题 \| affair 事务) |
 | `--desc` | 请求体 | `string` | 否 | 未声明 | 描述 |
 | `--assignedTo` | 请求体 | `string` | 否 | 未声明 | 指派给 |
 | `--deadline` | 请求体 | `string` | 否 | 未声明 | 截止日期 |
-| `--openedBuild` | 请求体 | `string[]` | 否 | 未声明 | 影响版本 |
+| `--openedBuild` | 请求体 | `string[]` | 否 | 未声明 | 影响版本<br>数组元素类型：string |
 
 可配合[公共选项](#data-options)：`--params`、`--format`、`--silent`、`--data`、`--batch-fail-fast`；其他全局选项见[全局选项](#global-options)。
 
@@ -4399,10 +4603,10 @@ zentao ticket createStory --ticketID=<number> --productID=<number> --title=<stri
 | 参数 | 位置 | 类型 | 必填 | 默认值 | 说明与可选值 |
 | --- | --- | --- | --- | --- | --- |
 | `--ticketID` | 路径 | `number` | 是 | 未声明 | 工单ID |
-| `--productID` | 请求体 | `number` | 是 | 未声明 | 所属产品<br>格式：int32 |
+| `--productID` | 请求体 | `number` | 是 | 未声明 | 所属产品<br>格式：int32<br>必须为整数 |
 | `--title` | 请求体 | `string` | 是 | 未声明 | 需求标题 |
 | `--spec` | 请求体 | `string` | 否 | 未声明 | 需求描述 |
-| `--pri` | 请求体 | `number` | 否 | 未声明 | 优先级<br>格式：int32 |
+| `--pri` | 请求体 | `number` | 否 | 未声明 | 优先级<br>格式：int32<br>必须为整数 |
 | `--category` | 请求体 | `string` | 否 | 未声明 | 类别 |
 
 `--ticketID` 可用 `--id` 或首个数字位置参数代替；其余路径 ID 需分别提供。
@@ -4422,11 +4626,11 @@ zentao ticket createBug --ticketID=<number> --productID=<number> --title=<string
 | 参数 | 位置 | 类型 | 必填 | 默认值 | 说明与可选值 |
 | --- | --- | --- | --- | --- | --- |
 | `--ticketID` | 路径 | `number` | 是 | 未声明 | 工单ID |
-| `--productID` | 请求体 | `number` | 是 | 未声明 | 所属产品<br>格式：int32 |
+| `--productID` | 请求体 | `number` | 是 | 未声明 | 所属产品<br>格式：int32<br>必须为整数 |
 | `--title` | 请求体 | `string` | 是 | 未声明 | Bug标题 |
-| `--openedBuild` | 请求体 | `string[]` | 是 | 未声明 | 影响版本，主干是trunk，其他版本使用版本ID |
-| `--severity` | 请求体 | `number` | 否 | 未声明 | 严重程度(1-4)<br>格式：int32 |
-| `--pri` | 请求体 | `number` | 否 | 未声明 | 优先级<br>格式：int32 |
+| `--openedBuild` | 请求体 | `string[]` | 是 | 未声明 | 影响版本，主干是trunk，其他版本使用版本ID<br>数组元素类型：string |
+| `--severity` | 请求体 | `number` | 否 | 未声明 | 严重程度(1-4)<br>格式：int32<br>必须为整数 |
+| `--pri` | 请求体 | `number` | 否 | 未声明 | 优先级<br>格式：int32<br>必须为整数 |
 | `--type` | 请求体 | `string` | 否 | 未声明 | Bug类型(codeerror 代码错误 \| config 配置相关 \| install 安装部署 \| security 安全相关 \| performance 性能问题 \| standard 标准规范 \| automation 测试脚本 \| designdefect 设计缺陷 \| others 其他) |
 | `--steps` | 请求体 | `string` | 否 | 未声明 | 重现步骤 |
 
@@ -4465,14 +4669,14 @@ zentao ticket update --ticketID=<number> [选项]
 | 参数 | 位置 | 类型 | 必填 | 默认值 | 说明与可选值 |
 | --- | --- | --- | --- | --- | --- |
 | `--ticketID` | 路径 | `number` | 是 | 未声明 | 工单ID |
-| `--product` | 请求体 | `number` | 否 | 未声明 | 所属产品<br>格式：int32 |
-| `--module` | 请求体 | `number` | 否 | 未声明 | 所属模块<br>格式：int32 |
+| `--product` | 请求体 | `number` | 否 | 未声明 | 所属产品<br>格式：int32<br>必须为整数 |
+| `--module` | 请求体 | `number` | 否 | 未声明 | 所属模块<br>格式：int32<br>必须为整数 |
 | `--title` | 请求体 | `string` | 否 | 未声明 | 标题 |
 | `--type` | 请求体 | `string` | 否 | 未声明 | 类型(code 程序报错 \| data 数据错误 \| stuck 流程卡断 \| security 安全问题 \| affair 事务) |
 | `--desc` | 请求体 | `string` | 否 | 未声明 | 描述 |
 | `--assignedTo` | 请求体 | `string` | 否 | 未声明 | 指派给 |
 | `--deadline` | 请求体 | `string` | 否 | 未声明 | 截止日期 |
-| `--openedBuild` | 请求体 | `string[]` | 否 | 未声明 | 影响版本 |
+| `--openedBuild` | 请求体 | `string[]` | 否 | 未声明 | 影响版本<br>数组元素类型：string |
 
 `--ticketID` 可用 `--id` 或首个数字位置参数代替；其余路径 ID 需分别提供。
 
@@ -4542,6 +4746,8 @@ zentao ticket close --ticketID=<number> --closedReason=<string> --comment=<strin
 
 ### system · 应用
 
+应用管理，支持获取应用列表，支持获取产品下的应用、创建应用、修改应用
+
 快捷用法与字段查询：
 
 ```text
@@ -4589,9 +4795,9 @@ zentao system create --productID=<number> --integrated=<number> --children=<stri
 
 | 参数 | 位置 | 类型 | 必填 | 默认值 | 说明与可选值 |
 | --- | --- | --- | --- | --- | --- |
-| `--productID` | 请求体 | `number` | 是 | 未声明 | 所属产品<br>格式：int32 |
-| `--integrated` | 请求体 | `number` | 是 | 未声明 | 是否集成应用(0 否\| 1 是)<br>格式：int32 |
-| `--children` | 请求体 | `string[]` | 是 | 未声明 | 集成应用需要包含其他应用，非集成应用传空数组[] |
+| `--productID` | 请求体 | `number` | 是 | 未声明 | 所属产品<br>格式：int32<br>必须为整数 |
+| `--integrated` | 请求体 | `number` | 是 | 未声明 | 是否集成应用(0 否\| 1 是)<br>格式：int32<br>必须为整数 |
+| `--children` | 请求体 | `string[]` | 是 | 未声明 | 集成应用需要包含其他应用，非集成应用传空数组[]<br>数组元素类型：string |
 | `--name` | 请求体 | `string` | 是 | 未声明 | 应用名称 |
 | `--desc` | 请求体 | `string` | 否 | 未声明 | 描述 |
 
@@ -4611,7 +4817,7 @@ zentao system update --systemID=<number> --name=<string> --children=<string[]> [
 | --- | --- | --- | --- | --- | --- |
 | `--systemID` | 路径 | `number` | 是 | 未声明 | 应用ID |
 | `--name` | 请求体 | `string` | 是 | 未声明 | 应用名称 |
-| `--children` | 请求体 | `string[]` | 是 | 未声明 | 集成应用需要包含其他应用，非集成应用传空数组[] |
+| `--children` | 请求体 | `string[]` | 是 | 未声明 | 集成应用需要包含其他应用，非集成应用传空数组[]<br>数组元素类型：string |
 | `--desc` | 请求体 | `string` | 否 | 未声明 | 描述 |
 
 `--systemID` 可用 `--id` 或首个数字位置参数代替；其余路径 ID 需分别提供。
@@ -4623,6 +4829,8 @@ zentao system update --systemID=<number> --name=<string> --children=<string[]> [
 <a id="module-build"></a>
 
 ### build · 版本
+
+版本管理，支持获取版本列表，支持获取项目/执行下的版本、创建版本/构建、修改版本、删除版本
 
 快捷用法与字段查询：
 
@@ -4676,10 +4884,10 @@ zentao build create --executionID=<number> --product=<number> --name=<string> --
 
 | 参数 | 位置 | 类型 | 必填 | 默认值 | 说明与可选值 |
 | --- | --- | --- | --- | --- | --- |
-| `--executionID` | 请求体 | `number` | 是 | 未声明 | 所属执行/迭代<br>格式：int32 |
-| `--product` | 请求体 | `number` | 是 | 未声明 | 所属产品<br>格式：int32 |
+| `--executionID` | 请求体 | `number` | 是 | 未声明 | 所属执行/迭代<br>格式：int32<br>必须为整数 |
+| `--product` | 请求体 | `number` | 是 | 未声明 | 所属产品<br>格式：int32<br>必须为整数 |
 | `--name` | 请求体 | `string` | 是 | 未声明 | 构建名称 |
-| `--system` | 请求体 | `number` | 是 | 未声明 | 所属应用<br>格式：int32 |
+| `--system` | 请求体 | `number` | 是 | 未声明 | 所属应用<br>格式：int32<br>必须为整数 |
 | `--builder` | 请求体 | `string` | 是 | 未声明 | 构建者 |
 | `--date` | 请求体 | `string` | 是 | 未声明 | 打包日期 |
 | `--scmPath` | 请求体 | `string` | 否 | 未声明 | 源代码地址 |
@@ -4701,10 +4909,10 @@ zentao build update --buildID=<number> --execution=<number> --product=<number> -
 | 参数 | 位置 | 类型 | 必填 | 默认值 | 说明与可选值 |
 | --- | --- | --- | --- | --- | --- |
 | `--buildID` | 路径 | `number` | 是 | 未声明 | 版本ID |
-| `--execution` | 请求体 | `number` | 是 | 未声明 | 所属执行/迭代<br>格式：int32 |
-| `--product` | 请求体 | `number` | 是 | 未声明 | 所属产品<br>格式：int32 |
+| `--execution` | 请求体 | `number` | 是 | 未声明 | 所属执行/迭代<br>格式：int32<br>必须为整数 |
+| `--product` | 请求体 | `number` | 是 | 未声明 | 所属产品<br>格式：int32<br>必须为整数 |
 | `--name` | 请求体 | `string` | 是 | 未声明 | 构建名称 |
-| `--system` | 请求体 | `number` | 是 | 未声明 | 所属应用<br>格式：int32 |
+| `--system` | 请求体 | `number` | 是 | 未声明 | 所属应用<br>格式：int32<br>必须为整数 |
 | `--builder` | 请求体 | `string` | 是 | 未声明 | 构建者 |
 | `--date` | 请求体 | `string` | 是 | 未声明 | 打包日期 |
 | `--scmPath` | 请求体 | `string` | 否 | 未声明 | 源代码地址 |
@@ -4738,6 +4946,8 @@ zentao build delete --buildID=<number> [选项]
 <a id="module-testtask"></a>
 
 ### testtask · 测试单
+
+测试单管理，支持获取测试单列表，支持获取产品/项目/执行下的测试单、创建测试单、修改测试单、删除测试单
 
 快捷用法与字段查询：
 
@@ -4789,11 +4999,11 @@ zentao testtask create --productID=<number> --name=<string> --build=<number> --b
 
 | 参数 | 位置 | 类型 | 必填 | 默认值 | 说明与可选值 |
 | --- | --- | --- | --- | --- | --- |
-| `--productID` | 请求体 | `number` | 是 | 未声明 | 所属产品ID<br>格式：int32 |
+| `--productID` | 请求体 | `number` | 是 | 未声明 | 所属产品ID<br>格式：int32<br>必须为整数 |
 | `--name` | 请求体 | `string` | 是 | 未声明 | 测试单名称 |
-| `--build` | 请求体 | `number` | 是 | 未声明 | 提测构建/版本<br>格式：int32 |
-| `--execution` | 请求体 | `number` | 否 | 未声明 | 所属执行<br>格式：int32 |
-| `--type` | 请求体 | `string[]` | 否 | 未声明 | 类型(integrate 集成测试 \| system 系统测试 \| acceptance 验收测试 \| performance 性能测试 \| safety 安全测试) |
+| `--build` | 请求体 | `number` | 是 | 未声明 | 提测构建/版本<br>格式：int32<br>必须为整数 |
+| `--execution` | 请求体 | `number` | 否 | 未声明 | 所属执行<br>格式：int32<br>必须为整数 |
+| `--type` | 请求体 | `string[]` | 否 | 未声明 | 类型(integrate 集成测试 \| system 系统测试 \| acceptance 验收测试 \| performance 性能测试 \| safety 安全测试)<br>数组元素类型：string |
 | `--owner` | 请求体 | `string` | 否 | 未声明 | 负责人 |
 | `--status` | 请求体 | `string` | 否 | 未声明 | 状态(wait 未开始 \| doing 进行中 \| done 已关闭 \| blocked 被阻塞) |
 | `--begin` | 请求体 | `string` | 是 | 未声明 | 开始日期 |
@@ -4816,9 +5026,9 @@ zentao testtask update --testtaskID=<number> --name=<string> --build=<number> --
 | --- | --- | --- | --- | --- | --- |
 | `--testtaskID` | 路径 | `number` | 是 | 未声明 | 测试单ID |
 | `--name` | 请求体 | `string` | 是 | 未声明 | 测试单名称 |
-| `--build` | 请求体 | `number` | 是 | 未声明 | 提测构建/版本<br>格式：int32 |
-| `--execution` | 请求体 | `number` | 否 | 未声明 | 所属执行<br>格式：int32 |
-| `--type` | 请求体 | `string[]` | 否 | 未声明 | 类型(integrate 集成测试 \| system 系统测试 \| acceptance 验收测试 \| performance 性能测试 \| safety 安全测试) |
+| `--build` | 请求体 | `number` | 是 | 未声明 | 提测构建/版本<br>格式：int32<br>必须为整数 |
+| `--execution` | 请求体 | `number` | 否 | 未声明 | 所属执行<br>格式：int32<br>必须为整数 |
+| `--type` | 请求体 | `string[]` | 否 | 未声明 | 类型(integrate 集成测试 \| system 系统测试 \| acceptance 验收测试 \| performance 性能测试 \| safety 安全测试)<br>数组元素类型：string |
 | `--owner` | 请求体 | `string` | 否 | 未声明 | 负责人 |
 | `--status` | 请求体 | `string` | 否 | 未声明 | 状态(wait 未开始 \| doing 进行中 \| done 已关闭 \| blocked 被阻塞) |
 | `--begin` | 请求体 | `string` | 是 | 未声明 | 开始日期 |
@@ -4852,6 +5062,8 @@ zentao testtask delete --testtaskID=<number> [选项]
 <a id="module-release"></a>
 
 ### release · 发布
+
+发布管理，支持获取发布列表，支持获取产品下的发布、创建发布、修改发布、删除发布
 
 快捷用法与字段查询：
 
@@ -4904,10 +5116,10 @@ zentao release create --productID=<number> --system=<number> --name=<string> --b
 
 | 参数 | 位置 | 类型 | 必填 | 默认值 | 说明与可选值 |
 | --- | --- | --- | --- | --- | --- |
-| `--productID` | 请求体 | `number` | 是 | 未声明 | 所属产品<br>格式：int32 |
-| `--system` | 请求体 | `number` | 是 | 未声明 | 所属应用<br>格式：int32 |
+| `--productID` | 请求体 | `number` | 是 | 未声明 | 所属产品<br>格式：int32<br>必须为整数 |
+| `--system` | 请求体 | `number` | 是 | 未声明 | 所属应用<br>格式：int32<br>必须为整数 |
 | `--name` | 请求体 | `string` | 是 | 未声明 | 应用版本号 |
-| `--build` | 请求体 | `string[]` | 是 | 未声明 | 包含构建 |
+| `--build` | 请求体 | `string[]` | 是 | 未声明 | 包含构建<br>数组元素类型：string |
 | `--status` | 请求体 | `string` | 否 | 未声明 | 状态(wait 未开始 \| normal 已发布 \| fail 发布失败 \| terminate 停止维护) |
 | `--date` | 请求体 | `string` | 是 | 未声明 | 计划发布日期 |
 | `--desc` | 请求体 | `string` | 否 | 未声明 | 描述 |
@@ -4927,9 +5139,9 @@ zentao release update --releaseID=<number> --system=<number> --name=<string> --b
 | 参数 | 位置 | 类型 | 必填 | 默认值 | 说明与可选值 |
 | --- | --- | --- | --- | --- | --- |
 | `--releaseID` | 路径 | `number` | 是 | 未声明 | 发布ID |
-| `--system` | 请求体 | `number` | 是 | 未声明 | 所属应用<br>格式：int32 |
+| `--system` | 请求体 | `number` | 是 | 未声明 | 所属应用<br>格式：int32<br>必须为整数 |
 | `--name` | 请求体 | `string` | 是 | 未声明 | 应用版本号 |
-| `--build` | 请求体 | `string[]` | 是 | 未声明 | 包含构建 |
+| `--build` | 请求体 | `string[]` | 是 | 未声明 | 包含构建<br>数组元素类型：string |
 | `--status` | 请求体 | `string` | 否 | 未声明 | 状态(wait 未开始 \| normal 已发布 \| fail 发布失败 \| terminate 停止维护) |
 | `--date` | 请求体 | `string` | 是 | 未声明 | 计划发布日期 |
 | `--desc` | 请求体 | `string` | 否 | 未声明 | 描述 |
@@ -4962,6 +5174,8 @@ zentao release delete --releaseID=<number> [选项]
 
 ### file · 附件
 
+附件管理，支持上传附件，使用【表单formdata】方式提交，不支持json、编辑附件，修改附件的名称、删除附件
+
 快捷用法与字段查询：
 
 ```text
@@ -4991,7 +5205,7 @@ zentao file create --file=<string> --objectType=<string> --objectID=<number> [�
 | --- | --- | --- | --- | --- | --- |
 | `--file` | 请求体 | `string` | 是 | 未声明 | 本地文件路径，将按 multipart/form-data 上传<br>格式：binary |
 | `--objectType` | 请求体 | `string` | 是 | 未声明 | 关联对象类型(bug 缺陷 \| story 需求 \| task 任务 \| testcase 用例) |
-| `--objectID` | 请求体 | `number` | 是 | 未声明 | 关联对象ID<br>格式：int32 |
+| `--objectID` | 请求体 | `number` | 是 | 未声明 | 关联对象ID<br>格式：int32<br>必须为整数 |
 
 可配合[公共选项](#data-options)：`--params`、`--format`、`--silent`、`--data`、`--batch-fail-fast`；其他全局选项见[全局选项](#global-options)。
 
@@ -5037,6 +5251,8 @@ zentao file delete --fileID=<number> [选项]
 <a id="module-workflow"></a>
 
 ### workflow · 工作流
+
+工作流管理，支持获取工作流数据列表(以合同为例)、获取工作流数据详情(以合同为例)、创建工作流数据(以合同为例)、修改工作流数据(以合同为例)、删除工作流事项(以合同为例)
 
 快捷用法与字段查询：
 
@@ -5140,6 +5356,8 @@ zentao workflow delete --contractID=<number> [选项]
 <a id="module-doc"></a>
 
 ### doc · 文档
+
+文档管理，支持获取我的文档空间列表、获取团队文档空间列表、获取产品文档空间列表、获取项目文档空间列表、获取我的文档库列表、获取团队文档库列表、获取产品文档库列表、获取项目文档库列表、获取我的文档列表、获取团队文档列表、获取产品文档列表、获取项目文档列表、获取我的文档库目录列表、获取团队文档库目录列表、获取产品文档库目录列表、获取项目文档库目录列表、创建我的文档空间、创建团队文档空间、创建我的文档库、创建团队文档库、创建产品文档库、创建项目文档库、创建我的文档、创建团队文档、创建产品文档、创建项目文档、创建我的文档库目录、创建团队文档库目录、创建产品文档库目录、创建项目文档库目录、获取文档空间详情、获取文档库详情、获取文档详情、修改文档空间、修改文档库、修改文档、修改文档库目录、删除文档空间、删除文档库、删除文档、删除文档库目录
 
 快捷用法与字段查询：
 
@@ -5541,8 +5759,8 @@ zentao doc createTeamLib --spaceID=<number> --name=<string> [选项]
 | `--spaceID` | 路径 | `number` | 是 | 未声明 | 空间ID |
 | `--name` | 请求体 | `string` | 是 | 未声明 | 文档库名称 |
 | `--acl` | 请求体 | `string` | 否 | 未声明 | open 公开 \| private 私有，默认是open |
-| `--groups` | 请求体 | `string[]` | 否 | 未声明 | 如果acl=private,可以设置哪些权限分组可以访问 |
-| `--users` | 请求体 | `string[]` | 否 | 未声明 | 如果acl=private,可以设置哪些用户可以访问 |
+| `--groups` | 请求体 | `string[]` | 否 | 未声明 | 如果acl=private,可以设置哪些权限分组可以访问<br>数组元素类型：string |
+| `--users` | 请求体 | `string[]` | 否 | 未声明 | 如果acl=private,可以设置哪些用户可以访问<br>数组元素类型：string |
 
 `--spaceID` 可用 `--id` 或首个数字位置参数代替；其余路径 ID 需分别提供。
 
@@ -5563,8 +5781,8 @@ zentao doc createProductLib --productID=<number> --name=<string> [选项]
 | `--productID` | 路径 | `number` | 是 | 未声明 | 产品ID |
 | `--name` | 请求体 | `string` | 是 | 未声明 | 文档库名称 |
 | `--acl` | 请求体 | `string` | 否 | 未声明 | default 默认产品权限 \| private 私有 |
-| `--groups` | 请求体 | `string[]` | 否 | 未声明 | 如果acl=private,可以设置哪些权限分组可以访问 |
-| `--users` | 请求体 | `string[]` | 否 | 未声明 | 如果acl=private,可以设置哪些用户可以访问 |
+| `--groups` | 请求体 | `string[]` | 否 | 未声明 | 如果acl=private,可以设置哪些权限分组可以访问<br>数组元素类型：string |
+| `--users` | 请求体 | `string[]` | 否 | 未声明 | 如果acl=private,可以设置哪些用户可以访问<br>数组元素类型：string |
 
 `--productID` 可用 `--id` 或首个数字位置参数代替；其余路径 ID 需分别提供。
 
@@ -5585,8 +5803,8 @@ zentao doc createProjectLib --projectID=<number> --name=<string> [选项]
 | `--projectID` | 路径 | `number` | 是 | 未声明 | 项目ID |
 | `--name` | 请求体 | `string` | 是 | 未声明 | 文档库名称 |
 | `--acl` | 请求体 | `string` | 否 | 未声明 | default 默认项目权限 \| private 私有 |
-| `--groups` | 请求体 | `string[]` | 否 | 未声明 | 如果acl=private,可以设置哪些权限分组可以访问 |
-| `--users` | 请求体 | `string[]` | 否 | 未声明 | 如果acl=private,可以设置哪些用户可以访问 |
+| `--groups` | 请求体 | `string[]` | 否 | 未声明 | 如果acl=private,可以设置哪些权限分组可以访问<br>数组元素类型：string |
+| `--users` | 请求体 | `string[]` | 否 | 未声明 | 如果acl=private,可以设置哪些用户可以访问<br>数组元素类型：string |
 
 `--projectID` 可用 `--id` 或首个数字位置参数代替；其余路径 ID 需分别提供。
 
@@ -5606,7 +5824,7 @@ zentao doc createMyDoc --spaceID=<number> --libID=<number> --title=<string> --co
 | --- | --- | --- | --- | --- | --- |
 | `--spaceID` | 路径 | `number` | 是 | 未声明 | 空间ID |
 | `--libID` | 路径 | `number` | 是 | 未声明 | 文档库ID |
-| `--moduleID` | 请求体 | `number` | 否 | 未声明 | 所属目录<br>格式：int32 |
+| `--moduleID` | 请求体 | `number` | 否 | 未声明 | 所属目录<br>格式：int32<br>必须为整数 |
 | `--title` | 请求体 | `string` | 是 | 未声明 | 文档标题 |
 | `--content` | 请求体 | `string` | 是 | 未声明 | 文档正文，使用Markdown格式；系统会转换为块编辑器内容并生成HTML快照 |
 | `--contentType` | 请求体 | `string` | 否 | 未声明 | 文档格式(doc 按Markdown处理，支持团队协同编辑 \| html 旧格式，直接保存HTML，不支持团队协同编辑) |
@@ -5629,7 +5847,7 @@ zentao doc createTeamDoc --spaceID=<number> --libID=<number> --title=<string> --
 | --- | --- | --- | --- | --- | --- |
 | `--spaceID` | 路径 | `number` | 是 | 未声明 | 空间ID |
 | `--libID` | 路径 | `number` | 是 | 未声明 | 文档库ID |
-| `--moduleID` | 请求体 | `number` | 否 | 未声明 | 所属目录<br>格式：int32 |
+| `--moduleID` | 请求体 | `number` | 否 | 未声明 | 所属目录<br>格式：int32<br>必须为整数 |
 | `--title` | 请求体 | `string` | 是 | 未声明 | 文档标题 |
 | `--content` | 请求体 | `string` | 是 | 未声明 | 文档正文，使用Markdown格式；系统会转换为块编辑器内容并生成HTML快照 |
 | `--contentType` | 请求体 | `string` | 否 | 未声明 | 文档格式(doc 按Markdown处理，支持团队协同编辑 \| html 旧格式，直接保存HTML，不支持团队协同编辑) |
@@ -5652,7 +5870,7 @@ zentao doc createProductDoc --productID=<number> --libID=<number> --title=<strin
 | --- | --- | --- | --- | --- | --- |
 | `--productID` | 路径 | `number` | 是 | 未声明 | 产品ID |
 | `--libID` | 路径 | `number` | 是 | 未声明 | 文档库ID |
-| `--moduleID` | 请求体 | `number` | 否 | 未声明 | 所属目录<br>格式：int32 |
+| `--moduleID` | 请求体 | `number` | 否 | 未声明 | 所属目录<br>格式：int32<br>必须为整数 |
 | `--title` | 请求体 | `string` | 是 | 未声明 | 文档标题 |
 | `--content` | 请求体 | `string` | 是 | 未声明 | 文档正文，使用Markdown格式；系统会转换为块编辑器内容并生成HTML快照 |
 | `--contentType` | 请求体 | `string` | 否 | 未声明 | 文档格式(doc 按Markdown处理，支持团队协同编辑 \| html 旧格式，直接保存HTML，不支持团队协同编辑) |
@@ -5675,7 +5893,7 @@ zentao doc createProjectDoc --projectID=<number> --libID=<number> --title=<strin
 | --- | --- | --- | --- | --- | --- |
 | `--projectID` | 路径 | `number` | 是 | 未声明 | 项目ID |
 | `--libID` | 路径 | `number` | 是 | 未声明 | 文档库ID |
-| `--moduleID` | 请求体 | `number` | 否 | 未声明 | 所属目录<br>格式：int32 |
+| `--moduleID` | 请求体 | `number` | 否 | 未声明 | 所属目录<br>格式：int32<br>必须为整数 |
 | `--title` | 请求体 | `string` | 是 | 未声明 | 文档标题 |
 | `--content` | 请求体 | `string` | 是 | 未声明 | 文档正文，使用Markdown格式；系统会转换为块编辑器内容并生成HTML快照 |
 | `--contentType` | 请求体 | `string` | 否 | 未声明 | 文档格式(doc 按Markdown处理，支持团队协同编辑 \| html 旧格式，直接保存HTML，不支持团队协同编辑) |
@@ -5699,7 +5917,7 @@ zentao doc createMyModule --spaceID=<number> --libID=<number> --name=<string> [�
 | `--spaceID` | 路径 | `number` | 是 | 未声明 | 空间ID |
 | `--libID` | 路径 | `number` | 是 | 未声明 | 文档库ID |
 | `--name` | 请求体 | `string` | 是 | 未声明 | 文档库目录 |
-| `--parentID` | 请求体 | `number` | 否 | 未声明 | 父目录ID，必须属于当前文档库<br>格式：int32 |
+| `--parentID` | 请求体 | `number` | 否 | 未声明 | 父目录ID，必须属于当前文档库<br>格式：int32<br>必须为整数 |
 
 `--spaceID` 可用 `--id` 或首个数字位置参数代替；其余路径 ID 需分别提供。
 
@@ -5720,7 +5938,7 @@ zentao doc createTeamModule --spaceID=<number> --libID=<number> --name=<string> 
 | `--spaceID` | 路径 | `number` | 是 | 未声明 | 空间ID |
 | `--libID` | 路径 | `number` | 是 | 未声明 | 文档库ID |
 | `--name` | 请求体 | `string` | 是 | 未声明 | 文档库目录 |
-| `--parentID` | 请求体 | `number` | 否 | 未声明 | 父目录ID，必须属于当前文档库<br>格式：int32 |
+| `--parentID` | 请求体 | `number` | 否 | 未声明 | 父目录ID，必须属于当前文档库<br>格式：int32<br>必须为整数 |
 
 `--spaceID` 可用 `--id` 或首个数字位置参数代替；其余路径 ID 需分别提供。
 
@@ -5741,7 +5959,7 @@ zentao doc createProductModule --productID=<number> --libID=<number> --name=<str
 | `--productID` | 路径 | `number` | 是 | 未声明 | 产品ID |
 | `--libID` | 路径 | `number` | 是 | 未声明 | 文档库ID |
 | `--name` | 请求体 | `string` | 是 | 未声明 | 文档库目录 |
-| `--parentID` | 请求体 | `number` | 否 | 未声明 | 父目录ID，必须属于当前文档库<br>格式：int32 |
+| `--parentID` | 请求体 | `number` | 否 | 未声明 | 父目录ID，必须属于当前文档库<br>格式：int32<br>必须为整数 |
 
 `--productID` 可用 `--id` 或首个数字位置参数代替；其余路径 ID 需分别提供。
 
@@ -5762,7 +5980,7 @@ zentao doc createProjectModule --projectID=<number> --libID=<number> --name=<str
 | `--projectID` | 路径 | `number` | 是 | 未声明 | 项目ID |
 | `--libID` | 路径 | `number` | 是 | 未声明 | 文档库ID |
 | `--name` | 请求体 | `string` | 是 | 未声明 | 文档库目录 |
-| `--parentID` | 请求体 | `number` | 否 | 未声明 | 父目录ID，必须属于当前文档库<br>格式：int32 |
+| `--parentID` | 请求体 | `number` | 否 | 未声明 | 父目录ID，必须属于当前文档库<br>格式：int32<br>必须为整数 |
 
 `--projectID` 可用 `--id` 或首个数字位置参数代替；其余路径 ID 需分别提供。
 
@@ -5858,8 +6076,8 @@ zentao doc updateLib --libID=<number> --name=<string> [选项]
 | `--libID` | 路径 | `number` | 是 | 未声明 | 文档库ID |
 | `--name` | 请求体 | `string` | 是 | 未声明 | 文档库名称 |
 | `--acl` | 请求体 | `string` | 否 | 未声明 | open 公开(适用于团队文档库) \| default 默认权限(适用于产品、项目文档库) \| private 私有(适用于所有类型文档库) |
-| `--groups` | 请求体 | `string[]` | 否 | 未声明 | 如果acl=private,可以设置哪些权限分组可以访问 |
-| `--users` | 请求体 | `string[]` | 否 | 未声明 | 如果acl=private,可以设置哪些用户可以访问 |
+| `--groups` | 请求体 | `string[]` | 否 | 未声明 | 如果acl=private,可以设置哪些权限分组可以访问<br>数组元素类型：string |
+| `--users` | 请求体 | `string[]` | 否 | 未声明 | 如果acl=private,可以设置哪些用户可以访问<br>数组元素类型：string |
 
 `--libID` 可用 `--id` 或首个数字位置参数代替；其余路径 ID 需分别提供。
 
@@ -5880,7 +6098,7 @@ zentao doc update --docID=<number> --title=<string> --content=<string> [选项]
 | 参数 | 位置 | 类型 | 必填 | 默认值 | 说明与可选值 |
 | --- | --- | --- | --- | --- | --- |
 | `--docID` | 路径 | `number` | 是 | 未声明 | 文档ID |
-| `--moduleID` | 请求体 | `number` | 否 | 未声明 | 所属目录<br>格式：int32 |
+| `--moduleID` | 请求体 | `number` | 否 | 未声明 | 所属目录<br>格式：int32<br>必须为整数 |
 | `--title` | 请求体 | `string` | 是 | 未声明 | 文档标题 |
 | `--content` | 请求体 | `string` | 是 | 未声明 | 文档正文，使用Markdown格式；系统会转换为块编辑器内容并生成HTML快照 |
 | `--contentType` | 请求体 | `string` | 否 | 未声明 | 文档格式(doc 按Markdown处理，支持团队协同编辑 \| html 旧格式，直接保存HTML，不支持团队协同编辑) |
@@ -5988,6 +6206,8 @@ zentao doc deleteModule --moduleID=<number> [选项]
 
 ### todo · 待办
 
+待办管理，支持创建待办、编辑待办、删除待办
+
 快捷用法与字段查询：
 
 ```text
@@ -6018,7 +6238,7 @@ zentao todo create --date=<string> --type=<string> [选项]
 | `--date` | 请求体 | `string` | 是 | 未声明 | 日期 |
 | `--type` | 请求体 | `string` | 是 | 未声明 | 类型：custom 自定义 \| task 任务 \| bug 缺陷 \| story 研发需求 \| epic 业务需求 \| requirement 用户需求 \| testtask 测试单 |
 | `--name` | 请求体 | `string` | 否 | 未声明 | 待办名称，type为custom时必填；type为非custom时由关联对象的名称或标题自动生成 |
-| `--objectID` | 请求体 | `number` | 否 | 未声明 | 关联对象ID，type为非custom时必填，必须是type对应对象的ID<br>格式：int32 |
+| `--objectID` | 请求体 | `number` | 否 | 未声明 | 关联对象ID，type为非custom时必填，必须是type对应对象的ID<br>格式：int32<br>必须为整数 |
 | `--begin` | 请求体 | `string` | 否 | 未声明 | 开始时间，使用小时+分钟拼接 |
 | `--end` | 请求体 | `string` | 否 | 未声明 | 结束时间，使用小时+分钟拼接 |
 | `--assignedTo` | 请求体 | `string` | 否 | 未声明 | 指派给 |
@@ -6042,7 +6262,7 @@ zentao todo update --todoID=<number> --date=<string> --type=<string> [选项]
 | `--date` | 请求体 | `string` | 是 | 未声明 | 日期 |
 | `--type` | 请求体 | `string` | 是 | 未声明 | 类型：custom 自定义 \| task 任务 \| bug 缺陷 \| story 研发需求 \| epic 业务需求 \| requirement 用户需求 \| testtask 测试单 |
 | `--name` | 请求体 | `string` | 否 | 未声明 | 待办名称，type为custom时必填；type为非custom时由关联对象的名称或标题自动生成 |
-| `--objectID` | 请求体 | `number` | 否 | 未声明 | 关联对象ID，type为非custom时必填，必须是type对应对象的ID<br>格式：int32 |
+| `--objectID` | 请求体 | `number` | 否 | 未声明 | 关联对象ID，type为非custom时必填，必须是type对应对象的ID<br>格式：int32<br>必须为整数 |
 | `--begin` | 请求体 | `string` | 否 | 未声明 | 开始时间，使用小时+分钟拼接 |
 | `--end` | 请求体 | `string` | 否 | 未声明 | 结束时间，使用小时+分钟拼接 |
 | `--assignedTo` | 请求体 | `string` | 否 | 未声明 | 指派给 |
@@ -6075,6 +6295,8 @@ zentao todo delete --todoID=<number> [选项]
 <a id="module-my"></a>
 
 ### my · 地盘
+
+地盘管理，支持我的待办、指派给我的任务、指派给我的Bug、指派给我的研发需求、指派给我的业务需求、指派给我的用户需求、我负责的的测试单、我参与的项目、指派给我的反馈、指派给我的工单、指派给我的用例、我的会议、指派给我的问题、指派给我的风险
 
 快捷用法与字段查询：
 
@@ -6385,3 +6607,255 @@ zentao my risks [选项]
 | `--groupJoin` | 查询 | `string` | 否 | 未声明 | 条件组之间的连接方式<br>可选值：and（and）；or（or） |
 
 可配合[公共选项](#data-options)：`--params`、`--format`、`--silent`、`--pick`、`--filter`、`--sort`、`--search`、`--search-fields`、`--limit`、`--page`；其他全局选项见[全局选项](#global-options)。
+
+<a id="module-db"></a>
+
+### db · 数据库
+
+快捷用法与字段查询：
+
+```text
+zentao db props --format=json
+zentao help db
+```
+
+此模块没有默认 list；请明确指定下表中的操作。
+
+| 操作 | 用途 |
+| --- | --- |
+| [query](#action-db-query) | 执行 SQL 查询 |
+| [tables](#action-db-tables) | 获取数据库表列表 |
+| [table](#action-db-table) | 获取数据库表结构 |
+
+<a id="action-db-query"></a>
+
+#### `zentao db query` · 执行 SQL 查询
+
+最低禅道版本：`22.7` / `biz13.7` / `max8.7` / `ipd5.7`。
+
+返回查询结果行及分页；使用 raw: true 可获取原始响应中的 SQL、列信息和执行耗时。
+
+```text
+zentao db query --sql=<string> [选项]
+```
+
+请求体示例（数组使用 JSON，以保留元素类型）：
+
+```bash
+zentao db query --data '{"sql":"select * from zt_config","page":4,"limit":3}'
+```
+
+| 参数 | 位置 | 类型 | 必填 | 默认值 | 说明与可选值 |
+| --- | --- | --- | --- | --- | --- |
+| `--sql` | 请求体 | `string` | 是 | 未声明 | SQL 查询语句 |
+| `--page` | 请求体 | `number` | 否 | 未声明 | 页码，默认 1<br>必须为整数 |
+| `--limit` | 请求体 | `number` | 否 | 未声明 | 每页记录数，默认 100<br>必须为整数 |
+
+可配合[公共选项](#data-options)：`--params`、`--format`、`--silent`、`--pick`、`--filter`、`--sort`、`--search`、`--search-fields`、`--limit`、`--data`；其他全局选项见[全局选项](#global-options)。
+
+这是带请求体的查询操作。可直接传 --data JSON 或使用 --params 中的正式字段名；当前不支持此类操作的 --data @- 或隐式标准输入。参数约束来自 SDK 定义，部分规则由服务端校验。
+
+此处 limit 是服务端请求体字段，建议放入 --data JSON。非 raw 输出时，平铺 --limit 会同时参与请求体组装和客户端截取；--data 中的 limit 覆盖请求体同名值，但不覆盖客户端 --limit。
+
+SDK 描述中的 raw: true 在 CLI 中对应 --format=raw，可查看原始响应的 SQL、列信息与执行耗时。
+
+<a id="action-db-tables"></a>
+
+#### `zentao db tables` · 获取数据库表列表
+
+最低禅道版本：`22.7` / `biz13.7` / `max8.7` / `ipd5.7`。
+
+```text
+zentao db tables [选项]
+```
+
+此操作没有业务参数。
+
+可配合[公共选项](#data-options)：`--params`、`--format`、`--silent`、`--pick`、`--filter`、`--sort`、`--search`、`--search-fields`、`--limit`；其他全局选项见[全局选项](#global-options)。
+
+<a id="action-db-table"></a>
+
+#### `zentao db table` · 获取数据库表结构
+
+最低禅道版本：`22.7` / `biz13.7` / `max8.7` / `ipd5.7`。
+
+meta 返回表信息、主键和列定义；sql 返回包含表信息、dialect 和建表 SQL 的对象。
+
+```text
+zentao db table --table=<string> [选项]
+```
+
+| 参数 | 位置 | 类型 | 必填 | 默认值 | 说明与可选值 |
+| --- | --- | --- | --- | --- | --- |
+| `--table` | 路径 | `string` | 是 | 未声明 | 数据库表名，例如 zt_config |
+| `--type` | 查询 | `string` | 否 | `"meta"` | 表结构返回格式<br>可选值：meta（元数据）；sql（建表 SQL） |
+
+可配合[公共选项](#data-options)：`--params`、`--format`、`--silent`、`--pick`；其他全局选项见[全局选项](#global-options)。
+
+<a id="module-knowledgelib"></a>
+
+### knowledgelib · 知识库
+
+需部署商业知识库扩展，仅返回已发布且当前用户可访问的知识库。
+
+快捷用法与字段查询：
+
+```text
+zentao knowledgelib [列表参数]
+zentao knowledgelib props --format=json
+zentao help knowledgelib
+```
+
+| 操作 | 用途 |
+| --- | --- |
+| [list](#action-knowledgelib-list) | 获取知识库列表 |
+
+<a id="action-knowledgelib-list"></a>
+
+#### `zentao knowledgelib list` · 获取知识库列表
+
+最低禅道版本：`biz13.7` / `max8.7` / `ipd5.7`。
+
+```text
+zentao knowledgelib list [选项]
+```
+
+| 参数 | 位置 | 类型 | 必填 | 默认值 | 说明与可选值 |
+| --- | --- | --- | --- | --- | --- |
+| `--type` | 查询 | `string` | 否 | 未声明 | 库类型，省略或空字符串时合并两类可见库<br>可选值：my（我的知识库）；team（组织知识库） |
+| `--keyword` | 查询 | `string` | 否 | 未声明 | 知识库名称或描述关键词，首尾空白会被移除 |
+| `--pageID` | 查询 | `number` | 否 | `1` | 页码，从 1 开始的正整数<br>也可使用 --page |
+| `--recPerPage` | 查询 | `number` | 否 | `20` | 每页条数，范围 1～100 |
+
+可配合[公共选项](#data-options)：`--params`、`--format`、`--silent`、`--pick`、`--filter`、`--sort`、`--search`、`--search-fields`、`--limit`、`--page`；其他全局选项见[全局选项](#global-options)。
+
+<a id="module-knowledge"></a>
+
+### knowledge · 知识
+
+需部署商业知识库扩展，支持浏览知识、向量搜索、标题或正文关键词搜索和读取已保存正文。
+
+快捷用法与字段查询：
+
+```text
+zentao knowledge <id>
+zentao knowledge [列表参数]
+zentao knowledge props --format=json
+zentao help knowledge
+```
+
+| 操作 | 用途 |
+| --- | --- |
+| [list](#action-knowledge-list) | 获取知识库内知识列表 |
+| [embeddingsSearch](#action-knowledge-embeddingssearch) | 多知识库向量搜索 |
+| [search](#action-knowledge-search) | 多知识库关键词搜索 |
+| [get](#action-knowledge-get) | 获取知识详细内容 |
+
+<a id="action-knowledge-list"></a>
+
+#### `zentao knowledge list` · 获取知识库内知识列表
+
+最低禅道版本：`biz13.7` / `max8.7` / `ipd5.7`。
+
+返回当前用户可见的知识条目，按本地 ID 降序排列；不支持标题关键词查询。
+
+```text
+zentao knowledge list --libID=<number> [选项]
+```
+
+| 参数 | 位置 | 类型 | 必填 | 默认值 | 说明与可选值 |
+| --- | --- | --- | --- | --- | --- |
+| `--libID` | 路径 | `number` | 是 | 未声明 | 本地知识库 ID，正整数 |
+| `--type` | 查询 | `string` | 否 | 未声明 | 知识类型，省略或空字符串表示不限；text/file 不可与非空 objectType 同时使用。<br>可选值：object（对象知识）；text（文本知识）；file（文件知识） |
+| `--objectType` | 查询 | `string` | 否 | 未声明 | 来源对象类型；单独指定时按 type=object 筛选，每次只接受一个编码。<br>可选值：story（需求）；task（任务）；case（测试用例）；bug（Bug）；plan（产品计划）；release（发布）；feedback（反馈）；ticket（工单）；doc（文档（含接口文档））；issue（问题）；risk（风险）；opportunity（机会）；practice（最佳实践）；component（组件） |
+| `--pageID` | 查询 | `number` | 否 | `1` | 页码，从 1 开始的正整数<br>也可使用 --page |
+| `--recPerPage` | 查询 | `number` | 否 | `20` | 每页条数，范围 1～100 |
+
+`--libID` 可用 `--id` 或首个数字位置参数代替；其余路径 ID 需分别提供。
+
+可配合[公共选项](#data-options)：`--params`、`--format`、`--silent`、`--pick`、`--filter`、`--sort`、`--search`、`--search-fields`、`--limit`、`--page`；其他全局选项见[全局选项](#global-options)。
+
+<a id="action-knowledge-embeddingssearch"></a>
+
+#### `zentao knowledge embeddingsSearch` · 多知识库向量搜索
+
+最低禅道版本：`biz13.7` / `max8.7` / `ipd5.7`。
+
+仅检索已有索引，需 ai.searchknowledgelib 权限。按匹配度降序返回片段，不分页；用 knowledgeID 获取完整正文，chunkID 仅标识片段。
+
+```text
+zentao knowledge embeddingsSearch --keyword=<string> --libIDs=<integer[]> [选项]
+```
+
+请求体示例（数组使用 JSON，以保留元素类型）：
+
+```bash
+zentao knowledge embeddingsSearch --data '{"keyword":"如何处理接口请求超时","libIDs":[12,18],"minSimilarity":0.7,"limit":5}'
+```
+
+| 参数 | 位置 | 类型 | 必填 | 默认值 | 说明与可选值 |
+| --- | --- | --- | --- | --- | --- |
+| `--keyword` | 请求体 | `string` | 是 | 未声明 | 搜索问题或关键词，去除首尾空白后不能为空<br>最小长度：1 |
+| `--libIDs` | 请求体 | `integer[]` | 是 | 未声明 | 本地知识库 ID 的非空正整数数组，例如 [12,18]；不接受字符串元素，重复 ID 自动去重<br>最少元素数：1<br>数组元素类型：integer<br>数组元素最小值：1 |
+| `--type` | 请求体 | `string` | 否 | 未声明 | 知识类型，省略或空字符串表示不限；text/file 不可与非空 objectType 同时使用。<br>可选值：object（对象知识）；text（文本知识）；file（文件知识） |
+| `--objectType` | 请求体 | `string` | 否 | 未声明 | 来源对象类型；单独指定时按 type=object 筛选，每次只接受一个编码。<br>可选值：story（需求）；task（任务）；case（测试用例）；bug（Bug）；plan（产品计划）；release（发布）；feedback（反馈）；ticket（工单）；doc（文档（含接口文档））；issue（问题）；risk（风险）；opportunity（机会）；practice（最佳实践）；component（组件） |
+| `--minSimilarity` | 请求体 | `number` | 否 | `0.5` | 最小匹配度，范围 [0,1]<br>最小值：0<br>最大值：1 |
+| `--limit` | 请求体 | `number` | 否 | `5` | 整次多库搜索最多返回的片段数，范围 1～100<br>必须为整数<br>最小值：1<br>最大值：100 |
+
+可配合[公共选项](#data-options)：`--params`、`--format`、`--silent`、`--pick`、`--filter`、`--sort`、`--search`、`--search-fields`、`--limit`、`--data`；其他全局选项见[全局选项](#global-options)。
+
+这是带请求体的查询操作。可直接传 --data JSON 或使用 --params 中的正式字段名；当前不支持此类操作的 --data @- 或隐式标准输入。参数约束来自 SDK 定义，部分规则由服务端校验。
+
+此处 limit 是服务端请求体字段，建议放入 --data JSON。非 raw 输出时，平铺 --limit 会同时参与请求体组装和客户端截取；--data 中的 limit 覆盖请求体同名值，但不覆盖客户端 --limit。
+
+<a id="action-knowledge-search"></a>
+
+#### `zentao knowledge search` · 多知识库关键词搜索
+
+最低禅道版本：`biz13.7` / `max8.7` / `ipd5.7`。
+
+需 ai.searchknowledgelib 权限，按字面文本匹配 title 或已保存的 content，不依赖向量索引。标题与正文分别匹配，单个关键词不能跨字段拼接。返回完整正文及 contentType，正文为空或 null 时返回空字符串；每条知识只返回一次，按知识 ID 降序分页。
+
+```text
+zentao knowledge search --keywords=<string[]> --libIDs=<integer[]> [选项]
+```
+
+请求体示例（数组使用 JSON，以保留元素类型）：
+
+```bash
+zentao knowledge search --data '{"keywords":["登录","超时"],"libIDs":[12,18],"matchMode":"any","pageID":1,"recPerPage":20}'
+```
+
+| 参数 | 位置 | 类型 | 必填 | 默认值 | 说明与可选值 |
+| --- | --- | --- | --- | --- | --- |
+| `--keywords` | 请求体 | `string[]` | 是 | 未声明 | 非空关键词数组，每项去除首尾空白后为 1～200 个 Unicode 字符，去重后最多 20 项；%、_ 和反斜杠按普通字符匹配<br>最少元素数：1<br>数组元素类型：string<br>数组元素最小长度：1 |
+| `--libIDs` | 请求体 | `integer[]` | 是 | 未声明 | 本地知识库 ID 的非空正整数数组，例如 [12,18]；不接受字符串元素，重复 ID 自动去重<br>最少元素数：1<br>数组元素类型：integer<br>数组元素最小值：1 |
+| `--matchMode` | 请求体 | `string` | 否 | `"any"` | any 表示任一关键词出现在标题或正文中；all 表示同一条知识的每个关键词均出现在标题或正文之一，可分别命中两个字段。仅省略时使用 any，空字符串和 null 无效<br>可选值：any（任一关键词匹配标题或正文）；all（全部关键词匹配同一条知识） |
+| `--type` | 请求体 | `string` | 否 | 未声明 | 知识类型，省略或空字符串表示不限；text/file 不可与非空 objectType 同时使用。<br>可选值：object（对象知识）；text（文本知识）；file（文件知识） |
+| `--objectType` | 请求体 | `string` | 否 | 未声明 | 来源对象类型；单独指定时按 type=object 筛选，每次只接受一个编码。<br>可选值：story（需求）；task（任务）；case（测试用例）；bug（Bug）；plan（产品计划）；release（发布）；feedback（反馈）；ticket（工单）；doc（文档（含接口文档））；issue（问题）；risk（风险）；opportunity（机会）；practice（最佳实践）；component（组件） |
+| `--pageID` | 请求体 | `number` | 否 | `1` | 页码，从 1 开始的正整数<br>必须为整数<br>最小值：1<br>请使用 --pageID 或 --data 中的 pageID；此请求体字段不支持 --page 别名 |
+| `--recPerPage` | 请求体 | `number` | 否 | `20` | 每页条数，范围 1～100<br>必须为整数<br>最小值：1<br>最大值：100 |
+
+可配合[公共选项](#data-options)：`--params`、`--format`、`--silent`、`--pick`、`--filter`、`--sort`、`--search`、`--search-fields`、`--limit`、`--data`；其他全局选项见[全局选项](#global-options)。
+
+这是带请求体的查询操作。可直接传 --data JSON 或使用 --params 中的正式字段名；当前不支持此类操作的 --data @- 或隐式标准输入。参数约束来自 SDK 定义，部分规则由服务端校验。
+
+<a id="action-knowledge-get"></a>
+
+#### `zentao knowledge get` · 获取知识详细内容
+
+最低禅道版本：`biz13.7` / `max8.7` / `ipd5.7`。
+
+返回已保存的完整正文及来源信息，不触发文件提取、知识同步或索引更新。按 contentType 解释正文，尚未保存正文时 content 可为空。
+
+```text
+zentao knowledge get --knowledgeID=<number> [选项]
+```
+
+| 参数 | 位置 | 类型 | 必填 | 默认值 | 说明与可选值 |
+| --- | --- | --- | --- | --- | --- |
+| `--knowledgeID` | 路径 | `number` | 是 | 未声明 | 本地知识条目 ID，正整数；不可使用 chunkID 或来源对象 objectID |
+
+`--knowledgeID` 可用 `--id` 或首个数字位置参数代替；其余路径 ID 需分别提供。
+
+可配合[公共选项](#data-options)：`--params`、`--format`、`--silent`、`--pick`；其他全局选项见[全局选项](#global-options)。
