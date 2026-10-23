@@ -1,0 +1,422 @@
+{
+  "generatedAt": "2026-10-23T14:23:40.261Z",
+  "tag": "CLI_OPT_20261023142312",
+  "environment": "Configured .env.test",
+  "serverVersion": "ipd5.7",
+  "runtime": "Node 18.20.8 built npm entry",
+  "fixtures": {
+    "product": 62,
+    "deleteProduct": 63,
+    "bug": 194,
+    "secondBug": 195,
+    "story": 510,
+    "workflowGroup": 2,
+    "project": 132,
+    "execution": 133,
+    "task": 237,
+    "lib": 399,
+    "doc": 20413,
+    "knowledgeLib": 49
+  },
+  "summary": {
+    "pass": 26,
+    "fail": 0
+  },
+  "records": [
+    {
+      "name": "Offline version and shared machine help",
+      "status": "pass",
+      "detail": {
+        "version": {
+          "cli": "0.4.0",
+          "sdk": "0.8.2",
+          "runtime": "Node 18.20.8",
+          "platform": "darwin",
+          "arch": "arm64"
+        },
+        "bodySearchIsReadOnly": true
+      },
+      "commands": [
+        "zentao version",
+        "zentao help knowledge search"
+      ],
+      "ms": 447
+    },
+    {
+      "name": "Password authentication saves without selecting a default",
+      "status": "pass",
+      "detail": {
+        "savedProfiles": 1,
+        "selected": false,
+        "serverVersion": "ipd5.7"
+      },
+      "commands": [
+        "zentao auth login --use-env"
+      ],
+      "ms": 493
+    },
+    {
+      "name": "Profile choice, online verification and environment precedence",
+      "status": "pass",
+      "detail": {
+        "verified": true,
+        "explicitOverridesPartialEnvironment": true,
+        "partialEnvironmentCode": "1001"
+      },
+      "commands": [
+        "zentao profile use <test-profile>",
+        "zentao auth status --verify",
+        "zentao auth status",
+        "zentao auth status"
+      ],
+      "ms": 1060
+    },
+    {
+      "name": "Config set/get/unset retains identity and exposes source",
+      "status": "pass",
+      "detail": {
+        "typedValue": 12345,
+        "restoredDefault": true
+      },
+      "commands": [
+        "zentao config set timeout 12345",
+        "zentao config get timeout",
+        "zentao config unset timeout",
+        "zentao config get timeout"
+      ],
+      "ms": 963
+    },
+    {
+      "name": "Product create with string and HTML fidelity",
+      "status": "pass",
+      "detail": {
+        "id": 62,
+        "htmlPreserved": true
+      },
+      "commands": [
+        "zentao product create --name CLI_OPT_20261023142312 --desc <p>007</p><p>true</p>",
+        "zentao product get 62"
+      ],
+      "ms": 938
+    },
+    {
+      "name": "Product update autofills its required fields",
+      "status": "pass",
+      "detail": {
+        "id": 62,
+        "namePreserved": true
+      },
+      "commands": [
+        "zentao product update 62 --desc <p>Updated</p>",
+        "zentao product get 62"
+      ],
+      "ms": 1073
+    },
+    {
+      "name": "JSON file creates a second product",
+      "status": "pass",
+      "detail": {
+        "id": 63
+      },
+      "commands": [
+        "zentao product create --data @<run-directory>/body.json"
+      ],
+      "ms": 564
+    },
+    {
+      "name": "Explicit batch deduplicates and preserves target order",
+      "status": "pass",
+      "detail": {
+        "success": 2,
+        "failed": 0,
+        "skipped": 0
+      },
+      "commands": [
+        "zentao product get --ids 62,63,62"
+      ],
+      "ms": 473
+    },
+    {
+      "name": "Partial batch failure and fail-fast have per-target results",
+      "status": "pass",
+      "detail": {
+        "success": 1,
+        "failed": 1,
+        "skipped": 1
+      },
+      "commands": [
+        "zentao product get --ids 62,2147483647,63 --batch-fail-fast"
+      ],
+      "ms": 408
+    },
+    {
+      "name": "Bug creates support explicit stdin and repeated array flags",
+      "status": "pass",
+      "detail": {
+        "ids": [
+          194,
+          195
+        ],
+        "stringTitle": "007"
+      },
+      "commands": [
+        "zentao bug create --data=@-",
+        "zentao bug create --product 62 --title 007 --opened-build trunk",
+        "zentao bug get 195"
+      ],
+      "ms": 1942
+    },
+    {
+      "name": "All pages aggregate before sorting and max-items",
+      "status": "pass",
+      "detail": {
+        "returned": 1,
+        "fetched": 2,
+        "page": 2,
+        "pageSize": 1,
+        "total": 2,
+        "hasMore": false,
+        "truncated": true,
+        "processingScope": "all",
+        "totalScope": "serverBeforeLocalProcessing"
+      },
+      "commands": [
+        "zentao bug list --product 62 --all --page-size=1 --sort=id:desc --max-items=1 --fields=id,title"
+      ],
+      "ms": 426
+    },
+    {
+      "name": "Filtered empty first page retains hasMore",
+      "status": "pass",
+      "detail": {
+        "returned": 0,
+        "fetched": 1,
+        "page": 1,
+        "pageSize": 1,
+        "total": 2,
+        "hasMore": true,
+        "truncated": false,
+        "processingScope": "page",
+        "totalScope": "serverBeforeLocalProcessing"
+      },
+      "commands": [
+        "zentao bug list --product 62 --page-size=1 --filter=id=2147483647"
+      ],
+      "ms": 359
+    },
+    {
+      "name": "Table and Markdown render while raw preserves server structure",
+      "status": "pass",
+      "detail": {
+        "table": true,
+        "markdown": true,
+        "rawKeys": [
+          "status",
+          "bug",
+          "actions"
+        ]
+      },
+      "commands": [
+        "zentao bug list --product 62 --format=table",
+        "zentao bug list --product 62 --format=markdown",
+        "zentao bug get 194 --format=raw"
+      ],
+      "ms": 1120
+    },
+    {
+      "name": "Bug resolve, close and activate are confirmed by readback",
+      "status": "pass",
+      "detail": {
+        "id": 194,
+        "transitions": [
+          "resolved",
+          "closed",
+          "active"
+        ]
+      },
+      "commands": [
+        "zentao bug resolve 194 --resolution=fixed --resolved-build=trunk",
+        "zentao bug get 194",
+        "zentao bug close 194 --comment=CLI acceptance",
+        "zentao bug get 194",
+        "zentao bug activate 194 --opened-build=trunk",
+        "zentao bug get 194"
+      ],
+      "ms": 2297
+    },
+    {
+      "name": "Story create and change preserve explicit review status",
+      "status": "pass",
+      "detail": {
+        "id": 510,
+        "status": "active"
+      },
+      "commands": [
+        "zentao story create --product 62 --title CLI_OPT_20261023142312_story --spec <p>Acceptance</p> --status=draft",
+        "zentao story get 510",
+        "zentao story change 510 --title CLI_OPT_20261023142312_changed --status=active",
+        "zentao story get 510"
+      ],
+      "ms": 3348
+    },
+    {
+      "name": "SQL POST body preserves false, strings and literal dotted columns",
+      "status": "pass",
+      "detail": {
+        "code": "007",
+        "flag": "true",
+        "dottedColumn": true
+      },
+      "commands": [
+        "zentao db query --data=@-",
+        "zentao db query --sql SELECT 1 AS `a.b` --no-count --format=table"
+      ],
+      "ms": 681
+    },
+    {
+      "name": "Project and execution create with schema-typed arrays",
+      "status": "pass",
+      "detail": {
+        "project": 132,
+        "execution": 133
+      },
+      "commands": [
+        "zentao workflowgroup list",
+        "zentao project create --data {\"name\":\"CLI_OPT_20261023142312_project\",\"model\":\"scrum\",\"begin\":\"2026-10-23\",\"end\":\"2026-12-31\",\"workflowGroup\":2,\"products\":[\"62\"]}",
+        "zentao execution create --project 132 --name CLI_OPT_20261023142312_execution --begin=2026-10-23 --end=2026-12-31 --products 62"
+      ],
+      "ms": 2518
+    },
+    {
+      "name": "Task deadline flag coexists with command deadline and autofill",
+      "status": "pass",
+      "detail": {
+        "id": 237,
+        "deadline": "2026-12-21"
+      },
+      "commands": [
+        "zentao task create --execution-id 133 --name CLI_OPT_20261023142312_task --type=devel --estimate=2 --assigned-to sunhao --data-deadline=2026-12-20",
+        "zentao task update 237 --desc line1=a\r\nline2=b\r\n --data-deadline=2026-12-21",
+        "zentao task get 237"
+      ],
+      "ms": 2108
+    },
+    {
+      "name": "Task start, finish and close are confirmed by readback",
+      "status": "pass",
+      "detail": {
+        "id": 237,
+        "transitions": [
+          "doing",
+          "done",
+          "closed"
+        ]
+      },
+      "commands": [
+        "zentao task start 237 --real-started=2026-10-23 09:00:00 --left=2",
+        "zentao task get 237",
+        "zentao task finish 237 --current-consumed=2 --real-started=2026-10-23 09:00:00 --finished-date=2026-10-23 10:00:00",
+        "zentao task get 237",
+        "zentao task close 237",
+        "zentao task get 237"
+      ],
+      "ms": 2381
+    },
+    {
+      "name": "Document library, document create and update use explicit actions",
+      "status": "pass",
+      "detail": {
+        "lib": 399,
+        "doc": 20413
+      },
+      "commands": [
+        "zentao doc create-product-lib 62 --name CLI_OPT_20261023142312_library",
+        "zentao doc create-product-doc --product-id 62 --lib-id 399 --data {\"title\":\"CLI_OPT_20261023142312_doc\",\"content\":\"# 007\\n\\ntrue\",\"contentType\":\"doc\"}",
+        "zentao doc update-lib 399 --name CLI_OPT_20261023142312_library_updated",
+        "zentao doc get-lib 399"
+      ],
+      "ms": 1804
+    },
+    {
+      "name": "Multipart file upload uses only the explicit local fixture",
+      "status": "pass",
+      "detail": {
+        "uploaded": true,
+        "responseKeys": [
+          "id",
+          "url"
+        ]
+      },
+      "commands": [
+        "zentao file create --file <run-directory>/acceptance.txt --object-type=bug --object-id 194"
+      ],
+      "ms": 352
+    },
+    {
+      "name": "Discover an accessible published AI knowledge library",
+      "status": "pass",
+      "detail": {
+        "available": 5,
+        "selectedID": 49
+      },
+      "commands": [
+        "zentao knowledgelib list --page-size=100"
+      ],
+      "ms": 337
+    },
+    {
+      "name": "Keyword POST search supports repeated typed arrays and pagination",
+      "status": "pass",
+      "detail": {
+        "returned": 0,
+        "fetched": 0,
+        "page": 1,
+        "pageSize": 1,
+        "total": 0,
+        "hasMore": false,
+        "truncated": false,
+        "processingScope": "page",
+        "totalScope": "serverBeforeLocalProcessing"
+      },
+      "commands": [
+        "zentao knowledge search --keywords CLI_OPT_20261023142312 --keywords=007 --lib-ids 49 --page-size=1"
+      ],
+      "ms": 336
+    },
+    {
+      "name": "Stdio MCP reads live data and classifies POST search as read-only",
+      "status": "pass",
+      "detail": {
+        "tools": 4,
+        "productRead": true,
+        "keywordSearch": true,
+        "writeBlocked": true
+      },
+      "commands": [],
+      "ms": 544
+    },
+    {
+      "name": "HTTP MCP reads live data and hides local file actions",
+      "status": "pass",
+      "detail": {
+        "productRead": true,
+        "uploadHidden": true
+      },
+      "commands": [],
+      "ms": 121
+    },
+    {
+      "name": "Explicit batch delete removes disposable objects",
+      "status": "pass",
+      "detail": {
+        "deleted": 63,
+        "deduplicated": true
+      },
+      "commands": [
+        "zentao product delete --ids 63,63 --yes",
+        "zentao product get 63"
+      ],
+      "ms": 730
+    }
+  ]
+}
