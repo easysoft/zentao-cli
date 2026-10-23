@@ -174,6 +174,7 @@ export function mapSdkError(error: unknown): unknown {
 export function formatError(error: ZentaoError, format: string): string {
     if (format === 'json' || format === 'raw') {
         const obj: Record<string, unknown> = {
+            ok: false,
             error: {
                 code: error.code,
                 message: error.message,

@@ -49,6 +49,7 @@ function renderModuleExecution(
             isList: execution.isList,
             fields: execution.fields,
             pager: execution.pager,
+            meta: execution.meta,
             jsonPretty: config.jsonPretty,
             rawResponse: execution.rawResponse,
         });
@@ -62,6 +63,7 @@ function renderModuleExecution(
             isList: true,
             fields: execution.fields,
             pager: execution.pager,
+            meta: execution.meta,
             jsonPretty: config.jsonPretty,
         });
         if (output) console.log(output);
@@ -116,8 +118,11 @@ function toBatchError(id: BatchId, error: unknown): BatchError {
 function renderBatchResult(result: BatchResult, format: string, pretty: boolean): string {
     if (format === 'json' || format === 'raw') {
         return formatJson({
-            status: result.failed.length > 0 ? 'failed' : 'success',
-            result,
+            ok: result.failed.length === 0,
+            data: [...result.success.map(objectID => ({ objectID, ok: true, data: result.data?.find(item => item.objectID === objectID)?.value ?? null })),
+                ...result.errors.map(item => ({ objectID: item.objectID, ok: false, error: item.error })),
+                ...result.skipped.map(objectID => ({ objectID, ok: false, skipped: true }))],
+            meta: { success: result.success.length, failed: result.failed.length, skipped: result.skipped.length },
         }, pretty);
     }
 
@@ -152,7 +157,7 @@ function renderBatchErrors(result: BatchResult, format: string, pretty: boolean)
         errors: result.errors,
     };
     if (format === 'json' || format === 'raw') {
-        return formatJson({ status: 'failed', result: failure }, pretty);
+        return formatJson({ ok: false, data: failure.errors, meta: { failed: failure.failed.length, skipped: failure.skipped.length } }, pretty);
     }
 
     const lines = [`操作失败：${failure.failed.join(', ')}`];
@@ -170,7 +175,7 @@ export function showModuleProps(mod: ModuleDefinition, options: ModuleActionOpti
 
     const props = getObjectProps(mod.name);
     const format = options.format ?? 'markdown';
-    const output = format === 'markdown' ? renderObject(props, format) : formatJson(props);
+    const output = formatOutput(props, { format, isList: false });
     if (output) console.log(output);
 }
 

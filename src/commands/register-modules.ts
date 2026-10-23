@@ -73,7 +73,7 @@ export function registerModuleCommands(program: Command): void {
             if (action.requestBody) cmd.option('--data <json|@file|@->', 'JSON 对象、文件或显式标准输入');
             if (contract.batch) cmd.option('--ids <ids>', '批量目标 ID，逗号分隔并去重').option('--batch-fail-fast', '失败后跳过剩余目标');
             if (action.type === 'delete') cmd.option('--yes', '确认删除');
-            if (action.type === 'list' || action.type === 'get') cmd.option('--fields <fields>', '返回字段，逗号分隔');
+            if (action.type === 'list' || action.type === 'get') cmd.option('--fields <fields>', '返回字段，逗号分隔').option('--html-to-markdown', '显式将富文本字段转换为 Markdown');
             if (action.type === 'list') {
                 cmd.option('--max-items <number>', '整次命令最多返回条数');
                 cmd.option('--filter <expr>', '当前获取范围内过滤；组内 AND，多次指定为 OR', collect);

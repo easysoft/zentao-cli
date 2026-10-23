@@ -1,5 +1,5 @@
 import type { OutputFormat } from '../types/index.js';
-import { formatJson, formatList } from './format.js';
+import { formatJson, formatList, formatOutput } from './format.js';
 
 /** 渲染字符串 */
 export function renderString(content: string, format: OutputFormat = 'markdown'): string {
@@ -24,5 +24,5 @@ export function renderMarkdown(markdown: string): string {
 
 /** 渲染对象 */
 export function renderObject(object: Record<string, unknown>, format: OutputFormat, options?: { fields?: string[] }): string {
-    return renderString(format === 'markdown' ? formatList(object, options?.fields) : formatJson(object), format);
+    return renderString(formatOutput(object, { format, isList: false, fields: options?.fields }), format);
 }

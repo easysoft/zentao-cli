@@ -1,15 +1,16 @@
 import type { OutputFormat, Pager } from '../types/index.js';
 
 /** 将对象数组渲染为 GitHub 风格 Markdown 表格 */
-export function formatTable(data: Record<string, unknown>[], fields?: string[]): string {
-    if (data.length === 0) return '';
+export function formatTable(data: unknown[], fields?: string[]): string {
+    if (data.length === 0) return '0 条';
 
-    const keys = fields ?? Object.keys(data[0]);
+    const objects = data.map(row => row && typeof row === 'object' && !Array.isArray(row) ? row as Record<string, unknown> : { value: row });
+    const keys = fields ?? [...new Set(objects.flatMap(Object.keys))];
     if (keys.length === 0) return '';
 
-    const rows = data.map((row) =>
+    const rows = objects.map((row) =>
         keys.map((key) => {
-            const value = getNestedValue(row, key);
+            const value = fields ? getNestedValue(row, key) : row[key];
             return formatCellValue(value);
         }),
     );
@@ -26,7 +27,7 @@ export function formatList(data: Record<string, unknown>, fields?: string[]): st
     const keys = fields ?? Object.keys(data);
     return keys
         .map((key) => {
-            const value = getNestedValue(data, key);
+            const value = fields ? getNestedValue(data, key) : data[key];
             return `* ${key}: ${formatCellValue(value)}`;
         })
         .join('\n');
@@ -61,6 +62,7 @@ export function formatOutput(
         pager?: Pager;
         jsonPretty?: boolean;
         rawResponse?: unknown;
+        meta?: Record<string, unknown>;
     },
 ): string {
     if (options.format === 'raw') {
@@ -68,18 +70,21 @@ export function formatOutput(
     }
 
     if (options.format === 'json') {
-        const result: Record<string, unknown> = { status: 'success', data };
-        if (options.pager) {
-            result.pager = normalizePager(options.pager);
-        }
-        return formatJson(result, options.jsonPretty ?? false);
+        const meta = options.meta ?? (options.isList ? {
+            returned: Array.isArray(data) ? data.length : 0,
+            total: options.pager?.recTotal ?? null,
+            page: options.pager?.pageID ?? null,
+            pageSize: options.pager?.recPerPage ?? null,
+            hasMore: options.pager ? options.pager.pageID * options.pager.recPerPage < options.pager.recTotal : null,
+        } : {});
+        return formatJson({ ok: true, data: data ?? null, meta }, options.jsonPretty ?? false);
     }
 
     // Markdown format
     if (options.isList && Array.isArray(data)) {
-        const table = formatTable(data as Record<string, unknown>[], options.fields);
+        const table = options.format === 'table' ? formatTerminalTable(data, options.fields) : formatTable(data, options.fields);
         const pagerInfo = formatPagerInfo(options.pager, data.length);
-        return table + pagerInfo;
+        return table + pagerInfo + (options.meta?.truncated ? '\n结果已由 --max-items 截断' : '');
     }
 
     if (!options.isList && data && typeof data === 'object' && !Array.isArray(data)) {
@@ -113,4 +118,26 @@ export function getNestedValue(obj: Record<string, unknown>, path: string): unkn
         current = (current as Record<string, unknown>)[key];
     }
     return current;
+}
+
+/** Terminal tables are compact; JSON and Markdown never truncate values. */
+export function formatTerminalTable(data: unknown[], fields?: string[]): string {
+    if (!data.length) return '0 条';
+    const objects = data.map(row => row && typeof row === 'object' && !Array.isArray(row) ? row as Record<string, unknown> : { value: row });
+    const keys = fields ?? [...new Set(objects.flatMap(Object.keys))];
+    const width = (value: string) => [...value].reduce((n, char) => n + (char.charCodeAt(0) > 255 ? 2 : 1), 0);
+    let truncated = false;
+    const cell = (value: unknown) => {
+        const text = (typeof value === 'object' && value !== null ? JSON.stringify(value) : String(value ?? '')).replace(/\s+/g, ' ');
+        let result = '';
+        for (const char of text) {
+            if (width(result + char) > 36) { truncated = true; return result + '…'; }
+            result += char;
+        }
+        return result;
+    };
+    const rows = [keys, ...objects.map(row => keys.map(key => cell(fields ? getNestedValue(row, key) : row[key])))];
+    const widths = keys.map((_, index) => Math.max(...rows.map(row => width(row[index]))));
+    return rows.map(row => row.map((value, index) => value + ' '.repeat(widths[index] - width(value))).join('  ').trimEnd()).join('\n')
+        + (truncated ? '\n… 表示终端省略内容；使用 --format=json 查看完整值' : '');
 }

@@ -43,6 +43,7 @@ export function parseCliValue(value: string | string[] | boolean, schema: ValueS
 /** Prepare and validate every input before authentication, including all batch targets. */
 export async function prepareCliParams(mod: ModuleDefinition, action: ModuleAction, target: string | undefined,
     options: ModuleActionOptions, values: Record<string, unknown>): Promise<Record<string, unknown>> {
+    if (options.format === 'raw' && (options.all || options.maxItems || options.pick || options.filter?.length || options.search?.length || options.sort || options.searchFields || options.htmlToMarkdown)) invalid('raw', '原始响应不能与本地处理或自动翻页组合');
     const params: Record<string, unknown> = {};
     const definitions = actionParameters(mod, action);
     const assign = (name: string, value: unknown) => {

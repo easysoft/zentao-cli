@@ -14,7 +14,7 @@ import { resolveData } from '../utils/stdin.js';
 import { buildParams } from './args.js';
 import { getAction } from './helper.js';
 import { ZentaoError } from '../errors.js';
-import { paginationFields } from './contract.js';
+import { actionContract, paginationFields } from './contract.js';
 import { validateValue } from './validation.js';
 
 export interface ModuleExecutionResult {
@@ -89,7 +89,9 @@ export async function executeModuleCommand(
     }
     const requestName = `${module.name}/${action.name}`;
     const fields = parseFields(options.pick);
-    const rawOutput = (options.format ?? config.defaultOutputFormat ?? 'markdown') === 'raw';
+    const outputFormat = options.format ?? config.defaultOutputFormat ?? 'table';
+    const rawOutput = outputFormat === 'raw';
+    const convertHtml = options.htmlToMarkdown ?? (outputFormat !== 'json' && config.htmlToMarkdown !== false);
     if (rawOutput && (options.all || options.maxItems || options.pick || options.filter?.length || options.search?.length || options.sort || options.searchFields)) {
         throw new ZentaoError('E2009', { option: 'raw', reason: '原始响应不能与本地处理或自动翻页组合' });
     }
@@ -119,10 +121,10 @@ export async function executeModuleCommand(
         recPerPage: pagination ? String(getParam(pagination.size.name)) : undefined,
         timeout: options.timeout,
         insecure: options.insecure,
-        convert: processList && config.htmlToMarkdown !== false
+        convert: processList && convertHtml
             ? convertHtmlFieldsInArray
             : undefined,
-        convertSingle: processSingle && config.htmlToMarkdown !== false
+        convertSingle: processSingle && convertHtml
             ? convertHtmlFields
             : undefined,
         filter: processList ? options.filter : undefined,
@@ -200,7 +202,9 @@ export async function executeModuleCommand(
         const meta = { returned: data.length, fetched, page: pager?.pageID ?? null, pageSize: pager?.recPerPage ?? null,
             total: pager?.recTotal ?? null, hasMore, truncated: processedCount > data.length,
             processingScope: options.all ? 'all' : 'page', totalScope: 'serverBeforeLocalProcessing' };
-        return { action, data, rawResponse: response, pager, fields, isList: true, meta };
+        const displayFields = outputFormat === 'table' && !fields && data.some(row => row && typeof row === 'object')
+            ? actionContract(module, action).defaultFields.filter(key => data.some(row => row && Object.hasOwn(row, key))) : fields;
+        return { action, data, rawResponse: response, pager, fields: displayFields?.length ? displayFields : undefined, isList: true, meta };
     }
 
     if (action.type === 'get') {

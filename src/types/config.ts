@@ -5,7 +5,7 @@ export type { ServerConfig };
 /** 用户可配置的选项，存储在 profile.config 中 */
 export interface UserConfig {
     /** 默认输出格式 */
-    defaultOutputFormat?: 'markdown' | 'json' | 'raw';
+    defaultOutputFormat?: 'table' | 'markdown' | 'json' | 'raw';
     /** 默认每页记录数 */
     defaultRecPerPage?: number;
     /** 是否跳过 SSL/TLS 证书验证 */
@@ -56,4 +56,4 @@ export interface ConfigData {
 }
 
 /** 支持的输出格式 */
-export type OutputFormat = 'markdown' | 'json' | 'raw';
+export type OutputFormat = 'table' | 'markdown' | 'json' | 'raw';

@@ -29,7 +29,7 @@ export function htmlToMarkdown(html: string): string {
 /** 浅层遍历对象自有字符串字段，对疑似 HTML 的值做 Markdown 转换 */
 export function convertHtmlFields(obj: Record<string, unknown>): Record<string, unknown> {
     const result = { ...obj };
-    for (const key of Object.keys(result)) {
+    for (const key of ['desc', 'description', 'content', 'steps', 'spec', 'verify', 'comment', 'bio']) {
         const value = result[key];
         if (typeof value === 'string' && isHtml(value)) {
             result[key] = htmlToMarkdown(value);

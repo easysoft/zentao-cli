@@ -38,6 +38,7 @@ export function actionContract(mod: ModuleDefinition, action: ModuleAction) {
         pagination: pagination ? { page: pagination.page.name, pageSize: pagination.size.name } : null,
         requestBody: action.requestBody,
         autoFill: action.type === 'update' && mod.actions.some(item => item.type === 'get' && item.path === action.path),
+        defaultFields: ['id', 'title', 'name', 'status', ...(mod.name === 'bug' ? ['severity'] : []), 'assignedTo'],
         localFiles: action.requestBody?.mediaType === 'multipart/form-data',
     };
 }
