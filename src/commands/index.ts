@@ -8,7 +8,6 @@ import { registerVersionCommand } from './version.js';
 import { registerAutocompleteCommand } from './autocomplete.js';
 import { registerAddSkillCommand } from './add-skill.js';
 import { registerAddMcpCommand } from './add-mcp.js';
-import { registerCrudCommands } from './crud.js';
 import { registerModuleCommands } from './register-modules.js';
 import { registerMcpCommand } from './mcp.js';
 import { registerUpgradeCommand } from './upgrade.js';
@@ -25,7 +24,6 @@ export function registerAllCommands(program: Command): void {
     registerAddSkillCommand(program);
     registerAddMcpCommand(program);
     registerMcpCommand(program);
-    registerCrudCommands(program);
     registerModuleCommands(program);
     registerUpgradeCommand(program);
 }

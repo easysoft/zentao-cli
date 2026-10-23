@@ -185,6 +185,7 @@ export async function handleModuleCommand(
     args: string[],
     profile: Profile,
     options: ModuleActionOptions,
+    preparedParams?: Record<string, unknown>,
 ): Promise<void> {
     const config = getProfileConfig(profile);
     const batchFailFast = options.batchFailFast ?? config.batchFailFast ?? false;
@@ -196,7 +197,7 @@ export async function handleModuleCommand(
     }
 
     // Resolve all argument sources before selecting targets or confirming deletion.
-    const params = buildParams(options, actionName, args);
+    const params = preparedParams ?? buildParams(options, actionName, args);
     const batchIds = batchTargets(action, params, options.ids);
     if (batchIds) {
         if (action.type === 'delete' && !options.yes) {

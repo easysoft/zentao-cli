@@ -2,6 +2,7 @@ import type { OutputFormat } from './config.js';
 
 /** Commander 顶层 `program` 上挂载的全局 CLI 选项 */
 export interface GlobalOptions {
+    profile?: string;
     /** 默认输出格式，可被子命令 `--format` 覆盖 */
     format?: OutputFormat;
 
@@ -25,6 +26,7 @@ export interface GlobalOptions {
 export interface ModuleActionOptions extends GlobalOptions {
     /** Explicit, validated and deduplicated batch targets. */
     ids?: string;
+    maxItems?: string;
     /** 摘取指定字段（逗号分隔），适用于 resultType 为 object 或 list 的模块操作 */
     pick?: string;
 

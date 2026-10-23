@@ -75,4 +75,3 @@ export function normalizeToolParams(mod: ModuleDefinition, action: ModuleAction,
     validateToolParams(mod, action, params);
     return params;
 }
-
