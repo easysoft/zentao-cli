@@ -4,14 +4,14 @@
     "version": "22"
   },
   "init": {
-    "darwin": "npm install -g zentao-cli@0.3.1 --no-audit --no-fund",
-    "linux": "npm install -g zentao-cli@0.3.1 --no-audit --no-fund",
-    "win32": "npm.cmd install -g zentao-cli@0.3.1 --no-audit --no-fund"
+    "darwin": "npm install -g zentao-cli@0.4.0 --no-audit --no-fund",
+    "linux": "npm install -g zentao-cli@0.4.0 --no-audit --no-fund",
+    "win32": "npm.cmd install -g zentao-cli@0.4.0 --no-audit --no-fund"
   },
   "auth": {
-    "darwin": "node -e \"console.error('请先在交互终端执行：npx --yes zentao-cli@0.3.1 --config ~/.config/zentao/workbuddy.json login；完成后返回 WorkBuddy 重新连接。');process.exitCode=1\"",
-    "linux": "node -e \"console.error('请先在交互终端执行：npx --yes zentao-cli@0.3.1 --config ~/.config/zentao/workbuddy.json login；完成后返回 WorkBuddy 重新连接。');process.exitCode=1\"",
-    "win32": "node -e \"console.error('请先在交互终端执行：npx --yes zentao-cli@0.3.1 --config ~/.config/zentao/workbuddy.json login；完成后返回 WorkBuddy 重新连接。');process.exitCode=1\""
+    "darwin": "node -e \"console.error('请先在交互终端执行：npx --yes zentao-cli@0.4.0 --config ~/.config/zentao/workbuddy.json login；完成后返回 WorkBuddy 重新连接。');process.exitCode=1\"",
+    "linux": "node -e \"console.error('请先在交互终端执行：npx --yes zentao-cli@0.4.0 --config ~/.config/zentao/workbuddy.json login；完成后返回 WorkBuddy 重新连接。');process.exitCode=1\"",
+    "win32": "node -e \"console.error('请先在交互终端执行：npx --yes zentao-cli@0.4.0 --config ~/.config/zentao/workbuddy.json login；完成后返回 WorkBuddy 重新连接。');process.exitCode=1\""
   },
   "status": {
     "darwin": "zentao --config \"~/.config/zentao/workbuddy.json\" profile --format=json",

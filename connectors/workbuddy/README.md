@@ -1,6 +1,6 @@
 # 禅道 WorkBuddy 连接器
 
-接入方式：**CLI + Skill**。连接器版本 `0.1.0`，安装 `zentao-cli@0.3.1`，最低 WorkBuddy 版本 `4.24.0`，由 WorkBuddy 托管 Node.js 22。
+接入方式：**CLI + Skill**。连接器版本 `0.1.0`，安装 `zentao-cli@0.4.0`，最低 WorkBuddy 版本 `4.24.0`，由 WorkBuddy 托管 Node.js 22。
 
 本资源包采用**首次在终端登录**的方案，供提交审核和兼容性确认。它没有实现 WorkBuddy 要求的浏览器认证流程，不能据此宣称已经满足全部上架条件。
 
@@ -38,12 +38,12 @@ Skill 和参考资料由仓库 `skills/zentao-cli/` 生成，打包时补入 Wor
 
 ## 首次登录
 
-1. 用户在自己的交互终端执行下列命令。终端需具备 Node.js/npm；若已安装 `zentao`，也可将 `npx --yes zentao-cli@0.3.1` 替换为 `zentao`。
+1. 用户在自己的交互终端执行下列命令。终端需具备 Node.js/npm；若已安装 `zentao`，也可将 `npx --yes zentao-cli@0.4.0` 替换为 `zentao`。
 2. 按 CLI 提示输入禅道根地址、账号和密码或 Token。凭证不经过 AI 对话，也不写入资源包。
 3. 完成后在 WorkBuddy 中启用或重新连接“禅道”。
 
 ```bash
-npx --yes zentao-cli@0.3.1 --config "~/.config/zentao/workbuddy.json" login
+npx --yes zentao-cli@0.4.0 --config "~/.config/zentao/workbuddy.json" login
 ```
 
 WorkBuddy 的 `init` 使用托管 npm 非交互安装 CLI，不依赖系统全局安装；但托管运行时不保证可供系统终端直接使用。首次手动登录的终端环境是本方案的额外前提。
@@ -54,7 +54,7 @@ WorkBuddy 的 `init` 使用托管 npm 非交互安装 CLI，不依赖系统全�
 
 | 操作 | 当前行为 |
 | --- | --- |
-| 安装 | macOS/Linux 使用 `npm`；Windows 使用 `npm.cmd`；固定安装 0.3.1 |
+| 安装 | macOS/Linux 使用 `npm`；Windows 使用 `npm.cmd`；固定安装 0.4.0 |
 | auth | 立即输出终端登录提示并以非零退出码结束，不等待 TTY、不伪造认证 URL |
 | status | 调用 `profile --format=json`；退出码为 0 且 `currentProfile` 非空时匹配已连接 |
 | unAuth | 删除专用配置文件；未登录时也成功；不会影响默认 `zentao.json` |
