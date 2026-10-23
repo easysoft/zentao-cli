@@ -4,6 +4,76 @@ import { getAction, getModule } from '../src/modules/helper.js';
 import { normalizeToolParams } from '../src/mcp/params.js';
 import { createMcpTestClient, toolData } from './mcp-helpers.js';
 
+test.each(['story', 'requirement', 'epic'].flatMap(module => ['create', 'change'].map(action => ({ module, action }))))(
+    'MCP $module/$action keeps requirement review defaults and explicit statuses', async ({ module, action }) => {
+        const requests: Array<{ method: string; path: string; body: Record<string, unknown> }> = [];
+        const mcp = await createMcpTestClient(async req => {
+            const url = new URL(req.url);
+            if (url.searchParams.get('mode') === 'getconfig') return Response.json({ version: '22.7' });
+            requests.push({ method: req.method, path: url.pathname.replace('/api.php/v2', ''), body: await req.json() });
+            return Response.json({ status: 'success', id: 7 });
+        });
+        try {
+            const cases = [
+                { params: {}, status: 'active' },
+                { params: { reviewer: [] }, status: 'active' },
+                { params: { data: { status: 'draft' } }, status: 'draft' },
+                { params: { status: 'closed' }, status: 'closed' },
+                { params: { data: { reviewer: [' ', ''], status: '' } }, status: 'active' },
+                { params: { data: { reviewer: ['admin'], status: 'draft' } }, status: 'reviewing' },
+            ];
+            for (const { params, status } of cases) {
+                const result = await mcp.client.callTool({
+                    name: `zentao_${module}`, arguments: {
+                        action, ...(action === 'change' ? { id: 7 } : {}),
+                        params: { ...(action === 'create' ? { productID: 1 } : {}), title: 'Review policy regression', ...params },
+                    },
+                });
+                expect(result.isError, JSON.stringify(result)).not.toBe(true);
+                const collection = module === 'story' ? 'stories' : `${module}s`;
+                const sent = requests.at(-1)!;
+                expect(sent).toMatchObject({
+                    method: action === 'create' ? 'POST' : 'PUT',
+                    path: `/${collection}${action === 'change' ? '/7/change' : ''}`,
+                    body: { title: 'Review policy regression', status },
+                });
+                if (status === 'reviewing') {
+                    expect(sent.body.reviewer).toEqual(['admin']);
+                    expect(sent.body).not.toHaveProperty('needNotReview');
+                } else {
+                    expect(sent.body.needNotReview).toBe('1');
+                }
+            }
+            expect(requests).toHaveLength(cases.length);
+        } finally {
+            await mcp.close();
+        }
+    },
+);
+
+test('MCP rejects invalid requirement statuses and unrelated body fields before HTTP', async () => {
+    let calls = 0;
+    const mcp = await createMcpTestClient(() => { calls++; return Response.json({ version: '22.7', id: 7 }); });
+    try {
+        for (const module of ['story', 'requirement', 'epic']) {
+            for (const action of ['create', 'change']) {
+                for (const data of [{ status: 1 }, { status: null }, { status: [] }, { status: false }, { status: 'draft', statusTypo: 'active' }]) {
+                    const result = await mcp.client.callTool({
+                        name: `zentao_${module}`, arguments: {
+                            action, ...(action === 'change' ? { id: 7 } : {}),
+                            params: { ...(action === 'create' ? { productID: 1 } : {}), title: 'Invalid status', data },
+                        },
+                    });
+                    expect(result).toMatchObject({ isError: true, structuredContent: { error: { code: 'E2009' } } });
+                }
+            }
+        }
+        expect(calls).toBe(0);
+    } finally {
+        await mcp.close();
+    }
+});
+
 test('MCP scope shortcuts never replace array fields', async () => {
     let requests = 0;
     const mcp = await createMcpTestClient(() => { requests++; return Response.json({}); });

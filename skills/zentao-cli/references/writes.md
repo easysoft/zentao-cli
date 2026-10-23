@@ -15,7 +15,14 @@ zentao story change 11 --data '{"title":"调整后的需求标题","reviewer":["
 zentao doc createMyDoc --spaceID=1 --libID=2 --data '{"title":"开发说明","content":"# 正文","contentType":"doc"}'
 ```
 
-`reviewer` 是否必填及其余要求以当前动作帮助为准。不要机械补审批人或覆盖现有字段。
+`story`、`requirement`、`epic` 的 `create` / `change` 在未提供有效 `reviewer`（省略、空数组或只含空白字符串）时跳过评审。SDK 0.8.2 会发送 `needNotReview: "1"`，状态默认 `active`；需要保留草稿时显式传入 `status: "draft"`，空状态字符串仍会回落为 `active`。有有效评审人时状态固定为 `reviewing`，即使同时指定了其他状态。不要机械补评审人；`change` 不会自动保留对象原来的草稿状态。
+
+```bash
+zentao story create --productID=1 --title="草稿需求" --status=draft
+zentao requirement change 11 --data '{"title":"调整后的草稿","reviewer":[],"status":"draft"}'
+```
+
+上述 `status` 也可由 MCP 的 `params.status` 或 `params.data.status` 传入，`reviewer` 使用账号数组。其余字段要求以当前动作帮助为准。
 
 长文本可以先写入 JSON 文件，再通过 stdin 传入：
 

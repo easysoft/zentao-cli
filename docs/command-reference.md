@@ -341,7 +341,7 @@ bun run scripts/generate-command-reference.ts --check
 
 ## 覆盖范围
 
-对应当前工作区：CLI **0.3.1**，API 定义 **0.8.1**；覆盖 **17 个内置一级命令**（另含 config get/set）、**42 个业务模块、361 个业务操作**。已安装版本不同时，请以本机命令的 --help 为准。
+对应当前工作区：CLI **0.3.1**，API 定义 **0.8.2**；覆盖 **17 个内置一级命令**（另含 config get/set）、**42 个业务模块、361 个业务操作**。已安装版本不同时，请以本机命令的 --help 为准。
 
 <a id="global-options"></a>
 
@@ -2435,6 +2435,7 @@ zentao story create --productID=<number> --title=<string> [选项]
 | `--project` | 请求体 | `number` | 否 | 未声明 | 所属项目<br>格式：int32<br>必须为整数 |
 | `--execution` | 请求体 | `number` | 否 | 未声明 | 所属执行<br>格式：int32<br>必须为整数 |
 | `--grade` | 请求体 | `number` | 否 | 未声明 | 需求层级，可用的需求层级可以通过 story-getGrades 操作获取<br>必须为整数 |
+| `--status` | 请求体 | `string` | 否 | 未声明 | 无有效评审人时默认 active，可显式指定状态；有有效评审人时固定为 reviewing。 |
 
 可配合[公共选项](#data-options)：`--params`、`--format`、`--silent`、`--data`、`--batch-fail-fast`；其他全局选项见[全局选项](#global-options)。
 
@@ -2580,6 +2581,7 @@ zentao story change --storyID=<number> [选项]
 | `--reviewer` | 请求体 | `string[]` | 否 | 未声明 | 评审人员，如果无需评审则不传<br>数组元素类型：string |
 | `--spec` | 请求体 | `string` | 否 | 未声明 | 需求描述 |
 | `--verify` | 请求体 | `string` | 否 | 未声明 | 验收标准 |
+| `--status` | 请求体 | `string` | 否 | 未声明 | 无有效评审人时默认 active，可显式指定状态；有有效评审人时固定为 reviewing。 |
 
 `--storyID` 可用 `--id` 或首个数字位置参数代替；其余路径 ID 需分别提供。
 
@@ -2693,6 +2695,7 @@ zentao epic create --productID=<number> --title=<string> [选项]
 | `--verify` | 请求体 | `string` | 否 | 未声明 | 验收标准 |
 | `--assignedTo` | 请求体 | `string` | 否 | 未声明 | 指派给 |
 | `--reviewer` | 请求体 | `string[]` | 否 | 未声明 | 评审人员，如果无需评审则不传<br>数组元素类型：string |
+| `--status` | 请求体 | `string` | 否 | 未声明 | 无有效评审人时默认 active，可显式指定状态；有有效评审人时固定为 reviewing。 |
 
 可配合[公共选项](#data-options)：`--params`、`--format`、`--silent`、`--data`、`--batch-fail-fast`；其他全局选项见[全局选项](#global-options)。
 
@@ -2797,6 +2800,7 @@ zentao epic change --storyID=<number> [选项]
 | `--reviewer` | 请求体 | `string[]` | 否 | 未声明 | 评审人员，如果无需评审则不传<br>数组元素类型：string |
 | `--spec` | 请求体 | `string` | 否 | 未声明 | 需求描述 |
 | `--verify` | 请求体 | `string` | 否 | 未声明 | 验收标准 |
+| `--status` | 请求体 | `string` | 否 | 未声明 | 无有效评审人时默认 active，可显式指定状态；有有效评审人时固定为 reviewing。 |
 
 `--storyID` 可用 `--id` 或首个数字位置参数代替；其余路径 ID 需分别提供。
 
@@ -2896,6 +2900,7 @@ zentao requirement create --productID=<number> --title=<string> [选项]
 | `--verify` | 请求体 | `string` | 否 | 未声明 | 验收标准 |
 | `--assignedTo` | 请求体 | `string` | 否 | 未声明 | 指派给 |
 | `--reviewer` | 请求体 | `string[]` | 否 | 未声明 | 评审人员，如果无需评审则不传<br>数组元素类型：string |
+| `--status` | 请求体 | `string` | 否 | 未声明 | 无有效评审人时默认 active，可显式指定状态；有有效评审人时固定为 reviewing。 |
 
 可配合[公共选项](#data-options)：`--params`、`--format`、`--silent`、`--data`、`--batch-fail-fast`；其他全局选项见[全局选项](#global-options)。
 
@@ -3000,6 +3005,7 @@ zentao requirement change --storyID=<number> [选项]
 | `--spec` | 请求体 | `string` | 否 | 未声明 | 需求描述 |
 | `--verify` | 请求体 | `string` | 否 | 未声明 | 验收标准 |
 | `--reviewer` | 请求体 | `string[]` | 否 | 未声明 | 评审人员，如果无需评审则不传<br>数组元素类型：string |
+| `--status` | 请求体 | `string` | 否 | 未声明 | 无有效评审人时默认 active，可显式指定状态；有有效评审人时固定为 reviewing。 |
 
 `--storyID` 可用 `--id` 或首个数字位置参数代替；其余路径 ID 需分别提供。
 

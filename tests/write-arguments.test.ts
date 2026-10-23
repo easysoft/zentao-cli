@@ -34,6 +34,9 @@ describe('CLI write argument regressions', () => {
                     if (request.method === 'PUT') task = { ...task, ...body };
                     return Response.json({ task });
                 }
+                if (/^\/(stories|requirements|epics)(\/7\/change)?$/.test(path)) {
+                    return Response.json({ status: 'success', id: 7 });
+                }
                 return Response.json({ status: 'fail', message: 'Unexpected request' }, { status: 404 });
             },
         });
@@ -62,6 +65,39 @@ describe('CLI write argument regressions', () => {
         ]);
         return { stdout, stderr, exitCode };
     }
+
+    test.each(['story', 'requirement', 'epic'].flatMap(module => ['create', 'change'].map(action => ({ module, action }))))(
+        '$module/$action keeps requirement review defaults and explicit statuses', async ({ module, action }) => {
+            const base = action === 'create' ? [module, action, '--productID=1'] : [module, action, '7'];
+            const collection = module === 'story' ? 'stories' : `${module}s`;
+            const cases: Array<{ args: string[]; input?: string; status: string }> = [
+                { args: [], status: 'active' },
+                { args: ['--data={"status":"draft"}'], status: 'draft' },
+                { args: ['--status=closed'], status: 'closed' },
+                { args: ['--reviewer='], status: 'active' },
+                { args: ['--data={"reviewer":[" ",""],"status":""}'], status: 'active' },
+                { args: ['--reviewer=admin', '--data=@-'], input: '{"reviewer":[],"status":"draft"}', status: 'draft' },
+                { args: ['--reviewer=admin', '--data={"status":"draft"}'], status: 'reviewing' },
+            ];
+            for (const { args, input, status } of cases) {
+                const result = await run([...base, '--title=Review policy regression', ...args], input);
+                expect(result.exitCode, result.stderr).toBe(0);
+                const sent = requests.at(-1)!;
+                expect(sent).toMatchObject({
+                    method: action === 'create' ? 'POST' : 'PUT',
+                    path: `/${collection}${action === 'change' ? '/7/change' : ''}`,
+                    body: { title: 'Review policy regression', status },
+                });
+                if (status === 'reviewing') {
+                    expect(sent.body.reviewer).toEqual(['admin']);
+                    expect(sent.body).not.toHaveProperty('needNotReview');
+                } else {
+                    expect(sent.body.needNotReview).toBe('1');
+                }
+            }
+            expect(requests).toHaveLength(cases.length);
+        },
+    );
 
     test.each([
         { label: 'product alias', args: ['--product=77'] },
