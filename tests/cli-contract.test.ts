@@ -71,3 +71,21 @@ test('explicit actions, arbitrary path targets, and repeated typed arrays', asyn
     expect(result.exitCode, result.stderr).toBe(0);
     expect(calls.at(-1)?.body).toMatchObject({ keywords: ['a', 'b'], libIDs: [1, 2], pageID: 3 });
 });
+
+test('built-ins and usage errors follow the same JSON contract; quiet retains results', async () => {
+    for (const args of [['version'], ['profile', 'list'], ['profile', 'show'], ['config', 'list'],
+        ['config', 'get', 'timeout'], ['config', 'set', 'timeout', '2000'], ['config', 'unset', 'timeout'], ['config', 'path'],
+        ['auth', 'status'], ['help', 'bug', 'create']]) {
+        const result = await run(['--format=json', '--quiet', ...args]);
+        expect(result.exitCode, `${args}: ${result.stderr}`).toBe(0);
+        expect(JSON.parse(result.stdout)).toMatchObject({ ok: true, data: expect.anything(), meta: {} });
+        expect(result.stderr).toBe('');
+    }
+    for (const args of [['unknown'], ['product', 'list', '--paeg=2'], ['--timeout=1oops', 'version'], ['auth', 'login', '--web'], ['skill', 'install'], ['mcp', 'install']]) {
+        const result = await run(['--no-input', '--format=json', ...args]);
+        expect(result.exitCode, `${args}: ${result.stderr}`).toBe(2);
+        expect(result.stdout).toBe('');
+        expect(JSON.parse(result.stderr)).toMatchObject({ ok: false, error: { code: '2009' } });
+    }
+    expect(calls).toHaveLength(0);
+});

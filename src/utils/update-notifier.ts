@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 export const PACKAGE_NAME = 'zentao-cli';
@@ -75,16 +75,21 @@ export function isStableVersion(version: string): boolean {
     return !!semver && semver.prerelease === '';
 }
 
-export async function fetchLatestVersion(): Promise<string> {
+export async function fetchLatestVersion(signal?: AbortSignal, timeout = 10000): Promise<string> {
+    const controller = new AbortController();
+    const cancel = () => controller.abort();
+    signal?.addEventListener('abort', cancel, { once: true });
+    if (signal?.aborted) cancel();
+    const timer = setTimeout(cancel, timeout);
     let response: Response;
     try {
         response = await fetch(REGISTRY_URL, {
             headers: { Accept: 'application/json' },
-            signal: AbortSignal.timeout(10_000),
+            signal: controller.signal,
         });
     } catch (err) {
         throw new Error(`无法连接到 npm registry: ${(err as Error).message}`);
-    }
+    } finally { clearTimeout(timer); signal?.removeEventListener('abort', cancel); }
 
     if (!response.ok) {
         throw new Error(`npm registry 返回错误: ${response.status} ${response.statusText}`);
@@ -131,12 +136,13 @@ export function buildInstallCommand(pm: PackageManager, version = 'latest'): { c
  * 以 `spawnSync` 在 Windows 兼容地运行 install 命令。
  * Windows 上 `bun`/`npm` 是 `.cmd`，必须通过 shell 才能 spawn。
  */
-export function runInstall(pm: PackageManager, version = 'latest'): { status: number | null; cmd: string; args: string[] } {
+export async function runInstall(pm: PackageManager, version = 'latest', signal?: AbortSignal): Promise<{ status: number | null; cmd: string; args: string[] }> {
     const { cmd, args } = buildInstallCommand(pm, version);
-    const result = spawnSync(cmd, args, {
-        stdio: 'inherit',
-        encoding: 'utf-8',
-        shell: process.platform === 'win32',
+    const status = await new Promise<number | null>((resolve, reject) => {
+        const child = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'], shell: process.platform === 'win32', signal });
+        child.stdout?.on('data', chunk => process.stderr.write(chunk));
+        child.stderr?.on('data', chunk => process.stderr.write(chunk));
+        child.once('error', reject); child.once('close', resolve);
     });
-    return { status: result.status, cmd, args };
+    return { status, cmd, args };
 }

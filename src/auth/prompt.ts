@@ -1,3 +1,4 @@
+import { commandSignal } from '../utils/lifecycle.js';
 import { createInterface } from 'node:readline/promises';
 import { Writable } from 'node:stream';
 
@@ -22,13 +23,13 @@ export async function promptLogin(): Promise<PromptResult> {
     });
     const rl = createInterface({ input: process.stdin, output, terminal: process.stdin.isTTY });
     try {
-        const url = await rl.question('禅道服务地址 (URL): ');
+        const url = await rl.question('禅道服务地址 (URL): ', { signal: commandSignal() });
         if (!url) throw new Error('URL is required');
 
-        const account = await rl.question('用户名 (Account): ');
+        const account = await rl.question('用户名 (Account): ', { signal: commandSignal() });
         if (!account) throw new Error('Account is required');
 
-        const method = (await rl.question('认证方式 (password/token) [password]: ')).trim().toLowerCase() || 'password';
+        const method = (await rl.question('认证方式 (password/token) [password]: ', { signal: commandSignal() })).trim().toLowerCase() || 'password';
         if (method !== 'password' && method !== 'token') {
             throw new Error('Auth method must be password or token');
         }
@@ -37,7 +38,7 @@ export async function promptLogin(): Promise<PromptResult> {
         muted = true;
         let secret: string;
         try {
-            secret = await rl.question('');
+            secret = await rl.question('', { signal: commandSignal() });
         } finally {
             muted = false;
             process.stderr.write('\n');

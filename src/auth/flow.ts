@@ -1,7 +1,8 @@
 import type { Profile } from '../types/index.js';
-import { ZentaoClient, createClient } from '../api/index.js';
+import { ZentaoClient, createClient, withRequestSignal } from '../api/index.js';
 import { ZentaoError } from '../errors.js';
 import { getCurrentProfile, getProfileConfig, buildProfile, normalizeServerUrl, findProfileByKey } from '../config/store.js';
+import { commandSignal } from '../utils/lifecycle.js';
 import { login, getEnvCredentials } from './login.js';
 
 /** 已通过鉴权后的运行时上下文，供命令层发起 API 调用 */
@@ -47,20 +48,22 @@ export function resolveAuthSource(profile?: Profile | string) {
 }
 
 /** Resolve credentials first; only environment password authentication requires a login request. */
-export async function ensureAuth(options?: { insecure?: boolean; timeout?: number; profile?: Profile | string }): Promise<AuthContext> {
+export async function ensureAuth(options?: { insecure?: boolean; timeout?: number; profile?: Profile | string; signal?: AbortSignal }): Promise<AuthContext> {
+    const signal = options?.signal ?? commandSignal();
+    if (signal?.aborted) throw new ZentaoError('E5003');
     const auth = resolveAuthSource(options?.profile);
     if (auth.source === 'environment') {
         const { server, account, token, password } = auth;
         if (token) {
             return {
-                client: createClient(server, token, options),
+                client: withRequestSignal(createClient(server, token, options), signal),
                 profile: buildProfile(server, account, token),
             };
         }
 
-        const result = await login(server, account, password!, options);
+        const result = await login(server, account, password!, { ...options, signal });
         return {
-            client: result.client,
+            client: withRequestSignal(result.client, signal),
             profile: buildProfile(server, account, result.token, result.serverConfig, result.user),
         };
     }
@@ -71,7 +74,7 @@ export async function ensureAuth(options?: { insecure?: boolean; timeout?: numbe
         timeout: options?.timeout ?? config.timeout,
     };
     return {
-        client: createClient(auth.server, auth.token, clientOpts),
+        client: withRequestSignal(createClient(auth.server, auth.token, clientOpts), signal),
         profile: auth.profile,
     };
 }

@@ -3,6 +3,11 @@ import type { OutputFormat } from './config.js';
 /** Commander 顶层 `program` 上挂载的全局 CLI 选项 */
 export interface GlobalOptions {
     profile?: string;
+    input?: boolean;
+    quiet?: boolean;
+    color?: 'auto' | 'always' | 'never';
+    deadline?: number;
+    signal?: AbortSignal;
     /** 默认输出格式，可被子命令 `--format` 覆盖 */
     format?: OutputFormat;
 

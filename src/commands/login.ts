@@ -5,8 +5,10 @@ import { saveProfile, profileKey, getProfile, buildProfile, normalizeServerUrl }
 import { ZentaoError } from '../errors.js';
 import type { Profile } from '../types/index.js';
 import type { GlobalOptions } from '../types/index.js';
-import { createClient } from '../api/index.js';
+import { createClient, withRequestSignal } from '../api/index.js';
 import { browserLogin } from '../auth/browser-login.js';
+import { commandSignal } from '../utils/lifecycle.js';
+import { emitResult } from '../utils/output.js';
 import { canOpenBrowser } from '../auth/browser-open.js';
 
 /** Register login with browser, terminal, explicit credential, and environment modes. */
@@ -18,17 +20,20 @@ export function registerLoginCommand(program: Command): void {
         .option('-u, --user <account>', '用户名')
         .option('-p, --password <password>', '密码')
         .option('-t, --token <token>', 'Token')
-        .option('--useEnv', '强制使用环境变量登录')
+        .option('--use-env', '强制使用环境变量登录')
         .option('--web', '通过本机浏览器页面登录')
         .option('--message <text>', '自定义浏览器登录页面的副标题提示语')
         .option('--no-browser', '使用终端交互登录，不打开浏览器')
         .action(async (opts) => {
-            const globalOpts = program.opts() as GlobalOptions;
+            const globalOpts = program.optsWithGlobals() as GlobalOptions;
             if (opts.web && (opts.browser === false || opts.useEnv || opts.password !== undefined || opts.token !== undefined)) {
                 throw new ZentaoError('E2009', {
                     option: '--web',
                     reason: '不能与 --no-browser、--useEnv、--password 或 --token 同时使用',
                 });
+            }
+            if (globalOpts.input === false && (opts.web || (!opts.useEnv && !(opts.server && opts.user && (opts.password || opts.token))))) {
+                throw new ZentaoError('E2009', { option: 'no-input', reason: '禁止交互时必须提供完整凭据或 --use-env' });
             }
             const fullCredentials = opts.server && opts.user && (opts.password || opts.token);
             if (!opts.useEnv && !fullCredentials && (opts.password !== undefined || opts.token !== undefined)) {
@@ -42,11 +47,12 @@ export function registerLoginCommand(program: Command): void {
                     message: opts.message,
                     insecure: globalOpts.insecure,
                     timeout: globalOpts.timeout,
+                    signal: commandSignal(),
                     open: desktop,
                     fallbackToTerminal: !opts.web && Boolean(process.stdin.isTTY),
                 });
                 if (profile) {
-                    if (!globalOpts.silent) console.log(`登录成功: ${profileKey(profile.account, profile.server)}`);
+                    emitResult({ saved: profileKey(profile.account, profile.server), selected: false }, globalOpts);
                     return;
                 }
             }
@@ -90,12 +96,13 @@ export function registerLoginCommand(program: Command): void {
                     insecure: globalOpts.insecure,
                     timeout: globalOpts.timeout,
                 });
-                const { serverConfig, user } = await verifyToken(client, account);
+                const { serverConfig, user } = await verifyToken(withRequestSignal(client, commandSignal()), account);
                 profile = buildProfile(server, account, token, serverConfig, user);
             } else {
                 const result = await login(server, account, password, {
                     insecure: globalOpts.insecure,
                     timeout: globalOpts.timeout,
+                    signal: commandSignal(),
                 });
 
                 profile = buildProfile(server, account, result.token, result.serverConfig, result.user);
@@ -103,8 +110,6 @@ export function registerLoginCommand(program: Command): void {
 
             saveProfile(profile);
 
-            if (!globalOpts.silent) {
-                console.log(`登录成功: ${profileKey(account, server)}`);
-            }
+            emitResult({ saved: profileKey(account, server), selected: false }, globalOpts);
         });
 }

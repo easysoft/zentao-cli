@@ -15,7 +15,7 @@ interface McpCommandOptions {
 
 export function registerMcpCommand(program: Command): void {
     program
-        .command('mcp')
+        .command('serve')
         .description('启动 MCP 服务，支持本地 stdio 或多客户端 HTTP 访问禅道数据')
         .option('--transport <type>', '传输方式 (stdio|http)', 'stdio')
         .option('--host <host>', 'HTTP 监听地址（默认 127.0.0.1）')
@@ -25,10 +25,11 @@ export function registerMcpCommand(program: Command): void {
         .option('--modules <names>', '仅提供指定业务模块（逗号分隔，如 product,story,task）', value => value.split(',').map(name => name.trim()))
         .option('--split-tools', '按模块分为 _read 查询工具和 _write 写入工具')
         .action(async (options: McpCommandOptions) => {
-            const globalOpts = program.opts() as GlobalOptions;
+            const globalOpts = program.optsWithGlobals() as GlobalOptions;
             const toolOptions = {
                 insecure: globalOpts.insecure,
                 timeout: globalOpts.timeout,
+                profile: globalOpts.profile,
                 readOnly: options.readOnly,
                 modules: options.modules,
                 splitTools: options.splitTools,
@@ -56,7 +57,7 @@ export function registerMcpCommand(program: Command): void {
             }
             const { startMcpHttpServer } = await import('../mcp/http.js');
             const running = await startMcpHttpServer({ ...toolOptions, url, host: options.host, port });
-            process.stderr.write(`MCP HTTP 服务已启动：${running.url.href}\n`);
+            if (!globalOpts.quiet) process.stderr.write(`MCP HTTP 服务已启动：${running.url.href}\n`);
             const clientUrl = new URL(running.url);
             if (clientUrl.hostname === '0.0.0.0') clientUrl.hostname = '127.0.0.1';
             if (clientUrl.hostname === '[::]') clientUrl.hostname = '[::1]';
@@ -68,7 +69,7 @@ export function registerMcpCommand(program: Command): void {
                     },
                 },
             };
-            process.stderr.write([
+            if (!globalOpts.quiet) process.stderr.write([
                 '\n客户端配置示例（请替换为自己的禅道 Token）：',
                 JSON.stringify(clientConfig, null, 2),
                 '\n也可将 headers 改为 {"Authorization":"Bearer <your-zentao-token>"}，两种认证头任选其一。',

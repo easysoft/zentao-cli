@@ -1,235 +1,61 @@
 import { Command } from 'commander';
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { createInterface } from 'node:readline/promises';
-import { getModule, getModuleNames } from '../modules/index.js';
-import { AGENT_NAMES as SKILL_AGENT_NAMES } from './add-skill.js';
-import { AGENT_NAMES as MCP_AGENT_NAMES } from './add-mcp.js';
-import { getDefaultConfigPath } from '../config/store.js';
+import { ZentaoError } from '../errors.js';
 
-const CONFIG_SUBCOMMANDS = ['get', 'set'];
-
-function createCandidates(program: Command): string {
-    return [...new Set(program.commands.flatMap((command) => [command.name(), ...command.aliases()]))]
-        .sort()
-        .join(' ');
-}
-
-function getCommonOptions(program: Command): string[] {
-    return program.createHelp().visibleOptions(program)
-        .flatMap((option) => [option.short, option.long].filter(Boolean) as string[]);
-}
-
-function getModuleCompletions(program: Command) {
-    return program.commands.flatMap((command) => {
-        const mod = getModule(command.name());
-        return mod ? [{
-            names: [command.name(), ...command.aliases()],
-            actions: ['help', 'props', ...mod.actions.map((action) => action.name)],
-        }] : [];
-    });
-}
-
-function generateBashScript(program: Command, command = 'zentao'): string {
-    const commands = createCandidates(program);
-    const commonOptions = getCommonOptions(program);
-    return `# bash completion for ${command}
-_${command}_completion() {
-  local cur prev words cword
-  _init_completion -n : || return
-
-  local root_commands="${commands}"
-  local config_subcommands="${CONFIG_SUBCOMMANDS.join(' ')}"
-  local common_options="${commonOptions.join(' ')}"
-
-  if [[ \${cword} -eq 1 ]]; then
-    COMPREPLY=( $(compgen -W "\${root_commands} \${common_options}" -- "\${cur}") )
-    return
-  fi
-
-  case "\${words[1]}" in
-${getModuleCompletions(program).map(({ names, actions }) => `    ${names.join('|')})
-      if [[ \${cword} -eq 2 ]]; then
-        COMPREPLY=( $(compgen -W "${actions.join(' ')} \${common_options}" -- "\${cur}") )
-      else
-        COMPREPLY=( $(compgen -W "\${common_options}" -- "\${cur}") )
-      fi
-      ;;`).join('\n')}
-    config)
-      COMPREPLY=( $(compgen -W "\${config_subcommands} \${common_options}" -- "\${cur}") )
-      ;;
-    ls|get|create|update|delete|do)
-      if [[ \${cword} -eq 2 ]]; then
-        COMPREPLY=( $(compgen -W "${getModuleNames().join(' ')}" -- "\${cur}") )
-      else
-        COMPREPLY=( $(compgen -W "\${common_options}" -- "\${cur}") )
-      fi
-      ;;
-    autocomplete)
-      COMPREPLY=( $(compgen -W "bash zsh fish" -- "\${cur}") )
-      ;;
-    add-skill)
-      if [[ "\${prev}" == "--output" || "\${prev}" == "-o" ]]; then
-        COMPREPLY=( $(compgen -d -- "\${cur}") )
-      else
-        COMPREPLY=( $(compgen -W "${[...SKILL_AGENT_NAMES, 'all', '--output', '-o'].join(' ')}" -- "\${cur}") )
-      fi
-      ;;
-    add-mcp)
-      COMPREPLY=( $(compgen -W "${[...MCP_AGENT_NAMES, 'all'].join(' ')}" -- "\${cur}") )
-      ;;
-    *)
-      COMPREPLY=( $(compgen -W "\${common_options}" -- "\${cur}") )
-      ;;
-  esac
-}
-
-complete -F _${command}_completion ${command}
-`;
-}
-
-function generateZshScript(program: Command, command = 'zentao'): string {
-    const commands = createCandidates(program);
-    const modules = getModuleNames().join(' ');
-    const commonOptions = getCommonOptions(program);
-    return `#compdef ${command}
-
-_${command}() {
-  local -a root_commands modules common_opts
-  root_commands=(${commands})
-  modules=(${modules})
-  common_opts=(${commonOptions.join(' ')})
-
-  if (( CURRENT == 2 )); then
-    _describe 'command' root_commands
-    return
-  fi
-
-  case "$words[2]" in
-${getModuleCompletions(program).map(({ names, actions }) => `    ${names.join('|')})
-      if (( CURRENT == 3 )); then
-        _values 'action' ${actions.map((action) => `'${action}'`).join(' ')}
-      else
-        _describe 'option' common_opts
-      fi
-      ;;`).join('\n')}
-    config)
-      _values 'config command' ${CONFIG_SUBCOMMANDS.map((s) => `'${s}'`).join(' ')}
-      ;;
-    ls|get|create|update|delete|do)
-      if (( CURRENT == 3 )); then
-        _describe 'module' modules
-      else
-        _describe 'option' common_opts
-      fi
-      ;;
-    autocomplete)
-      _values 'shell' 'bash' 'zsh' 'fish'
-      ;;
-    add-skill)
-      _arguments \\
-        '(-o --output)'{-o,--output}'[将所有内置技能导出到指定目录]:目录:_files -/' \\
-        '1:agent:(${[...SKILL_AGENT_NAMES, 'all'].join(' ')})'
-      ;;
-    add-mcp)
-      _values 'agent' ${[...MCP_AGENT_NAMES, 'all'].map((name) => `'${name}'`).join(' ')}
-      ;;
-    *)
-      _describe 'option' common_opts
-      ;;
-  esac
-}
-
-compdef _${command} ${command}
-`;
-}
-
-function generateFishScript(program: Command, command = 'zentao'): string {
-    const commands = createCandidates(program);
-    const modules = getModuleNames().join(' ');
-    const commonOptions = getCommonOptions(program).join(' ');
-    return `# fish completion for ${command}
-set -l __${command}_cmds ${commands}
-set -l __${command}_mods ${modules}
-
-complete -c ${command} -f
-complete -c ${command} -n "__fish_use_subcommand" -a "$__${command}_cmds"
-complete -c ${command} -a "${commonOptions}"
-
-${getModuleCompletions(program).map(({ names, actions }) => `complete -c ${command} -n "__fish_seen_subcommand_from ${names.join(' ')}; and test (count (commandline -opc)) -eq 2" -a "${actions.join(' ')}"`).join('\n')}
-
-complete -c ${command} -n "__fish_seen_subcommand_from config" -a "${CONFIG_SUBCOMMANDS.join(' ')}"
-complete -c ${command} -n "__fish_seen_subcommand_from autocomplete" -a "bash zsh fish"
-complete -c ${command} -n "__fish_seen_subcommand_from add-skill" -a "${[...SKILL_AGENT_NAMES, 'all'].join(' ')}"
-complete -c ${command} -n "__fish_seen_subcommand_from add-skill" -s o -l output -r -d "将所有内置技能导出到指定目录"
-complete -c ${command} -n "__fish_seen_subcommand_from add-mcp" -a "${[...MCP_AGENT_NAMES, 'all'].join(' ')}"
-complete -c ${command} -n "__fish_seen_subcommand_from ls get create update delete do; and test (count (commandline -opc)) -eq 2" -a "$__${command}_mods"
-`;
-}
-
-export function generateCompletionScript(shell: string, program: Command): string {
-    switch (shell) {
-        case 'bash':
-            return generateBashScript(program);
-        case 'zsh':
-            return generateZshScript(program);
-        case 'fish':
-            return generateFishScript(program);
-        default:
-            throw new Error(`不支持的 shell: ${shell}`);
-    }
-}
-
-function getCompletionFilePath(shell: string): string {
-    return join(dirname(getDefaultConfigPath()), `.zentao-completion.${shell}`);
-}
-
-async function promptShellSelection(): Promise<string> {
-    if (!process.stdin.isTTY || !process.stderr.isTTY) {
-        throw new Error('未提供 shell 参数，请在交互终端中选择，或显式传入 bash|zsh|fish');
-    }
-
-    const shells = ['zsh', 'bash', 'fish'] as const;
-    const rl = createInterface({ input: process.stdin, output: process.stderr });
-
-    process.stderr.write('请选择要生成的自动补全脚本:\n');
-    shells.forEach((shell, index) => {
-        process.stderr.write(`  ${index + 1}) ${shell}\n`);
-    });
-
-    try {
-        const answer = await rl.question('请输入编号 (1-3): ');
-        const idx = Number(answer.trim());
-        if (!Number.isInteger(idx) || idx < 1 || idx > shells.length) {
-            throw new Error(`无效选择: ${answer || '(empty)'}`);
+/** Walk actual commands while skipping global and action option values. */
+export function completionCandidates(program: Command, words: string[]): string[] {
+    let current = program;
+    const prefix = words.at(-1) ?? '';
+    let valueFor: import('commander').Option | undefined;
+    const options = () => {
+        const result = [...current.options];
+        for (let parent = current.parent; parent; parent = parent.parent) result.push(...parent.options);
+        return result;
+    };
+    for (const word of words.slice(0, -1)) {
+        if (valueFor) { valueFor = undefined; continue; }
+        if (word.startsWith('-')) {
+            const option = options().find(option => option.long === word.split('=')[0] || option.short === word);
+            if (option?.required && !word.includes('=')) valueFor = option;
+            continue;
         }
-        return shells[idx - 1];
-    } finally {
-        rl.close();
+        current = current.commands.find(command => command.name() === word) ?? current;
     }
+    if (valueFor) return (valueFor.argChoices ?? []).filter(value => value.startsWith(prefix));
+    return [...new Set([...current.commands.filter(cmd => cmd.name() !== 'candidates').map(cmd => cmd.name()),
+        ...options().flatMap(option => [option.long, option.short].filter(Boolean) as string[])])].filter(value => value.startsWith(prefix));
 }
 
-/** 注册 `zentao autocomplete`：输出 shell 自动补全脚本 */
+export function generateCompletionScript(shell: string, _program?: Command): string {
+    if (shell === 'bash') return `# bash completion for zentao (no bash-completion dependency)
+_zentao_completion() {
+  COMPREPLY=()
+  local candidate
+  while IFS= read -r candidate; do COMPREPLY+=("$candidate"); done < <(zentao completion candidates -- "\${COMP_WORDS[@]:1:COMP_CWORD}")
+}
+complete -F _zentao_completion zentao
+`;
+    if (shell === 'zsh') return `#compdef zentao
+_zentao() {
+  local -a candidates
+  candidates=("\${(@f)$(zentao completion candidates -- "\${words[@]:1:$((CURRENT-1))}")}")
+  compadd -- "\${candidates[@]}"
+}
+compdef _zentao zentao
+`;
+    if (shell === 'fish') return `# fish completion for zentao
+function __zentao_candidates
+  set -l words (commandline -opc)
+  zentao completion candidates -- $words[2..-1] (commandline -ct)
+end
+complete -c zentao -f -a '(__zentao_candidates)'
+`;
+    throw new ZentaoError('E2009', { option: 'shell', reason: '支持 bash、zsh、fish' });
+}
+
 export function registerAutocompleteCommand(program: Command): void {
-    program
-        .command('autocomplete')
-        .description('生成 shell 自动补全脚本')
-        .argument('[shell]', 'shell 类型 (bash|zsh|fish)')
-        .action(async (shell?: string) => {
-            const selectedShell = shell ?? await promptShellSelection();
-            const normalized = selectedShell.toLowerCase();
-            if (!['bash', 'zsh', 'fish'].includes(normalized)) {
-                throw new Error(`不支持的 shell: ${selectedShell}，仅支持 bash、zsh、fish`);
-            }
-
-            const script = generateCompletionScript(normalized, program);
-            const completionFile = getCompletionFilePath(normalized);
-            const completionDir = dirname(completionFile);
-
-            mkdirSync(completionDir, { recursive: true, mode: 0o700 });
-            writeFileSync(completionFile, script, 'utf-8');
-
-            console.log(`自动补全脚本已保存到: ${completionFile}`);
-            console.log(`请在终端配置中追加: source '${completionFile.replaceAll("'", "'\\''")}'`);
-        });
+    const completion = program.command('completion').description('将补全脚本写入 stdout');
+    completion.action(() => completion.outputHelp());
+    for (const shell of ['bash', 'zsh', 'fish']) completion.command(shell).action(() => { process.stdout.write(generateCompletionScript(shell)); });
+    completion.command('candidates', { hidden: true }).argument('[words...]').allowUnknownOption(true)
+        .action((words: string[]) => { const values = completionCandidates(program, words); if (values.length) process.stdout.write(values.join('\n') + '\n'); });
 }

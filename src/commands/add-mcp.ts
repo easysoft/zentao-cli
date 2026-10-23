@@ -1,3 +1,5 @@
+import { commandSignal } from '../utils/lifecycle.js';
+import { emitResult } from '../utils/output.js';
 import { Command } from 'commander';
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -110,7 +112,7 @@ function writePrivateFile(filePath: string, content: string): void {
 
 /* ── Credential Resolution ── */
 
-async function resolveCredentials(options: { insecure?: boolean; timeout?: number }): Promise<McpCredentials> {
+async function resolveCredentials(options: { insecure?: boolean; timeout?: number; profile?: string }): Promise<McpCredentials> {
     const { profile } = await ensureAuth(options);
     return { url: profile.server, account: profile.account, token: profile.token };
 }
@@ -139,7 +141,7 @@ async function promptAgentSelection(): Promise<string[]> {
     });
 
     try {
-        const answer = await rl.question(`请输入编号 (1-${choices.length}): `);
+        const answer = await rl.question(`请输入编号 (1-${choices.length}): `, { signal: commandSignal() });
         const idx = Number(answer.trim());
         if (!Number.isInteger(idx) || idx < 1 || idx > choices.length) {
             throw new Error(`无效选择: ${answer || '(empty)'}`);
@@ -165,7 +167,7 @@ function resolveAgents(agent: string): string[] {
 function buildStandardEntry(creds: McpCredentials) {
     return {
         command: 'zentao',
-        args: ['mcp'],
+        args: ['mcp', 'serve'],
         env: {
             ZENTAO_URL: creds.url,
             ZENTAO_ACCOUNT: creds.account,
@@ -193,7 +195,7 @@ function writeOpenCodeConfig(configPath: string, creds: McpCredentials): void {
     const config = readJsonFile(configPath);
     deepSet(config, ['mcp', MCP_NAME], {
         type: 'local',
-        command: ['zentao', 'mcp'],
+        command: ['zentao', 'mcp', 'serve'],
         environment: {
             ZENTAO_URL: creds.url,
             ZENTAO_ACCOUNT: creds.account,
@@ -246,7 +248,7 @@ function writeCodexToml(configPath: string, creds: McpCredentials): void {
         const section = [
             `[mcp_servers.${MCP_NAME}]`,
             'command = "zentao"',
-            'args = ["mcp"]',
+            'args = ["mcp", "serve"]',
             `env = { ZENTAO_URL = ${JSON.stringify(creds.url)}, ZENTAO_ACCOUNT = ${JSON.stringify(creds.account)}, ZENTAO_TOKEN = ${JSON.stringify(creds.token)} }`,
         ].join(newline) + newline;
 
@@ -264,7 +266,7 @@ function printCherryStudioConfig(silent: boolean): void {
         name: MCP_NAME,
         type: 'stdio',
         command: 'zentao',
-        args: ['mcp'],
+        args: ['mcp', 'serve'],
     }, null, 2));
 }
 
@@ -301,21 +303,23 @@ function installMcp(agent: string, creds: McpCredentials, silent: boolean): void
 /** 注册 `zentao add-mcp`：配置禅道 MCP 服务到 AI Agent */
 export function registerAddMcpCommand(program: Command): void {
     program
-        .command('add-mcp')
+        .command('install')
         .description('配置禅道 MCP 服务到 AI Agent')
         .argument('[agent]', `目标 Agent (${AGENT_NAMES.join('|')}|all)`)
         .action(async (agent?: string) => {
-            const globalOpts = program.opts() as GlobalOptions;
+            const globalOpts = program.optsWithGlobals() as GlobalOptions;
             const silent = !!globalOpts.silent;
 
+            if (!agent && globalOpts.input === false) throw new ZentaoError('E2009', { option: 'agent', reason: '--no-input 时必须指定安装目标' });
             const agents = agent ? resolveAgents(agent) : await promptAgentSelection();
             const creds = await resolveCredentials({
                 insecure: globalOpts.insecure,
                 timeout: globalOpts.timeout,
+                profile: globalOpts.profile,
             });
 
-            for (const a of agents) {
-                installMcp(a, creds, silent);
-            }
+            for (const a of agents) installMcp(a, creds, true);
+            emitResult(agents.map(agent => ({ agent, path: AGENT_TARGETS[agent].configPath,
+                ...(agent === 'cherry-studio' ? { manual: { command: 'zentao', args: ['mcp', 'serve'] } } : {}) })), globalOpts);
         });
 }

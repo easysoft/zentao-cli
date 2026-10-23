@@ -1,3 +1,5 @@
+import { commandSignal } from '../utils/lifecycle.js';
+import { emitResult } from '../utils/output.js';
 import { Command } from 'commander';
 import { cpSync, existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -99,7 +101,7 @@ async function promptAgentSelection(): Promise<string[]> {
     });
 
     try {
-        const answer = await rl.question(`请输入编号 (1-${choices.length}): `);
+        const answer = await rl.question(`请输入编号 (1-${choices.length}): `, { signal: commandSignal() });
         const idx = Number(answer.trim());
         if (!Number.isInteger(idx) || idx < 1 || idx > choices.length) {
             throw new Error(`无效选择: ${answer || '(empty)'}`);
@@ -175,19 +177,17 @@ function resolveOutputDir(output: string): string {
     return outputDir;
 }
 
-function installSkill(agent: string, skillName: string, silent: boolean): void {
+function installSkill(agent: string, skillName: string, silent: boolean) {
     const target = AGENT_TARGETS[agent];
     const source = resolveSkillSource(skillName);
     const destDir = join(target.dir, skillName);
 
     copySkill(source, destDir);
 
-    if (!silent) {
-        console.log(`已安装 ${skillName} 技能到 ${target.label}: ${tildeDisplay(destDir)}`);
-    }
+    return { skill: skillName, agent, path: destDir };
 }
 
-function exportSkills(output: string, silent: boolean): void {
+function exportSkills(output: string, silent: boolean) {
     const outputDir = resolveOutputDir(output);
     const skills = SKILL_NAMES.map((skillName) => ({
         skillName,
@@ -201,38 +201,18 @@ function exportSkills(output: string, silent: boolean): void {
 
     for (const { skillName, source, destDir } of skills) {
         copySkill(source, destDir);
-
-        if (!silent) {
-            console.log(`已导出 ${skillName} 技能到: ${tildeDisplay(destDir)}`);
-        }
     }
+    return skills.map(({ skillName, destDir }) => ({ skill: skillName, path: destDir }));
 }
 
-/** 注册 `zentao add-skill`：安装禅道 CLI 技能到 AI Agent */
 export function registerAddSkillCommand(program: Command): void {
-    program
-        .command('add-skill')
-        .description('安装禅道 CLI 技能到 AI Agent，或导出至指定目录')
-        .argument('[agent]', `目标 Agent (${AGENT_NAMES.join('|')}|all)`)
-        .option('-o, --output <path>', '将所有内置技能导出到指定目录')
-        .action(async (agent?: string, options: AddSkillOptions = {}) => {
-            const globalOpts = program.opts() as GlobalOptions;
-            const silent = !!globalOpts.silent;
-
-            if (options.output !== undefined) {
-                if (agent) {
-                    throw new Error('不能同时指定 agent 和 --output；导出技能请使用: zentao add-skill --output <path>');
-                }
-                exportSkills(options.output, silent);
-                return;
-            }
-
+    program.command('install').description('安装技能到指定 Agent').argument('[agent]', AGENT_NAMES.join('|') + '|all')
+        .action(async (agent: string | undefined, _opts, cmd: Command) => {
+            const options = cmd.optsWithGlobals();
+            if (!agent && options.input === false) throw new ZentaoError('E2009', { option: 'agent', reason: '--no-input 时必须指定安装目标' });
             const agents = agent ? resolveAgents(agent) : await promptAgentSelection();
-
-            for (const a of agents) {
-                for (const skillName of SKILL_NAMES) {
-                    installSkill(a, skillName, silent);
-                }
-            }
+            emitResult(agents.flatMap(name => SKILL_NAMES.map(skill => installSkill(name, skill, true))), options);
         });
+    program.command('export').description('导出技能到指定目录').argument('<directory>')
+        .action((directory: string, _opts, cmd: Command) => emitResult(exportSkills(directory, true), cmd.optsWithGlobals()));
 }

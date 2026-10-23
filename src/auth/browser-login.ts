@@ -17,6 +17,7 @@ interface BrowserLoginOptions {
     open?: boolean;
     fallbackToTerminal?: boolean;
     waitTimeoutMs?: number;
+    signal?: AbortSignal;
 }
 
 /** Keep upstream responses out of the page: they can contain credentials or HTML. */
@@ -75,6 +76,7 @@ export async function startBrowserLogin(options: BrowserLoginOptions = {}): Prom
         if (finished) return;
         finished = true;
         clearTimeout(timer);
+        options.signal?.removeEventListener('abort', cancel);
         controller.abort();
         process.removeListener('SIGINT', cancel);
         process.removeListener('SIGTERM', cancel);
@@ -186,6 +188,8 @@ export async function startBrowserLogin(options: BrowserLoginOptions = {}): Prom
     server.on('error', () => finish(new ZentaoError('E1010')));
     process.once('SIGINT', cancel);
     process.once('SIGTERM', cancel);
+    options.signal?.addEventListener('abort', cancel, { once: true });
+    if (options.signal?.aborted) cancel();
     timer = setTimeout(() => finish(new ZentaoError('E1009')), options.waitTimeoutMs ?? 5 * 60_000);
     return { url: `${origin}/#${key}`, result, cancel };
 }

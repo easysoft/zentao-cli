@@ -1,5 +1,6 @@
 import type { Command } from 'commander';
 import { registerHelpCommand } from './help.js';
+import { registerAuthStatusCommand } from './auth-status.js';
 import { registerLoginCommand } from './login.js';
 import { registerLogoutCommand } from './logout.js';
 import { registerProfileCommand } from './profile.js';
@@ -15,15 +16,24 @@ import { registerUpgradeCommand } from './upgrade.js';
 /** 注册内置子命令与各动态模块子命令 */
 export function registerAllCommands(program: Command): void {
     registerHelpCommand(program);
-    registerLoginCommand(program);
-    registerLogoutCommand(program);
+    const auth = program.command('auth').description('认证与凭据');
+    auth.action(() => auth.outputHelp());
+    registerLoginCommand(auth);
+    registerLogoutCommand(auth);
+    registerAuthStatusCommand(auth);
     registerProfileCommand(program);
     registerConfigCommand(program);
     registerVersionCommand(program);
     registerAutocompleteCommand(program);
-    registerAddSkillCommand(program);
-    registerAddMcpCommand(program);
-    registerMcpCommand(program);
+    const skill = program.command('skill').description('安装或导出技能');
+    skill.action(() => skill.outputHelp());
+    registerAddSkillCommand(skill);
+    const mcp = program.command('mcp').description('启动 MCP 或安装客户端配置');
+    mcp.action(() => mcp.outputHelp());
+    registerAddMcpCommand(mcp);
+    registerMcpCommand(mcp);
     registerModuleCommands(program);
-    registerUpgradeCommand(program);
+    const self = program.command('self').description('管理本机 CLI 安装');
+    self.action(() => self.outputHelp());
+    registerUpgradeCommand(self);
 }

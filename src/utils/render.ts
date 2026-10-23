@@ -13,8 +13,8 @@ export function renderMarkdown(markdown: string): string {
     if (
         typeof Bun !== 'undefined'
         && typeof Bun.markdown.ansi === 'function'
-        && process.stdout.isTTY
-        && !process.argv.includes('--machine-readable')
+        && (process.stdout.isTTY || process.argv.includes('--color=always') || process.argv.includes('always'))
+        && !process.argv.includes('--color=never') && !process.argv.includes('never')
         && process.env.NO_COLOR === undefined
     ) {
         return Bun.markdown.ansi(markdown);

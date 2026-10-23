@@ -11,6 +11,7 @@ import type { ModuleActionOptions } from '../types/index.js';
 import { createInterface } from 'node:readline/promises';
 import { renderObject } from '../utils/render.js';
 import { ZentaoError } from '../errors.js';
+import { commandSignal } from '../utils/lifecycle.js';
 import { batchTargets } from '../modules/targets.js';
 
 
@@ -24,7 +25,7 @@ async function confirmDelete(format: string, count: number, machineReadable = fa
 
     const rl = createInterface({ input: process.stdin, output: process.stderr });
     try {
-        const answer = await rl.question(`确认删除 ${count} 个对象？(y/n): `);
+        const answer = await rl.question(`确认删除 ${count} 个对象？(y/n): `, { signal: commandSignal() });
         return answer.toLowerCase() === 'y';
     } finally {
         rl.close();
@@ -206,7 +207,7 @@ export async function handleModuleCommand(
     const batchIds = batchTargets(action, params, options.ids);
     if (batchIds) {
         if (action.type === 'delete' && !options.yes) {
-            if (!await confirmDelete(format, batchIds.length, options.machineReadable)) {
+            if (!await confirmDelete(format, batchIds.length, options.machineReadable || options.input === false)) {
                 return;
             }
         }
@@ -257,7 +258,7 @@ export async function handleModuleCommand(
     }
 
     if (action.type === 'delete' && !options.yes) {
-        if (!await confirmDelete(format, 1, options.machineReadable)) {
+        if (!await confirmDelete(format, 1, options.machineReadable || options.input === false)) {
             return;
         }
     }

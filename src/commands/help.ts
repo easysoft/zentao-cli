@@ -1,35 +1,25 @@
 import type { Command } from 'commander';
-import { getModule } from '../modules/index.js';
-import { showModuleAllActionsHelp } from './module-handler.js';
+import { getModule } from '../modules/helper.js';
+import { actionContract, kebabCase } from '../modules/contract.js';
+import { emitResult } from '../utils/output.js';
+import { ZentaoError } from '../errors.js';
 
-function findSubcommand(program: Command, token: string): Command | undefined {
-    return program.commands.find((cmd) => cmd.name() === token || cmd.aliases().includes(token));
+export function commandDefinition(command: Command): unknown {
+    return { name: command.name(), description: command.description(),
+        arguments: command.registeredArguments.map(arg => ({ name: arg.name(), required: arg.required, variadic: arg.variadic, description: arg.description })),
+        options: command.options.map(option => ({ flags: option.flags, description: option.description, default: option.defaultValue, choices: option.argChoices })),
+        commands: command.commands.map(child => ({ name: child.name(), description: child.description() })) };
 }
-
-/** 注册 `zentao help [command]`：根级帮助、子命令帮助，或业务模块的详细操作说明 */
 export function registerHelpCommand(program: Command): void {
-    program
-        .command('help')
-        .description('显示命令帮助')
-        .argument('[command]', '子命令或模块名')
-        .action((commandName?: string) => {
-            if (!commandName) {
-                program.help();
-                return;
-            }
-
-            const mod = getModule(commandName);
-            if (mod) {
-                showModuleAllActionsHelp(mod);
-                return;
-            }
-
-            const sub = findSubcommand(program, commandName);
-            if (sub && !(sub as unknown as { _executableHandler?: boolean })._executableHandler) {
-                sub.help();
-                return;
-            }
-
-            program.help({ error: true });
+    program.command('help').description('离线文本或 JSON 命令定义').argument('[command]').argument('[action]')
+        .action((name: string | undefined, actionName: string | undefined, _opts, cmd: Command) => {
+            const options = cmd.optsWithGlobals();
+            const resource = name ? program.commands.find(item => item.name() === name) : program;
+            const action = actionName ? resource?.commands.find(item => item.name() === actionName) : resource;
+            if (!action) throw new ZentaoError('E2009', { option: 'help', reason: '未找到指定命令或操作' });
+            if (options.format !== 'json') { action.outputHelp(); return; }
+            const mod = name ? getModule(name) : undefined;
+            const definition = mod?.actions.find(item => kebabCase(item.name) === actionName);
+            emitResult(definition ? actionContract(mod!, definition) : commandDefinition(action), options);
         });
 }

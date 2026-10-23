@@ -1,3 +1,6 @@
+import { commandSignal } from '../utils/lifecycle.js';
+import { emitResult } from '../utils/output.js';
+import { ZentaoError } from '../errors.js';
 import { Command } from 'commander';
 import { createInterface } from 'node:readline/promises';
 import type { GlobalOptions } from '../types/index.js';
@@ -13,12 +16,12 @@ import {
 
 async function confirmUpgrade(current: string, latest: string): Promise<boolean> {
     if (!process.stdin.isTTY || !process.stderr.isTTY) {
-        throw new Error('非交互模式下请使用 --yes 跳过确认。');
+        throw new ZentaoError('E2009', { option: 'yes', reason: '非交互模式下必须显式确认升级' });
     }
 
     const rl = createInterface({ input: process.stdin, output: process.stderr });
     try {
-        const answer = await rl.question(`发现新版本 ${current} → ${latest}，是否立即升级？[y/N] `);
+        const answer = await rl.question(`发现新版本 ${current} → ${latest}，是否立即升级？[y/N] `, { signal: commandSignal() });
         return answer.trim().toLowerCase() === 'y';
     } finally {
         rl.close();
@@ -28,17 +31,17 @@ async function confirmUpgrade(current: string, latest: string): Promise<boolean>
 /** 注册 `zentao upgrade`：从 npm 检查并升级到最新版本 */
 export function registerUpgradeCommand(program: Command): void {
     program
-        .command('upgrade')
+        .command('update')
         .description('检查并升级 CLI 到最新版本')
         .option('-y, --yes', '跳过确认，直接升级')
         .action(async (opts: { yes?: boolean }) => {
-            const globalOpts = program.opts() as GlobalOptions;
-            const silent = !!globalOpts.silent;
+            const globalOpts = program.optsWithGlobals() as GlobalOptions;
+            const silent = !!globalOpts.quiet;
 
             const currentVersion = getCliVersion();
             if (!silent) process.stderr.write('正在检查最新版本...\n');
 
-            const latestVersion = await fetchLatestVersion();
+            const latestVersion = await fetchLatestVersion(commandSignal(), globalOpts.timeout);
 
             const current = parseSemver(currentVersion);
             const latest = parseSemver(latestVersion);
@@ -50,26 +53,26 @@ export function registerUpgradeCommand(program: Command): void {
             }
 
             if (compareSemver(current, latest) >= 0) {
-                console.log(`当前已是最新版本 ${currentVersion}，无需升级。`);
+                emitResult({ current: currentVersion, latest: latestVersion, updated: false }, globalOpts);
                 return;
             }
 
-            const shouldUpgrade =
-                opts.yes || (await confirmUpgrade(currentVersion, latestVersion));
+            if (!opts.yes && globalOpts.input === false) throw new ZentaoError('E2009', { option: 'yes', reason: '--no-input 时必须显式确认升级' });
+            const shouldUpgrade = opts.yes || (await confirmUpgrade(currentVersion, latestVersion));
 
             if (!shouldUpgrade) {
-                console.log('已取消升级。');
+                emitResult({ updated: false, cancelled: true }, globalOpts);
                 return;
             }
 
             const pm = detectPackageManager();
             const { cmd, args } = buildInstallCommand(pm, latestVersion);
-            console.log(`\n执行: ${cmd} ${args.join(' ')}\n`);
+            if (!silent) process.stderr.write(`执行: ${cmd} ${args.join(' ')}\n`);
 
-            const { status } = runInstall(pm, latestVersion);
+            const { status } = await runInstall(pm, latestVersion, commandSignal());
 
             if (status === 0) {
-                console.log(`\n升级成功！${currentVersion} → ${latestVersion}`);
+                emitResult({ previous: currentVersion, current: latestVersion, updated: true }, globalOpts);
             } else {
                 throw new Error(`升级失败，请手动运行:\n  ${cmd} ${args.join(' ')}`);
             }
