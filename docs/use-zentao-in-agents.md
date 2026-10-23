@@ -40,7 +40,7 @@ $ npm install -g zentao-cli
 # pnpm dlx zentao-cli        # ← 通过 pnpm 免安装运行
 
 # 安装完成之后可以一键安装技能到 Agents
-$ zentao add-skill
+$ zentao skill install
 
 请选择要安装的 AI Agent:
   1) Claude Code
@@ -58,7 +58,7 @@ $ zentao add-skill
 如果需要将技能用于其他支持 Skills 的工具，也可以将所有内置技能导出到指定目录：
 
 ```sh
-$ zentao add-skill --output ./skills
+$ zentao skill export ./skills
 
 # 将生成：
 # ./skills/zentao-cli/
@@ -67,26 +67,28 @@ $ zentao add-skill --output ./skills
 
 ## 账号登录
 
+本开发分支使用新命令契约，尚未发布。登录只保存凭据，随后用 `zentao profile list` 获取 key，再用 `zentao profile use <key>` 设置默认身份；也可在每次命令上显式加 `--profile <key>`。
+
 安装完成后，推荐让 Agent 发起浏览器登录：
 
 ```sh
-zentao login --web
+zentao auth login --web
 ```
 
 Agent 应保持命令进程运行，提示用户在本机浏览器中输入禅道地址、用户名和密码。浏览器没有自动打开时，将命令输出的本机链接交给用户手动打开。登录成功后 CLI 保存 Token 并退出，Agent 再重试原业务命令。不要在对话中收集密码或 Token，也不要替用户读取浏览器表单中的凭据。
 
 可添加 `--message "完成登录后，回到 Codex 即可继续使用禅道。"` 自定义登录页副标题，指引用户回到当前 Agent；提示按纯文本显示。
 
-桌面环境直接运行 `zentao login` 也会自动打开浏览器。远程服务器或容器中的本机链接属于 CLI 执行端，不能在另一台电脑上直接打开；此时可让用户在相同执行环境中运行 `zentao login --no-browser` 完成终端交互登录。沿用原业务命令的 `--config` 或 `ZENTAO_CONFIG_FILE`，确保登录记录保存在相同位置。
+桌面环境直接运行 `zentao auth login` 也会自动打开浏览器。远程服务器或容器中的本机链接属于 CLI 执行端，不能在另一台电脑上直接打开；此时可让用户在相同执行环境中运行 `zentao auth login --no-browser` 完成终端交互登录。沿用原业务命令的 `--config` 或 `ZENTAO_CONFIG_FILE`，确保登录记录保存在相同位置。
 
-已有自动化环境可提供完整环境凭据直接执行业务命令，无需先登录或保存配置；仅在需要验证并保存环境凭据时执行 `zentao login --useEnv`。业务命令缺少凭证时只报错，Agent 应显式启动登录，不会自动弹出页面。
+已有自动化环境可提供完整环境凭据直接执行业务命令，无需先登录或保存配置；仅在需要验证并保存环境凭据时执行 `zentao auth login --use-env`。业务命令缺少凭证时只报错，Agent 应显式启动登录，不会自动弹出页面。
 
 ## Agent、CI 与容器中的凭据
 
-先通过 `zentao profile --help` 确认安装版本支持 `--effective`，再检查实际生效的认证来源：
+通过离线命令检查实际生效的认证来源：
 
 ```sh
-zentao profile --effective --format=json
+zentao auth status --format=json
 ```
 
 `source=environment` 表示完整环境凭据，`source=profile` 表示当前保存的账号。输出只包含站点、账号、凭据类型和实际使用的配置路径；环境凭据的 `configFile` 为 `null`。该命令不请求服务器，`verified=false` 表示尚未验证凭据。确认站点和账号后，在用户指定范围内执行一次只读查询来验证连接。
@@ -97,8 +99,8 @@ zentao profile --effective --format=json
 
 ```sh
 # 完整凭据已由运行环境注入
-zentao profile --effective --format=json
-zentao product --pick=id,name --page=1 --recPerPage=5 --format=json
+zentao auth status --format=json
+zentao product list --fields=id,name --page=1 --page-size=5 --format=json
 ```
 
 这种方式不读取或写入本地 Profile，不继承本地账号的配置。需要调整超时等参数时，显式使用 `--timeout` 等命令选项。环境密码仅在业务请求的认证过程中换取 Token，诊断命令不会登录。
@@ -108,8 +110,8 @@ zentao product --pick=id,name --page=1 --recPerPage=5 --format=json
 先在宿主机完成人工登录，再由运行环境把配置目录只读挂载到例如 `/run/zentao`。运行 CLI 的用户需要能读取文件并访问其父目录：
 
 ```sh
-zentao --config /run/zentao/zentao.json profile --effective --format=json
-zentao --config /run/zentao/zentao.json product --pick=id,name --page=1 --recPerPage=5 --format=json
+zentao --config /run/zentao/zentao.json auth status --format=json
+zentao --config /run/zentao/zentao.json product list --fields=id,name --page=1 --page-size=5 --format=json
 ```
 
 读取与业务认证不会修改配置内容、最近使用时间或文件权限。登录、退出、切换本地账号和修改配置仍需写入权限；只读挂载环境的凭据更新由宿主机或部署端负责。若环境同时注入了完整凭据，业务命令仍优先使用环境来源。
@@ -120,11 +122,12 @@ zentao --config /run/zentao/zentao.json product --pick=id,name --page=1 --recPer
 
 ```sh
 # 本机人工登录；远程执行端可改用 login --no-browser
-zentao --config /agent-config/zentao.json login --web
+zentao --config /agent-config/zentao.json auth login --web
+zentao --config /agent-config/zentao.json profile use admin@https://zentao.example.com
 
 # Agent 后续调用沿用相同的配置文件
-ZENTAO_CONFIG_FILE=/agent-config/zentao.json zentao profile --effective --format=json
-ZENTAO_CONFIG_FILE=/agent-config/zentao.json zentao product --pick=id,name --page=1 --recPerPage=5 --format=json
+ZENTAO_CONFIG_FILE=/agent-config/zentao.json zentao auth status --format=json
+ZENTAO_CONFIG_FILE=/agent-config/zentao.json zentao product list --fields=id,name --page=1 --page-size=5 --format=json
 ```
 
 需要统一配置根目录时，可设置 `XDG_CONFIG_HOME=/agent-config`，此时默认文件为 `/agent-config/zentao/zentao.json`。优先级为 `--config` → `ZENTAO_CONFIG_FILE` → 绝对路径 `XDG_CONFIG_HOME` → `~/.config`。显式更换目录后不会迁移或回退读取旧文件；登录与后续调用要使用相同路径。凭据目录应位于仓库之外，目录选择也不会改变操作系统或 Agent 沙箱授予的权限。
@@ -175,16 +178,16 @@ BUG 329 是什么问题？可能的原因是什么？有解决方案吗？
 
 ```sh
 # 升级 CLI 本身
-$ zentao upgrade
+$ zentao self update
 
 # 然后通过 add-skill 命令升级技能
-$ zentao add-skill
+$ zentao skill install
 ```
 
 也可以要求 Agent 帮你升级：
 
 ```txt
-请帮我升级 zentao-cli，并通过 zentao add-skill 命令重新安装最新的技能。
+请帮我升级 zentao-cli，并通过 zentao skill install 命令重新安装最新的技能。
 ```
 
 ## FAQ

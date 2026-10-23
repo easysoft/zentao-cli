@@ -36,12 +36,12 @@ npm install -g zentao-cli
 需要登录时，由 Agent 发起浏览器登录并保持命令进程运行，让用户在本机浏览器中填写服务地址、用户名和密码：
 
 ```bash
-zentao login --web
+zentao auth login --web
 ```
 
-未自动打开浏览器时，将命令输出的本机链接交给用户手动打开。等待命令报告登录成功后，再重试原业务命令。远程服务器或容器中的本机链接属于 CLI 执行端；无法在该执行端打开页面时，让用户在相同执行环境的交互终端运行 `zentao login --no-browser`，不要反复启动登录进程。
+未自动打开浏览器时，将命令输出的本机链接交给用户手动打开。等待命令报告登录成功后，再重试原业务命令。远程服务器或容器中的本机链接属于 CLI 执行端；无法在该执行端打开页面时，让用户在相同执行环境的交互终端运行 `zentao auth login --no-browser`，不要反复启动登录进程。
 
-不要让用户把密码或 Token 发到聊天里，也不要读取浏览器表单或把真实凭证写进命令参数、示例、日志或仓库文件。已有自动化环境可使用安全注入的 `ZENTAO_URL`、`ZENTAO_ACCOUNT` 和 `ZENTAO_PASSWORD` / `ZENTAO_TOKEN`；需要强制按这些环境变量登录时使用 `zentao login --useEnv`。不要为检查变量而打印值。
+不要让用户把密码或 Token 发到聊天里，也不要读取浏览器表单或把真实凭证写进命令参数、示例、日志或仓库文件。已有自动化环境可使用安全注入的 `ZENTAO_URL`、`ZENTAO_ACCOUNT` 和 `ZENTAO_PASSWORD` / `ZENTAO_TOKEN`；需要强制按这些环境变量登录时使用 `zentao auth login --use-env`。不要为检查变量而打印值。
 
 配置保存账号、服务器和 Token，不保存密码。路径按 `--config`、`ZENTAO_CONFIG_FILE`、`$XDG_CONFIG_HOME/zentao/zentao.json`、`~/.config/zentao/zentao.json` 的顺序选择；XDG 必须是绝对路径。显式更换目录后不会迁移或回退读取旧配置。沿用用户当前路径，不读取或展示整份凭证文件；业务认证支持只读配置。
 
@@ -49,11 +49,11 @@ zentao login --web
 
 ```bash
 zentao profile --help
-zentao profile --effective --format=json
-zentao product --pick=id,name --page=1 --recPerPage=5
+zentao auth status --format=json
+zentao product list --fields=id,name --page=1 --page-size=5
 ```
 
-先确认安装版本支持 `--effective`，再用它查看实际来源与账号。`source=environment` 表示完整环境凭据且不读取本地 Profile，`source=profile` 表示本地账号；`verified=false` 表示尚未验证。最后一条才是真实的只读业务请求。用户已指定别的业务范围时，可用该范围内的只读请求替代产品查询。产品返回空列表不代表服务未连通，更不代表必须新建产品。旧版本的 `profile` 只读本地账号，没有本地 Profile 时的 `E1006` 不能证明环境凭据不可用。
+使用 `auth status` 查看实际来源与账号，安装版本不同以本机帮助为准。`source=environment` 表示完整环境凭据且不读取本地 Profile，`source=profile` 表示本地账号；`verified=false` 表示尚未验证。最后一条才是真实的只读业务请求。用户已指定别的业务范围时，可用该范围内的只读请求替代产品查询。产品返回空列表不代表服务未连通，更不代表必须新建产品。`profile list` 列出本地账号，与环境凭据分开。
 
 CLI 已安装但尚未登录时，仍可使用：
 
@@ -75,8 +75,8 @@ zentao task props --format=json
 用户需要配置 MCP 时，先查看本地支持的目标，再为他选定的客户端安装：
 
 ```bash
-zentao add-mcp --help
-zentao add-mcp cursor
+zentao mcp install --help
+zentao mcp install cursor
 ```
 
 第二条是用户选用 Cursor 时的示例，会将当前服务器、账号和 Token 写入该客户端的本地 MCP 配置；应在用户要求配置该客户端的范围内使用，不自动配置全部客户端。不要打印配置里的 Token。CLI 认证细节见 [zentao-cli 技能](../zentao-cli/SKILL.md)。
@@ -85,7 +85,7 @@ zentao add-mcp cursor
 
 默认 Markdown 适合浏览，`--format=json` 适合处理结构化数据。查询候选时可以只看一页；做完整统计时，根据返回 `pager` 逐页读取，保留统计所需字段，并记录账号可见范围。
 
-`--filter`、`--sort`、`--search`、`--pick`、`--limit` 都在客户端处理当前页。单个 `--filter` 内的条件是 AND，重复该选项表示 OR。服务端 `browseType`、`orderBy`、`filters` 则以当前操作帮助为准；各操作的默认范围并不相同。只对帮助列出分页参数的操作使用分页选项，不能用 `--all` 自动拉全量。
+`--filter`、`--sort`、`--search`、`--fields`、`--max-items` 在客户端处理已获取范围，默认当前页，`--all` 时为全部页面。单个 `--filter` 内的条件是 AND，重复该选项表示 OR。服务端 `browseType`、`orderBy`、`filters` 则以当前操作帮助为准；各操作的默认范围并不相同。只对帮助列出分页参数的操作使用分页选项；支持 `--all` 时可显式拉全量，再统一处理。
 
 ## 外部资料
 

@@ -32,7 +32,7 @@
     "typecheck": "tsc --noEmit",
     "test": "bun test",
     "coverage": "bun test --coverage",
-    "prepublishOnly": "bun run typecheck && bun test && bun run build && node bin/zentao.js -V"
+    "prepublishOnly": "bun run typecheck && bun test && bun run scripts/generate-command-reference.ts --check && bun run build && node bin/zentao.js -V"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",

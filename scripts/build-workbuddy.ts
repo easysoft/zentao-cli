@@ -28,8 +28,8 @@ for (const platform of ['darwin', 'linux', 'win32']) {
     }
     assert.ok(cli.init[platform].includes(`zentao-cli@${pkg.version} `), 'CLI and Skill versions must match');
 }
-assert.ok(new RegExp(cli.statusMatch).test(JSON.stringify({ currentProfile: 'user@https://zentao.example.com' })));
-assert.ok(!new RegExp(cli.statusMatch).test(JSON.stringify({ currentProfile: '' })));
+assert.ok(new RegExp(cli.statusMatch).test(JSON.stringify({ ok: true, data: { account: 'user' } })));
+assert.ok(!new RegExp(cli.statusMatch).test(JSON.stringify({ ok: false })));
 
 const outputDir = join(projectDir, 'release', 'workbuddy');
 const connectorDir = join(outputDir, meta.source);

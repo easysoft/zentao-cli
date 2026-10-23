@@ -9,16 +9,16 @@
     "win32": "npm.cmd install -g zentao-cli@0.4.0 --no-audit --no-fund"
   },
   "auth": {
-    "darwin": "node -e \"console.error('请先在交互终端执行：npx --yes zentao-cli@0.4.0 --config ~/.config/zentao/workbuddy.json login；完成后返回 WorkBuddy 重新连接。');process.exitCode=1\"",
-    "linux": "node -e \"console.error('请先在交互终端执行：npx --yes zentao-cli@0.4.0 --config ~/.config/zentao/workbuddy.json login；完成后返回 WorkBuddy 重新连接。');process.exitCode=1\"",
-    "win32": "node -e \"console.error('请先在交互终端执行：npx --yes zentao-cli@0.4.0 --config ~/.config/zentao/workbuddy.json login；完成后返回 WorkBuddy 重新连接。');process.exitCode=1\""
+    "darwin": "node -e \"console.error('请先在交互终端执行：npx --yes zentao-cli@0.4.0 --config ~/.config/zentao/workbuddy.json auth login，并用 profile use 选择账号；完成后返回 WorkBuddy 重新连接。');process.exitCode=1\"",
+    "linux": "node -e \"console.error('请先在交互终端执行：npx --yes zentao-cli@0.4.0 --config ~/.config/zentao/workbuddy.json auth login，并用 profile use 选择账号；完成后返回 WorkBuddy 重新连接。');process.exitCode=1\"",
+    "win32": "node -e \"console.error('请先在交互终端执行：npx --yes zentao-cli@0.4.0 --config ~/.config/zentao/workbuddy.json auth login，并用 profile use 选择账号；完成后返回 WorkBuddy 重新连接。');process.exitCode=1\""
   },
   "status": {
-    "darwin": "zentao --config \"~/.config/zentao/workbuddy.json\" profile --format=json",
-    "linux": "zentao --config \"~/.config/zentao/workbuddy.json\" profile --format=json",
-    "win32": "zentao.cmd --config \"~/.config/zentao/workbuddy.json\" profile --format=json"
+    "darwin": "zentao --config \"~/.config/zentao/workbuddy.json\" auth status --format=json",
+    "linux": "zentao --config \"~/.config/zentao/workbuddy.json\" auth status --format=json",
+    "win32": "zentao.cmd --config \"~/.config/zentao/workbuddy.json\" auth status --format=json"
   },
-  "statusMatch": "\"currentProfile\"\\s*:\\s*\"[^\"]+\"",
+  "statusMatch": "\"ok\"\\s*:\\s*true",
   "unAuth": {
     "darwin": "node -e \"require('node:fs').rmSync(require('node:path').join(require('node:os').homedir(),'.config','zentao','workbuddy.json'),{force:true});console.log('已清理 WorkBuddy 禅道登录记录')\"",
     "linux": "node -e \"require('node:fs').rmSync(require('node:path').join(require('node:os').homedir(),'.config','zentao','workbuddy.json'),{force:true});console.log('已清理 WorkBuddy 禅道登录记录')\"",

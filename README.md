@@ -1,3 +1,5 @@
+> 开发分支已采用不兼容的新命令契约，尚未发布。登录后需 `profile use` 选择默认账号，或每次显式 `--profile`。迁移说明见 [命令与参数参考](docs/command-reference.md)。
+
 # Zentao CLI
 
 禅道命令行工具，支持在你喜爱的终端里访问和操作禅道数据，对 AI Agents 友好。
@@ -5,12 +7,12 @@
 ## 主要特性
 
 * ✅ 基于最新的禅道 RESTful API 2.0 实现
-* ✅ 覆盖 26 个模块、229 个 API 操作，调用前按禅道版本检查接口兼容性
+* ✅ 按 SDK 注册表覆盖禅道业务 API（完整范围见自动生成的命令参考），调用前按禅道版本检查接口兼容性
 * ✅ 使用便捷，可通过 `npx zentao-cli` 立即运行
 * ✅ 安全的用户认证管理，支持多用户切换
 * ✅ 支持对数据进行摘取、过滤、排序等处理，并自动将 HTML 转换为 Markdown
 * ✅ 对 AI Agents 友好，帮助信息完善，支持输出 Markdown
-* ✅ 支持以 AI 技能的方式使用，支持通过 `zentao add-skill` 一键安装技能到 AI Agent
+* ✅ 支持以 AI 技能的方式使用，支持通过 `zentao skill install` 一键安装技能到 AI Agent
 * ✅ 支持 stdio 与远程 HTTP MCP 服务，多客户端可使用各自的禅道 Token
 * ✅ 使用现代的 bun 与 TypeScript 开发，具备类型安全
 * ✅ 提供完善的测试覆盖，保障代码质量
@@ -38,16 +40,16 @@ npm install -g zentao-cli
 # pnpm dlx zentao-cli        # ← 通过 pnpm 免安装运行
 
 # 首次使用：在本机浏览器中输入禅道地址、用户名和密码
-zentao login --web
+zentao auth login --web
 
 # 直接执行获取可用命令帮助
 zentao
 
 # 查看禅道产品
-zentao product
+zentao product list
 
 # 查看指定 ID 的产品
-zentao product 1
+zentao product get 1
 
 # 更新禅道产品 #1
 zentao product update --id=1 --name=产品1
@@ -59,10 +61,10 @@ zentao help
 zentao product help
 
 # 安装 zentao-cli 技能
-zentao add-skill
+zentao skill install
 ```
 
-桌面环境执行 `zentao login` 会自动打开浏览器，登录后保存 Token，不保存密码。Agent 可执行 `zentao login --web` 并保持进程运行，让用户在浏览器完成验证后继续工作。终端交互登录使用 `zentao login --no-browser`；浏览器未自动打开时，可手动访问命令输出的本机链接。远程或容器中的链接属于 CLI 执行端。
+桌面环境执行 `zentao auth login` 会自动打开浏览器，登录后保存 Token，不保存密码。Agent 可执行 `zentao auth login --web` 并保持进程运行，让用户在浏览器完成验证后继续工作。终端交互登录使用 `zentao auth login --no-browser`；浏览器未自动打开时，可手动访问命令输出的本机链接。远程或容器中的链接属于 CLI 执行端。
 
 ## 核心命令
 
@@ -74,10 +76,10 @@ zentao-cli 的命令格式简单直观：`zentao <模块名> [操作] [参数]`�
 
 ```bash
 # 查看产品列表
-zentao product
+zentao product list
 
 # 查看产品详情
-zentao product 1
+zentao product get 1
 
 # 创建产品
 zentao product create --name=新产品
@@ -93,10 +95,10 @@ zentao product delete 1
 
 ```bash
 # 查看 Bug 列表
-zentao bug --product=1
+zentao bug list --product=1
 
 # 查看 Bug 详情
-zentao bug 329
+zentao bug get 329
 
 # 解决 Bug（执行操作）
 zentao bug resolve 329 --resolution=fixed
@@ -106,29 +108,29 @@ zentao bug resolve 329 --resolution=fixed
 
 ```bash
 # 查看需求列表
-zentao story --product=1
+zentao story list --product=1
 
 # 创建任务
-zentao task create --name=实现登录功能 --executionID=10
+zentao task create --name=实现登录功能 --execution-id=10
 ```
 
 ### 数据筛选与搜索
 
 ```bash
 # 只显示指定字段
-zentao product --pick=id,name
+zentao product list --fields=id,name
 
 # 按条件过滤
-zentao bug --product=1 --filter 'status=active'
+zentao bug list --product=1 --filter 'status=active'
 
 # 模糊搜索
-zentao story --product=1 --search=登录 --search-fields=title
+zentao story list --product=1 --search=登录 --search-fields=title
 
 # 按字段排序
-zentao bug --product=1 --sort=id:desc
+zentao bug list --product=1 --sort=id:desc
 
 # JSON 格式输出（适合程序处理）
-zentao product --format=json
+zentao product list --format=json
 ```
 
 ### 查看帮助
@@ -138,7 +140,7 @@ zentao product --format=json
 zentao help
 
 # 查看指定模块的帮助（可用操作与参数）
-zentao bug --help
+zentao bug list --help
 ```
 
 更多功能（环境变量、账户切换、批量操作、管道输入、分页控制等）请参考 [CLI 核心功能详解](docs/cli-usage.md)。
@@ -147,15 +149,15 @@ zentao bug --help
 
 ### 通过 Zentao CLI 技能使用
 
-支持通过 `zentao-cli` 技能访问和操作禅道数据。安装技能可以通过 `zentao add-skill` 一键安装技能到 AI Agent，目前支持 Claude Code、Cursor、Cherry Studio、Codex、OpenCode、VS Code 等 AI Agent。
+支持通过 `zentao-cli` 技能访问和操作禅道数据。安装技能可以通过 `zentao skill install` 一键安装技能到 AI Agent，目前支持 Claude Code、Cursor、Cherry Studio、Codex、OpenCode、VS Code 等 AI Agent。
 
-Agent 可先执行 `zentao profile --effective --format=json` 查看业务命令实际使用的账号与凭据来源，输出不包含 Token 或密码，也不会发起登录。支持环境凭据注入、只读配置挂载和通过 `--config`、`ZENTAO_CONFIG_FILE`、`XDG_CONFIG_HOME` 指定配置位置，示例见 [Agent 接入指南](docs/use-zentao-in-agents.md#agentci-与容器中的凭据)。
+Agent 可先执行 `zentao auth status --format=json` 查看业务命令实际使用的账号与凭据来源，输出不包含 Token 或密码，也不会发起登录。支持环境凭据注入、只读配置挂载和通过 `--config`、`ZENTAO_CONFIG_FILE`、`XDG_CONFIG_HOME` 指定配置位置，示例见 [Agent 接入指南](docs/use-zentao-in-agents.md#agentci-与容器中的凭据)。
 
 详细使用可以参考：[在 Agents 中使用禅道](docs/use-zentao-in-agents.md)，下面简单介绍。
 
 ```bash
 # 安装 zentao-cli 技能
-$ zentao add-skill
+$ zentao skill install
 
 请选择要安装的 AI Agent:
   1) Claude Code
@@ -170,17 +172,17 @@ $ zentao add-skill
 请输入编号 (1-9):9
 
 # 安装技能到 Claude Code
-$ zentao add-skill claude-code
+$ zentao skill install claude-code
 
 # 将所有内置技能导出到指定目录
-$ zentao add-skill --output ./skills
+$ zentao skill export ./skills
 ```
 
 如果还未安装 zentao-cli，可以通过下面的命令，一键安装、登录和配置 Skill：
 
 ```bash
 # 一键安装、登录和配置 Skill
-$ pnpm install -g zentao-cli && zentao login && zentao add-skill all
+$ pnpm install -g zentao-cli && zentao auth login && zentao skill install all
 ```
 
 安装技能后即可在对应 Agent 工具中使用禅道 CLI 技能。
@@ -197,12 +199,12 @@ WorkBuddy 的 CLI + Skill 连接器资源包使用 `bun run build:workbuddy` 生
 
 ### 通过 MCP 服务使用
 
-Zentao CLI 支持一键配置本地 stdio MCP 服务。先通过 `zentao login` 登录，再执行 `zentao add-mcp`；命令会复用当前 Profile 中的 Token，不会将禅道密码写入 Agent 配置。
+Zentao CLI 支持一键配置本地 stdio MCP 服务。先通过 `zentao auth login` 保存账号并用 `zentao profile use <key>` 选择，再执行 `zentao mcp install`；命令会复用当前 Profile 中的 Token，不会将禅道密码写入 Agent 配置。
 
 ```bash
 # 一键配置 MCP 服务
-$ zentao login
-$ zentao add-mcp
+$ zentao auth login
+$ zentao mcp install
 # 然后选择目标 Agent
 ```
 
@@ -210,17 +212,21 @@ $ zentao add-mcp
 
 ```bash
 # 一键安装、登录和配置 MCP 服务
-$ pnpm install -g zentao-cli && zentao login && zentao add-mcp
+$ pnpm install -g zentao-cli
+zentao auth login
+zentao profile list
+zentao profile use <key>
+zentao mcp install
 ```
 
-`zentao mcp` 默认使用 stdio，由 MCP 客户端启动并管理进程。`zentao add-mcp` 会写入如下配置：
+`zentao mcp serve` 默认使用 stdio，由 MCP 客户端启动并管理进程。`zentao mcp install` 会写入如下配置：
 
 ```json
 {
   "mcpServers": {
     "zentao-cli": {
       "command": "zentao",
-      "args": ["mcp"],
+      "args": ["mcp", "serve"],
       "env": {
         "ZENTAO_URL": "https://zentao.example.com",
         "ZENTAO_ACCOUNT": "admin",
@@ -234,19 +240,19 @@ $ pnpm install -g zentao-cli && zentao login && zentao add-mcp
 可在 MCP 配置的 `args` 中追加以下启动选项：
 
 ```sh
-zentao mcp --read-only --modules product,story,task,bug
-zentao mcp --split-tools --modules product,story,task,bug
+zentao mcp serve --read-only --modules product,story,task,bug
+zentao mcp serve --split-tools --modules product,story,task,bug
 ```
 
 `--read-only` 仅开放查询并在执行时拦截写入；`--modules` 限定业务模块。默认保留 `zentao_<模块>` 工具名；`--split-tools` 改为 `zentao_<模块>_read` / `_write`，方便客户端分别授权查询和写入。这些选项也适用于 HTTP 模式。
 
-`zentao add-mcp` 在 macOS/Linux 上会将写入的 Agent 配置权限收紧为 `0600`。手动配置时也应避免写入账号密码，并限制 Token 配置文件的访问权限。
+`zentao mcp install` 在 macOS/Linux 上会将写入的 Agent 配置权限收紧为 `0600`。手动配置时也应避免写入账号密码，并限制 Token 配置文件的访问权限。
 为避免破坏已有注释，包含注释或尾逗号的 JSONC 配置不会被自动重写；命令会保持原文件不变并提示手动配置。
 
 需要多个客户端共用远程服务时，启动 HTTP 模式并固定一个禅道站点：
 
 ```bash
-zentao mcp --transport http --url https://zentao.example.com
+zentao mcp serve --transport http --url https://zentao.example.com
 ```
 
 默认监听 `127.0.0.1:9090`。远程部署通过 HTTPS 反向代理暴露 `/mcp`，客户端手动填写服务地址和自己的禅道 Token，例如：
@@ -262,7 +268,7 @@ zentao mcp --transport http --url https://zentao.example.com
 }
 ```
 
-客户端也可单独使用 `token` 请求头；每个请求只允许一种认证方式。HTTP 模式使用无状态 Streamable HTTP，凭证按请求隔离，不读取服务机的本地账号，也不提供账号切换。附件上传需要使用本地 CLI 或 stdio，HTTP 模式不接受读取本地路径的上传操作。需要 Node.js 18.14.1 或更新版本，或 Bun；面向原生 MCP 客户端，不支持浏览器直接跨域连接。`zentao add-mcp` 仍只配置本地 stdio。启动参数、代理配置和使用限制见 [MCP 使用说明](docs/cli-usage.md#mcp-服务)。
+客户端也可单独使用 `token` 请求头；每个请求只允许一种认证方式。HTTP 模式使用无状态 Streamable HTTP，凭证按请求隔离，不读取服务机的本地账号，也不提供账号切换。附件上传需要使用本地 CLI 或 stdio，HTTP 模式不接受读取本地路径的上传操作。需要 Node.js 18.14.1 或更新版本，或 Bun；面向原生 MCP 客户端，不支持浏览器直接跨域连接。`zentao mcp install` 仍只配置本地 stdio。启动参数、代理配置和使用限制见 [MCP 使用说明](docs/cli-usage.md#mcp-服务)。
 
 ## 文档
 
