@@ -148,7 +148,7 @@ test('SDK requests preserve numeric arrays, public keys, relation IDs, autofill 
             { method: 'DELETE', path: '/relations/8' },
             { method: 'GET', path: '/workflows/5' },
             { method: 'PUT', path: '/workflows/5', body: { name: 'Renamed', navigator: 'primary', position: 'after', positionModule: 'main' } },
-            { method: 'POST', path: '/db/query', body: { sql: 'SELECT id FROM zt_user', count: false } },
+            { method: 'POST', path: '/db/query', body: { sql: 'SELECT id FROM zt_user', count: false, page: 1, limit: 20 } },
         ]);
     } finally {
         await mcp.close();

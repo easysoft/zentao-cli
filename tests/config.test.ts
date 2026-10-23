@@ -1,3 +1,4 @@
+import { saveAndSelectProfile } from './helpers.js';
 import { describe, test, expect, beforeEach, afterEach } from 'bun:test';
 import Configstore from 'configstore';
 import { homedir, tmpdir } from 'node:os';
@@ -28,13 +29,12 @@ import { ZentaoError, formatError } from '../src/errors.js';
 
 describe('DEFAULT_CONFIG', () => {
     test('has correct default values', () => {
-        expect(DEFAULT_CONFIG.defaultOutputFormat).toBe('markdown');
+        expect(DEFAULT_CONFIG.defaultOutputFormat).toBe('table');
         expect(DEFAULT_CONFIG.defaultRecPerPage).toBe(20);
         expect(DEFAULT_CONFIG.insecure).toBe(false);
         expect(DEFAULT_CONFIG.timeout).toBe(10000);
         expect(DEFAULT_CONFIG.htmlToMarkdown).toBe(true);
         expect(DEFAULT_CONFIG.batchFailFast).toBe(false);
-        expect(DEFAULT_CONFIG.silent).toBe(false);
     });
 
     test('VALID_CONFIG_KEYS contains all config keys', () => {
@@ -45,7 +45,7 @@ describe('DEFAULT_CONFIG', () => {
         expect(VALID_CONFIG_KEYS).toContain('htmlToMarkdown');
         expect(VALID_CONFIG_KEYS).toContain('batchFailFast');
         expect(VALID_CONFIG_KEYS).toContain('pagers');
-        expect(VALID_CONFIG_KEYS).toContain('silent');
+        expect(VALID_CONFIG_KEYS).not.toContain('silent');
     });
 });
 
@@ -139,7 +139,7 @@ describe('setConfigPath', () => {
             { args: [], envFile: '', xdg: join(tempDir, 'missing-xdg'), expected: undefined },
         ]) {
             const child = Bun.spawn({
-                cmd: [process.execPath, '--no-env-file', 'src/index.ts', ...scenario.args, 'profile', '--effective', '--format=json'],
+                cmd: [process.execPath, '--no-env-file', 'src/index.ts', ...scenario.args, 'auth', 'status', '--format=json'],
                 env: {
                     ...process.env, HOME: tempDir, USERPROFILE: tempDir, XDG_CONFIG_HOME: scenario.xdg,
                     ZENTAO_CONFIG_FILE: scenario.envFile, ZENTAO_URL: '', ZENTAO_ACCOUNT: '', ZENTAO_TOKEN: '', ZENTAO_PASSWORD: '',
@@ -152,7 +152,7 @@ describe('setConfigPath', () => {
             expect(exitCode).toBe(scenario.expected ? 0 : 1);
             if (scenario.expected) {
                 expect(stderr).toBe('');
-                expect(JSON.parse(stdout)).toMatchObject({
+                expect(JSON.parse(stdout).data).toMatchObject({
                     account: scenario.expected, configFile: files[scenario.expected as keyof typeof files],
                 });
             } else {
@@ -198,7 +198,7 @@ describe('setConfigPath', () => {
         const second = join(tempDir, 'second.json');
         setConfigPath(first);
 
-        saveProfile(mockProfile);
+        saveAndSelectProfile(mockProfile);
 
         expect(existsSync(first)).toBe(true);
         expect(() => setConfigPath(second)).toThrow();
@@ -208,7 +208,7 @@ describe('setConfigPath', () => {
         const abs = join(tempDir, 'idempotent.json');
         setConfigPath(abs);
 
-        saveProfile(mockProfile);
+        saveAndSelectProfile(mockProfile);
 
         expect(() => setConfigPath(abs)).not.toThrow();
         expect(getConfigPath()).toBe(abs);
@@ -268,12 +268,12 @@ describe('profile management', () => {
         const directory = join(tempDir, 'private');
         const file = join(directory, 'config.json');
         setConfigPath(file);
-        saveProfile(mockProfile);
+        saveAndSelectProfile(mockProfile);
         expect(statSync(directory).mode & 0o777).toBe(0o700);
         expect(statSync(file).mode & 0o777).toBe(0o600);
 
         for (const operation of [
-            () => saveProfile({ ...mockProfile, account: 'another-user' }),
+            () => saveAndSelectProfile({ ...mockProfile, account: 'another-user' }),
             () => setCurrentProfile(mockProfile.account),
             () => setProfileConfig(getCurrentProfile()!, 'timeout', 2000),
             () => removeProfile(profileKey('another-user', mockProfile.server)),
@@ -295,7 +295,7 @@ describe('profile management', () => {
         const file = join(tempDir, 'config.json');
         const original = JSON.stringify(data);
         writeFileSync(file, original);
-        for (const operation of [getConfigData, () => saveProfile(mockProfile)]) {
+        for (const operation of [getConfigData, () => saveAndSelectProfile(mockProfile)]) {
             try {
                 operation();
                 throw new Error('Expected a config error');
@@ -340,14 +340,14 @@ describe('profile management', () => {
     });
 
     test.skipIf(process.platform === 'win32')('reports structured save errors for every profile mutation', () => {
-        saveProfile(mockProfile);
-        saveProfile({ ...mockProfile, account: 'another-user' });
+        saveAndSelectProfile(mockProfile);
+        saveAndSelectProfile({ ...mockProfile, account: 'another-user' });
         const file = join(tempDir, 'config.json');
         const original = readFileSync(file, 'utf8');
         chmodSync(tempDir, 0o500);
         try {
             for (const operation of [
-                () => saveProfile({ ...mockProfile, token: 'new-token' }),
+                () => saveAndSelectProfile({ ...mockProfile, token: 'new-token' }),
                 () => removeProfile(profileKey(mockProfile.account, mockProfile.server)),
                 () => setCurrentProfile(mockProfile.account),
             ]) {
@@ -368,14 +368,14 @@ describe('profile management', () => {
     });
 
     test.each([false, true])('preserves malformed config with an initialized store: %s', (initialized) => {
-        if (initialized) saveProfile(mockProfile);
+        if (initialized) saveAndSelectProfile(mockProfile);
         const file = join(tempDir, 'config.json');
         const original = '{"currentProfile":"admin", "profiles": [';
         writeFileSync(file, original);
 
         for (const operation of [
             () => getAllProfiles(),
-            () => saveProfile(mockProfile),
+            () => saveAndSelectProfile(mockProfile),
             () => removeProfile(profileKey(mockProfile.account, mockProfile.server)),
         ]) {
             expect(operation).toThrow('配置文件损坏或无法读取');
@@ -389,7 +389,7 @@ describe('profile management', () => {
         writeFileSync(file, original);
         for (const argument of ['--help', 'profile']) {
             const child = Bun.spawn({
-                cmd: [process.execPath, '--no-env-file', 'src/index.ts', '--config', file, '--format=json', argument],
+                cmd: [process.execPath, '--no-env-file', 'src/index.ts', '--config', file, '--format=json', argument, ...(argument === 'profile' ? ['list'] : [])],
                 env: { ...process.env, ZENTAO_URL: '', ZENTAO_ACCOUNT: '', ZENTAO_PASSWORD: '', ZENTAO_TOKEN: '' },
                 stdin: 'ignore', stdout: 'pipe', stderr: 'pipe',
             });
@@ -403,7 +403,7 @@ describe('profile management', () => {
     });
 
     test('saveProfile and getCurrentProfile', () => {
-        saveProfile(mockProfile);
+        saveAndSelectProfile(mockProfile);
         const current = getCurrentProfile();
         expect(current).toBeDefined();
         expect(current!.account).toBe('admin');
@@ -426,26 +426,28 @@ describe('profile management', () => {
             },
         });
         try {
-            saveProfile(mockProfile);
-            saveProfile(another);
+            saveAndSelectProfile(mockProfile);
+            saveAndSelectProfile(another);
             removeProfile(anotherKey);
             removeProfile(firstKey);
         } finally {
             Object.defineProperty(Configstore.prototype, 'all', property);
         }
         expect(snapshots).toEqual([
+            { extra: 'preserved', profiles: [mockProfile] },
             { extra: 'preserved', profiles: [mockProfile], currentProfile: firstKey },
+            { extra: 'preserved', profiles: [mockProfile, another], currentProfile: firstKey },
             { extra: 'preserved', profiles: [mockProfile, another], currentProfile: anotherKey },
-            { extra: 'preserved', profiles: [mockProfile], currentProfile: firstKey },
+            { extra: 'preserved', profiles: [mockProfile] },
             { extra: 'preserved', profiles: [] },
         ]);
     });
 
     test.each([
-        { name: 'save', operation: () => saveProfile({ ...mockProfile, account: 'another-user' }) },
+        { name: 'save', operation: () => saveAndSelectProfile({ ...mockProfile, account: 'another-user' }) },
         { name: 'remove', operation: () => removeProfile(profileKey(mockProfile.account, mockProfile.server)) },
     ])('preserves the previous snapshot when $name cannot commit', ({ operation }) => {
-        saveProfile(mockProfile);
+        saveAndSelectProfile(mockProfile);
         const file = join(tempDir, 'config.json');
         const original = readFileSync(file, 'utf8');
         const property = Object.getOwnPropertyDescriptor(Configstore.prototype, 'all')!;
@@ -466,8 +468,8 @@ describe('profile management', () => {
     });
 
     test('getAllProfiles returns all saved profiles', () => {
-        saveProfile(mockProfile);
-        saveProfile({
+        saveAndSelectProfile(mockProfile);
+        saveAndSelectProfile({
             ...mockProfile,
             account: 'dev1',
             server: 'https://zentao2.example.com',
@@ -477,41 +479,41 @@ describe('profile management', () => {
     });
 
     test('getProfile finds by account and server', () => {
-        saveProfile(mockProfile);
+        saveAndSelectProfile(mockProfile);
         const found = getProfile('admin', 'https://zentao.example.com');
         expect(found).toBeDefined();
         expect(found!.token).toBe('test-token');
     });
 
     test('getProfile returns undefined for nonexistent', () => {
-        saveProfile(mockProfile);
+        saveAndSelectProfile(mockProfile);
         const found = getProfile('nobody', 'https://example.com');
         expect(found).toBeUndefined();
     });
 
     test('findProfileByKey by full key', () => {
-        saveProfile(mockProfile);
+        saveAndSelectProfile(mockProfile);
         const found = findProfileByKey('admin@https://zentao.example.com');
         expect(found).toBeDefined();
         expect(found!.account).toBe('admin');
     });
 
     test('findProfileByKey by account only', () => {
-        saveProfile(mockProfile);
+        saveAndSelectProfile(mockProfile);
         const found = findProfileByKey('admin');
         expect(found).toBeDefined();
         expect(found!.account).toBe('admin');
     });
 
     test('findProfileByKey by account@hostname', () => {
-        saveProfile(mockProfile);
+        saveAndSelectProfile(mockProfile);
         const found = findProfileByKey('admin@zentao.example.com');
         expect(found).toBeDefined();
         expect(found!.account).toBe('admin');
     });
 
     test('removeProfile removes existing profile', () => {
-        saveProfile(mockProfile);
+        saveAndSelectProfile(mockProfile);
         expect(getAllProfiles().length).toBe(1);
         const removed = removeProfile('admin@https://zentao.example.com');
         expect(removed).toBe(true);
@@ -519,24 +521,24 @@ describe('profile management', () => {
     });
 
     test('removeProfile returns false for nonexistent', () => {
-        saveProfile(mockProfile);
+        saveAndSelectProfile(mockProfile);
         const removed = removeProfile('nobody@https://example.com');
         expect(removed).toBe(false);
         expect(getAllProfiles().length).toBe(1);
     });
 
-    test('removeProfile auto-switches to first remaining profile', () => {
+    test('removing the default clears the selection', () => {
         const profile2: Profile = {
             ...mockProfile,
             account: 'dev1',
             server: 'https://zentao2.example.com',
         };
-        saveProfile(mockProfile);
-        saveProfile(profile2);
+        saveAndSelectProfile(mockProfile);
+        saveAndSelectProfile(profile2);
         expect(getCurrentProfile()!.account).toBe('dev1');
 
         removeProfile('dev1@https://zentao2.example.com');
-        expect(getCurrentProfile()!.account).toBe('admin');
+        expect(getCurrentProfile()).toBeUndefined();
     });
 
     test('setCurrentProfile switches active profile', () => {
@@ -545,8 +547,8 @@ describe('profile management', () => {
             account: 'dev1',
             server: 'https://zentao2.example.com',
         };
-        saveProfile(mockProfile);
-        saveProfile(profile2);
+        saveAndSelectProfile(mockProfile);
+        saveAndSelectProfile(profile2);
         expect(getCurrentProfile()!.account).toBe('dev1');
 
         const switched = setCurrentProfile('admin@https://zentao.example.com');
@@ -555,14 +557,14 @@ describe('profile management', () => {
     });
 
     test('setCurrentProfile returns false for nonexistent key', () => {
-        saveProfile(mockProfile);
+        saveAndSelectProfile(mockProfile);
         const switched = setCurrentProfile('nobody@https://example.com');
         expect(switched).toBe(false);
     });
 
     test('saveProfile updates existing profile', () => {
-        saveProfile(mockProfile);
-        saveProfile({ ...mockProfile, token: 'new-token' });
+        saveAndSelectProfile(mockProfile);
+        saveAndSelectProfile({ ...mockProfile, token: 'new-token' });
         expect(getAllProfiles().length).toBe(1);
         expect(getCurrentProfile()!.token).toBe('new-token');
     });
@@ -576,7 +578,7 @@ describe('profile management', () => {
             ],
         }));
 
-        saveProfile({ ...mockProfile, token: 'new-token' });
+        saveAndSelectProfile({ ...mockProfile, token: 'new-token' });
 
         expect(getAllProfiles()).toEqual([{ ...mockProfile, token: 'new-token' }]);
         expect(getCurrentProfile()!.token).toBe('new-token');
@@ -613,14 +615,14 @@ describe('profile config', () => {
     });
 
     test('setProfileConfig persists config to profile', () => {
-        saveProfile(mockProfile);
+        saveAndSelectProfile(mockProfile);
         setProfileConfig(mockProfile, 'defaultOutputFormat', 'json');
         const current = getCurrentProfile();
         expect(current!.config?.defaultOutputFormat).toBe('json');
     });
 
     test('updateProfile merges fields and persists', () => {
-        saveProfile(mockProfile);
+        saveAndSelectProfile(mockProfile);
         updateProfile(mockProfile, { token: 'updated-token' });
         const current = getCurrentProfile();
         expect(current!.token).toBe('updated-token');

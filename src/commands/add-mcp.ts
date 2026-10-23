@@ -121,9 +121,7 @@ async function resolveCredentials(options: { insecure?: boolean; timeout?: numbe
 
 async function promptAgentSelection(): Promise<string[]> {
     if (!process.stdin.isTTY || !process.stderr.isTTY) {
-        throw new Error(
-            `未指定 agent，请在交互终端中选择，或显式传入: ${AGENT_NAMES.join('|')}|all`,
-        );
+        throw new ZentaoError('E2009', { option: 'agent', reason: `未指定 agent，请显式传入: ${AGENT_NAMES.join('|')}|all` });
     }
 
     const choices = [...AGENT_NAMES, 'all'];
@@ -144,7 +142,7 @@ async function promptAgentSelection(): Promise<string[]> {
         const answer = await rl.question(`请输入编号 (1-${choices.length}): `, { signal: commandSignal() });
         const idx = Number(answer.trim());
         if (!Number.isInteger(idx) || idx < 1 || idx > choices.length) {
-            throw new Error(`无效选择: ${answer || '(empty)'}`);
+            throw new ZentaoError('E2009', { option: 'agent', reason: `无效选择: ${answer || '(empty)'}` });
         }
         const selected = choices[idx - 1];
         return selected === 'all' ? [...AGENT_NAMES] : [selected];
@@ -259,20 +257,9 @@ function writeCodexToml(configPath: string, creds: McpCredentials): void {
     }
 }
 
-function printCherryStudioConfig(silent: boolean): void {
-    if (silent) return;
-    process.stderr.write('\nCherry Studio 不支持文件配置，请在 Settings > MCP Server 中手动添加（运行时复用当前登录）:\n\n');
-    console.log(JSON.stringify({
-        name: MCP_NAME,
-        type: 'stdio',
-        command: 'zentao',
-        args: ['mcp', 'serve'],
-    }, null, 2));
-}
-
 /* ── Main Install Logic ── */
 
-function installMcp(agent: string, creds: McpCredentials, silent: boolean): void {
+function installMcp(agent: string, creds: McpCredentials): void {
     const target = AGENT_TARGETS[agent];
 
     switch (target.format) {
@@ -289,13 +276,9 @@ function installMcp(agent: string, creds: McpCredentials, silent: boolean): void
             writeCodexToml(target.configPath, creds);
             break;
         case 'cherry-studio':
-            printCherryStudioConfig(silent);
             return;
     }
 
-    if (!silent) {
-        console.log(`已配置 MCP 到 ${target.label}: ${tildeDisplay(target.configPath)}`);
-    }
 }
 
 /* ── Command Registration ── */
@@ -308,7 +291,6 @@ export function registerAddMcpCommand(program: Command): void {
         .argument('[agent]', `目标 Agent (${AGENT_NAMES.join('|')}|all)`)
         .action(async (agent?: string) => {
             const globalOpts = program.optsWithGlobals() as GlobalOptions;
-            const silent = !!globalOpts.silent;
 
             if (!agent && globalOpts.input === false) throw new ZentaoError('E2009', { option: 'agent', reason: '--no-input 时必须指定安装目标' });
             const agents = agent ? resolveAgents(agent) : await promptAgentSelection();
@@ -318,8 +300,8 @@ export function registerAddMcpCommand(program: Command): void {
                 profile: globalOpts.profile,
             });
 
-            for (const a of agents) installMcp(a, creds, true);
+            for (const a of agents) installMcp(a, creds);
             emitResult(agents.map(agent => ({ agent, path: AGENT_TARGETS[agent].configPath,
-                ...(agent === 'cherry-studio' ? { manual: { command: 'zentao', args: ['mcp', 'serve'] } } : {}) })), globalOpts);
+                ...(agent === 'cherry-studio' ? { manual: { name: MCP_NAME, type: 'stdio', command: 'zentao', args: ['mcp', 'serve'] } } : {}) })), globalOpts);
         });
 }

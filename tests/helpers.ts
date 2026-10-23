@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { __resetConfigStoreForTests } from '../src/config/store';
+import { __resetConfigStoreForTests, saveProfile, setCurrentProfile, profileKey } from '../src/config/store';
 import type { Profile } from '../src/types/config';
 
 /** Shared profile fixture for tests */
@@ -66,4 +66,9 @@ export async function runCliWithoutAuth(args: string[]): Promise<{
     } finally {
         rmSync(dir, { recursive: true, force: true });
     }
+}
+
+export function saveAndSelectProfile(profile: Profile): void {
+    saveProfile(profile);
+    setCurrentProfile(profileKey(profile.account, profile.server));
 }

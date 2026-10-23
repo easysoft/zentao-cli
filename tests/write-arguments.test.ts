@@ -68,7 +68,7 @@ describe('CLI write argument regressions', () => {
 
     test.each(['story', 'requirement', 'epic'].flatMap(module => ['create', 'change'].map(action => ({ module, action }))))(
         '$module/$action keeps requirement review defaults and explicit statuses', async ({ module, action }) => {
-            const base = action === 'create' ? [module, action, '--productID=1'] : [module, action, '7'];
+            const base = action === 'create' ? [module, action, '--product-id=1'] : [module, action, '7'];
             const collection = module === 'story' ? 'stories' : `${module}s`;
             const cases: Array<{ args: string[]; input?: string; status: string }> = [
                 { args: [], status: 'active' },
@@ -76,7 +76,6 @@ describe('CLI write argument regressions', () => {
                 { args: ['--status=closed'], status: 'closed' },
                 { args: ['--reviewer='], status: 'active' },
                 { args: ['--data={"reviewer":[" ",""],"status":""}'], status: 'active' },
-                { args: ['--reviewer=admin', '--data=@-'], input: '{"reviewer":[],"status":"draft"}', status: 'draft' },
                 { args: ['--reviewer=admin', '--data={"status":"draft"}'], status: 'reviewing' },
             ];
             for (const { args, input, status } of cases) {
@@ -102,17 +101,12 @@ describe('CLI write argument regressions', () => {
     test.each([
         { label: 'product alias', args: ['--product=77'] },
         { label: 'registered option with a separate value', args: ['--product', '77'] },
-        { label: 'canonical productID', args: ['--productID=77'] },
-        { label: 'equivalent product IDs', args: ['--product=077', '--productID=77'] },
-        { label: 'alias in params', args: ['--params={"product":77}'] },
-        { label: 'productID in params', args: ['--params={"productID":77}'] },
+        { label: 'canonical productID', args: ['--product-id=77'] },
+        { label: 'equivalent product IDs', args: ['--product=077', '--product-id=77'] },
         { label: 'data', args: ['--data={"productID":77}'] },
-        { label: 'nested data in params', args: ['--params={"data":{"productID":77}}'] },
-        { label: 'positional JSON', args: ['{"productID":77}'] },
         { label: 'explicit stdin', args: ['--data=@-'], input: '{"productID":77}' },
-        { label: 'implicit stdin', args: [], input: '{"productID":77}' },
     ])('creates a bug with $label and sends matching query/body IDs', async ({ args, input }) => {
-        const result = await run(['bug', 'create', ...args, '--title=Regression bug', '--openedBuild=trunk'], input);
+        const result = await run(['bug', 'create', ...args, '--title=Regression bug', '--opened-build=trunk'], input);
         expect(result.exitCode).toBe(0);
         expect(result.stderr).toBe('');
         expect(requests).toEqual([{
@@ -124,48 +118,43 @@ describe('CLI write argument regressions', () => {
 
     test.each([
         ['create', 'bug'], ['do', 'bug', 'create'],
-    ].map(args => ({ args })))('supports the same alias through %j', async ({ args }) => {
-        const result = await run([...args, '--product=77', '--title=Regression bug', '--openedBuild=trunk']);
-        expect(result.exitCode).toBe(0);
-        expect(requests).toHaveLength(1);
-        expect(requests[0].query.productID).toBe('77');
-        expect(requests[0].body.productID).toBe(77);
+    ].map(args => ({ args })))('rejects removed root shortcuts through %j', async ({ args }) => {
+        const result = await run([...args, '--product=77', '--title=Regression bug', '--opened-build=trunk']);
+        expect(result.exitCode).toBe(2);
+        expect(requests).toEqual([]);
     });
 
     test.each([
         { args: ['--product=77', '--data={"productID":88}'] },
-        { args: ['--productID=77', '--data={"productID":88}'] },
-        { args: ['--product=77', '--productID=77', '--data=@-'], input: '{"productID":88}' },
-    ])('uses the final data productID in both query and body: %j', async ({ args, input }) => {
-        const result = await run(['bug', 'create', ...args, '--title=Regression bug', '--openedBuild=trunk'], input);
-        expect(result.exitCode).toBe(0);
-        expect(requests).toHaveLength(1);
-        expect(requests[0].query.productID).toBe('88');
-        expect(requests[0].body.productID).toBe(88);
+        { args: ['--product-id=77', '--data={"productID":88}'] },
+        { args: ['--product=77', '--product-id=77', '--data=@-'], input: '{"productID":88}' },
+    ])('rejects conflicting body and flag IDs before HTTP: %j', async ({ args, input }) => {
+        const result = await run(['bug', 'create', ...args, '--title=Regression bug', '--opened-build=trunk'], input);
+        expect(result.exitCode).toBe(2);
+        expect(requests).toEqual([]);
     });
 
     test.each([
-        ['--product=77', '--productID=88'],
-        ['--params={"product":77,"productID":88}'],
-        ['--product=77', '--productID=88', '--data={"productID":99}'],
+        ['--product=77', '--product-id=88'],
+        ['--product=77', '--product-id=88', '--data={"productID":99}'],
     ].map(args => ({ args })))('rejects conflicting aliases before sending a write: %j', async ({ args }) => {
-        const result = await run(['bug', 'create', ...args, '--title=Regression bug', '--openedBuild=trunk']);
-        expect(result.exitCode).toBe(1);
+        const result = await run(['bug', 'create', ...args, '--title=Regression bug', '--opened-build=trunk']);
+        expect(result.exitCode).toBe(2);
         expect(result.stdout + result.stderr).toContain('2009');
         expect(result.stdout + result.stderr).toContain('productID');
         expect(requests).toEqual([]);
     });
 
     test('still requires a product ID', async () => {
-        const result = await run(['bug', 'create', '--title=Regression bug', '--openedBuild=trunk']);
-        expect(result.exitCode).toBe(1);
+        const result = await run(['bug', 'create', '--title=Regression bug', '--opened-build=trunk']);
+        expect(result.exitCode).toBe(2);
         expect(result.stdout + result.stderr).toContain('2003');
         expect(requests).toEqual([]);
     });
 
     test.each([0, 1, 2])('preserves multiline descriptions at argument position %i and the other updates', async (position) => {
         const desc = '第一行=a\r\n第二行=b\r\n';
-        const args = ['--story=1794', '--deadline=2026-09-19'];
+        const args = ['--story=1794', '--data-deadline=2026-09-19'];
         args.splice(position, 0, `--desc=${desc}`);
         const result = await run(['task', 'update', '123', ...args]);
         expect(result.exitCode).toBe(0);
@@ -173,21 +162,21 @@ describe('CLI write argument regressions', () => {
             { method: 'GET', path: '/tasks/123' }, { method: 'PUT', path: '/tasks/123' },
         ]);
         expect(requests[1].body).toMatchObject({ desc, story: 1794, deadline: '2026-09-19', name: 'Existing task' });
-        const readback = await run(['task', '123', '--format=raw']);
+        const readback = await run(['task', 'get', '123', '--format=raw']);
         expect(readback.exitCode).toBe(0);
         expect(JSON.parse(readback.stdout).task).toMatchObject({ desc, story: 1794, deadline: '2026-09-19' });
     });
 
-    test('keeps JSON descriptions and their precedence over flat fields', async () => {
+    test('rejects conflicting JSON descriptions and flat fields', async () => {
         const desc = '第一行\n第二行\n';
         const result = await run(['task', 'update', '123', '--desc=ignored', `--data=${JSON.stringify({ desc, story: 1794, deadline: '2026-09-19' })}`]);
-        expect(result.exitCode).toBe(0);
-        expect(requests[1].body).toMatchObject({ desc, story: 1794, deadline: '2026-09-19' });
+        expect(result.exitCode).toBe(2);
+        expect(requests).toEqual([]);
     });
 
     test('explains the bug create alias in offline help', async () => {
         const result = await runCliWithoutAuth(['bug', 'create', '--help']);
         expect(result.exitCode).toBe(0);
-        expect(result.stdout).toMatch(/--product\s+<number>.*productID.*别名/);
+        expect(result.stdout).toMatch(/--product\s+<id>.*productID.*别名/);
     });
 });

@@ -23,7 +23,7 @@ describe('formatTable', () => {
     });
 
     test('returns empty string for empty data', () => {
-        expect(formatTable([])).toBe('');
+        expect(formatTable([])).toBe('0 条');
     });
 
     test('handles null/undefined values', () => {
@@ -104,7 +104,7 @@ describe('formatOutput', () => {
         const data = [{ id: 1 }];
         const result = formatOutput(data, { format: 'json', isList: true });
         const parsed = JSON.parse(result);
-        expect(parsed.status).toBe('success');
+        expect(parsed.ok).toBe(true);
         expect(parsed.data).toEqual([{ id: 1 }]);
     });
 

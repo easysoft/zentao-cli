@@ -35,7 +35,11 @@ test('typed flags preserve string values and accept space/equal syntax', async (
 });
 test('invalid input and conflicts fail before all HTTP, including authentication', async () => {
     for (const args of [
-        ['product', 'list', '--paeg=2'], ['product', 'list', '--page=-2'],
+        ['product', 'list', '--paeg=2'], ['product', 'create', '--name=x', '--name=y'],
+        ['db', 'query', '--sql=select 1', '--count', '--no-count'],
+        ['db', 'query', '--data={"sql":"select 1","page":-1}'],
+        ['db', 'query', '--all', '--data={"sql":"select 1","page":2}'],
+        ['product', 'get', '--ids=1,2', '--format=raw'], ['product', 'list', '--page=-2'],
         ['product', 'list', '--params=[]'], ['product', 'create', '--name=x', '--data={broken'],
         ['product', 'create', '--name=x', '--data={"name":"y"}'],
         ['bug', 'list', '--product=1', '--project=2'],
@@ -81,7 +85,11 @@ test('built-ins and usage errors follow the same JSON contract; quiet retains re
         expect(JSON.parse(result.stdout)).toMatchObject({ ok: true, data: expect.anything(), meta: {} });
         expect(result.stderr).toBe('');
     }
-    for (const args of [['unknown'], ['product', 'list', '--paeg=2'], ['--timeout=1oops', 'version'], ['auth', 'login', '--web'], ['skill', 'install'], ['mcp', 'install']]) {
+    for (const args of [['unknown'], ['product', 'list', '--paeg=2'], ['product', 'create', '--name=x', '--name=y'],
+        ['db', 'query', '--sql=select 1', '--count', '--no-count'],
+        ['db', 'query', '--data={"sql":"select 1","page":-1}'],
+        ['db', 'query', '--all', '--data={"sql":"select 1","page":2}'],
+        ['product', 'get', '--ids=1,2', '--format=raw'], ['--timeout=1oops', 'version'], ['auth', 'login', '--web'], ['skill', 'install'], ['mcp', 'install']]) {
         const result = await run(['--no-input', '--format=json', ...args]);
         expect(result.exitCode, `${args}: ${result.stderr}`).toBe(2);
         expect(result.stdout).toBe('');

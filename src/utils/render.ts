@@ -10,16 +10,15 @@ export function renderString(content: string, format: OutputFormat = 'markdown')
 }
 
 export function renderMarkdown(markdown: string): string {
-    if (
-        typeof Bun !== 'undefined'
-        && typeof Bun.markdown.ansi === 'function'
-        && (process.stdout.isTTY || process.argv.includes('--color=always') || process.argv.includes('always'))
-        && !process.argv.includes('--color=never') && !process.argv.includes('never')
-        && process.env.NO_COLOR === undefined
-    ) {
-        return Bun.markdown.ansi(markdown);
+    const args = process.argv.slice(2);
+    let color = 'auto';
+    for (let i = 0; i < args.length; i++) {
+        if (args[i] === '--color') color = args[++i];
+        else if (args[i].startsWith('--color=')) color = args[i].slice(8);
     }
-    return markdown;
+    const enabled = color === 'always' || (color === 'auto' && process.stdout.isTTY && process.env.NO_COLOR === undefined);
+    return enabled && typeof Bun !== 'undefined' && typeof Bun.markdown.ansi === 'function'
+        ? Bun.markdown.ansi(markdown) : markdown;
 }
 
 /** 渲染对象 */

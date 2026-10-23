@@ -15,7 +15,6 @@ const userConfigSchema = z.object({
     htmlToMarkdown: z.boolean(),
     batchFailFast: z.boolean(),
     pagers: z.record(z.string(), z.number().int().positive().max(1000)),
-    silent: z.boolean(),
     jsonPretty: z.boolean(),
 }).partial().passthrough();
 
@@ -210,7 +209,7 @@ export function saveProfile(profile: Profile): void {
         const existing = data.profiles?.find(matches);
         const saved = { ...existing, ...profile, server,
             config: existing?.config ?? profile.config,
-            user: { ...existing?.user, ...profile.user },
+            user: existing?.user || profile.user ? { ...existing?.user, ...profile.user } : undefined,
             serverConfig: profile.serverConfig ?? existing?.serverConfig };
         const profiles = data.profiles ?? [];
         const first = profiles.findIndex(matches);

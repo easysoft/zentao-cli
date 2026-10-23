@@ -118,7 +118,8 @@ describe('browser login session', () => {
             user: { oldField: 'preserved', realname: 'Test Admin' }, serverConfig: { version: '22.5' },
         });
         expect(getAllProfiles()).toHaveLength(1);
-        expect(getCurrentProfile()?.token).toBe(token);
+        expect(getAllProfiles()[0]?.token).toBe(token);
+        expect(getCurrentProfile()).toBeUndefined();
         expect(readFileSync(configFile, 'utf8')).not.toContain(password);
         expect(readFileSync(configFile, 'utf8')).not.toContain('"password"');
         await expect(fetch(new URL('/', session.url))).rejects.toThrow();
@@ -295,7 +296,7 @@ describe('CLI login mode selection', () => {
         const original = readFileSync(configFile, 'utf8');
         let loginUrl = '';
         const message = '完成登录后，回到 Codex 即可继续使用禅道。';
-        const result = await runCli(['login', '--web', '--message', message], {}, async url => {
+        const result = await runCli(['auth', 'login', '--web', '--message', message], {}, async url => {
             loginUrl = url;
             const page = await (await fetch(new URL('/', url))).text();
             expect(page).toContain(message);
@@ -304,7 +305,7 @@ describe('CLI login mode selection', () => {
             expect(await response.json()).toEqual({ ok: true });
         });
         expect(loginUrl).toBeTruthy();
-        expect(result.exitCode).toBe(1);
+        expect(result.exitCode).toBe(130);
         expect(result.stderr).toContain('E1008');
         expect(result.stdout).toBe('');
         expect(readFileSync(configFile, 'utf8')).toBe(original);
@@ -313,23 +314,23 @@ describe('CLI login mode selection', () => {
 
     test('rejects web conflicts and incomplete secrets before starting an interactive flow', async () => {
         for (const args of [
-            ['--web', '--no-browser'], ['--web', '--useEnv'], ['--web', '--password', password], ['--web', '--token', token],
+            ['--web', '--no-browser'], ['--web', '--use-env'], ['--web', '--password', password], ['--web', '--token', token],
         ]) {
-            const result = await runCli(['login', ...args]);
-            expect(result.exitCode).toBe(1);
+            const result = await runCli(['auth', 'login', ...args]);
+            expect(result.exitCode).toBe(2);
             expect(result.stderr).toContain('E2009');
             expect(result.stderr).not.toContain('http://127.0.0.1:');
             expect(result.stderr).not.toContain(password);
             expect(result.stderr).not.toContain(token);
         }
-        const incomplete = await runCli(['login', '--password', password]);
+        const incomplete = await runCli(['auth', 'login', '--password', password]);
         expect(incomplete.exitCode).toBe(1);
         expect(incomplete.stderr).toContain('E1001');
     });
 
     test('returns a login hint promptly in a headless environment or with terminal login and no TTY', async () => {
         for (const args of [[], ['--no-browser']]) {
-            const result = await runCli(['login', ...args]);
+            const result = await runCli(['auth', 'login', ...args]);
             expect(result.exitCode).toBe(1);
             expect(result.stderr).toContain('E1006');
             expect(result.stderr).not.toContain('http://127.0.0.1:');
@@ -339,12 +340,12 @@ describe('CLI login mode selection', () => {
     test('retains explicit and environment authentication without a browser and respects the selected config file', async () => {
         const server = mockZentao();
         for (const mode of ['password', 'token', 'environment']) {
-            const args = mode === 'environment' ? ['login', '--useEnv']
-                : ['login', '-s', server, '-u', 'admin', mode === 'password' ? '-p' : '-t', mode === 'password' ? password : token];
+            const args = mode === 'environment' ? ['auth', 'login', '--use-env']
+                : ['auth', 'login', '-s', server, '-u', 'admin', mode === 'password' ? '-p' : '-t', mode === 'password' ? password : token];
             const result = await runCli(args, mode === 'environment'
                 ? { ZENTAO_URL: server, ZENTAO_ACCOUNT: 'admin', ZENTAO_PASSWORD: password } : {});
             expect(result.exitCode).toBe(0);
-            expect(result.stdout).toContain('登录成功');
+            expect(result.stdout).toContain('saved: admin@');
             expect(result.stdout + result.stderr).not.toContain(password);
             expect(result.stdout + result.stderr).not.toContain(token);
             expect(result.stderr).not.toContain('浏览器');

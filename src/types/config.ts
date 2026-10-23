@@ -18,8 +18,6 @@ export interface UserConfig {
     batchFailFast?: boolean;
     /** 各模块自定义分页大小，key 为模块名 */
     pagers?: Record<string, number>;
-    /** 是否启用静默模式（仅输出错误信息） */
-    silent?: boolean;
     /** JSON 输出是否美化（带缩进） */
     jsonPretty?: boolean;
 }

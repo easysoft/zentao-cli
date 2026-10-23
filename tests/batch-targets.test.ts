@@ -15,7 +15,7 @@ test('rejects unsafe target sets before any request', async () => {
         ['delete', [], { ids: '1,,2' }], ['delete', [], { ids: '9007199254740992' }],
     ] as const) {
         await expect(handleModuleCommand(client, getModule('product')!, action, [...args], mockProfile,
-            { ...options, yes: true, silent: true })).rejects.toMatchObject({ code: '2009' });
+            { ...options, yes: true, quiet: true })).rejects.toMatchObject({ code: '2009' });
     }
     expect(requests).toBe(0);
 });

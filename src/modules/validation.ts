@@ -1,3 +1,5 @@
+import { isDeepStrictEqual } from 'node:util';
+import { paginationFields } from './contract.js';
 import { getModuleActionParams } from 'zentao-api';
 import type { ModuleAction, ModuleDefinition } from '../types/index.js';
 import { ZentaoError } from '../errors.js';
@@ -65,7 +67,14 @@ export function validateToolParams(mod: ModuleDefinition, action: ModuleAction, 
     }
     for (const name of Object.keys(body)) {
         if (!definitions.some(param => param.name === name && param.role === 'body')) invalid(`data.${name}`, '不是此操作的请求体字段');
-        if (params[name] !== undefined && JSON.stringify(params[name]) !== JSON.stringify(body[name])) invalid(name, 'params 与 params.data 中的参数值冲突');
+        if (params[name] !== undefined && !isDeepStrictEqual(params[name], body[name])) invalid(name, 'params 与 params.data 中的参数值冲突');
+    }
+    const pagination = paginationFields(mod, action);
+    if (pagination) {
+        for (const [field, maximum] of [[pagination.page, undefined], [pagination.size, pagination.size.maximum ?? 1000]] as const) {
+            const value = body[field.name] ?? params[field.name];
+            if (value !== undefined) validateValue(field.name, value, { ...field, type: 'integer', minimum: 1, maximum });
+        }
     }
     const autoFill = action.type === 'update' && mod.actions.some(candidate => candidate.type === 'get' && candidate.path === action.path);
     const bodyProperties = action.requestBody?.schema.properties as Record<string, ValueSchema> | undefined;

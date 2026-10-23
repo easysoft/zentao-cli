@@ -14,7 +14,7 @@ test.each([
     ...['0', '65536', '1e3', 'abc'].map(port => ['--transport', 'http', '--url', 'https://zentao.example.com', '--port', port]),
 ])('mcp rejects invalid startup options %j', async (...args) => {
     const result = await runCliWithoutAuth(['mcp', 'serve', ...args]);
-    expect(result.exitCode).toBe(1);
+    expect(result.exitCode).toBe(2);
     expect(result.stderr).toContain('E2009');
     expect(result.stdout).toBe('');
 });

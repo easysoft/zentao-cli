@@ -206,7 +206,7 @@ describe('MCP server (stdio e2e smoke)', () => {
             await client.connect(transport);
             expect(await getProduct()).toMatchObject({ content: [{ text: expect.stringContaining('account-a') }] });
             const switched = Bun.spawnSync({
-                cmd: [process.execPath, '--no-env-file', join(repoRoot, 'src/index.ts'), '--config', configFile, 'profile', 'account-b'],
+                cmd: [process.execPath, '--no-env-file', join(repoRoot, 'src/index.ts'), '--config', configFile, 'profile', 'use', 'account-b'],
                 cwd: dir,
                 env,
             });

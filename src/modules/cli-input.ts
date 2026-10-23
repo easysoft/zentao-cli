@@ -43,7 +43,7 @@ export function parseCliValue(value: string | string[] | boolean, schema: ValueS
 /** Prepare and validate every input before authentication, including all batch targets. */
 export async function prepareCliParams(mod: ModuleDefinition, action: ModuleAction, target: string | undefined,
     options: ModuleActionOptions, values: Record<string, unknown>): Promise<Record<string, unknown>> {
-    if (options.format === 'raw' && (options.all || options.maxItems || options.pick || options.filter?.length || options.search?.length || options.sort || options.searchFields || options.htmlToMarkdown)) invalid('raw', '原始响应不能与本地处理或自动翻页组合');
+    if (options.format === 'raw' && (options.ids || options.all || options.maxItems || options.pick || options.filter?.length || options.search?.length || options.sort || options.searchFields || options.htmlToMarkdown)) invalid('raw', '原始响应不能与本地处理或自动翻页组合');
     const params: Record<string, unknown> = {};
     const definitions = actionParameters(mod, action);
     const assign = (name: string, value: unknown) => {
@@ -67,7 +67,7 @@ export async function prepareCliParams(mod: ModuleDefinition, action: ModuleActi
         if (options.page !== undefined) assign(pagination.page.name, parseCliValue(options.page, pagination.page));
         if (options.recPerPage !== undefined) assign(pagination.size.name, parseCliValue(options.recPerPage, pagination.size));
     }
-    if (options.all && options.page !== undefined) invalid('all/page', '--all 与 --page 不能同时使用');
+    if (options.all && pagination && (params[pagination.page.name] !== undefined || (params.data as Record<string, unknown> | undefined)?.[pagination.page.name] !== undefined)) invalid('all/page', '--all 与 --page 不能同时使用');
     if (options.maxItems !== undefined && (!/^\d+$/.test(options.maxItems) || !Number.isSafeInteger(Number(options.maxItems)) || Number(options.maxItems) < 1)) invalid('max-items', '必须为正安全整数');
     const ids = batchTargets(action, params, options.ids);
     const aliases: Record<string, number> = {};

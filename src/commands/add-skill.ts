@@ -82,9 +82,7 @@ function tildeDisplay(absPath: string): string {
 
 async function promptAgentSelection(): Promise<string[]> {
     if (!process.stdin.isTTY || !process.stderr.isTTY) {
-        throw new Error(
-            `未指定 agent，请在交互终端中选择，或显式传入: ${AGENT_NAMES.join('|')}|all`,
-        );
+        throw new ZentaoError('E2009', { option: 'agent', reason: `未指定 agent，请显式传入: ${AGENT_NAMES.join('|')}|all` });
     }
 
     const choices = [...AGENT_NAMES, 'all'];
@@ -104,7 +102,7 @@ async function promptAgentSelection(): Promise<string[]> {
         const answer = await rl.question(`请输入编号 (1-${choices.length}): `, { signal: commandSignal() });
         const idx = Number(answer.trim());
         if (!Number.isInteger(idx) || idx < 1 || idx > choices.length) {
-            throw new Error(`无效选择: ${answer || '(empty)'}`);
+            throw new ZentaoError('E2009', { option: 'agent', reason: `无效选择: ${answer || '(empty)'}` });
         }
         const selected = choices[idx - 1];
         return selected === 'all' ? [...AGENT_NAMES] : [selected];
@@ -117,9 +115,9 @@ function resolveAgents(agent: string): string[] {
     const normalized = agent.toLowerCase();
     if (normalized === 'all') return [...AGENT_NAMES];
     if (AGENT_TARGETS[normalized]) return [normalized];
-    throw new Error(
+    throw new ZentaoError('E2009', { option: 'agent', reason:
         `不支持的 agent: ${agent}\n可用选项: ${AGENT_NAMES.join('、')}、all`,
-    );
+    });
 }
 
 function assertDestinationOutsideSource(srcDir: string, destDir: string): void {
@@ -177,7 +175,7 @@ function resolveOutputDir(output: string): string {
     return outputDir;
 }
 
-function installSkill(agent: string, skillName: string, silent: boolean) {
+function installSkill(agent: string, skillName: string) {
     const target = AGENT_TARGETS[agent];
     const source = resolveSkillSource(skillName);
     const destDir = join(target.dir, skillName);
@@ -187,7 +185,7 @@ function installSkill(agent: string, skillName: string, silent: boolean) {
     return { skill: skillName, agent, path: destDir };
 }
 
-function exportSkills(output: string, silent: boolean) {
+function exportSkills(output: string) {
     const outputDir = resolveOutputDir(output);
     const skills = SKILL_NAMES.map((skillName) => ({
         skillName,
@@ -211,8 +209,8 @@ export function registerAddSkillCommand(program: Command): void {
             const options = cmd.optsWithGlobals();
             if (!agent && options.input === false) throw new ZentaoError('E2009', { option: 'agent', reason: '--no-input 时必须指定安装目标' });
             const agents = agent ? resolveAgents(agent) : await promptAgentSelection();
-            emitResult(agents.flatMap(name => SKILL_NAMES.map(skill => installSkill(name, skill, true))), options);
+            emitResult(agents.flatMap(name => SKILL_NAMES.map(skill => installSkill(name, skill))), options);
         });
     program.command('export').description('导出技能到指定目录').argument('<directory>')
-        .action((directory: string, _opts, cmd: Command) => emitResult(exportSkills(directory, true), cmd.optsWithGlobals()));
+        .action((directory: string, _opts, cmd: Command) => emitResult(exportSkills(directory), cmd.optsWithGlobals()));
 }

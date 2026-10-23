@@ -9,7 +9,6 @@ export const DEFAULT_CONFIG: Required<UserConfig> = {
     htmlToMarkdown: true,
     batchFailFast: false,
     pagers: {},
-    silent: false,
     jsonPretty: false,
 };
 

@@ -166,7 +166,7 @@ export async function startBrowserLogin(options: BrowserLoginOptions = {}): Prom
             const profile = buildProfile(site, account, authenticated.token, authenticated.serverConfig, authenticated.user);
             saveProfile(profile);
             reply(res, 200, { ok: true, account, server: site });
-            finish(undefined, profile);
+            finish(undefined, getProfile(account, site)!);
         } catch (error) {
             if (!finished) reply(res, 400, loginErrorResponse(error));
         } finally {
@@ -189,8 +189,8 @@ export async function startBrowserLogin(options: BrowserLoginOptions = {}): Prom
     process.once('SIGINT', cancel);
     process.once('SIGTERM', cancel);
     options.signal?.addEventListener('abort', cancel, { once: true });
-    if (options.signal?.aborted) cancel();
     timer = setTimeout(() => finish(new ZentaoError('E1009')), options.waitTimeoutMs ?? 5 * 60_000);
+    if (options.signal?.aborted) cancel();
     return { url: `${origin}/#${key}`, result, cancel };
 }
 

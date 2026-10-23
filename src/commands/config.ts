@@ -1,3 +1,4 @@
+import { resolveAuthSource } from '../auth/flow.js';
 import { Command } from 'commander';
 import { getCurrentProfile, getProfileConfig, setProfileConfig, findProfileByKey, getConfigPath } from '../config/store.js';
 import { emitResult } from '../utils/output.js';
@@ -7,7 +8,7 @@ import { formatJson } from '../utils/format.js';
 import type { GlobalOptions } from '../types/index.js';
 
 const BOOLEAN_CONFIG_KEYS = new Set([
-    'insecure', 'htmlToMarkdown', 'batchFailFast', 'silent', 'jsonPretty',
+    'insecure', 'htmlToMarkdown', 'batchFailFast', 'jsonPretty',
 ]);
 
 function invalidConfigValue(key: string, value: string): never {
@@ -51,10 +52,11 @@ export function registerConfigCommand(program: Command): void {
     const config = program.command('config').description('查询配置来源并修改已保存账号的偏好');
     config.action(() => config.outputHelp());
     const selected = (cmd: Command) => {
-        const key = cmd.optsWithGlobals().profile;
-        const profile = key ? findProfileByKey(key) : getCurrentProfile();
-        if (key && !profile) throw new ZentaoError('E1007');
-        return profile;
+        try { return resolveAuthSource(cmd.optsWithGlobals().profile).profile; }
+        catch (error) {
+            if (error instanceof ZentaoError && error.code === '1006') return undefined;
+            throw error;
+        }
     };
     const check = (key: string) => { if (!VALID_CONFIG_KEYS.includes(key)) throw new ZentaoError('E2004', { field: key, value: '' }); };
     config.command('path').description('显示配置文件路径').action((_opts, cmd: Command) => emitResult({ path: getConfigPath() }, cmd.optsWithGlobals()));

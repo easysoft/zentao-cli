@@ -11,8 +11,6 @@ export interface GlobalOptions {
     /** 默认输出格式，可被子命令 `--format` 覆盖 */
     format?: OutputFormat;
 
-    /** 是否静默模式 */
-    silent?: boolean;
 
     /** 是否跳过 SSL/TLS 证书验证 */
     insecure?: boolean;
@@ -54,7 +52,7 @@ export interface ModuleActionOptions extends GlobalOptions {
     /** 每页条数，适用于 resultType 为 list 的模块操作 */
     recPerPage?: string;
 
-    /** Reserved option that currently fails explicitly instead of implying automatic pagination. */
+    /** Explicitly fetch every available page before local processing. */
     all?: boolean;
 
     /** 限制获取数量，适用于 resultType 为 list 的模块操作 */
@@ -69,8 +67,6 @@ export interface ModuleActionOptions extends GlobalOptions {
     /** 是否跳过确认，适用于 actionType 为 delete 操作 */
     yes?: boolean;
 
-    /** 是否静默模式，适用于所有操作  */
-    silent?: boolean;
 
     /** 批量操作出错时停止，适用于 actionType 为 create、update 和 action 操作 */
     batchFailFast?: boolean;

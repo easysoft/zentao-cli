@@ -1,3 +1,5 @@
+import { getModule } from './modules/helper.js';
+import { kebabCase } from './modules/contract.js';
 import { CommanderError } from 'commander';
 import { createProgram } from './cli.js';
 import { ZentaoError, formatError, mapSdkError } from './errors.js';
@@ -11,7 +13,13 @@ function argumentValue(name: string): string | undefined {
 }
 const program = createProgram();
 let cleanup: (() => void) | undefined;
-program.hook('preAction', (_root, command) => { cleanup = startCommandLifecycle(command.optsWithGlobals()); });
+program.hook('preAction', (_root, command) => {
+    const options = command.optsWithGlobals();
+    if (options.format === 'raw' && !getModule(command.parent?.name() ?? '')?.actions.some(action => kebabCase(action.name) === command.name())) {
+        throw new ZentaoError('E2009', { option: 'raw', reason: 'raw 仅适用于具有原始服务端响应的业务命令' });
+    }
+    cleanup = startCommandLifecycle(options);
+});
 try {
     const path = argumentValue('--config') ?? process.env.ZENTAO_CONFIG_FILE;
     if (path?.trim()) setConfigPath(path);

@@ -1,3 +1,4 @@
+import { saveAndSelectProfile } from './helpers.js';
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -57,7 +58,7 @@ describe('Profile authentication resolution', () => {
             config: { defaultOutputFormat: 'json' },
             serverConfig: oldServerConfig,
         };
-        saveProfile({ ...oldProfile, server: `${oldProfile.server}/` });
+        saveAndSelectProfile({ ...oldProfile, server: `${oldProfile.server}/` });
 
         const matched = getProfile(oldProfile.account, `${oldProfile.server}///`);
         const rebuilt = buildProfile(
@@ -72,12 +73,12 @@ describe('Profile authentication resolution', () => {
         expect(rebuilt.server).toBe(oldProfile.server);
         expect(rebuilt.config).toEqual(oldProfile.config);
         expect(rebuilt.serverConfig).toEqual(newServerConfig);
-        saveProfile(rebuilt);
+        saveAndSelectProfile(rebuilt);
         expect(getAllProfiles()).toHaveLength(1);
     });
 
     test('saved profile authentication works without writing to its read-only directory', async () => {
-        saveProfile(mockProfile);
+        saveAndSelectProfile(mockProfile);
         const configFile = join(tempDir, 'config.json');
         const original = readFileSync(configFile, 'utf8');
         if (process.platform !== 'win32') chmodSync(tempDir, 0o500);
@@ -92,7 +93,7 @@ describe('Profile authentication resolution', () => {
     });
 
     test('explicit profile authentication preserves the saved default and profile timestamps', async () => {
-        saveProfile(mockProfile);
+        saveAndSelectProfile(mockProfile);
         const configFile = join(tempDir, 'config.json');
         const original = readFileSync(configFile, 'utf8');
         const selected = { ...mockProfile, account: 'selected-user' };
@@ -116,8 +117,8 @@ describe('Profile authentication resolution', () => {
             serverConfig: oldServerConfig,
             user: { account: 'env-user', realname: 'Saved User' },
         };
-        saveProfile(envProfile);
-        saveProfile({
+        saveAndSelectProfile(envProfile);
+        saveAndSelectProfile({
             ...mockProfile,
             server: 'https://current.example.com',
             account: 'current-user',
@@ -179,7 +180,7 @@ describe('Profile authentication resolution', () => {
 
         try {
             const child = Bun.spawn({
-                cmd: [process.execPath, '--no-env-file', 'src/index.ts', '--config', configFile, '--format=json', 'product'],
+                cmd: [process.execPath, '--no-env-file', 'src/index.ts', '--config', configFile, '--format=json', 'product', 'list'],
                 env: {
                     ...process.env,
                     ZENTAO_URL: server.url.toString(),

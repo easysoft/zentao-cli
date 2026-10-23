@@ -1,35 +1,13 @@
+import { isDeepStrictEqual } from 'node:util';
+import { ZentaoError } from '../errors.js';
 import { Command, Option } from 'commander';
 import { getModuleNames, getModule } from '../modules/index.js';
 import { getScopeAliasTarget } from '../mcp/params.js';
-import { actionContract, actionParameters, kebabCase, paginationFields } from '../modules/contract.js';
-import { prepareCliParams } from '../modules/cli-input.js';
+import { actionContract, actionParameters, kebabCase, parameterFlag, paginationFields } from '../modules/contract.js';
+import { parseCliValue, prepareCliParams } from '../modules/cli-input.js';
 import { ensureAuth } from '../auth/flow.js';
 import { handleModuleCommand, showModuleProps } from './module-handler.js';
 import type { GlobalOptions, ModuleActionName, ModuleActionOptions } from '../types/index.js';
-
-/** 为命令挂载数据查询、分页、过滤及父子上下文等通用选项 */
-export function addDataOptions(cmd: Command): Command {
-    return cmd
-        .option('--pick <fields>', '摘取指定字段（逗号分隔）')
-        .option('--filter <expr>', '过滤条件（组内 AND，多次指定为 OR）', collect, [])
-        .option('--sort <expr>', '排序条件（如 pri:desc,id:asc）')
-        .option('--search <keywords>', '搜索关键词（组内 AND，多次指定为 OR）', collect, [])
-        .option('--search-fields <fields>', '搜索字段（逗号分隔）')
-        .option('--page <number>', '页码')
-        .option('--recPerPage <number>', '每页条数')
-        .option('--all', '尚未支持自动翻页，请使用 --page 和 --recPerPage')
-        .option('--limit <number>', '限制获取数量')
-        .option('--data <json>', 'JSON 数据')
-        .option('--params <json>', 'API 调用参数')
-        .option('--yes', '跳过确认')
-        .option('--silent', '静默模式')
-        .option('--batch-fail-fast', '批量操作出错时停止')
-        .option('--id <id>', '对象 ID')
-        .option('--ids <ids>', '批量对象 ID（逗号分隔；仅支持对象操作）')
-        .option('--product <id>', '产品 ID')
-        .option('--project <id>', '项目 ID')
-        .option('--execution <id>', '执行 ID');
-}
 
 /** Commander 的 `collect` 回调：将多次出现的选项累积为数组 */
 function collect(value: string, previous: string[] = []): string[] {
@@ -55,7 +33,7 @@ export function registerModuleCommands(program: Command): void {
             const reserved = new Set(pagination ? [pagination.page.name, pagination.size.name] : []);
             for (const param of actionParameters(mod, action)) {
                 if (reserved.has(param.name) || mappings.some(item => item.name === param.name)) continue;
-                const flag = kebabCase(param.name);
+                const flag = parameterFlag(param.name).slice(2);
                 const option = new Option(`--${flag} ${param.type === 'boolean' ? '[boolean]' : '<value>'}`,
                     `${param.description ?? param.name}${param.required ? '（必填）' : ''}`);
                 if (param.type === 'array') option.argParser((value: string, previous: string[] = []) => previous.concat(value));
@@ -63,6 +41,18 @@ export function registerModuleCommands(program: Command): void {
                 cmd.addOption(option);
                 mappings.push({ name: param.name, attribute: option.attributeName() });
                 if (param.type === 'boolean') cmd.addOption(new Option(`--no-${flag}`, `将 ${param.name} 设为 false`).default(undefined));
+                if (param.type !== 'array') {
+                    let previous: unknown;
+                    const checkDuplicate = () => {
+                        const value = parseCliValue(cmd.getOptionValue(option.attributeName()), param);
+                        if (previous !== undefined && !isDeepStrictEqual(previous, value)) {
+                            throw new ZentaoError('E2009', { option: flag, reason: '重复选项的输入值冲突' });
+                        }
+                        previous = value;
+                    };
+                    cmd.on(`option:${option.name()}`, checkDuplicate);
+                    if (param.type === 'boolean') cmd.on(`option:no-${flag}`, checkDuplicate);
+                }
             }
             for (const scope of ['product', 'project', 'execution']) {
                 if (!getScopeAliasTarget(mod, action, scope) || mappings.some(item => item.name === scope)) continue;

@@ -7,6 +7,12 @@ export function kebabCase(name: string): string {
     return name.replace(/IDs\b/g, 'Ids').replace(/([A-Z]+)([A-Z][a-z])/g, '$1-$2').replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
 }
 
+// Reserve global and processing flags so business fields cannot be consumed by Commander.
+export function parameterFlag(name: string): string {
+    const flag = kebabCase(name);
+    return `--${['deadline', 'timeout', 'profile', 'config', 'format', 'color', 'input', 'yes', 'quiet', 'insecure', 'data', 'ids', 'fields', 'all', 'max-items', 'filter', 'sort', 'search'].includes(flag) ? 'data-' : ''}${flag}`;
+}
+
 export function actionParameters(mod: ModuleDefinition, action: ModuleAction) {
     const body = action.requestBody?.schema.properties as Record<string, ValueSchema> | undefined;
     return getModuleActionParams(mod.name, action.name).map(param => ({
@@ -33,7 +39,7 @@ export function actionContract(mod: ModuleDefinition, action: ModuleAction) {
         module: mod.name, action: action.name, command: `${mod.name} ${kebabCase(action.name)}`,
         display: action.display, description: action.description, type: action.type,
         path: action.path, method: action.method, minVersion: action.minVersion,
-        parameters: parameters.map(param => ({ ...param, flag: `--${kebabCase(param.name)}` })),
+        parameters: parameters.map(param => ({ ...param, flag: parameterFlag(param.name) })),
         target: target?.name, batch: supportsBatch(action),
         pagination: pagination ? { page: pagination.page.name, pageSize: pagination.size.name } : null,
         requestBody: action.requestBody,
