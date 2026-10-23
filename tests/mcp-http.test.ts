@@ -127,7 +127,12 @@ test('limits actual chunked body bytes and rejects invalid JSON', async () => {
         expect((await rawRequest(f.url, ['token', 'valid', 'Content-Type', 'application/json'], '{bad')).status).toBe(400);
         const response = await rawRequest(f.url, ['token', 'valid', 'Transfer-Encoding', 'chunked', 'Content-Type', 'application/json'], ['"', 'x'.repeat(1024 * 1024), '"']);
         expect(response.status).toBe(413);
-        expect((await fetch(new URL('/healthz', f.url))).status).toBe(200);
+        // Check listener health independently of the rejected request's connection.
+        const health = await new Promise<number>((resolve, reject) => {
+            const req = request(new URL('/healthz', f.url), { agent: false }, res => { res.resume(); res.on('end', () => resolve(res.statusCode!)); });
+            req.on('error', reject); req.end();
+        });
+        expect(health).toBe(200);
     } finally { await f.close(); }
 });
 
