@@ -1,4 +1,5 @@
 import { ZentaoError } from '../errors.js';
+import { readFile } from 'node:fs/promises';
 
 let stdinContent: Promise<string | undefined> | undefined;
 
@@ -19,7 +20,9 @@ export async function readStdin(): Promise<string | undefined> {
 /** 解析 `--data` / 管道 JSON，失败时抛出 `E2007` */
 export function parseDataParam(input: string): unknown {
     try {
-        return JSON.parse(input);
+        const value = JSON.parse(input);
+        if (!value || typeof value !== 'object' || Array.isArray(value)) throw new ZentaoError('E2007');
+        return value;
     } catch {
         throw new ZentaoError('E2007');
     }
@@ -30,13 +33,22 @@ export function parseDataParam(input: string): unknown {
  * 显式 `@-` 且无 stdin 内容时抛出 `E2007`。
  */
 export async function resolveData(dataOption?: string): Promise<unknown | undefined> {
-    if (dataOption === '@-' || dataOption === undefined) {
+    if (dataOption === undefined) return undefined;
+    if (dataOption === '@-') {
         const stdin = await readStdin();
         if (stdin) return parseDataParam(stdin);
         if (dataOption === '@-') {
             throw new ZentaoError('E2007');
         }
         return undefined;
+    }
+    if (dataOption.startsWith('@')) {
+        try {
+            return parseDataParam(await readFile(dataOption.slice(1), 'utf8'));
+        } catch (error) {
+            if (error instanceof ZentaoError) throw error;
+            throw new ZentaoError('E2009', { option: 'data', reason: '无法读取 JSON 文件' });
+        }
     }
     return parseDataParam(dataOption);
 }

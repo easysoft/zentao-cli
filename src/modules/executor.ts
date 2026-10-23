@@ -83,7 +83,7 @@ export async function executeModuleCommand(
         // Normalize the flat alias; the SDK still gives --data fields precedence.
         if (params.productID === undefined) params.productID = params.product;
     }
-    if (action.type === 'create' || action.type === 'update' || action.type === 'action') {
+    if (action.requestBody) {
         const data = params.data;
         if (data === undefined || typeof data === 'string') {
             const resolved = await resolveData(data);
