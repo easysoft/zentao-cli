@@ -6,7 +6,7 @@ metadata:
   author: Sun Hao <sunhao@chandao.com>
   repository: https://github.com/easysoft/zentao-cli.git
   keywords: [zentao, 禅道, tour, onboarding, tutorial, 体验, 上手]
-  version: 0.3.0-beta.1
+  version: 0.4.0
 ---
 
 # 禅道 Tour
