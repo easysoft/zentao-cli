@@ -1,3 +1,4 @@
+import type { ApiVersionOption } from 'zentao-api';
 import { randomBytes } from 'node:crypto';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import type { Socket } from 'node:net';
@@ -9,6 +10,7 @@ import { ZentaoError } from '../errors.js';
 import type { Profile } from '../types/index.js';
 
 interface BrowserLoginOptions {
+    apiVersion?: ApiVersionOption;
     server?: string;
     account?: string;
     message?: string;

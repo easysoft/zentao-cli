@@ -411,6 +411,7 @@ export function showModuleHelp(mod: ModuleDefinition): void {
 export function showModuleActionHelp(mod: ModuleDefinition, action: ModuleAction): void {
     console.log(action.display ?? `${mod.display ?? mod.name} ${action.name}`);
     console.log(`最低禅道版本: ${action.minVersion.join(' / ')}`);
+    if (action.apiV1) console.log(`API v1 最低禅道版本: ${action.apiV1.minVersion.join(' / ')}`);
     if (action.description && action.description !== action.display) {
         console.log(`描述: ${action.description}`);
     }

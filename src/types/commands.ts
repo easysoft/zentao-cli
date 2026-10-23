@@ -1,7 +1,10 @@
+import type { ApiVersionOption } from 'zentao-api';
 import type { OutputFormat } from './config.js';
 
 /** Commander 顶层 `program` 上挂载的全局 CLI 选项 */
 export interface GlobalOptions {
+    /** REST API generation. */
+    apiVersion?: ApiVersionOption;
     /** 默认输出格式，可被子命令 `--format` 覆盖 */
     format?: OutputFormat;
 

@@ -120,6 +120,7 @@ export function registerModuleCommands(program: Command): void {
             }
 
             const { client, profile } = await ensureAuth({
+                apiVersion: options.apiVersion,
                 insecure: options.insecure,
                 timeout: options.timeout,
             });

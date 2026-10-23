@@ -138,6 +138,8 @@ export function mapSdkError(error: unknown): unknown {
             }, details);
         case 'E_LOGIN_FAILED':
             return new ZentaoError('E1003', undefined, details);
+        case 'E_UNSUPPORTED_API_ACTION':
+            return new ZentaoError('E2009', { option: '--api-version', reason: message ?? '不支持所选 API 版本' }, error.details);
         case 'E_UNSUPPORTED_ZENTAO_VERSION':
             return new ZentaoError('E2010', {
                 action: String(d.action ?? ''),

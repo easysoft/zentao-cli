@@ -277,3 +277,15 @@ zentao mcp --transport http --url https://zentao.example.com
 | [常见错误排查与参考手册](docs/errors.md) | 错误代码（Exxxx）查阅 |
 | [后续计划](docs/roadmap.md) | 待实现的功能和改进计划 |
 | [更新日志](CHANGES.md) | 每个版本的变更内容 |
+
+## REST API v1
+
+业务命令默认按实际禅道版本选择 v1/v2，可用 `--api-version v1` 或 `--api-version v2` 显式指定。支持开源版 21.2 的常用查询、产品/Bug/任务/需求维护及部分状态流转。详情、分页、登录和状态流转使用独立的 v1 契约；没有 v1 定义的动作明确报错。
+
+```sh
+zentao --api-version auto bug 7 --format json
+zentao --api-version v1 my bugs --page 1 --recPerPage 20
+zentao --api-version v1 story 7
+```
+
+这项功能依赖包含 API v1 契约的 zentao-api 版本。公司单点登录网关仍可能要求浏览器会话；API v1 支持不代表自动导入浏览器 Cookie。真实环境验证只执行查询，写入和状态流转使用本地模拟服务。

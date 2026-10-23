@@ -1,4 +1,4 @@
-import { ZentaoClient } from 'zentao-api';
+import { ZentaoClient, type ApiVersionOption } from 'zentao-api';
 import { mapSdkError, ZentaoError } from '../errors.js';
 import type { ServerConfig } from '../types/index.js';
 
@@ -6,6 +6,8 @@ export { ZentaoClient };
 
 /** 创建 {@link ZentaoClient} 时的可选行为（TLS、超时等） */
 export interface ClientOptions {
+    /** REST API selection; CLI clients discover the server by default. */
+    apiVersion?: ApiVersionOption;
     /** 为 true 时跳过 TLS 证书校验（仅 Node.js 运行时支持） */
     insecure?: boolean;
     /** 默认请求超时（毫秒） */
@@ -20,6 +22,7 @@ export function createClient(serverUrl: string, token?: string, options?: Client
     return new ZentaoClient({
         baseUrl: serverUrl,
         token,
+        apiVersion: options?.apiVersion ?? 'v2',
         insecure: options?.insecure,
         timeout: options?.timeout,
     });
@@ -28,7 +31,7 @@ export function createClient(serverUrl: string, token?: string, options?: Client
 /** Bind cancellation to one SDK call without changing a shared client's state. */
 export function withRequestSignal(client: ZentaoClient, signal?: AbortSignal): ZentaoClient {
     if (!signal) return client;
-    const scoped = new ZentaoClient(client.siteUrl);
+    const scoped = new ZentaoClient({ baseUrl: client.siteUrl, apiVersion: client.apiVersion });
     const optionsWithSignal = <T extends object>(options: T): T & { signal: AbortSignal } => {
         if (signal.aborted) throw new ZentaoError('E5003');
         return { ...options, signal };
@@ -37,6 +40,7 @@ export function withRequestSignal(client: ZentaoClient, signal?: AbortSignal): Z
     // Forwarding preserves credentials, transport options and the config cache.
     scoped.request = ((path: string, options = {}) => client.request(path, optionsWithSignal(options))) as ZentaoClient['request'];
     scoped.fetch = (url, options, token, fetchOptions) => client.fetch(url, optionsWithSignal(options), token, fetchOptions);
+    scoped.resolveApiVersion = (version, override) => client.resolveApiVersion(version, override);
     scoped.getZentaoConfig = (options = {}) => client.getZentaoConfig(optionsWithSignal(options));
     return scoped;
 }

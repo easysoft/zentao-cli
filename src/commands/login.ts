@@ -40,6 +40,7 @@ export function registerLoginCommand(program: Command): void {
                     server: opts.server,
                     account: opts.user,
                     message: opts.message,
+                    apiVersion: globalOpts.apiVersion ?? 'auto',
                     insecure: globalOpts.insecure,
                     timeout: globalOpts.timeout,
                     open: desktop,
@@ -88,6 +89,7 @@ export function registerLoginCommand(program: Command): void {
             if (token) {
                 // 检查 token 是否有效
                 const client = createClient(server, token, {
+                    apiVersion: globalOpts.apiVersion,
                     insecure: globalOpts.insecure,
                     timeout: globalOpts.timeout,
                 });
@@ -95,6 +97,7 @@ export function registerLoginCommand(program: Command): void {
                 profile = buildProfile(server, account, token, serverConfig, user, oldProfile);
             } else {
                 const result = await login(server, account, password, {
+                    apiVersion: globalOpts.apiVersion,
                     insecure: globalOpts.insecure,
                     timeout: globalOpts.timeout,
                 });

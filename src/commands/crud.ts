@@ -99,6 +99,7 @@ async function runCrudCommand(
     const globalOpts = program.opts() as GlobalOptions;
     const options = {...globalOpts, ...opts};
     const { client, profile } = await ensureAuth({
+        apiVersion: globalOpts.apiVersion,
         insecure: globalOpts.insecure,
         timeout: globalOpts.timeout,
     });
