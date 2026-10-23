@@ -21,7 +21,7 @@ export async function createMcpTestClient(handler: (req: Request) => Response | 
     const client = new Client({ name: 'zentao-cli-test', version: '0.0.0' });
     const transport = new StdioClientTransport({
         command: process.execPath,
-        args: ['--no-env-file', join(repoRoot, 'src/index.ts'), '--config', configFile, 'mcp', ...args],
+        args: ['--no-env-file', join(repoRoot, 'src/index.ts'), '--config', configFile, 'mcp', 'serve', ...args],
         cwd: dir,
         env: { ...process.env, ZENTAO_URL: server.url.toString(), ZENTAO_ACCOUNT: 'audit', ZENTAO_TOKEN: 'test-token', ZENTAO_PASSWORD: '' },
     });

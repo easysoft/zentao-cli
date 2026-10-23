@@ -37,8 +37,16 @@ export function actionContract(mod: ModuleDefinition, action: ModuleAction) {
         target: target?.name, batch: supportsBatch(action),
         pagination: pagination ? { page: pagination.page.name, pageSize: pagination.size.name } : null,
         requestBody: action.requestBody,
+        readOnly: actionIsReadOnly(action),
+        destructive: !actionIsReadOnly(action) && ['update', 'delete', 'action'].includes(action.type),
         autoFill: action.type === 'update' && mod.actions.some(item => item.type === 'get' && item.path === action.path),
         defaultFields: ['id', 'title', 'name', 'status', ...(mod.name === 'bug' ? ['severity'] : []), 'assignedTo'],
         localFiles: action.requestBody?.mediaType === 'multipart/form-data',
     };
+}
+
+/** POST knowledge search has no side effects; SQL stays excluded until server capability is verified. */
+export function actionIsReadOnly(action: ModuleAction): boolean {
+    return ((action.type === 'list' || action.type === 'get') && (action.method ?? 'get').toLowerCase() === 'get')
+        || (action.type === 'list' && ['/ai/knowledges/search', '/ai/knowledges/embeddingssearch'].includes(action.path));
 }

@@ -12,7 +12,7 @@
 | 5 分页 | page/page-size/all/max-items、服务端字段隔离、完整性 | 完成：跨页、停滞、过滤空页、SQL limit 回归通过 |
 | 6 输出 | 稳定 JSON、保真、table/markdown、空值/异构字段 | 完成：统一结果与错误契约 |
 | 7 交互与生命周期 | no-input/yes/quiet/color、超时、取消、退出码 | 完成：认证阶段 deadline/SIGINT 子进程回归通过 |
-| 8 MCP 能力与认证 | POST 搜索只读、上传发现、认证取消、完整用户查找 | 待实施 |
+| 8 MCP 能力与认证 | POST 搜索只读、上传发现、认证取消、完整用户查找 | 完成：10 项 MCP 定向测试、2469 次断言通过 |
 | 9 发现与文档 | 机器帮助、补全、HTML、技能、CI/发布检查 | 待实施 |
 | 10 真实验收 | .env.test 环境、CRUD/流转/分页/MCP、HTML 报告 | 待实施 |
 

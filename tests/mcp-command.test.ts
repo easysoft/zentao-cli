@@ -13,7 +13,7 @@ test.each([
     ['--transport', 'http'],
     ...['0', '65536', '1e3', 'abc'].map(port => ['--transport', 'http', '--url', 'https://zentao.example.com', '--port', port]),
 ])('mcp rejects invalid startup options %j', async (...args) => {
-    const result = await runCliWithoutAuth(['mcp', ...args]);
+    const result = await runCliWithoutAuth(['mcp', 'serve', ...args]);
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain('E2009');
     expect(result.stdout).toBe('');
@@ -39,7 +39,7 @@ test.each(['SIGINT', 'SIGTERM'] as const)('HTTP CLI resolves its site and shuts 
     const explicit = signal === 'SIGTERM';
     const child = Bun.spawn({
         cmd: [process.execPath, '--no-env-file', resolve('src/index.ts'), '--config', configFile,
-            'mcp', '--transport', 'http', '--port', String(port), '--modules', 'product',
+            'mcp', 'serve', '--transport', 'http', '--port', String(port), '--modules', 'product',
             ...(explicit ? ['--url', upstream.url.origin] : [])],
         cwd: dir, stdin: 'ignore', stdout: 'pipe', stderr: 'pipe',
         env: {

@@ -16,7 +16,7 @@ describe('MCP server (stdio e2e smoke)', () => {
         async () => {
             const transport = new StdioClientTransport({
                 command: 'bun',
-                args: ['--no-env-file', 'run', join(repoRoot, 'src/index.ts'), 'mcp'],
+                args: ['--no-env-file', 'run', join(repoRoot, 'src/index.ts'), 'mcp', 'serve'],
                 cwd: repoRoot,
             });
 
@@ -106,7 +106,7 @@ describe('MCP server (stdio e2e smoke)', () => {
         writeFileSync(configFile, JSON.stringify({ currentProfile: selectedKey, profiles }));
         const transport = new StdioClientTransport({
             command: process.execPath,
-            args: ['--no-env-file', join(repoRoot, 'src/index.ts'), '--config', configFile, 'mcp'],
+            args: ['--no-env-file', join(repoRoot, 'src/index.ts'), '--config', configFile, 'mcp', 'serve'],
             cwd: repoRoot,
             env: {
                 ...process.env,
@@ -194,7 +194,7 @@ describe('MCP server (stdio e2e smoke)', () => {
         };
         const transport = new StdioClientTransport({
             command: process.execPath,
-            args: ['--no-env-file', join(repoRoot, 'src/index.ts'), '--config', configFile, 'mcp'],
+            args: ['--no-env-file', join(repoRoot, 'src/index.ts'), '--config', configFile, 'mcp', 'serve'],
             cwd: dir,
             env,
         });
@@ -276,7 +276,7 @@ describe('MCP server (stdio e2e smoke)', () => {
                 clients.push(client);
                 await client.connect(new StdioClientTransport({
                     command: process.execPath,
-                    args: ['--no-env-file', join(repoRoot, 'src/index.ts'), '--config', configFile, 'mcp'],
+                    args: ['--no-env-file', join(repoRoot, 'src/index.ts'), '--config', configFile, 'mcp', 'serve'],
                     cwd: dir,
                     env: { ...process.env, ZENTAO_URL: new URL(account, server.url).toString(), ZENTAO_ACCOUNT: account, ZENTAO_TOKEN: `token-${account}`, ZENTAO_PASSWORD: '' },
                 }));

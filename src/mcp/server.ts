@@ -16,7 +16,7 @@ export interface McpAuthContext {
 }
 
 export interface AuthProvider {
-    getContext(): Promise<McpAuthContext>;
+    getContext(signal?: AbortSignal): Promise<McpAuthContext>;
     switchProfile?(key: string): Promise<McpAuthContext>;
 }
 
@@ -28,22 +28,44 @@ function toMcpContext({ client, profile }: AuthContext): McpAuthContext {
     };
 }
 
-function createAuthProvider(options?: { insecure?: boolean; timeout?: number }): AuthProvider {
+export function createAuthProvider(options?: { insecure?: boolean; timeout?: number; profile?: string }): AuthProvider {
     let context: Promise<AuthContext> | undefined;
+    let flight: { promise: Promise<AuthContext>; controller: AbortController; pending: boolean; waiters: number } | undefined;
     const env = getEnvCredentials();
-    let environmentPinned = Boolean(env.url && env.account && (env.token || env.password));
+    let environmentPinned = Boolean(!options?.profile && env.url && env.account && (env.token || env.password));
 
     return {
-        async getContext(): Promise<McpAuthContext> {
+        async getContext(signal?: AbortSignal): Promise<McpAuthContext> {
+            if (signal?.aborted) throw new ZentaoError('E5003');
             if (!context) {
-                const initial = ensureAuth(options);
+                const controller = new AbortController();
+                const initial = ensureAuth({ ...options, signal: controller.signal });
+                const attempt = { promise: initial, controller, pending: true, waiters: 0 };
+                flight = attempt;
                 context = initial;
+                void initial.finally(() => { attempt.pending = false; }).catch(() => {});
                 // Share concurrent login attempts, but allow retry after a failed login.
                 void initial.catch(() => { if (context === initial) context = undefined; });
             }
             const selected = context;
             const pinned = environmentPinned;
-            const cached = await selected;
+            const attempt = flight?.promise === selected ? flight : undefined;
+            if (attempt) attempt.waiters++;
+            let cancel: (() => void) | undefined;
+            let cached: AuthContext;
+            try {
+                cached = await (signal ? Promise.race([selected, new Promise<never>((_resolve, reject) => {
+                    cancel = () => reject(new ZentaoError('E5003'));
+                    signal.addEventListener('abort', cancel, { once: true });
+                })]) : selected);
+            } finally {
+                if (cancel) signal?.removeEventListener('abort', cancel);
+                if (attempt && --attempt.waiters === 0 && attempt.pending) {
+                    attempt.controller.abort();
+                    if (context === selected) context = undefined;
+                }
+            }
+            if (signal?.aborted) throw new ZentaoError('E5003');
             if (pinned) return toMcpContext(cached);
 
             const current = getProfile(cached.profile.account, cached.profile.server);
@@ -81,7 +103,7 @@ export function createMcpServer(auth: AuthProvider, options?: McpToolOptions): M
     return server;
 }
 
-export async function startMcpServer(options?: McpToolOptions & { insecure?: boolean; timeout?: number }): Promise<void> {
+export async function startMcpServer(options?: McpToolOptions & { insecure?: boolean; timeout?: number; profile?: string }): Promise<void> {
     const server = createMcpServer(createAuthProvider(options), options);
     const transport = new StdioServerTransport();
     await server.connect(transport);
