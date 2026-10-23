@@ -59,6 +59,7 @@ program
     .version(getCliVersion(), '-V, --version', '显示版本号')
     .helpOption('-h, --help', '显示命令帮助')
     .option('--format <format>', '输出格式 (markdown|json|raw)')
+    .option('--profile <key>', '仅本次命令选择账号（优先于环境凭据）')
     .option('--silent', '静默模式')
     .option('--insecure', '跳过 SSL/TLS 证书验证')
     .option('--timeout <ms>', '请求超时时间（毫秒）', parseInt)

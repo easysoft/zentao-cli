@@ -83,7 +83,6 @@ export function registerLoginCommand(program: Command): void {
             }
 
             server = normalizeServerUrl(server);
-            const oldProfile = getProfile(account, server);
             let profile: Profile;
             if (token) {
                 // 检查 token 是否有效
@@ -92,14 +91,14 @@ export function registerLoginCommand(program: Command): void {
                     timeout: globalOpts.timeout,
                 });
                 const { serverConfig, user } = await verifyToken(client, account);
-                profile = buildProfile(server, account, token, serverConfig, user, oldProfile);
+                profile = buildProfile(server, account, token, serverConfig, user);
             } else {
                 const result = await login(server, account, password, {
                     insecure: globalOpts.insecure,
                     timeout: globalOpts.timeout,
                 });
 
-                profile = buildProfile(server, account, result.token, result.serverConfig, result.user, oldProfile);
+                profile = buildProfile(server, account, result.token, result.serverConfig, result.user);
             }
 
             saveProfile(profile);

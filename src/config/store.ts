@@ -1,6 +1,6 @@
 import Configstore from 'configstore';
-import { chmodSync, existsSync } from 'node:fs';
-import { isAbsolute, join, resolve } from 'node:path';
+import { chmodSync, existsSync, mkdirSync, rmdirSync } from 'node:fs';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { homedir } from 'node:os';
 import { z } from 'zod';
 import type { ConfigData, Profile, ServerConfig, UserConfig } from '../types/index.js';
@@ -76,6 +76,31 @@ function writeConfig(data: Partial<ConfigData>): void {
             ...(systemCode ? { systemCode } : {}),
         });
     }
+}
+
+/** Serialize short read-modify-write sections across CLI processes; never hold across network I/O. */
+function transaction<T>(change: (data: ConfigData) => T): T {
+    const lock = `${configPath}.lock`;
+    let locked = false;
+    try {
+        mkdirSync(dirname(configPath), { recursive: true, mode: 0o700 });
+        const deadline = Date.now() + 5000;
+        while (!locked) {
+            try { mkdirSync(lock, { mode: 0o700 }); locked = true; }
+            catch (error) {
+                if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+                if (Date.now() >= deadline) throw new ZentaoError('E1011', { path: configPath }, { reason: 'lock_timeout', path: lock });
+                Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10);
+            }
+        }
+        const data = getConfigData();
+        const result = change(data);
+        writeConfig(data);
+        return result;
+    } catch (error) {
+        if (error instanceof ZentaoError) throw error;
+        throw new ZentaoError('E1011', { path: configPath }, { operation: 'write', reason: 'write_failed', path: configPath, systemCode: (error as NodeJS.ErrnoException).code });
+    } finally { if (locked) rmdirSync(lock); }
 }
 
 /** 将路径中的首段 `~` 展开为当前用户家目录 */
@@ -169,62 +194,48 @@ export function getProfile(account: string, server: string): Profile | undefined
  * 支持三种 key 格式：完整 key (account@server)、仅账号名、账号@主机名。
  */
 export function findProfileByKey(key: string): Profile | undefined {
-    const data = getConfigData();
-    return data.profiles?.find(
-        (p) => profileKey(p.account, p.server) === key
-            || p.account === key
-            || `${p.account}@${new URL(p.server).hostname}` === key,
-    );
+    const profiles = getConfigData().profiles ?? [];
+    const exact = profiles.find(p => profileKey(p.account, p.server) === key);
+    if (exact) return exact;
+    const matches = profiles.filter(p => p.account === key || `${p.account}@${new URL(p.server).hostname}` === key);
+    if (matches.length > 1) throw new ZentaoError('E2009', { option: 'profile', reason: '账号简写不唯一，请指定完整 key' }, { candidates: matches.map(p => profileKey(p.account, p.server)) });
+    return matches[0];
 }
 
-/** 保存或更新 Profile（按 account+server 去重），并将其设为当前 Profile */
+/** Save credentials while preserving the latest preferences and default identity. */
 export function saveProfile(profile: Profile): void {
-    const profiles = getConfigData().profiles ?? [];
-    const normalizedProfile = profile.server === normalizeServerUrl(profile.server)
-        ? profile
-        : { ...profile, server: normalizeServerUrl(profile.server) };
-    const nextProfiles: Profile[] = [];
-    let saved = false;
-    for (const existing of profiles) {
-        const matches = existing.account === normalizedProfile.account
-            && normalizeServerUrl(existing.server) === normalizedProfile.server;
-        if (!matches) {
-            nextProfiles.push(existing);
-        } else if (!saved) {
-            nextProfiles.push(normalizedProfile);
-            saved = true;
-        }
-    }
-    if (!saved) nextProfiles.push(normalizedProfile);
-
-    writeConfig({
-        profiles: nextProfiles,
-        currentProfile: profileKey(normalizedProfile.account, normalizedProfile.server),
+    transaction(data => {
+        const server = normalizeServerUrl(profile.server);
+        const matches = (p: Profile) => p.account === profile.account && normalizeServerUrl(p.server) === server;
+        const existing = data.profiles?.find(matches);
+        const saved = { ...existing, ...profile, server,
+            config: existing?.config ?? profile.config,
+            user: { ...existing?.user, ...profile.user },
+            serverConfig: profile.serverConfig ?? existing?.serverConfig };
+        const profiles = data.profiles ?? [];
+        const first = profiles.findIndex(matches);
+        data.profiles = profiles.filter(p => !matches(p));
+        data.profiles.splice(first < 0 ? data.profiles.length : first, 0, saved);
     });
 }
 
-/** 按 profileKey 删除 Profile。若删除的是当前 Profile，则自动切换到第一个 */
+/** Removing the default clears it; only profile use selects an identity. */
 export function removeProfile(key: string): boolean {
-    const data = getConfigData();
-    const profiles = data.profiles ?? [];
-    const idx = profiles.findIndex(
-        (p) => profileKey(p.account, p.server) === key,
-    );
-    if (idx < 0) return false;
-    profiles.splice(idx, 1);
-    if (data.currentProfile === key) {
-        data.currentProfile = profiles.length > 0 ? profileKey(profiles[0].account, profiles[0].server) : undefined;
-    }
-    writeConfig({ profiles, currentProfile: data.currentProfile });
-    return true;
+    return transaction(data => {
+        const previous = data.profiles ?? [];
+        data.profiles = previous.filter(p => profileKey(p.account, p.server) !== key);
+        if (data.currentProfile === key) data.currentProfile = undefined;
+        return data.profiles.length !== previous.length;
+    });
 }
 
-/** 切换当前 Profile，key 支持 findProfileByKey 的多种格式 */
 export function setCurrentProfile(key: string): boolean {
-    const profile = findProfileByKey(key);
-    if (!profile) return false;
-    writeConfig({ currentProfile: profileKey(profile.account, profile.server) });
-    return true;
+    return transaction(data => {
+        const profile = findProfileByKey(key);
+        if (!profile) return false;
+        data.currentProfile = profileKey(profile.account, profile.server);
+        return true;
+    });
 }
 
 /** 获取所有已保存的 Profile */
@@ -240,15 +251,21 @@ export function getProfileConfig(profile: Profile): Required<UserConfig> {
 
 /** 设置 Profile 中的单个配置项，并持久化 */
 export function setProfileConfig(profile: Profile, key: string, value: unknown): void {
-    if (!profile.config) profile.config = {};
-    (profile.config as Record<string, unknown>)[key] = value;
-    saveProfile(profile);
+    transaction(data => {
+        const current = data.profiles?.find(p => p.account === profile.account && p.server === profile.server);
+        if (!current) throw new ZentaoError('E1007');
+        current.config ??= {};
+        if (value === undefined) delete (current.config as Record<string, unknown>)[key];
+        else (current.config as Record<string, unknown>)[key] = value;
+    });
 }
 
-/** 批量更新 Profile 字段并持久化 */
 export function updateProfile(profile: Profile, updates: Partial<Profile>): void {
-    Object.assign(profile, updates);
-    saveProfile(profile);
+    transaction(data => {
+        const current = data.profiles?.find(p => p.account === profile.account && p.server === profile.server);
+        if (!current) throw new ZentaoError('E1007');
+        Object.assign(current, updates);
+    });
 }
 
 /** 返回配置文件的绝对路径（若通过 setConfigPath 覆盖，则返回覆盖后的路径） */

@@ -159,10 +159,9 @@ export async function startBrowserLogin(options: BrowserLoginOptions = {}): Prom
             }
             const site = normalizeServerUrl(url.toString());
             const account = data.account.trim();
-            const oldProfile = getProfile(account, site);
             const authenticated = await login(site, account, data.password, { ...options, signal: controller.signal });
             if (finished) return;
-            const profile = buildProfile(site, account, authenticated.token, authenticated.serverConfig, authenticated.user, oldProfile);
+            const profile = buildProfile(site, account, authenticated.token, authenticated.serverConfig, authenticated.user);
             saveProfile(profile);
             reply(res, 200, { ok: true, account, server: site });
             finish(undefined, profile);
