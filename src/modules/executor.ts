@@ -1,4 +1,4 @@
-import { request, type RequestOptions, type ResponseData } from 'zentao-api';
+import { request, processData, type RequestOptions, type ResponseData } from 'zentao-api';
 import type { ZentaoClient } from '../api/index.js';
 import { mapSdkError } from '../errors.js';
 import type {
@@ -14,6 +14,8 @@ import { resolveData } from '../utils/stdin.js';
 import { buildParams } from './args.js';
 import { getAction } from './helper.js';
 import { ZentaoError } from '../errors.js';
+import { paginationFields } from './contract.js';
+import { validateValue } from './validation.js';
 
 export interface ModuleExecutionResult {
     /** 解析到的动作定义 */
@@ -24,6 +26,7 @@ export interface ModuleExecutionResult {
     rawResponse: unknown;
     /** 分页信息（CLI 字段命名） */
     pager?: ListPagerInfo;
+    meta?: Record<string, unknown>;
     /** 用户通过 --pick 指定的字段 */
     fields?: string[];
     /** 是否为列表结果 */
@@ -54,12 +57,6 @@ export async function executeModuleCommand(
     const action = getAction(module, actionName);
     if (!action) {
         throw new ZentaoError('E2005', { module: module.name });
-    }
-    if (options.all) {
-        throw new ZentaoError('E2009', {
-            option: 'all',
-            reason: '尚未支持自动翻页，请使用 --page 和 --recPerPage 逐页获取',
-        });
     }
 
     const params = resolvedParams ? { ...resolvedParams } : buildParams(options, actionName, args);
@@ -93,6 +90,24 @@ export async function executeModuleCommand(
     const requestName = `${module.name}/${action.name}`;
     const fields = parseFields(options.pick);
     const rawOutput = (options.format ?? config.defaultOutputFormat ?? 'markdown') === 'raw';
+    if (rawOutput && (options.all || options.maxItems || options.pick || options.filter?.length || options.search?.length || options.sort || options.searchFields)) {
+        throw new ZentaoError('E2009', { option: 'raw', reason: '原始响应不能与本地处理或自动翻页组合' });
+    }
+    const pagination = paginationFields(module, action);
+    if (options.all && !pagination) throw new ZentaoError('E2009', { option: 'all', reason: '此操作不支持分页' });
+    const body = (params.data ?? {}) as Record<string, unknown>;
+    const getParam = (name: string) => body[name] ?? params[name];
+    const setParam = (name: string, value: unknown) => {
+        params[name] = value;
+        if (Object.hasOwn(body, name)) body[name] = value;
+    };
+    if (pagination) {
+        const page = Number(getParam(pagination.page.name) ?? options.page ?? 1);
+        const size = Number(getParam(pagination.size.name) ?? options.recPerPage ?? config.pagers?.[module.name] ?? config.defaultRecPerPage ?? 20);
+        validateValue('page', page, { ...pagination.page, type: 'integer', minimum: 1 });
+        validateValue('page-size', size, { ...pagination.size, type: 'integer', minimum: 1, maximum: pagination.size.maximum ?? 1000 });
+        setParam(pagination.page.name, page); setParam(pagination.size.name, size);
+    }
     const shouldProcess = !rawOutput;
     const processList = shouldProcess && action.type === 'list';
     const processSingle = shouldProcess && action.type === 'get';
@@ -101,7 +116,7 @@ export async function executeModuleCommand(
         client,
         autoFill: action.type === 'update',
         throwOnFail: true,
-        recPerPage: options.recPerPage ?? String(config.pagers?.[module.name] ?? config.defaultRecPerPage),
+        recPerPage: pagination ? String(getParam(pagination.size.name)) : undefined,
         timeout: options.timeout,
         insecure: options.insecure,
         convert: processList && config.htmlToMarkdown !== false
@@ -114,11 +129,14 @@ export async function executeModuleCommand(
         search: processList ? options.search : undefined,
         searchFields: processList ? parseFields(options.searchFields) : undefined,
         sort: processList ? options.sort : undefined,
-        limit: processList ? options.limit : undefined,
+        limit: processList ? options.maxItems : undefined,
         pick: processList || processSingle ? fields : undefined,
     };
 
     let response: ResponseData;
+    let collected: Record<string, unknown>[] = [];
+    let fetched = 0;
+    let processedCount = 0;
     try {
         if (rawOutput) {
             const rawResponse = await request(requestName, params, { ...requestOptions, raw: true });
@@ -139,7 +157,31 @@ export async function executeModuleCommand(
                 isList: action.type === 'list',
             };
         }
-        response = await request(requestName, params, { ...requestOptions, raw: false });
+        let previousPage: string | undefined;
+        for (;;) {
+            response = await request(requestName, params, { ...requestOptions, raw: false,
+                convert: undefined, filter: undefined, search: undefined, sort: undefined, limit: undefined, pick: processList ? undefined : requestOptions.pick });
+            if (!processList) break;
+            const rows = (Array.isArray(response.data) ? response.data : []) as Record<string, unknown>[];
+            fetched += rows.length;
+            collected.push(...rows);
+            if (!options.all) break;
+            const pager = response.pager;
+            if (!pager) throw new ZentaoError('E2008', { url: '', status: '', serverResponse: '服务端未返回分页信息，无法保证全量结果' });
+            const fingerprint = JSON.stringify(rows);
+            if (pager.page !== Number(getParam(pagination!.page.name)) || (previousPage !== undefined && fingerprint === previousPage)) {
+                throw new ZentaoError('E2008', { url: '', status: '', serverResponse: '服务端分页未向前推进' });
+            }
+            if (pager.page * pager.recPerPage >= pager.total) break;
+            if (!rows.length) throw new ZentaoError('E2008', { url: '', status: '', serverResponse: '服务端返回空页但报告仍有数据' });
+            previousPage = fingerprint;
+            setParam(pagination!.page.name, pager.page + 1);
+        }
+        if (processList) {
+            collected = processData(collected, { ...requestOptions, limit: undefined });
+            processedCount = collected.length;
+            if (options.maxItems) collected = collected.slice(0, Number(options.maxItems));
+        }
     } catch (error) {
         throw mapSdkError(error);
     }
@@ -153,8 +195,12 @@ export async function executeModuleCommand(
         : undefined;
 
     if (action.type === 'list') {
-        const data = (Array.isArray(response.data) ? response.data : []) as Record<string, unknown>[];
-        return { action, data, rawResponse: response, pager, fields, isList: true };
+        const data = collected;
+        const hasMore = pager ? pager.pageID * pager.recPerPage < pager.recTotal : null;
+        const meta = { returned: data.length, fetched, page: pager?.pageID ?? null, pageSize: pager?.recPerPage ?? null,
+            total: pager?.recTotal ?? null, hasMore, truncated: processedCount > data.length,
+            processingScope: options.all ? 'all' : 'page', totalScope: 'serverBeforeLocalProcessing' };
+        return { action, data, rawResponse: response, pager, fields, isList: true, meta };
     }
 
     if (action.type === 'get') {
