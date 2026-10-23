@@ -23,6 +23,7 @@ export function addDataOptions(cmd: Command): Command {
         .option('--silent', '静默模式')
         .option('--batch-fail-fast', '批量操作出错时停止')
         .option('--id <id>', '对象 ID')
+        .option('--ids <ids>', '批量对象 ID（逗号分隔；仅支持对象操作）')
         .option('--product <id>', '产品 ID')
         .option('--project <id>', '项目 ID')
         .option('--execution <id>', '执行 ID');

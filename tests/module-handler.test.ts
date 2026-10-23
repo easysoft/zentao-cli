@@ -133,8 +133,8 @@ describe('handleModuleCommand batch ids', () => {
         return requests;
     }
 
-    test('executes comma-separated positional ids as batch delete', async () => {
-        const requests = await runDelete(['1,2']);
+    test('deduplicates explicit batch ids', async () => {
+        const requests = await runDelete([], { ids: '1,2,1' });
 
         expect(requests).toEqual([
             { method: 'delete', path: '/products/1' },
@@ -142,8 +142,8 @@ describe('handleModuleCommand batch ids', () => {
         ]);
     });
 
-    test('executes comma-separated --id option as batch delete', async () => {
-        const requests = await runDelete([], { id: '1,2' });
+    test('executes explicit --ids as batch delete', async () => {
+        const requests = await runDelete([], { ids: '1,2' });
 
         expect(requests).toEqual([
             { method: 'delete', path: '/products/1' },
@@ -162,9 +162,9 @@ describe('handleModuleCommand batch ids', () => {
                 client,
                 getModule('product')!,
                 'delete' as ModuleActionName,
-                ['1,2'],
+                [],
                 mockProfile,
-                { yes: true, format: 'json' },
+                { ids: '1,2', yes: true, format: 'json' },
             );
         });
 
@@ -189,9 +189,9 @@ describe('handleModuleCommand batch ids', () => {
                 client,
                 getModule('product')!,
                 'get' as ModuleActionName,
-                ['1,2'],
+                [],
                 mockProfile,
-                { format: 'json' },
+                { ids: '1,2', format: 'json' },
             );
         });
 
@@ -228,9 +228,9 @@ describe('handleModuleCommand batch ids', () => {
                     client,
                     getModule('product')!,
                     'get' as ModuleActionName,
-                    ['1,2'],
+                    [],
                     mockProfile,
-                    { format: 'json', silent: true },
+                    { ids: '1,2', format: 'json', silent: true },
                 );
             });
 
@@ -268,9 +268,9 @@ describe('handleModuleCommand batch ids', () => {
                     client,
                     getModule('product')!,
                     'delete' as ModuleActionName,
-                    ['1,2,3'],
+                    [],
                     mockProfile,
-                    { yes: true, format: 'json' },
+                    { ids: '1,2,3', yes: true, format: 'json' },
                 );
             });
 
@@ -309,9 +309,9 @@ describe('handleModuleCommand batch ids', () => {
                 client,
                 getModule('product')!,
                 'delete',
-                ['1,2,3'],
+                [],
                 mockProfile,
-                { yes: true, format: 'raw', batchFailFast },
+                { ids: '1,2,3', yes: true, format: 'raw', batchFailFast },
             ));
 
             expect(requests).toEqual(batchFailFast

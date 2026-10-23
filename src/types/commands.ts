@@ -23,6 +23,8 @@ export interface GlobalOptions {
 
 /** 模块操作选项 */
 export interface ModuleActionOptions extends GlobalOptions {
+    /** Explicit, validated and deduplicated batch targets. */
+    ids?: string;
     /** 摘取指定字段（逗号分隔），适用于 resultType 为 object 或 list 的模块操作 */
     pick?: string;
 

@@ -11,6 +11,7 @@ import type { ModuleActionOptions } from '../types/index.js';
 import { createInterface } from 'node:readline/promises';
 import { renderObject } from '../utils/render.js';
 import { ZentaoError } from '../errors.js';
+import { batchTargets } from '../modules/targets.js';
 
 
 async function confirmDelete(format: string, count: number, machineReadable = false): Promise<boolean> {
@@ -28,19 +29,6 @@ async function confirmDelete(format: string, count: number, machineReadable = fa
     } finally {
         rl.close();
     }
-}
-
-function splitNumericIds(value: unknown): string[] | undefined {
-    const rawIds = Array.isArray(value) ? value : [value];
-    const ids = rawIds
-        .flatMap((id) => String(id ?? '').split(','))
-        .map((id) => id.trim())
-        .filter(Boolean);
-
-    if (ids.length <= 1 || !ids.every((id) => /^\d+$/.test(id))) {
-        return undefined;
-    }
-    return ids;
 }
 
 function renderModuleExecution(
@@ -209,7 +197,7 @@ export async function handleModuleCommand(
 
     // Resolve all argument sources before selecting targets or confirming deletion.
     const params = buildParams(options, actionName, args);
-    const batchIds = splitNumericIds(params.id);
+    const batchIds = batchTargets(action, params, options.ids);
     if (batchIds) {
         if (action.type === 'delete' && !options.yes) {
             if (!await confirmDelete(format, batchIds.length, options.machineReadable)) {
