@@ -271,9 +271,10 @@ describe('CLI login mode selection', () => {
         const child = Bun.spawn({
             cmd: [process.execPath, '--no-env-file', '--eval', script],
             cwd: directory, stdin: 'ignore', stdout: 'pipe', stderr: 'pipe',
-            env: { ...process.env, PATH: '', ZENTAO_CONFIG_FILE: configFile },
+            // Bun can resolve system launchers with an empty PATH; use a directory without executables.
+            env: { ...process.env, PATH: directory, ZENTAO_CONFIG_FILE: configFile },
         });
-        const timeout = setTimeout(() => child.kill(), 5_000);
+        const timeout = setTimeout(() => child.kill('SIGKILL'), 3_000);
         try {
             const [stdout, stderr, exitCode] = await Promise.all([
                 new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited,
