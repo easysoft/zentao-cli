@@ -78,18 +78,26 @@ async function runMcpCommand(options: McpCommandOptions, globalOpts: GlobalOptio
     const clientUrl = new URL(running.url);
     if (clientUrl.hostname === '0.0.0.0') clientUrl.hostname = '127.0.0.1';
     if (clientUrl.hostname === '[::]') clientUrl.hostname = '[::1]';
-    const clientConfig = {
+    const jsonConfig = {
         mcpServers: {
             'zentao-remote': {
+                type: 'http',
                 url: clientUrl.href,
                 headers: { token: '<your-zentao-token>' },
             },
         },
     };
     process.stderr.write([
-        '\n客户端配置示例（请替换为自己的禅道 Token）：',
-        JSON.stringify(clientConfig, null, 2),
-        '\n也可将 headers 改为 {"Authorization":"Bearer <your-zentao-token>"}，两种认证头任选其一。',
+        '\n客户端配置示例（请替换为自己的禅道 Token，并合并到已有配置）：',
+        '\nCodex（~/.codex/config.toml）：',
+        '[mcp_servers.zentao-remote]',
+        `url = ${JSON.stringify(clientUrl.href)}`,
+        'http_headers = { token = "<your-zentao-token>" }',
+        '\nClaude Code / Cursor（JSON）：',
+        'Claude Code：~/.claude.json',
+        'Cursor：~/.cursor/mcp.json（或项目内 .cursor/mcp.json）',
+        JSON.stringify(jsonConfig, null, 2),
+        '\n也可将 token 请求头替换为 Authorization: Bearer <your-zentao-token>，两种认证头任选其一。',
         '远程客户端请将 url 替换为可访问的 HTTPS 服务地址。\n',
     ].join('\n'));
     let stopping = false;

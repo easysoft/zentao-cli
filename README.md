@@ -267,20 +267,31 @@ zentao mcp --transport http --url https://zentao.example.com
 
 `mcp-server` 也支持通过 `--url` 或 `ZENTAO_URL` 指定站点；位置 URL 与 `--url` 不能同时提供。未指定站点时启动失败，不回退到本地登录账号。
 
-默认监听 `127.0.0.1:9090`。远程部署通过 HTTPS 反向代理暴露 `/mcp`，客户端手动填写服务地址和自己的禅道 Token，例如：
+默认监听 `127.0.0.1:9090`。启动后依次显示 Codex 的 TOML 示例和 Claude Code / Cursor 共用的 JSON 示例。远程部署通过 HTTPS 反向代理暴露 `/mcp`，客户端手动填写服务地址和自己的禅道 Token，并合并到已有配置。
+
+Codex（`~/.codex/config.toml`）：
+
+```toml
+[mcp_servers.zentao-remote]
+url = "https://mcp.example.com/mcp"
+http_headers = { token = "<your-zentao-token>" }
+```
+
+Claude Code / Cursor 共用以下 JSON：Claude Code 合并到 `~/.claude.json`；Cursor 合并到 `~/.cursor/mcp.json`，或项目内的 `.cursor/mcp.json`。
 
 ```json
 {
   "mcpServers": {
     "zentao-remote": {
+      "type": "http",
       "url": "https://mcp.example.com/mcp",
-      "headers": { "Authorization": "Bearer <your-zentao-token>" }
+      "headers": { "token": "<your-zentao-token>" }
     }
   }
 }
 ```
 
-客户端也可单独使用 `token` 请求头；每个请求只允许一种认证方式。HTTP 模式使用无状态 Streamable HTTP，凭证按请求隔离，不读取服务机的本地账号，也不提供账号切换。附件上传需要使用本地 CLI 或 stdio，HTTP 模式不接受读取本地路径的上传操作。需要 Node.js 18.14.1 或更新版本，或 Bun；面向原生 MCP 客户端，不支持浏览器直接跨域连接。`zentao add-mcp` 仍只配置本地 stdio。启动参数、代理配置和使用限制见 [MCP 使用说明](docs/cli-usage.md#mcp-服务)。
+客户端也可单独使用 `Authorization: Bearer <token>` 请求头；每个请求只允许一种认证方式。HTTP 模式使用无状态 Streamable HTTP，凭证按请求隔离，不读取服务机的本地账号，也不提供账号切换。附件上传需要使用本地 CLI 或 stdio，HTTP 模式不接受读取本地路径的上传操作。需要 Node.js 18.14.1 或更新版本，或 Bun；面向原生 MCP 客户端，不支持浏览器直接跨域连接。`zentao add-mcp` 仍只配置本地 stdio。启动参数、代理配置和使用限制见 [MCP 使用说明](docs/cli-usage.md#mcp-服务)。
 
 ## 文档
 

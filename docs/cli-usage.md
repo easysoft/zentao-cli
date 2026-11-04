@@ -176,7 +176,7 @@ zentao --timeout 15000 mcp-server https://zentao.example.com --host 127.0.0.1 --
 
 `zentao mcp-server [url]` 固定使用 HTTP，相当于 `zentao mcp --transport http`，支持相同的 HTTP 参数和工具限制参数，不接受 `--transport`。位置 URL 与 `--url` 二选一，同时提供时报 `E2009`；两者都省略时读取 `ZENTAO_URL`。
 
-启动成功后，终端会输出可复制的 `mcpServers` JSON 配置示例：`url` 使用实际监听端口，全地址监听时使用对应的回环地址，`headers.token` 使用待替换的 Token 占位符，并提示可改用 `Authorization: Bearer <token>`。远程客户端连接时，应将示例 URL 替换为客户端可访问的 HTTPS 地址。
+启动成功后，终端会依次输出 Codex 的 TOML 示例和 Claude Code / Cursor 共用的 JSON 示例，并标明对应配置文件。`url` 使用实际监听端口，全地址监听时使用对应的回环地址；Token 使用待替换的占位符，并提示可改用 `Authorization: Bearer <token>`。请将示例合并到已有配置；远程客户端连接时，应将示例 URL 替换为客户端可访问的 HTTPS 地址。
 
 HTTP 模式需要 Node.js 18.14.1 或更新版本，或 Bun。每个进程只连接启动时指定的一个禅道站点。位置 URL、`--url` 和 `ZENTAO_URL` 都未提供时启动失败；不会回退到本地 Profile。`ZENTAO_ACCOUNT`、`ZENTAO_PASSWORD`、`ZENTAO_TOKEN` 和服务机的登录记录不作为客户端凭证。
 
@@ -192,12 +192,23 @@ HTTP 模式需要 Node.js 18.14.1 或更新版本，或 Bun。每个进程只连
 
 `--url`、`--host`、`--port` 仅适用于 HTTP 模式，在 stdio 模式下使用会报错。HTTP 模式使用默认业务配置，并应用启动时显式指定的 `--timeout`、`--insecure`；不会读取任何本地账号的分页或其他偏好。`--read-only`、`--modules`、`--split-tools` 在两种传输方式下均可使用。
 
-客户端连接地址为 `https://mcp.example.com/mcp`。每个请求必须携带客户端自己的**禅道 Token**，以下两种请求头任选其一。客户端的具体配置字段以其文档为准；支持 `mcpServers`、`url`、`headers` 的客户端可参考：
+客户端连接地址为 `https://mcp.example.com/mcp`。每个请求必须携带客户端自己的**禅道 Token**，请替换以下占位符并合并到对应配置文件。
+
+**Codex**：合并到 `~/.codex/config.toml`，使用 `mcp_servers` 和 `http_headers`（[官方配置说明](https://developers.openai.com/codex/mcp/)）：
+
+```toml
+[mcp_servers.zentao-remote]
+url = "https://mcp.example.com/mcp"
+http_headers = { token = "<your-zentao-token>" }
+```
+
+**Claude Code / Cursor**：共用以下 JSON，保留 `"type": "http"`。Claude Code 合并到 `~/.claude.json` 的顶层 `mcpServers`；Cursor 合并到 `~/.cursor/mcp.json`，或项目内的 `.cursor/mcp.json`。格式说明见 [Claude Code 文档](https://code.claude.com/docs/en/mcp)和 [Cursor 文档](https://cursor.com/docs/mcp)。
 
 ```json
 {
   "mcpServers": {
     "zentao-remote": {
+      "type": "http",
       "url": "https://mcp.example.com/mcp",
       "headers": { "token": "<your-zentao-token>" }
     }
@@ -205,18 +216,7 @@ HTTP 模式需要 Node.js 18.14.1 或更新版本，或 Bun。每个进程只连
 }
 ```
 
-或者使用 Bearer 形式：
-
-```json
-{
-  "mcpServers": {
-    "zentao-remote": {
-      "url": "https://mcp.example.com/mcp",
-      "headers": { "Authorization": "Bearer <your-zentao-token>" }
-    }
-  }
-}
-```
+也可使用 Bearer 认证：将 Codex 的认证配置替换为 `http_headers = { Authorization = "Bearer <your-zentao-token>" }`，或将 Claude Code / Cursor 的 `headers` 替换为 `{"Authorization":"Bearer <your-zentao-token>"}`。两种认证头任选其一。其他客户端的配置结构和传输类型字段以其文档为准。
 
 不同客户端使用各自的 Token，禅道按该 Token 的权限处理业务请求。缺失、格式错误或同时提供两种认证头均返回 HTTP 401。凭证只从请求头读取，不接受 URL 查询参数、用户名密码、Basic 或 OAuth 登录。Token 不保存到服务机的 Profile，也不会自动刷新。
 

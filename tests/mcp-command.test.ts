@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { getStaticTOMLValue, parseTOML } from 'toml-eslint-parser';
 import { runCliWithoutAuth } from './helpers.js';
 import { toolData } from './mcp-helpers.js';
 
@@ -124,8 +125,32 @@ test.each([
         child.kill(signal);
         expect(await child.exited).toBe(0);
         const output = await logs;
-        expect(output).toContain(endpoint.href);
-        expect(output).toContain('"token": "<your-zentao-token>"');
+        expect(output).toContain('Codex（~/.codex/config.toml）：');
+        expect(output).toContain('Claude Code / Cursor（JSON）：');
+        expect(output).toContain('Claude Code：~/.claude.json');
+        expect(output).toContain('Cursor：~/.cursor/mcp.json（或项目内 .cursor/mcp.json）');
+        const codexConfig = output.match(/^\[mcp_servers\.zentao-remote\][\s\S]*?\n\n/m)?.[0];
+        expect(codexConfig).toBeDefined();
+        expect(getStaticTOMLValue(parseTOML(codexConfig!))).toEqual({
+            mcp_servers: {
+                'zentao-remote': {
+                    url: endpoint.href,
+                    http_headers: { token: '<your-zentao-token>' },
+                },
+            },
+        });
+        const jsonConfig = output.match(/^\{\n[\s\S]*?^\}/m)?.[0];
+        expect(jsonConfig).toBeDefined();
+        expect(JSON.parse(jsonConfig!)).toEqual({
+            mcpServers: {
+                'zentao-remote': {
+                    type: 'http',
+                    url: endpoint.href,
+                    headers: { token: '<your-zentao-token>' },
+                },
+            },
+        });
+        expect(output.indexOf(codexConfig!)).toBeLessThan(output.indexOf(jsonConfig!));
         expect(output).toContain('Authorization');
         for (const secret of ['saved-secret', 'environment-secret', 'client-secret']) expect(output).not.toContain(secret);
         expect(await new Response(child.stdout).text()).toBe('');
