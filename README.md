@@ -70,6 +70,19 @@ zentao add-skill
 
 zentao-cli 的命令格式简单直观：`zentao <模块名> [操作] [参数]`。下面通过常见场景快速上手。
 
+### 获取 Token
+
+```bash
+# 读取当前或指定账号已保存的 Token
+zentao token
+zentao token 'admin@https://zentao.example.com'
+
+# 临时获取新 Token，不保存到 CLI 配置
+zentao token --server https://zentao.example.com --user admin --password '<password>'
+```
+
+默认只输出一行 Token，便于复制或用于脚本。读取已保存的 Token 不联网验证；临时获取须提供完整地址、账号和密码。两种方式均不修改配置或切换账号，也不使用认证环境变量。使用 `--format json` 可同时输出服务地址、账号和 Token。详见[获取 Token](docs/cli-usage.md#获取-token)。
+
 ### 查看与管理产品
 
 ```bash

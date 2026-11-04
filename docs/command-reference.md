@@ -341,7 +341,7 @@ bun run scripts/generate-command-reference.ts --check
 
 ## 覆盖范围
 
-对应当前工作区：CLI **0.3.1**，API 定义 **0.8.2**；覆盖 **17 个内置一级命令**（另含 config get/set）、**42 个业务模块、361 个业务操作**。已安装版本不同时，请以本机命令的 --help 为准。
+对应当前工作区：CLI **0.4.0**，API 定义 **0.8.2**；覆盖 **18 个内置一级命令**（另含 config get/set）、**42 个业务模块、361 个业务操作**。已安装版本不同时，请以本机命令的 --help 为准。
 
 <a id="global-options"></a>
 
@@ -435,6 +435,7 @@ CLI 业务调用和 stdio MCP 优先使用完整环境凭证（地址、账号�
 | --- | --- |
 | [help](#command-help) | 显示命令帮助 |
 | [login](#command-login) | 登录禅道服务 |
+| [token](#command-token) | 获取 Token（默认输出纯文本，不保存配置） |
 | [logout](#command-logout) | 退出当前用户登录 |
 | [profile](#command-profile) | 查看或切换用户配置 |
 | [config](#command-config) | 管理用户配置 |
@@ -515,6 +516,40 @@ zentao login --web --message "完成登录后，回到 Codex 即可继续使用�
 zentao login --no-browser
 zentao login --server=https://zentao.example.com --user=admin --token='替换为实际Token'
 zentao login --useEnv
+```
+
+<a id="command-token"></a>
+
+### `zentao token`
+
+获取 Token（默认输出纯文本，不保存配置）
+
+```text
+zentao token [options] [profileKey]
+```
+
+省略 profileKey 时读取当前本地账号的 Token，指定时沿用 profile 的查找规则，不联网验证或刷新。通过 --server、--user、--password（简写 -s、-u、-p）临时获取新 Token 时必须提供完整凭证，且不能与 profileKey 混用；只调用登录接口，不查询用户资料或服务端配置，也不读取本地 Profile，配置缺失、损坏或只读时仍可使用。支持全局 --timeout、--insecure。
+
+两种方式均不保存配置、更新时间戳或切换账号，也不使用认证环境变量。读取本地账号遵循 --config、ZENTAO_CONFIG_FILE 和默认配置路径。默认及 --format markdown 输出纯 Token 加换行；--format json/raw 输出包含 status（success）、server、account、token 的 JSON 对象。--silent 抑制成功输出，错误仍写入 stderr 并返回非零退出码。无可用当前 Token 返回 E1006，指定 Profile 不存在返回 E1007，凭证不完整返回 E1001，混用两种模式返回 E2009。不交互询问密码；已保存的 Token 可能已经过期。
+
+| 位置参数 | 必填 | 说明 |
+| --- | --- | --- |
+| `profileKey` | 否 | 已登录的用户配置（account@server，省略时使用当前账号） |
+
+| 选项 | 说明 |
+| --- | --- |
+| `-s, --server <url>` | 临时获取 Token 的禅道服务地址 |
+| `-u, --user <account>` | 临时获取 Token 的用户名 |
+| `-p, --password <password>` | 临时获取 Token 的密码 |
+| `-h, --help` | 显示命令帮助 |
+
+示例：
+
+```bash
+zentao token
+zentao token 'admin@https://zentao.example.com'
+zentao token --server https://zentao.example.com --user admin --password '<password>'
+zentao token -s https://zentao.example.com -u admin -p '<password>' --format json
 ```
 
 <a id="command-logout"></a>

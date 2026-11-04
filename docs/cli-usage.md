@@ -73,6 +73,30 @@ $ zentao profile dev1@https://zentao.example.com
 
 此命令不显示 Token 或密码，不发起网络请求或登录，`verified` 固定为 `false`；如需验证连接，应执行目标范围内的只读业务查询。`--effective` 不能与切换账号的参数同时使用；不加该选项时，`profile` 仍只查看或切换本地账号。
 
+### 获取 Token
+
+使用 `zentao token [profileKey]` 读取已登录账号保存的 Token。省略 `profileKey` 时使用当前账号；指定账号时沿用 `profile` 的查找规则，支持完整的 `account@server`、账号名或 `account@主机名`。读取过程不联网验证或刷新，返回的 Token 可能已经过期。
+
+```bash
+# 读取当前账号的 Token
+zentao token
+
+# 读取指定账号的 Token，不切换当前账号
+zentao token 'admin@https://zentao.example.com'
+
+# 通过账号密码临时获取新 Token
+zentao token --server https://zentao.example.com --user admin --password '<password>'
+
+# 简写参数，并输出结构化结果
+zentao token -s https://zentao.example.com -u admin -p '<password>' --format json
+```
+
+临时获取必须同时提供 `--server`、`--user`、`--password`（简写 `-s`、`-u`、`-p`），不能与 `profileKey` 混用。命令只调用登录接口，不查询用户资料或服务端配置，不读取或写入本地 Profile；配置文件缺失、损坏或只读时也可使用。网络请求支持全局 `--timeout` 和 `--insecure`。
+
+两种方式都不修改 CLI 配置、更新时间戳或切换当前账号。读取保存的 Token 时遵循 `--config`、`ZENTAO_CONFIG_FILE` 和默认配置路径；认证环境变量 `ZENTAO_URL`、`ZENTAO_ACCOUNT`、`ZENTAO_PASSWORD`、`ZENTAO_TOKEN` 不参与本命令的凭证选择。参数不完整时直接报错，不打开浏览器或交互询问密码。
+
+默认及 `--format markdown` 只输出 Token 和一个换行，不带标签或颜色；`--format json` 和 `--format raw` 输出包含 `status`（`success`）、`server`、`account`、`token` 的 JSON 对象。`--silent` 抑制成功输出，错误仍写入标准错误流并返回非零退出码。无可用当前 Token 返回 `E1006`，指定 Profile 不存在返回 `E1007`，临时凭证不完整返回 `E1001`，两种模式混用返回 `E2009`。
+
 ### 退出登录
 
 使用 `zentao logout` 可退出当前用户，同时移除当前配置文件中的对应用户信息。

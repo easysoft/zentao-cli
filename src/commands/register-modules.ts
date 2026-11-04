@@ -35,7 +35,7 @@ function collect(value: string, previous: string[]): string[] {
 
 /** 内置模块命令列表 */
 const BUILTIN_COMMANDS = [
-    'login', 'logout', 'profile', 'config', 'version',
+    'login', 'token', 'logout', 'profile', 'config', 'version',
     'help', 'ls', 'list', 'get', 'create', 'update', 'delete', 'do', 'autocomplete',
     'mcp', 'add-mcp', 'add-skill', 'upgrade',
 ];
