@@ -2,6 +2,8 @@
 
 你是否希望在 AI Agents 中使用禅道？没问题，可以通过安装禅道 CLI 技能来实现。CLI 技能会利用 [zentao-cli](https://github.com/easysoft/zentao-cli) 工具来访问和操作禅道数据。
 
+如果公司管理员已经统一部署了 `zentao mcp-server`，你只需用服务地址和自己的禅道 Token 配置 Agent，无需安装 CLI 或技能。请直接阅读[禅道 MCP 服务部署与 Agent 接入指南](mcp-server.md)，优先让 Agent 协助完成配置。下文介绍在个人环境中安装和使用 CLI 技能。
+
 关于 zentao-cli 的主要特性，请参考 [README](../README.md#主要特性)。
 
 ## 支持的 Agents 工具
@@ -139,7 +141,7 @@ ZENTAO_CONFIG_FILE=/agent-config/zentao.json zentao product --pick=id,name --pag
 | `E1011` | 写入失败，检查目录权限和磁盘空间；`error.details.systemCode` 提供系统错误码，不要重复发起登录 |
 | 业务请求返回 `E1004` | Token 被禅道拒绝；由对应凭据来源的维护者更新后重试 |
 
-这些规则适用于 CLI 和本地 stdio MCP。HTTP MCP 的 Token 由每次请求提供，见 [MCP 使用说明](cli-usage.md#mcp-服务)；完整错误说明见 [排查手册](errors.md)。
+这些规则适用于 CLI 和本地 stdio MCP。HTTP MCP 的 Token 由每次请求提供，见[禅道 MCP 服务部署与 Agent 接入指南](mcp-server.md)；完整错误说明见 [排查手册](errors.md)。
 
 ## 使用示例
 

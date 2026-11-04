@@ -210,6 +210,17 @@ WorkBuddy 的 CLI + Skill 连接器资源包使用 `bun run build:workbuddy` 生
 
 ### 通过 MCP 服务使用
 
+`zentao mcp-server` 适合由公司管理员统一部署，再引导禅道用户在自己的 Agent 中配置。用户只需 MCP 服务地址和自己的禅道 Token，无需安装 zentao-cli；禅道按各自账号的权限处理请求。
+
+```bash
+# 管理员在服务器上启动服务，固定连接一个禅道站点
+zentao mcp-server https://zentao.example.com
+```
+
+管理员通过 HTTPS 反向代理提供 `/mcp` 地址。普通用户可以优先把连接信息发送给自己的 Agent，让 Agent 协助配置。部署步骤、可复制的配置说明、通过禅道 API V2 或 `zentao token` 获取 Token 的方法，以及常用 Agent 的官方配置链接，见独立文档：[禅道 MCP 服务部署与 Agent 接入指南](docs/mcp-server.md)。
+
+#### 本地 stdio MCP
+
 Zentao CLI 支持一键配置本地 stdio MCP 服务。先通过 `zentao login` 登录，再执行 `zentao add-mcp`；命令会复用当前 Profile 中的 Token，不会将禅道密码写入 Agent 配置。
 
 ```bash
@@ -256,42 +267,7 @@ zentao mcp --split-tools --modules product,story,task,bug
 `zentao add-mcp` 在 macOS/Linux 上会将写入的 Agent 配置权限收紧为 `0600`。手动配置时也应避免写入账号密码，并限制 Token 配置文件的访问权限。
 为避免破坏已有注释，包含注释或尾逗号的 JSONC 配置不会被自动重写；命令会保持原文件不变并提示手动配置。
 
-需要多个客户端共用远程服务时，启动 HTTP 模式并固定一个禅道站点：
-
-```bash
-zentao mcp-server https://zentao.example.com
-
-# 等价写法
-zentao mcp --transport http --url https://zentao.example.com
-```
-
-`mcp-server` 也支持通过 `--url` 或 `ZENTAO_URL` 指定站点；位置 URL 与 `--url` 不能同时提供。未指定站点时启动失败，不回退到本地登录账号。
-
-默认监听 `127.0.0.1:9090`。启动后依次显示 Codex 的 TOML 示例和 Claude Code / Cursor 共用的 JSON 示例。远程部署通过 HTTPS 反向代理暴露 `/mcp`，客户端手动填写服务地址和自己的禅道 Token，并合并到已有配置。
-
-Codex（`~/.codex/config.toml`）：
-
-```toml
-[mcp_servers.zentao-remote]
-url = "https://mcp.example.com/mcp"
-http_headers = { token = "<your-zentao-token>" }
-```
-
-Claude Code / Cursor 共用以下 JSON：Claude Code 合并到 `~/.claude.json`；Cursor 合并到 `~/.cursor/mcp.json`，或项目内的 `.cursor/mcp.json`。
-
-```json
-{
-  "mcpServers": {
-    "zentao-remote": {
-      "type": "http",
-      "url": "https://mcp.example.com/mcp",
-      "headers": { "token": "<your-zentao-token>" }
-    }
-  }
-}
-```
-
-客户端也可单独使用 `Authorization: Bearer <token>` 请求头；每个请求只允许一种认证方式。HTTP 模式使用无状态 Streamable HTTP，凭证按请求隔离，不读取服务机的本地账号，也不提供账号切换。附件上传需要使用本地 CLI 或 stdio，HTTP 模式不接受读取本地路径的上传操作。需要 Node.js 18.14.1 或更新版本，或 Bun；面向原生 MCP 客户端，不支持浏览器直接跨域连接。`zentao add-mcp` 仍只配置本地 stdio。启动参数、代理配置和使用限制见 [MCP 使用说明](docs/cli-usage.md#mcp-服务)。
+`zentao add-mcp` 只配置本地 stdio。更多启动参数和工具行为见 [MCP 服务参考](docs/cli-usage.md#mcp-服务)。
 
 ## 文档
 
@@ -301,6 +277,7 @@ Claude Code / Cursor 共用以下 JSON：Claude Code 合并到 `~/.claude.json`�
 | [命令、参数与用法参考](docs/command-reference.md) | 全部内置命令、业务操作、参数类型、必填项、可选值和用法 |
 | [CLI 核心功能详解](docs/cli-usage.md) | 用户验证、数据访问与操作、数据处理、输出格式、配置管理等 |
 | [在 Agents 中使用禅道](docs/use-zentao-in-agents.md) | 通过技能或 MCP 在 AI Agents 中使用禅道 |
+| [禅道 MCP 服务部署与 Agent 接入指南](docs/mcp-server.md) | 管理员统一部署、用户获取个人 Token，并让 Agent 协助配置远程 MCP |
 | [开发指引](docs/development.md) | 技术栈、项目结构、测试 |
 | [技术方案与实现细节](docs/implementation.md) | 内部接口调用规则、验证机制与持久化配置 |
 | [常见错误排查与参考手册](docs/errors.md) | 错误代码（Exxxx）查阅 |

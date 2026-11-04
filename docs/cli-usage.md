@@ -142,6 +142,8 @@ $ ZENTAO_CONFIG_FILE=~/work/zt.json zentao product
 
 `zentao mcp` 提供 stdio 和 HTTP 两种传输方式，共用业务工具、参数校验和返回格式。
 
+公司管理员统一部署 `zentao mcp-server`，以及普通用户在 Agent 中配置远程连接，请阅读独立的[禅道 MCP 服务部署与 Agent 接入指南](mcp-server.md)。该指南包含让 Agent 协助配置的说明、两种个人 Token 获取方式和常用 Agent 的官方配置链接。下文保留命令参数与工具行为的详细参考。
+
 ### 本地 stdio 模式
 
 ```bash
