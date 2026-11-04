@@ -341,7 +341,7 @@ bun run scripts/generate-command-reference.ts --check
 
 ## 覆盖范围
 
-对应当前工作区：CLI **0.4.0**，API 定义 **0.8.2**；覆盖 **18 个内置一级命令**（另含 config get/set）、**42 个业务模块、361 个业务操作**。已安装版本不同时，请以本机命令的 --help 为准。
+对应当前工作区：CLI **0.4.0**，API 定义 **0.8.2**；覆盖 **19 个内置一级命令**（另含 config get/set）、**42 个业务模块、361 个业务操作**。已安装版本不同时，请以本机命令的 --help 为准。
 
 <a id="global-options"></a>
 
@@ -444,6 +444,7 @@ CLI 业务调用和 stdio MCP 优先使用完整环境凭证（地址、账号�
 | [add-skill](#command-add-skill) | 安装禅道 CLI 技能到 AI Agent，或导出至指定目录 |
 | [add-mcp](#command-add-mcp) | 配置禅道 MCP 服务到 AI Agent |
 | [mcp](#command-mcp) | 启动 MCP 服务，支持本地 stdio 或多客户端 HTTP 访问禅道数据 |
+| [mcp-server](#command-mcp-server) | 启动 HTTP MCP 服务，供多个客户端访问固定禅道站点 |
 | [ls](#command-ls) | 获取对象列表 |
 | [get](#command-get) | 获取单个对象 |
 | [create](#command-create) | 创建对象 |
@@ -826,6 +827,41 @@ zentao mcp --read-only --modules product,story,task,bug
 zentao mcp --split-tools --modules product,story,task,bug
 zentao mcp --transport http --url https://zentao.example.com
 zentao --timeout 15000 mcp --transport http --host 127.0.0.1 --port 9090 --url https://zentao.example.com --read-only
+```
+
+<a id="command-mcp-server"></a>
+
+### `zentao mcp-server`
+
+启动 HTTP MCP 服务，供多个客户端访问固定禅道站点
+
+```text
+zentao mcp-server [options] [url]
+```
+
+固定使用 HTTP，相当于 zentao mcp --transport http，默认监听 127.0.0.1:9090，不接受 --transport。可用位置 URL 或 --url 指定禅道站点，两者同时提供时报 E2009；显式地址优先于 ZENTAO_URL。未指定地址时启动失败，不回退到本地 Profile。支持 --host、--port、--read-only、--modules、--split-tools 和全局 --timeout、--insecure。每个请求仍须通过 token 或 Authorization: Bearer 请求头提供客户端自己的禅道 Token，不使用服务机的登录凭证。完整部署与客户端示例见 [MCP 使用说明](cli-usage.md#mcp-服务)。
+
+| 位置参数 | 必填 | 说明 |
+| --- | --- | --- |
+| `url` | 否 | 禅道站点地址，与 --url 二选一；省略时读取 ZENTAO_URL |
+
+| 选项 | 说明 |
+| --- | --- |
+| `--host <host>` | HTTP 监听地址（默认 127.0.0.1） |
+| `--port <port>` | HTTP 监听端口（默认 9090） |
+| `--url <url>` | HTTP 模式的固定禅道站点地址（亦可通过 ZENTAO_URL 设置） |
+| `--read-only` | 仅提供查询工具，禁止业务写入和账号切换 |
+| `--modules <names>` | 仅提供指定业务模块（逗号分隔，如 product,story,task） |
+| `--split-tools` | 按模块分为 _read 查询工具和 _write 写入工具 |
+| `-h, --help` | 显示命令帮助 |
+
+示例：
+
+```bash
+zentao mcp-server https://zentao.example.com
+zentao mcp-server --url https://zentao.example.com
+ZENTAO_URL=https://zentao.example.com zentao mcp-server
+zentao mcp-server https://zentao.example.com --port 9091 --read-only --modules product,story,task
 ```
 
 <a id="command-ls"></a>

@@ -8,18 +8,55 @@ import { runCliWithoutAuth } from './helpers.js';
 import { toolData } from './mcp-helpers.js';
 
 test.each([
-    ['--transport', 'sse'],
-    ['--host', '127.0.0.1'],
-    ['--transport', 'http'],
-    ...['0', '65536', '1e3', 'abc'].map(port => ['--transport', 'http', '--url', 'https://zentao.example.com', '--port', port]),
-])('mcp rejects invalid startup options %j', async (...args) => {
-    const result = await runCliWithoutAuth(['mcp', ...args]);
+    ['mcp', '--transport', 'sse'],
+    ['mcp', '--host', '127.0.0.1'],
+    ['mcp', '--transport', 'http'],
+    ['mcp-server'],
+    ['mcp-server', ''],
+    ...['https://zentao.example.com', 'https://another.example.com'].map(url => [
+        'mcp-server', 'https://zentao.example.com', '--url', url,
+    ]),
+    ...['0', '65536', '1e3', 'abc'].flatMap(port => [
+        ['mcp', '--transport', 'http', '--url', 'https://zentao.example.com', '--port', port],
+        ['mcp-server', 'https://zentao.example.com', '--port', port],
+    ]),
+    ...['invalid', 'ftp://zentao.example.com', 'https://user:password@zentao.example.com',
+        'https://zentao.example.com?token=secret', 'https://zentao.example.com#fragment']
+        .map(url => ['mcp-server', url]),
+])('MCP CLI rejects invalid startup arguments %j', async (...args) => {
+    const result = await runCliWithoutAuth(args);
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain('E2009');
     expect(result.stdout).toBe('');
 });
 
-test.each(['SIGINT', 'SIGTERM'] as const)('HTTP CLI resolves its site and shuts down on %s without changing local credentials', async signal => {
+test.each(['http', 'stdio'])('mcp-server rejects --transport %s', async transport => {
+    const result = await runCliWithoutAuth(['mcp-server', '--transport', transport]);
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("unknown option '--transport'");
+});
+
+test.each([['--help'], ['mcp-server', '--help'], ['help', 'mcp-server']].map(args => ({ args })))('MCP shortcut is discoverable via $args', async ({ args }) => {
+    const result = await runCliWithoutAuth(args);
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toBe('');
+    expect(result.stdout).toContain('mcp-server [options] [url]');
+    if (args.includes('mcp-server')) {
+        for (const option of ['--url', '--host', '--port', '--read-only', '--modules', '--split-tools']) {
+            expect(result.stdout).toContain(option);
+        }
+        expect(result.stdout).toContain('ZENTAO_URL');
+        expect(result.stdout).not.toContain('--transport');
+    }
+});
+
+test.each([
+    { command: 'mcp', source: 'env', signal: 'SIGINT', restricted: false },
+    { command: 'mcp', source: 'option', signal: 'SIGTERM', restricted: false },
+    { command: 'mcp-server', source: 'env', signal: 'SIGINT', restricted: false },
+    { command: 'mcp-server', source: 'option', signal: 'SIGTERM', restricted: false },
+    { command: 'mcp-server', source: 'positional', signal: 'SIGTERM', restricted: true },
+] as const)('$command resolves its site from $source and shuts down on $signal without changing local credentials', async ({ command, source, signal, restricted }) => {
     const dir = mkdtempSync(join(tmpdir(), 'zentao-mcp-command-'));
     const configFile = join(dir, 'config.json');
     const initialConfig = JSON.stringify({
@@ -36,15 +73,17 @@ test.each(['SIGINT', 'SIGTERM'] as const)('HTTP CLI resolves its site and shuts 
     const reservation = Bun.serve({ hostname: '127.0.0.1', port: 0, fetch: () => new Response() });
     const port = reservation.port!;
     reservation.stop(true);
-    const explicit = signal === 'SIGTERM';
+    const siteArgs = source === 'positional' ? [upstream.url.origin]
+        : source === 'option' ? ['--url', upstream.url.origin] : [];
     const child = Bun.spawn({
         cmd: [process.execPath, '--no-env-file', resolve('src/index.ts'), '--config', configFile,
-            'mcp', '--transport', 'http', '--port', String(port), '--modules', 'product',
-            ...(explicit ? ['--url', upstream.url.origin] : [])],
+            '--timeout', '1500', '--insecure', command, ...(command === 'mcp' ? ['--transport', 'http'] : []),
+            ...siteArgs, '--port', String(port), '--modules', 'product',
+            ...(restricted ? ['--host', '127.0.0.1', '--read-only', '--split-tools'] : [])],
         cwd: dir, stdin: 'ignore', stdout: 'pipe', stderr: 'pipe',
         env: {
             ...process.env,
-            ZENTAO_URL: explicit ? 'https://ignored.example.com' : upstream.url.origin,
+            ZENTAO_URL: source === 'env' ? upstream.url.origin : 'https://ignored.example.com',
             ZENTAO_ACCOUNT: 'environment-account', ZENTAO_TOKEN: 'environment-secret', ZENTAO_PASSWORD: '',
         },
     });
@@ -71,15 +110,23 @@ test.each(['SIGINT', 'SIGTERM'] as const)('HTTP CLI resolves its site and shuts 
         await client.connect(new StreamableHTTPClientTransport(endpoint, {
             requestInit: { headers: { token: 'client-secret' } },
         }));
-        expect((await client.listTools()).tools.some(tool => tool.name === 'zentao_switch_profile')).toBe(false);
+        const { tools } = await client.listTools();
+        const productTool = restricted ? 'zentao_product_read' : 'zentao_product';
+        expect(tools.map(tool => tool.name).sort()).toEqual(['zentao_action_help', productTool, 'zentao_profile']);
+        if (restricted) {
+            expect((await client.callTool({ name: productTool, arguments: { action: 'update', id: 1 } })).isError).toBe(true);
+        }
         expect(toolData(await client.callTool({ name: 'zentao_profile', arguments: {} })))
             .toMatchObject({ server: upstream.url.origin, account: null, userFound: false });
-        expect(toolData(await client.callTool({ name: 'zentao_product', arguments: { action: 'get', id: 1 } })))
+        expect(toolData(await client.callTool({ name: productTool, arguments: { action: 'get', id: 1 } })))
             .toMatchObject({ id: 1, name: 'client-secret' });
         await client.close();
         child.kill(signal);
         expect(await child.exited).toBe(0);
         const output = await logs;
+        expect(output).toContain(endpoint.href);
+        expect(output).toContain('"token": "<your-zentao-token>"');
+        expect(output).toContain('Authorization');
         for (const secret of ['saved-secret', 'environment-secret', 'client-secret']) expect(output).not.toContain(secret);
         expect(await new Response(child.stdout).text()).toBe('');
         expect(readFileSync(configFile, 'utf8')).toBe(initialConfig);

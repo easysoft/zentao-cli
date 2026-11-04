@@ -160,23 +160,30 @@ stdio 的 `zentao_profile` 返回绑定的 `account`、`server`、远端详情 `
 
 ```bash
 # 固定一个禅道站点，默认监听 127.0.0.1:9090
+zentao mcp-server https://zentao.example.com
+
+# 也可使用 --url，或原有的 mcp 命令
+zentao mcp-server --url https://zentao.example.com
 zentao mcp --transport http --url https://zentao.example.com
 
-# 也可由 ZENTAO_URL 提供站点，显式 --url 优先
-ZENTAO_URL=https://zentao.example.com zentao mcp --transport http
+# 也可由 ZENTAO_URL 提供站点，显式 URL 优先
+ZENTAO_URL=https://zentao.example.com zentao mcp-server
 
 # 调整监听地址、端口和上游请求超时，并限定工具范围
-zentao --timeout 15000 mcp --transport http --host 127.0.0.1 --port 9090 \
-  --url https://zentao.example.com --read-only --modules product,story,task,bug
+zentao --timeout 15000 mcp-server https://zentao.example.com --host 127.0.0.1 --port 9090 \
+  --read-only --modules product,story,task,bug
 ```
+
+`zentao mcp-server [url]` 固定使用 HTTP，相当于 `zentao mcp --transport http`，支持相同的 HTTP 参数和工具限制参数，不接受 `--transport`。位置 URL 与 `--url` 二选一，同时提供时报 `E2009`；两者都省略时读取 `ZENTAO_URL`。
 
 启动成功后，终端会输出可复制的 `mcpServers` JSON 配置示例：`url` 使用实际监听端口，全地址监听时使用对应的回环地址，`headers.token` 使用待替换的 Token 占位符，并提示可改用 `Authorization: Bearer <token>`。远程客户端连接时，应将示例 URL 替换为客户端可访问的 HTTPS 地址。
 
-HTTP 模式需要 Node.js 18.14.1 或更新版本，或 Bun。每个进程只连接启动时指定的一个禅道站点。`--url` 和 `ZENTAO_URL` 都未提供时启动失败；不会回退到本地 Profile。`ZENTAO_ACCOUNT`、`ZENTAO_PASSWORD`、`ZENTAO_TOKEN` 和服务机的登录记录不作为客户端凭证。
+HTTP 模式需要 Node.js 18.14.1 或更新版本，或 Bun。每个进程只连接启动时指定的一个禅道站点。位置 URL、`--url` 和 `ZENTAO_URL` 都未提供时启动失败；不会回退到本地 Profile。`ZENTAO_ACCOUNT`、`ZENTAO_PASSWORD`、`ZENTAO_TOKEN` 和服务机的登录记录不作为客户端凭证。
 
 | 选项 | 默认值 | 用途 |
 | --- | --- | --- |
-| `--transport stdio\|http` | `stdio` | MCP 传输方式 |
+| `--transport stdio\|http` | `stdio` | 仅适用于 `mcp`，选择 MCP 传输方式 |
+| `url`（位置参数） | 未指定 | 仅适用于 `mcp-server`，与 `--url` 二选一 |
 | `--url <site>` | `ZENTAO_URL` | HTTP 模式的固定禅道站点地址 |
 | `--host <host>` | `127.0.0.1` | HTTP 监听地址；容器按需使用 `0.0.0.0` |
 | `--port <port>` | `9090` | HTTP 监听端口，范围 1–65535 |

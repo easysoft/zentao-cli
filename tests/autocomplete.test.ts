@@ -7,6 +7,7 @@ import { AGENT_NAMES as MCP_AGENT_NAMES } from '../src/commands/add-mcp.js';
 import { AGENT_NAMES as SKILL_AGENT_NAMES } from '../src/commands/add-skill.js';
 import { generateCompletionScript } from '../src/commands/autocomplete.js';
 import { registerModuleCommands } from '../src/commands/register-modules.js';
+import { registerMcpCommand } from '../src/commands/mcp.js';
 
 function makeProgram(): Command {
     const program = new Command()
@@ -14,7 +15,8 @@ function makeProgram(): Command {
         .helpOption('-h, --help')
         .option('--config <file>')
         .option('--machine-readable');
-    for (const name of ['help', 'mcp', 'upgrade']) program.command(name);
+    for (const name of ['help', 'upgrade']) program.command(name);
+    registerMcpCommand(program);
     registerModuleCommands(program);
     return program;
 }
@@ -36,6 +38,7 @@ describe('autocomplete scripts', () => {
             expect(exitCode).toBe(0);
             expect(stderr).toBe('');
             expect(readFileSync(file, 'utf8')).toContain('# bash completion for zentao');
+            expect(readFileSync(file, 'utf8')).toContain('mcp-server');
             expect(stdout).toContain(`source '${file.replaceAll("'", "'\\''")}'`);
         } finally {
             rmSync(directory, { recursive: true, force: true });
@@ -47,7 +50,7 @@ describe('autocomplete scripts', () => {
             const script = generateCompletionScript(shell, makeProgram());
 
             for (const value of [
-                'help', 'mcp', 'upgrade', '-h', '--help', '-V', '--version', '--config', '--machine-readable',
+                'help', 'mcp', 'mcp-server', 'upgrade', '-h', '--help', '-V', '--version', '--config', '--machine-readable',
                 ...SKILL_AGENT_NAMES, ...MCP_AGENT_NAMES,
                 'getGrades', 'createMyDoc', 'updateLib', 'projectExecutions', 'my', 'todos',
             ]) {

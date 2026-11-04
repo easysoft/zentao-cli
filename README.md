@@ -259,8 +259,13 @@ zentao mcp --split-tools --modules product,story,task,bug
 需要多个客户端共用远程服务时，启动 HTTP 模式并固定一个禅道站点：
 
 ```bash
+zentao mcp-server https://zentao.example.com
+
+# 等价写法
 zentao mcp --transport http --url https://zentao.example.com
 ```
+
+`mcp-server` 也支持通过 `--url` 或 `ZENTAO_URL` 指定站点；位置 URL 与 `--url` 不能同时提供。未指定站点时启动失败，不回退到本地登录账号。
 
 默认监听 `127.0.0.1:9090`。远程部署通过 HTTPS 反向代理暴露 `/mcp`，客户端手动填写服务地址和自己的禅道 Token，例如：
 
