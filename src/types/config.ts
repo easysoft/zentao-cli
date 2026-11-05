@@ -1,9 +1,10 @@
-import type { ServerConfig } from 'zentao-api';
+import type { ApiVersionOption, ServerConfig } from 'zentao-api';
 
 export type { ServerConfig };
 
 /** 用户可配置的选项，存储在 profile.config 中 */
 export interface UserConfig {
+    apiVersion?: ApiVersionOption;
     /** 默认输出格式 */
     defaultOutputFormat?: 'markdown' | 'json' | 'raw';
     /** 默认每页记录数 */

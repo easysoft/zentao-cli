@@ -1,7 +1,7 @@
 /**
  * CLI 入口：装配 Commander、注册子命令，并在捕获到 {@link ZentaoError} 时按 `--format` 渲染后退出。
  */
-import { Command, CommanderError } from 'commander';
+import { Command, CommanderError, Option } from 'commander';
 import { registerAllCommands } from './commands/index.js';
 import { ZentaoError, formatError } from './errors.js';
 import { getAllProfiles, setConfigPath } from './config/store.js';
@@ -59,6 +59,7 @@ program
     .version(getCliVersion(), '-V, --version', '显示版本号')
     .helpOption('-h, --help', '显示命令帮助')
     .option('--format <format>', '输出格式 (markdown|json|raw)')
+    .addOption(new Option('--api-version <version>', 'REST API 版本 (auto|v1|v2)').choices(['auto', 'v1', 'v2']))
     .option('--silent', '静默模式')
     .option('--insecure', '跳过 SSL/TLS 证书验证')
     .option('--timeout <ms>', '请求超时时间（毫秒）', parseInt)

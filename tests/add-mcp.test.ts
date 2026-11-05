@@ -36,6 +36,9 @@ describe('add-mcp credentials', () => {
         const env: NodeJS.ProcessEnv = {
             ...process.env,
             HOME: tempDir,
+            USERPROFILE: tempDir,
+            APPDATA: join(tempDir, 'AppData', 'Roaming'),
+            LOCALAPPDATA: join(tempDir, 'AppData', 'Local'),
             ZENTAO_CONFIG_FILE: configFile,
             ZENTAO_URL: '',
             ZENTAO_ACCOUNT: '',
@@ -80,7 +83,7 @@ describe('add-mcp credentials', () => {
         expect(env.ZENTAO_PASSWORD).toBeUndefined();
         expect(servers['zentao-cli'].command).toBe('zentao');
         expect(servers['zentao-cli'].args).toEqual(['mcp']);
-        expect(statSync(cursorConfig).mode & 0o777).toBe(0o600);
+        if (process.platform !== 'win32') expect(statSync(cursorConfig).mode & 0o777).toBe(0o600);
         expect(result.stdout + result.stderr).not.toContain(SECRET_TOKEN);
         expect(result.stdout + result.stderr).not.toContain('legacy-password');
     });
@@ -174,7 +177,7 @@ describe('add-mcp credentials', () => {
         expect(written).not.toContain('ZENTAO_PASSWORD');
         expect(written).toContain('[projects."/tmp/existing"]');
         expect(written).toContain('trust_level = "trusted"');
-        expect(statSync(codexConfig).mode & 0o777).toBe(0o600);
+        if (process.platform !== 'win32') expect(statSync(codexConfig).mode & 0o777).toBe(0o600);
         expect(result.stdout + result.stderr).not.toContain(SECRET_TOKEN);
     });
 

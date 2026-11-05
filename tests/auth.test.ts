@@ -52,7 +52,8 @@ describe('verifyToken', () => {
             expect(result.serverConfig?.version).toBe('22.5');
             expect(result.user).toBeUndefined();
             await executeModuleCommand(result.client, getModule('product')!, 'list', [], {}, DEFAULT_CONFIG);
-            expect(configRequests).toBe(1);
+            // Auto selection probes before sending credentials; login validates again afterwards.
+            expect(configRequests).toBe(2);
         } finally {
             server.stop();
         }

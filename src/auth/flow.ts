@@ -1,3 +1,4 @@
+import type { ApiVersionOption } from 'zentao-api';
 import type { Profile } from '../types/index.js';
 import { ZentaoClient, createClient } from '../api/index.js';
 import { ZentaoError } from '../errors.js';
@@ -39,13 +40,13 @@ export function resolveAuthSource(profile?: Profile) {
 }
 
 /** Resolve credentials first; only environment password authentication requires a login request. */
-export async function ensureAuth(options?: { insecure?: boolean; timeout?: number; profile?: Profile }): Promise<AuthContext> {
+export async function ensureAuth(options?: { insecure?: boolean; timeout?: number; profile?: Profile; apiVersion?: ApiVersionOption }): Promise<AuthContext> {
     const auth = resolveAuthSource(options?.profile);
     if (auth.source === 'environment') {
         const { server, account, token, password } = auth;
         if (token) {
             return {
-                client: createClient(server, token, options),
+                client: createClient(server, token, { ...options, apiVersion: options?.apiVersion ?? 'auto' }),
                 profile: buildProfile(server, account, token),
             };
         }
@@ -59,6 +60,8 @@ export async function ensureAuth(options?: { insecure?: boolean; timeout?: numbe
 
     const config = getProfileConfig(auth.profile);
     const clientOpts = {
+        apiVersion: options?.apiVersion ?? config.apiVersion,
+
         insecure: options?.insecure ?? config.insecure,
         timeout: options?.timeout ?? config.timeout,
     };

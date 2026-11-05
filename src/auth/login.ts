@@ -1,3 +1,4 @@
+import type { ApiVersionOption } from 'zentao-api';
 import { ZentaoClient, createClient, getServerConfig } from '../api/index.js';
 import type { ApiResponse, ServerConfig } from '../types/index.js';
 import { ZentaoError, mapSdkError } from '../errors.js';
@@ -26,9 +27,9 @@ export async function login(
     serverUrl: string,
     account: string,
     password: string,
-    options?: { insecure?: boolean; timeout?: number; signal?: AbortSignal },
+    options?: { insecure?: boolean; timeout?: number; signal?: AbortSignal; apiVersion?: ApiVersionOption },
 ): Promise<LoginResult> {
-    const client = createClient(serverUrl, undefined, options);
+    const client = createClient(serverUrl, undefined, { ...options, apiVersion: options?.apiVersion ?? 'auto' });
     const originalFetch = client.fetch;
     if (options?.signal) {
         // This client belongs to this login attempt; cover every SDK request, including config loading.
@@ -71,8 +72,10 @@ export async function verifyToken(
 ): Promise<{ serverConfig: ServerConfig; user?: Record<string, unknown> }> {
     try {
         const serverConfig = await getServerConfig(client);
+        const apiVersion = await client.resolveApiVersion(serverConfig.version);
         const usersResp = await client.get<ApiResponse>('/users', {
-            query: { browseType: 'inside', recPerPage: 100 },
+            apiVersion,
+            query: apiVersion === 'v1' ? { browse: 'inside', limit: 100 } : { browseType: 'inside', recPerPage: 100 },
         });
         const users = usersResp.users as Array<Record<string, unknown>> | undefined;
         if (!users?.length) {

@@ -14,6 +14,7 @@ function invalidConfigValue(key: string, value: string): never {
 }
 
 function parseConfigValue(key: string, value: string): unknown {
+    if (key === 'apiVersion') return ['auto', 'v1', 'v2'].includes(value) ? value : invalidConfigValue(key, value);
     if (key === 'defaultOutputFormat') {
         return ['markdown', 'json', 'raw'].includes(value) ? value : invalidConfigValue(key, value);
     }
