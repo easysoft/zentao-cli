@@ -49,7 +49,8 @@ describe('add-skill --output', () => {
             expect(existsSync(join(outputDir, 'zentao-tour', 'overview.md'))).toBe(true);
             expect(existsSync(join(outputDir, 'zentao-tour', 'roles'))).toBe(true);
             const files = new Bun.Glob('**/*');
-            const sourceFiles = [...files.scanSync({ cwd: 'skills', onlyFiles: true, dot: true })].sort();
+            const sourceFiles = [...files.scanSync({ cwd: 'skills', onlyFiles: true, dot: true })]
+                .filter(path => path !== '.DS_Store').sort();
             expect([...files.scanSync({ cwd: outputDir, onlyFiles: true, dot: true })].sort()).toEqual(sourceFiles);
             for (const file of sourceFiles) {
                 expect(readFileSync(join(outputDir, file))).toEqual(readFileSync(join('skills', file)));
