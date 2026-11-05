@@ -1,5 +1,24 @@
 # Changes
 
+## 0.4.1
+
+### ✨ 新特性 (Feat)
+
+- **获取 Token**: 新增 `zentao token`。省略参数时读取当前账号已保存的 Token，指定 `profileKey` 时沿用 `profile` 的查找规则且不切换账号；也可通过 `--server`、`--user`、`--password` 临时登录获取新 Token。两种方式都不写入配置、不更新时间戳，也不使用认证环境变量。默认只输出一行 Token，`--format json` 同时输出服务地址和账号。
+- **HTTP MCP 快捷命令**: 新增 `zentao mcp-server`，固定使用 HTTP，与 `zentao mcp --transport http` 等价。可用位置参数或 `--url` 指定禅道站点，省略时读取 `ZENTAO_URL`；两者同时提供时返回 `E2009`。
+- **MCP 用户接入页**: HTTP 服务启动后提供 `/start`。用户可用禅道用户名和密码临时获取个人 Token，或粘贴已有 Token，再按准备 Token、配置 Agent、验证连接三个步骤复制说明，也可查看常用客户端的手动配置。页面支持中英文和明暗主题；凭证只用于当次获取，不写入服务机配置。
+- **客户端配置示例**: 启动 HTTP 服务时输出接入页地址，以及 Codex、Claude Code 和 Cursor 的配置示例；Token 仍可使用 `token` 或 `Authorization: Bearer` 两种请求头之一。
+
+### ✅ 测试 (Test)
+
+- **Token 与接入页**: 覆盖已保存 Token、临时登录、参数冲突、JSON 输出，以及 `/start` 页面、临时获取 Token、来源校验和 Node / Bun 路由。
+- **命令与导出回归**: 补充 `mcp-server` 与 HTTP 启动提示测试；浏览器登录测试不再拉起系统浏览器；技能导出对比忽略 `.DS_Store`。
+
+### 📝 文档 (Docs)
+
+- **部署与接入指南**: 新增《禅道 MCP 服务部署与 Agent 接入指南》及独立 HTML 页面，说明管理员部署、用户获取个人 Token、Agent 协助配置和手动接入。
+- **使用说明**: 在 README、CLI 用法、命令参考、错误排查和 Agent 使用文档中补充 `token`、`mcp-server` 与接入页；远程 HTTP 的部署、代理和请求边界改由该指南集中说明。
+
 ## 0.4.0
 
 ### ✨ 新特性 (Feat)
