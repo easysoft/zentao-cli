@@ -142,7 +142,8 @@ $ ZENTAO_CONFIG_FILE=~/work/zt.json zentao product
 
 `zentao mcp` 提供 stdio 和 HTTP 两种传输方式，共用业务工具、参数校验和返回格式。
 
-公司管理员统一部署 `zentao mcp-server`，以及普通用户在 Agent 中配置远程连接，请阅读独立的[禅道 MCP 服务部署与 Agent 接入指南](mcp-server.md)。该指南包含让 Agent 协助配置的说明、两种个人 Token 获取方式和常用 Agent 的官方配置链接。下文保留命令参数与工具行为的详细参考。
+- **本地 stdio 模式**：由 Agent 在本机启动 CLI 进程，使用本机登录的账号，见下文。
+- **远程 HTTP 模式**：由公司管理员统一部署 `zentao mcp-server`，用户在 Agent 中配置服务地址和个人 Token。部署、启动参数、反向代理、用户接入、客户端配置和请求边界均见[禅道 MCP 服务部署与 Agent 接入指南](mcp-server.md)。
 
 ### 本地 stdio 模式
 
@@ -161,129 +162,16 @@ stdio 的 `zentao_profile` 返回绑定的 `account`、`server`、远端详情 `
 ### 远程 HTTP 模式
 
 ```bash
-# 固定一个禅道站点，默认监听 127.0.0.1:9090
 zentao mcp-server https://zentao.example.com
-
-# 也可使用 --url，或原有的 mcp 命令
-zentao mcp-server --url https://zentao.example.com
 zentao mcp --transport http --url https://zentao.example.com
-
-# 也可由 ZENTAO_URL 提供站点，显式 URL 优先
-ZENTAO_URL=https://zentao.example.com zentao mcp-server
-
-# 调整监听地址、端口和上游请求超时，并限定工具范围
-zentao --timeout 15000 mcp-server https://zentao.example.com --host 127.0.0.1 --port 9090 \
-  --read-only --modules product,story,task,bug
 ```
 
-`zentao mcp-server [url]` 固定使用 HTTP，相当于 `zentao mcp --transport http`，支持相同的 HTTP 参数和工具限制参数，不接受 `--transport`。位置 URL 与 `--url` 二选一，同时提供时报 `E2009`；两者都省略时读取 `ZENTAO_URL`。
+`zentao mcp-server [url]` 固定使用 HTTP，与 `zentao mcp --transport http` 等价，不接受 `--transport`。`--url`、`--host`、`--port` 只适用于 HTTP 模式，在 stdio 模式下使用会报 `E2009`；`--read-only`、`--modules`、`--split-tools` 在两种模式下均可使用。HTTP 模式的完整说明见[禅道 MCP 服务部署与 Agent 接入指南](mcp-server.md)：
 
-启动成功后，终端会依次输出 Codex 的 TOML 示例和 Claude Code / Cursor 共用的 JSON 示例，并标明对应配置文件。`url` 使用实际监听端口，全地址监听时使用对应的回环地址；Token 使用待替换的占位符，并提示可改用 `Authorization: Bearer <token>`。请将示例合并到已有配置；远程客户端连接时，应将示例 URL 替换为客户端可访问的 HTTPS 地址。
-
-HTTP 模式需要 Node.js 18.14.1 或更新版本，或 Bun。每个进程只连接启动时指定的一个禅道站点。位置 URL、`--url` 和 `ZENTAO_URL` 都未提供时启动失败；不会回退到本地 Profile。`ZENTAO_ACCOUNT`、`ZENTAO_PASSWORD`、`ZENTAO_TOKEN` 和服务机的登录记录不作为客户端凭证。
-
-启动后打开 `http://127.0.0.1:9090/start`，普通用户可通过用户名密码获取个人 Token，或填写已有 Token，复制 Agent 接入说明和常用客户端的手动配置。页面固定连接启动时的禅道站点，凭据不写入服务机配置；远程部署须通过 HTTPS 同时代理 `/start`、`/start/token` 和 `/mcp`，见[部署与接入指南](mcp-server.md#使用接入页面)。
-
-| 选项 | 默认值 | 用途 |
-| --- | --- | --- |
-| `--transport stdio\|http` | `stdio` | 仅适用于 `mcp`，选择 MCP 传输方式 |
-| `url`（位置参数） | 未指定 | 仅适用于 `mcp-server`，与 `--url` 二选一 |
-| `--url <site>` | `ZENTAO_URL` | HTTP 模式的固定禅道站点地址 |
-| `--host <host>` | `127.0.0.1` | HTTP 监听地址；容器按需使用 `0.0.0.0` |
-| `--port <port>` | `9090` | HTTP 监听端口，范围 1–65535 |
-| 全局 `--timeout <ms>` | `10000` | 单次上游请求超时，毫秒 |
-| 全局 `--insecure` | 关闭 | 跳过上游禅道的 TLS 证书验证，不为 MCP 监听端提供 HTTPS |
-
-`--url`、`--host`、`--port` 仅适用于 HTTP 模式，在 stdio 模式下使用会报错。HTTP 模式使用默认业务配置，并应用启动时显式指定的 `--timeout`、`--insecure`；不会读取任何本地账号的分页或其他偏好。`--read-only`、`--modules`、`--split-tools` 在两种传输方式下均可使用。
-
-客户端连接地址为 `https://mcp.example.com/mcp`。每个请求必须携带客户端自己的**禅道 Token**，请替换以下占位符并合并到对应配置文件。
-
-**Codex**：合并到 `~/.codex/config.toml`，使用 `mcp_servers` 和 `http_headers`（[官方配置说明](https://developers.openai.com/codex/mcp/)）：
-
-```toml
-[mcp_servers.zentao-remote]
-url = "https://mcp.example.com/mcp"
-http_headers = { token = "<your-zentao-token>" }
-```
-
-**Claude Code / Cursor**：共用以下 JSON，保留 `"type": "http"`。Claude Code 合并到 `~/.claude.json` 的顶层 `mcpServers`；Cursor 合并到 `~/.cursor/mcp.json`，或项目内的 `.cursor/mcp.json`。格式说明见 [Claude Code 文档](https://code.claude.com/docs/en/mcp)和 [Cursor 文档](https://cursor.com/docs/mcp)。
-
-```json
-{
-  "mcpServers": {
-    "zentao-remote": {
-      "type": "http",
-      "url": "https://mcp.example.com/mcp",
-      "headers": { "token": "<your-zentao-token>" }
-    }
-  }
-}
-```
-
-也可使用 Bearer 认证：将 Codex 的认证配置替换为 `http_headers = { Authorization = "Bearer <your-zentao-token>" }`，或将 Claude Code / Cursor 的 `headers` 替换为 `{"Authorization":"Bearer <your-zentao-token>"}`。两种认证头任选其一。其他客户端的配置结构和传输类型字段以其文档为准。
-
-不同客户端使用各自的 Token，禅道按该 Token 的权限处理业务请求。缺失、格式错误或同时提供两种认证头均返回 HTTP 401。凭证只从请求头读取，不接受 URL 查询参数、用户名密码、Basic 或 OAuth 登录。Token 不保存到服务机的 Profile，也不会自动刷新。
-
-HTTP 模式不注册 `zentao_switch_profile`。`zentao_profile` 仅返回固定站点信息，`account=null`、`user=null`、`userFound=false`；服务不会根据 Token 推断账号，这个工具也不验证 Token 是否有效。业务调用时由禅道验证 Token，失效后需由客户端更换。
-
-现有 `file/create` 从运行 CLI 的主机读取本地文件路径，再由 SDK 上传。HTTP 模式禁用这类 multipart/本地路径上传操作，避免远程客户端读取服务机文件；`zentao_action_help` 对这些操作返回 `available=false`，执行时会在获取业务认证上下文和调用 SDK 前拒绝。附件上传请使用本地 CLI 或 stdio；附件更新、删除及其他业务工具仍按启动选项和禅道权限执行。HTTP 模式不提供替代上传格式。
-
-### HTTP 部署与请求边界
-
-原生 MCP 客户端使用无状态 Streamable HTTP，通过 `POST /mcp` 发送请求，调用结果默认通过协议内的 SSE 流返回；客户端应按协议声明支持 `application/json` 和 `text/event-stream`。这里的 SSE 是 `/mcp` 的响应格式，不提供旧版 `/sse` 传输端点。
-
-| 请求 | 行为 |
-| --- | --- |
-| `POST /mcp` | 需要 Token；处理 MCP 请求 |
-| `GET /mcp`、`DELETE /mcp` | HTTP 405；不维护独立会话 |
-| `GET /healthz` | 无需认证；用于进程健康检查，不检测禅道可用性或 Token 权限 |
-| `GET /start` | 用户接入页面；获取个人 Token 和配置指南 |
-| `POST /start/token` | 仅接受页面同源 JSON 请求和页面密钥；向固定禅道站点换取 Token |
-
-`/mcp` 拒绝带 `Origin` 的请求，不提供浏览器 CORS 接入。每个请求独立创建凭证上下文，不支持跨请求取消、会话恢复或事件重放；客户端断开会取消该请求的上游工作。已发送的写入可能已生效，取消或超时后应先查询结果，再决定是否重试。
-
-请求体上限为 1 MiB，接收超时为 30 秒。接收完成后，工具调用的整体执行时限为 60 秒与启动时上游超时中的较大值；上游各次调用仍受 `--timeout` 限制。收到退出信号后停止接收新请求，最多等待 5 秒再取消剩余请求。服务日志不记录 Token、认证头或请求体。
-
-`/start/token` 的请求体上限为 16 KiB，最多同时处理 8 个获取请求，超过时返回 429；请求超时受 `--timeout` 限制。密码和返回的 Token 不落盘，页面和响应禁止缓存。
-
-远程访问使用 HTTPS 反向代理，MCP 进程保持监听回环地址。以下为 Nginx 示例，证书路径按部署环境替换：
-
-```nginx
-server {
-    listen 443 ssl;
-    server_name mcp.example.com;
-    ssl_certificate /etc/nginx/tls/mcp.example.com.crt;
-    ssl_certificate_key /etc/nginx/tls/mcp.example.com.key;
-
-    location = /mcp {
-        proxy_pass http://127.0.0.1:9090;
-        proxy_http_version 1.1;
-        proxy_set_header Host $http_host;
-        proxy_set_header Connection "";
-        proxy_buffering off;
-        proxy_read_timeout 65s;
-        client_max_body_size 1m;
-    }
-    location /start {
-        proxy_pass http://127.0.0.1:9090;
-        proxy_http_version 1.1;
-        proxy_set_header Host $http_host;
-        proxy_set_header Connection "";
-        proxy_read_timeout 65s;
-        client_max_body_size 16k;
-    }
-}
-```
-
-Nginx 默认转发客户端的 `Authorization` 和 `token` 请求头；代理层不要写死某个账号的 Token，也不要将认证头加入访问日志。若增大上游超时，应相应增加 `proxy_read_timeout`。本机可通过 `curl http://127.0.0.1:9090/healthz` 检查进程。
-
-需要连接两个禅道站点时，运行两个独立实例，并在代理中配置对应的域名或路由：
-
-```bash
-# 分别在两个进程中运行
-zentao mcp --transport http --port 9090 --url https://zentao-a.example.com
-zentao mcp --transport http --port 9091 --url https://zentao-b.example.com
-```
+- [启动参数](mcp-server.md#3-启动参数)：站点地址、监听地址和端口、`--timeout`、`--insecure` 及注册的工具
+- [配置 HTTPS 反向代理](mcp-server.md#5-配置-https-反向代理)：Nginx 示例、路径前缀和多实例部署
+- [手动配置 Agent](mcp-server.md#手动配置-agent)：Claude Code、Cursor、Codex 等客户端的配置格式
+- [接口与请求边界](mcp-server.md#接口与请求边界)：接口列表、请求限制，以及与 stdio 模式的区别
 
 ### 共用工具与返回格式
 

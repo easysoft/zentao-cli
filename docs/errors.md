@@ -77,7 +77,7 @@ $ zentao product --format=json
 
 | HTTP 状态或现象 | 排查方式 |
 | --- | --- |
-| 401 | 每个请求只提供一个非空 `token` 头，或一个 `Authorization: Bearer <token>` 头；不能同时提供。Basic、密码和查询参数凭证不受支持 |
+| 401 | 每个请求只提供一个非空 `token` 头，或一个 `Authorization: Bearer <token>` 头；不能同时提供。Basic 和密码认证不受支持；MCP 地址带查询参数时也返回 401 |
 | 403，且请求带 `Origin` | HTTP MCP 面向原生客户端，不提供浏览器跨域接入 |
 | 404，连接地址为 `/sse` | 不提供旧版 SSE 端点；客户端应改用 Streamable HTTP 的 `/mcp` |
 | 405 | MCP 使用 `POST /mcp`；不支持 `GET /mcp`、`DELETE /mcp` |
@@ -87,4 +87,4 @@ $ zentao product --format=json
 | `/healthz` 正常，业务调用失败 | 健康检查只检查服务进程；继续检查禅道地址、Token、账号权限和版本要求 |
 | `zentao_profile` 返回 `account=null` | HTTP Token 模式的预期行为，不表示匿名业务调用；该工具不解析 Token，也不验证其有效性 |
 
-认证头格式通过检查后，权限和 Token 有效性由禅道业务接口决定。HTTP 传输状态与 MCP 工具结果需要分别检查：业务失败通过工具的 `isError` 和 `structuredContent.error` 返回。部署参数见 [HTTP MCP 使用说明](cli-usage.md#远程-http-模式)。
+认证头格式通过检查后，权限和 Token 有效性由禅道业务接口决定。HTTP 传输状态与 MCP 工具结果需要分别检查：业务失败通过工具的 `isError` 和 `structuredContent.error` 返回。部署参数与更多现象见[禅道 MCP 服务部署与 Agent 接入指南](mcp-server.md#常见问题)。
