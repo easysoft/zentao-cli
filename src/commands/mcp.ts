@@ -78,6 +78,7 @@ async function runMcpCommand(options: McpCommandOptions, globalOpts: GlobalOptio
     const clientUrl = new URL(running.url);
     if (clientUrl.hostname === '0.0.0.0') clientUrl.hostname = '127.0.0.1';
     if (clientUrl.hostname === '[::]') clientUrl.hostname = '[::1]';
+    process.stderr.write(`用户接入页面：${new URL('/start', clientUrl).href}\n`);
     const jsonConfig = {
         mcpServers: {
             'zentao-remote': {

@@ -7,6 +7,7 @@ import { DEFAULT_CONFIG } from '../config/defaults.js';
 import { ZentaoError } from '../errors.js';
 import { createMcpServer } from './server.js';
 import type { McpToolOptions } from './tools.js';
+import { createMcpStartHandler, isStartRoute, START_BODY_LIMIT } from './start.js';
 
 export interface McpHttpOptions extends McpToolOptions {
     url: string;
@@ -50,7 +51,7 @@ function respond(res: ServerResponse, status: number, message: string): void {
 }
 
 /** Read actual bytes, including chunked requests, without destroying the response on rejection. */
-function readBody(req: IncomingMessage): Promise<{ body?: unknown; status?: number }> {
+function readBody(req: IncomingMessage, limit = MAX_BODY_BYTES): Promise<{ body?: unknown; status?: number }> {
     return new Promise(resolve => {
         const chunks: Buffer[] = [];
         let size = 0;
@@ -67,7 +68,7 @@ function readBody(req: IncomingMessage): Promise<{ body?: unknown; status?: numb
         };
         const onData = (chunk: Buffer) => {
             size += chunk.length;
-            if (size > MAX_BODY_BYTES) {
+            if (size > limit) {
                 finish({ status: 413 });
                 req.resume();
             } else chunks.push(chunk);
@@ -109,6 +110,7 @@ export async function startMcpHttpServer(options: McpHttpOptions): Promise<McpHt
     }
     const site = createClient(url.toString()).siteUrl;
     const config = { ...DEFAULT_CONFIG, pagers: {}, timeout: options.timeout ?? DEFAULT_CONFIG.timeout, insecure: options.insecure ?? DEFAULT_CONFIG.insecure };
+    const startPage = createMcpStartHandler({ ...options, url: site, timeout: config.timeout });
     const authFor = (token?: string) => ({
         async getContext() {
             return { client: createClient(site, token, config), config, identity: { server: site } };
@@ -116,20 +118,22 @@ export async function startMcpHttpServer(options: McpHttpOptions): Promise<McpHt
     });
     // Validate tool selection at startup, rather than failing the first client request.
     await createMcpServer(authFor(), options).close();
-    if (process.versions.bun) return startBunHttpServer(options, config.timeout, authFor);
+    if (process.versions.bun) return startBunHttpServer(options, config.timeout, authFor, startPage);
     const active = new Set<() => void>();
     const sockets = new Set<Socket>();
     const server = createServer({ requestTimeout: RECEIVE_TIMEOUT }, (req, res) => {
         const started = Date.now();
         const route = req.url?.split('?')[0];
-        const safeRoute = route === '/mcp' || route === '/healthz' ? route : '/unknown';
+        const safeRoute = route === '/mcp' || route === '/healthz' || isStartRoute(route ?? '') ? route : '/unknown';
         const safeMethod = ['POST', 'GET', 'DELETE', 'PUT', 'PATCH', 'HEAD', 'OPTIONS'].includes(req.method ?? '') ? req.method : 'OTHER';
         let mcp: ReturnType<typeof createMcpServer> | undefined;
         let deadline: ReturnType<typeof setTimeout> | undefined;
         let finished = false;
+        const controller = new AbortController();
         const cleanup = () => {
             if (finished) return;
             finished = true;
+            controller.abort();
             clearTimeout(deadline);
             active.delete(cancel);
             req.socket.off('close', cleanup);
@@ -145,6 +149,16 @@ export async function startMcpHttpServer(options: McpHttpOptions): Promise<McpHt
         req.once('error', cleanup);
         req.socket.once('close', cleanup);
         void (async () => {
+            if (isStartRoute(route ?? '')) {
+                const headers = new Headers();
+                for (let index = 0; index < req.rawHeaders.length; index += 2) headers.append(req.rawHeaders[index], req.rawHeaders[index + 1]);
+                const response = await startPage({ path: req.url!, method: req.method!, headers, signal: controller.signal,
+                    readBody: () => readBody(req, START_BODY_LIMIT) });
+                if (finished) return;
+                res.writeHead(response.status, Object.fromEntries(response.headers));
+                res.end(await response.text());
+                return;
+            }
             if (req.rawHeaders.some((name, index) => index % 2 === 0 && name.toLowerCase() === 'origin')) {
                 respond(res, 403, '不支持浏览器 Origin 请求');
                 return;
@@ -220,6 +234,7 @@ async function startBunHttpServer(
     options: McpHttpOptions,
     timeout: number,
     authFor: (token?: string) => Parameters<typeof createMcpServer>[0],
+    startPage: ReturnType<typeof createMcpStartHandler>,
 ): Promise<McpHttpServer> {
     const active = new Set<() => void>();
     let server: ReturnType<typeof Bun.serve>;
@@ -235,16 +250,18 @@ async function startBunHttpServer(
                 if (stopping) return Response.json({ error: 'MCP 服务正在关闭' }, { status: 503, headers: { Connection: 'close' } });
                 const started = Date.now();
                 const url = new URL(req.url);
-                const route = ['/mcp', '/healthz'].includes(url.pathname) ? url.pathname : '/unknown';
+                const route = ['/mcp', '/healthz'].includes(url.pathname) || isStartRoute(url.pathname) ? url.pathname : '/unknown';
                 const method = ['POST', 'GET', 'DELETE', 'PUT', 'PATCH', 'HEAD', 'OPTIONS'].includes(req.method) ? req.method : 'OTHER';
                 let mcp: ReturnType<typeof createMcpServer> | undefined;
                 let timer: ReturnType<typeof setTimeout> | undefined;
                 let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
                 let finished = false;
                 let status = 499;
+                const controller = new AbortController();
                 const cleanup = () => {
                     if (finished) return;
                     finished = true;
+                    controller.abort();
                     clearTimeout(timer);
                     active.delete(cancel);
                     req.signal.removeEventListener('abort', cancel);
@@ -261,6 +278,35 @@ async function startBunHttpServer(
                     return Response.json({ error: message }, { status: code, headers: { ...(req.method === 'POST' ? { Connection: 'close' } : {}), ...extra } });
                 };
                 try {
+                    if (isStartRoute(route)) {
+                        const response = await startPage({ path: url.pathname + url.search, method, headers: req.headers, signal: controller.signal,
+                            async readBody() {
+                                reader = req.body?.getReader();
+                                const chunks: Uint8Array[] = [];
+                                let size = 0;
+                                let expired = false;
+                                timer = setTimeout(() => { expired = true; void reader?.cancel().catch(() => {}); }, RECEIVE_TIMEOUT);
+                                timer.unref();
+                                try {
+                                    if (reader) while (true) {
+                                        const chunk = await reader.read();
+                                        if (chunk.done) break;
+                                        size += chunk.value.byteLength;
+                                        if (size > START_BODY_LIMIT) return { status: 413 };
+                                        chunks.push(chunk.value);
+                                    }
+                                    if (expired) return { status: 408 };
+                                    if (finished) return { status: 400 };
+                                    server.timeout(req, 0);
+                                    return { body: JSON.parse(Buffer.concat(chunks).toString('utf8')) };
+                                } catch { return { status: 400 }; }
+                                finally { clearTimeout(timer); }
+                            },
+                        });
+                        status = response.status;
+                        cleanup();
+                        return response;
+                    }
                     if (req.headers.has('origin')) return error(403, '不支持浏览器 Origin 请求');
                     if (route === '/healthz' && method === 'GET') { status = 200; cleanup(); return Response.json({ status: 'ok' }); }
                     if (route !== '/mcp') return error(404, '未找到接口');

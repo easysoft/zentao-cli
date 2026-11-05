@@ -217,7 +217,7 @@ WorkBuddy 的 CLI + Skill 连接器资源包使用 `bun run build:workbuddy` 生
 zentao mcp-server https://zentao.example.com
 ```
 
-管理员通过 HTTPS 反向代理提供 `/mcp` 地址。普通用户可以优先把连接信息发送给自己的 Agent，让 Agent 协助配置。部署步骤、可复制的配置说明、通过禅道 API V2 或 `zentao token` 获取 Token 的方法，以及常用 Agent 的官方配置链接，见独立文档：[禅道 MCP 服务部署与 Agent 接入指南](docs/mcp-server.md)。
+启动后打开 `http://127.0.0.1:9090/start`，用户可用禅道用户名密码获取个人 Token，或粘贴已有 Token，再复制接入说明让 Agent 协助配置；页面也提供常用 Agent 的手动配置和官方文档链接。管理员通过 HTTPS 反向代理同时提供 `/start` 和 `/mcp`。部署与接入步骤见独立文档：[禅道 MCP 服务部署与 Agent 接入指南](docs/mcp-server.md)。
 
 #### 本地 stdio MCP
 

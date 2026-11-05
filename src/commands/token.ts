@@ -1,5 +1,6 @@
 import type { Command } from 'commander';
 import { createClient } from '../api/index.js';
+import { requestToken } from '../auth/token.js';
 import { findProfileByKey, getCurrentProfile } from '../config/store.js';
 import { mapSdkError, ZentaoError } from '../errors.js';
 import type { GlobalOptions } from '../types/index.js';
@@ -30,20 +31,12 @@ export function registerTokenCommand(program: Command): void {
             if (temporary) {
                 if (!opts.server || !opts.user || !opts.password) throw new ZentaoError('E1001');
                 try {
-                    const client = createClient(opts.server, undefined, {
+                    token = await requestToken(opts.server, opts.user, opts.password, {
                         insecure: globalOpts.insecure,
                         timeout: globalOpts.timeout,
                     });
-                    // SDK login() also loads server configuration and can persist a profile.
-                    const response = await client.post<{ status?: unknown; token?: unknown } | null>(
-                        '/users/login', { account: opts.user, password: opts.password },
-                    );
-                    if (response?.status !== 'success' || typeof response.token !== 'string' || !response.token.trim()) {
-                        throw new ZentaoError('E1003');
-                    }
-                    server = client.siteUrl;
+                    server = createClient(opts.server).siteUrl;
                     account = opts.user;
-                    token = response.token;
                 } catch (error) {
                     throw mapSdkError(error);
                 }

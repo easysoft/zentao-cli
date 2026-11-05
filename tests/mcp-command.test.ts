@@ -105,6 +105,7 @@ test.each([
         await Promise.race([started, child.exited.then(() => { throw new Error('HTTP process exited before listening'); })]);
         const endpoint = new URL(`http://127.0.0.1:${port}/mcp`);
         expect((await fetch(new URL('/healthz', endpoint))).status).toBe(200);
+        expect((await fetch(new URL('/start', endpoint))).status).toBe(200);
         const unauthenticated = await fetch(endpoint, { method: 'POST', body: '{}' });
         expect(unauthenticated.status).toBe(401);
         await unauthenticated.text();
@@ -125,6 +126,7 @@ test.each([
         child.kill(signal);
         expect(await child.exited).toBe(0);
         const output = await logs;
+        expect(output).toContain(`用户接入页面：${new URL('/start', endpoint).href}`);
         expect(output).toContain('Codex（~/.codex/config.toml）：');
         expect(output).toContain('Claude Code / Cursor（JSON）：');
         expect(output).toContain('Claude Code：~/.claude.json');

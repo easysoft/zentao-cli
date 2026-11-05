@@ -182,6 +182,8 @@ zentao --timeout 15000 mcp-server https://zentao.example.com --host 127.0.0.1 --
 
 HTTP 模式需要 Node.js 18.14.1 或更新版本，或 Bun。每个进程只连接启动时指定的一个禅道站点。位置 URL、`--url` 和 `ZENTAO_URL` 都未提供时启动失败；不会回退到本地 Profile。`ZENTAO_ACCOUNT`、`ZENTAO_PASSWORD`、`ZENTAO_TOKEN` 和服务机的登录记录不作为客户端凭证。
 
+启动后打开 `http://127.0.0.1:9090/start`，普通用户可通过用户名密码获取个人 Token，或填写已有 Token，复制 Agent 接入说明和常用客户端的手动配置。页面固定连接启动时的禅道站点，凭据不写入服务机配置；远程部署须通过 HTTPS 同时代理 `/start`、`/start/token` 和 `/mcp`，见[部署与接入指南](mcp-server.md#使用接入页面)。
+
 | 选项 | 默认值 | 用途 |
 | --- | --- | --- |
 | `--transport stdio\|http` | `stdio` | 仅适用于 `mcp`，选择 MCP 传输方式 |
@@ -235,10 +237,14 @@ HTTP 模式不注册 `zentao_switch_profile`。`zentao_profile` 仅返回固定�
 | `POST /mcp` | 需要 Token；处理 MCP 请求 |
 | `GET /mcp`、`DELETE /mcp` | HTTP 405；不维护独立会话 |
 | `GET /healthz` | 无需认证；用于进程健康检查，不检测禅道可用性或 Token 权限 |
+| `GET /start` | 用户接入页面；获取个人 Token 和配置指南 |
+| `POST /start/token` | 仅接受页面同源 JSON 请求和页面密钥；向固定禅道站点换取 Token |
 
-服务拒绝带 `Origin` 的请求，不提供浏览器 CORS 接入。每个请求独立创建凭证上下文，不支持跨请求取消、会话恢复或事件重放；客户端断开会取消该请求的上游工作。已发送的写入可能已生效，取消或超时后应先查询结果，再决定是否重试。
+`/mcp` 拒绝带 `Origin` 的请求，不提供浏览器 CORS 接入。每个请求独立创建凭证上下文，不支持跨请求取消、会话恢复或事件重放；客户端断开会取消该请求的上游工作。已发送的写入可能已生效，取消或超时后应先查询结果，再决定是否重试。
 
 请求体上限为 1 MiB，接收超时为 30 秒。接收完成后，工具调用的整体执行时限为 60 秒与启动时上游超时中的较大值；上游各次调用仍受 `--timeout` 限制。收到退出信号后停止接收新请求，最多等待 5 秒再取消剩余请求。服务日志不记录 Token、认证头或请求体。
+
+`/start/token` 的请求体上限为 16 KiB，最多同时处理 8 个获取请求，超过时返回 429；请求超时受 `--timeout` 限制。密码和返回的 Token 不落盘，页面和响应禁止缓存。
 
 远程访问使用 HTTPS 反向代理，MCP 进程保持监听回环地址。以下为 Nginx 示例，证书路径按部署环境替换：
 
@@ -252,11 +258,19 @@ server {
     location = /mcp {
         proxy_pass http://127.0.0.1:9090;
         proxy_http_version 1.1;
-        proxy_set_header Host $host;
+        proxy_set_header Host $http_host;
         proxy_set_header Connection "";
         proxy_buffering off;
         proxy_read_timeout 65s;
         client_max_body_size 1m;
+    }
+    location /start {
+        proxy_pass http://127.0.0.1:9090;
+        proxy_http_version 1.1;
+        proxy_set_header Host $http_host;
+        proxy_set_header Connection "";
+        proxy_read_timeout 65s;
+        client_max_body_size 16k;
     }
 }
 ```

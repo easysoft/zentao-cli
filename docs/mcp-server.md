@@ -5,7 +5,7 @@
 普通用户不需要安装 zentao-cli，也不需要在自己的电脑上启动 MCP 服务。准备好管理员提供的 MCP 地址和个人 Token，就可以让 Agent 协助完成配置。
 
 - **公司管理员**：按[管理员部署](#管理员部署)启动服务，再将连接信息和本文档发给用户。
-- **普通用户**：直接阅读[让 Agent 协助配置](#让-agent-协助配置)，需要时参考[获取个人 Token](#获取个人-token)和[常用 Agent 配置](#常用-agent-配置)。
+- **普通用户**：优先打开管理员提供的 `/start` [接入页面](#使用接入页面)，也可以阅读[让 Agent 协助配置](#让-agent-协助配置)，需要时参考[获取个人 Token](#获取个人-token)和[常用 Agent 配置](#常用-agent-配置)。
 
 如果希望在个人电脑上安装 CLI 技能，或由 Agent 启动本地 stdio MCP，请参考[在 Agents 中使用禅道](use-zentao-in-agents.md)和[本地 stdio 模式](cli-usage.md#本地-stdio-模式)。`zentao add-mcp` 配置的是本地 stdio，不用于接入公司统一部署的服务。
 
@@ -21,8 +21,9 @@
 | --- | --- | --- |
 | `https://zentao.example.com` | 禅道站点地址；部署在子目录时保留子目录，例如 `/zentao` | MCP 服务连接禅道；用户获取 Token |
 | `https://mcp.example.com/mcp` | 对外提供的 MCP 服务地址，包含 `/mcp` 路径 | 用户在 Agent 中配置 |
+| `https://mcp.example.com/start` | 用户接入页面 | 用户获取 Token、复制接入说明和查看手动配置 |
 
-这两个地址不能互换。每个 MCP 服务进程固定连接一个禅道站点；多个站点需分别启动实例并分配端口和访问地址。
+禅道地址与 MCP 地址不能互换。每个 MCP 服务进程固定连接一个禅道站点；多个站点需分别启动实例并分配端口和访问地址。
 
 ### 2. 安装并启动服务
 
@@ -35,7 +36,7 @@ zentao mcp-server --help
 zentao mcp-server https://zentao.example.com
 ```
 
-默认监听 `127.0.0.1:9090`，MCP 端点为 `/mcp`。命令在前台运行，启动后会输出客户端配置示例。也可以使用 `--url` 或 `ZENTAO_URL` 提供禅道地址：
+默认监听 `127.0.0.1:9090`，MCP 端点为 `/mcp`，用户接入页面为 `http://127.0.0.1:9090/start`。命令在前台运行，启动后会输出接入页面地址和客户端配置示例。也可以使用 `--url` 或 `ZENTAO_URL` 提供禅道地址：
 
 ```bash
 zentao mcp-server --url https://zentao.example.com
@@ -126,18 +127,32 @@ server {
     location = /mcp {
         proxy_pass http://127.0.0.1:9090;
         proxy_http_version 1.1;
-        proxy_set_header Host $host;
+        proxy_set_header Host $http_host;
         proxy_set_header Connection "";
         proxy_buffering off;
         proxy_read_timeout 65s;
         client_max_body_size 1m;
+    }
+
+    # The page and its same-origin POST /start/token endpoint.
+    location /start {
+        proxy_pass http://127.0.0.1:9090;
+        proxy_http_version 1.1;
+        proxy_set_header Host $http_host;
+        proxy_set_header Connection "";
+        proxy_read_timeout 65s;
+        client_max_body_size 16k;
     }
 }
 ```
 
 检查配置并按服务器的管理方式重载 Nginx。代理应保留客户端的 `token` 或 `Authorization` 请求头，不要写死某个账号的 Token，也不要将认证头加入访问日志。若增大 MCP 的上游请求超时，应相应增加代理超时。
 
-服务使用 **Streamable HTTP**，没有旧版 `/sse` 端点。它面向原生 MCP 客户端，不支持浏览器直接跨域连接；直接在浏览器打开 `/mcp` 收到 HTTP 405，不能据此判断服务不可用。
+`/start` 通过同源的 `/start/token` 向固定禅道站点获取 Token，不读取或写入服务机 Profile。代理必须保留浏览器访问地址的 `Host`（含非默认端口）、`Origin`、`Content-Type` 和 `X-Zentao-Start`；无需添加 CORS。不要记录请求体或响应中的密码和 Token。远程填写凭据需要 HTTPS，本机支持 `localhost`、`127.0.0.1` 和 `[::1]` 的 HTTP 地址。
+
+页面根据浏览器访问地址生成 `/mcp` 地址。若代理使用路径前缀，应同时将 `<前缀>/start`、`<前缀>/start/token`、`<前缀>/mcp` 转发并去掉前缀；不要只转发 `/mcp`。
+
+服务使用 **Streamable HTTP**，没有旧版 `/sse` 端点。`/mcp` 面向原生 MCP 客户端，仍拒绝浏览器 Origin 请求；普通用户通过浏览器打开 `/start`。直接打开 `/mcp` 收到 HTTP 405，不能据此判断服务不可用。
 
 ### 5. 向用户提供连接信息
 
@@ -147,6 +162,7 @@ server {
 禅道 MCP 服务已开通：
 
 禅道地址：https://zentao.example.com
+用户接入页面：https://mcp.example.com/start
 MCP 地址：https://mcp.example.com/mcp
 连接方式：Streamable HTTP
 认证方式：请求头 token，值为你自己的禅道 Token
@@ -156,6 +172,18 @@ MCP 地址：https://mcp.example.com/mcp
 ```
 
 ## 普通用户接入
+
+### 使用接入页面
+
+打开管理员提供的地址，例如 `https://mcp.example.com/start`。本机部署时使用 `http://127.0.0.1:9090/start`。
+
+1. **准备 Token**：确认页面上的禅道地址与自己的账号所属站点一致。选择「账号登录」获取 Token，或选择「已有 Token」粘贴个人 Token；也可以稍后填写，先看配置。
+2. **配置 Agent**：选择「让 Agent 配置」，复制接入说明发送给 Agent，说明默认预览两行，点击可展开全文；或切换到「手动配置」，选择客户端并合并配置。两种方式共用个人 Token 区域，可显示、复制、更换或清除 Token。默认复制占位符，主动勾选「复制说明或配置时附带 Token」才会加入真实 Token，预览始终遮蔽。无需向 Agent 提供密码。
+3. **验证连接**：重载或重启 Agent，发送「请通过 zentao-remote MCP 查询我有权访问的产品列表，只显示 ID 和名称。」。检查返回的产品 ID 和名称；列表为空时确认账号的产品访问权限，服务未开放 `product` 模块时联系管理员。
+
+页面支持中文、英文及浅色、深色外观；首次语言跟随浏览器，手动选择会保存。手动配置支持 Claude Code、Cursor、Codex、VS Code Copilot、Cherry Studio、OpenCode、Gemini CLI 和 Cline，并提供官方文档链接。
+
+密码只用于本次换取 Token，请求完成后清空；服务不保存账号密码或 Token。Token 仅保留在当前页面内存中，刷新或离开后清除。页面中的「清除 Token」不撤销 Token，也不会删除已保存到 Agent 配置或剪贴板中的内容。Token 失效后重新获取并更新 Agent 配置。
 
 ### 让 Agent 协助配置
 
