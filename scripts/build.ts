@@ -1,16 +1,32 @@
-import { mkdirSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { mkdirSync, readFileSync, rmSync, mkdtempSync } from 'node:fs';
 import { dirname, join, sep } from 'node:path';
 import pkg from '../package.json';
 import { buildCompileOptions, parseBuildArgs } from './build-options.js';
 
+import { loadBrand, option, outputDirectory, prepareOutput } from './brand-config.js';
+import { buildDistribution, copyDocuments, writeBrandAssets } from './build-distribution.js';
+const brandFile = option(process.argv.slice(2), '--brand');
+if (brandFile && !process.argv.includes('--compile')) {
+    await buildDistribution(brandFile, outputDirectory(option(process.argv.slice(2), '--outdir'), process.cwd()));
+    process.exit(0);
+}
+const resolvedBrand = loadBrand(brandFile);
 const buildArgs = parseBuildArgs(process.argv.slice(2));
+const brandSkills = resolvedBrand && buildArgs.compile ? mkdtempSync(join(tmpdir(), 'cli-brand-skills-')) : undefined;
+if (brandSkills) {
+    copyDocuments('skills', brandSkills, resolvedBrand, 'skills');
+    writeBrandAssets(join(brandSkills, `${resolvedBrand!.commandName}-cli`, 'assets'), resolvedBrand);
+}
+const skillsDirectory = brandSkills ?? 'skills';
 const skillFiles = buildArgs.compile
     ? Object.fromEntries(
-        [...new Bun.Glob('**/*').scanSync({ cwd: 'skills', onlyFiles: true, dot: true })]
+        [...new Bun.Glob('**/*').scanSync({ cwd: skillsDirectory, onlyFiles: true, dot: true })]
             .sort()
-            .map((path) => [path.split(sep).join('/'), readFileSync(join('skills', path)).toString('base64')]),
+            .map((path) => [path.split(sep).join('/'), readFileSync(join(skillsDirectory, path)).toString('base64')]),
     )
     : undefined;
+if (brandSkills) rmSync(brandSkills, { recursive: true, force: true });
 const commonOptions = {
     entrypoints: ['src/index.ts'],
     sourcemap: buildArgs.sourcemap,
@@ -18,13 +34,14 @@ const commonOptions = {
     minify: buildArgs.minify,
     define: {
         BUILD_VERSION: JSON.stringify(pkg.version),
+        BUILD_BRAND: JSON.stringify(resolvedBrand) ?? "undefined",
         BUILD_SKILL_FILES: skillFiles ? JSON.stringify(skillFiles) : 'undefined',
     },
 };
 
 if (buildArgs.compile) {
     const compileOptions = buildCompileOptions({
-        packageName: pkg.name,
+        packageName: resolvedBrand?.packageName ?? pkg.name,
         outdir: buildArgs.outdir,
         outfile: buildArgs.outfile,
         targets: buildArgs.targets,
@@ -52,10 +69,13 @@ if (buildArgs.compile) {
         console.log(`Build succeeded: ${option.outfile}`);
     }
 } else {
-    rmSync('dist', { recursive: true, force: true });
+    const explicitOutput = option(process.argv.slice(2), '--outdir');
+    const nodeOutput = explicitOutput ? outputDirectory(explicitOutput, process.cwd()) : 'dist';
+    if (explicitOutput) prepareOutput(nodeOutput);
+    else rmSync(nodeOutput, { recursive: true, force: true });
     const result = await Bun.build({
         ...commonOptions,
-        outdir: 'dist',
+        outdir: nodeOutput,
         target: 'node',
         format: 'esm',
         packages: 'external',

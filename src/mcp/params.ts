@@ -1,4 +1,4 @@
-import { getModuleActionParams } from 'zentao-api';
+import { getModuleActionParams } from '../modules/helper.js';
 import type { ModuleAction, ModuleDefinition } from '../types/index.js';
 import { ZentaoError } from '../errors.js';
 

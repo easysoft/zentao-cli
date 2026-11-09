@@ -1,3 +1,4 @@
+import { brand, brandText, brandLogo } from '../brand.js';
 import type { McpHttpOptions } from './http.js';
 import { mcpStartMessages, type McpStartLocale } from './start-messages.js';
 import { mcpStartScript } from './start-script.js';
@@ -5,7 +6,7 @@ import { mcpStartScript } from './start-script.js';
 export const mcpStartGuides = [
     { id: 'claude', name: 'Claude Code', docs: 'https://code.claude.com/docs/en/mcp', steps: '将配置合并到 ~/.claude.json 的 mcpServers 中。重新打开会话，在 /mcp 中检查连接。', stepsEn: "Merge into mcpServers in ~/.claude.json. Reopen the session and check the connection with /mcp." },
     { id: 'cursor', name: 'Cursor', docs: 'https://cursor.com/docs/mcp', steps: '将配置合并到用户级 ~/.cursor/mcp.json。在设置的 MCP 页面启用服务，再打开 Agent 会话。', stepsEn: "Merge into ~/.cursor/mcp.json. Enable the server in MCP settings, then open an Agent session." },
-    { id: 'codex', name: 'Codex', docs: 'https://developers.openai.com/codex/mcp/', steps: '将配置合并到 ~/.codex/config.toml。重新加载 MCP 或重启应用 / CLI，再确认 zentao-remote 已启用。', stepsEn: "Merge into ~/.codex/config.toml. Reload MCP or restart the app / CLI, then check that zentao-remote is enabled." },
+    { id: 'codex', name: 'Codex', docs: 'https://developers.openai.com/codex/mcp/', steps: brandText('将配置合并到 ~/.codex/config.toml。重新加载 MCP 或重启应用 / CLI，再确认 zentao-remote 已启用。'), stepsEn: brandText("Merge into ~/.codex/config.toml. Reload MCP or restart the app / CLI, then check that zentao-remote is enabled.") },
     { id: 'vscode', name: 'VS Code Copilot', docs: 'https://code.visualstudio.com/docs/agent-customization/mcp-servers', steps: '从命令面板运行 MCP: Open User Configuration，将配置合并到用户配置。在 Agent 模式中启用该服务的工具。', stepsEn: "Run MCP: Open User Configuration from the command palette and merge into that config. Enable the server’s tools in Agent mode." },
     { id: 'cherry', name: 'Cherry Studio', docs: 'https://docs.cherryai.com.cn/advanced-basic/extensions/mcp', steps: '在「设置 → MCP → MCP 服务器 → 添加」填写下列信息。启用服务后，在「工作 → Agent 菜单 → 编辑 → MCP」绑定给当前 Agent。', stepsEn: "Open Settings → MCP → MCP Servers → Add and enter these values. Enable the server, then bind it to your Agent in Work → Agent menu → Edit → MCP." },
     { id: 'opencode', name: 'OpenCode', docs: 'https://opencode.ai/docs/mcp-servers/', steps: '将配置合并到用户级 ~/.config/opencode/opencode.json。重新打开 OpenCode，检查 MCP 服务状态。', stepsEn: "Merge into ~/.config/opencode/opencode.json. Reopen OpenCode and check the MCP server status." },
@@ -57,7 +58,7 @@ export function renderMcpStartPage(options: McpHttpOptions & { nonce: string; ke
     const escape = (value: string) => value.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
     const t = (key: keyof typeof mcpStartMessages.zh) => escape(mcpStartMessages.zh[key]);
     const data = JSON.stringify({ site: options.url, key: options.key, readOnly: !!options.readOnly, modules: options.modules, guides: mcpStartGuides, messages: mcpStartMessages }).replace(/</g, '\\u003c');
-    return `<!doctype html>
+    return brandText`<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -246,7 +247,7 @@ button:active:not(:disabled) { opacity: .85; }
 <body>
 
     <header class="zt-topbar">
-      <div class="zt-brand"><svg class="zt-logo" viewBox="0 0 100 100" aria-hidden="true" shape-rendering="crispEdges"><path fill="currentColor" transform="scale(6.25)" d="M6 1h4v1H6z M4 2h8v1H4z M3 3h10v1H3z M2 4h2v1H2z M9 4h5v1H9z M2 5h1v1H2z M4 5h2v1H4z M10 5h4v1h-4z M1 6h5v1H1z M11 6h4v1h-4z M1 7h4v1H1z M6 7h4v1H6z M13 7h2v1h-2z M1 8h3v1H1z M5 8h3v1H5z M10 8h5v1h-5z M1 9h3v1H1z M5 9h2v1H5z M8 9h1v1H8z M11 9h4v1h-4z M2 10h2v1H2z M5 10h5v1H5z M11 10h3v1h-3z M2 11h2v1H2z M6 11h3v1H6z M11 11h3v1h-3z M3 12h2v1H3z M10 12h3v1h-3z M4 13h8v1H4z M6 14h4v1H6z"/></svg><span>ZenTao <span class="zt-brand-separator">/ MCP</span></span></div>
+      <div class="zt-brand">${brandLogo('<svg class="zt-logo" viewBox="0 0 100 100" aria-hidden="true" shape-rendering="crispEdges"><path fill="currentColor" transform="scale(6.25)" d="M6 1h4v1H6z M4 2h8v1H4z M3 3h10v1H3z M2 4h2v1H2z M9 4h5v1H9z M2 5h1v1H2z M4 5h2v1H4z M10 5h4v1h-4z M1 6h5v1H1z M11 6h4v1h-4z M1 7h4v1H1z M6 7h4v1H6z M13 7h2v1h-2z M1 8h3v1H1z M5 8h3v1H5z M10 8h5v1h-5z M1 9h3v1H1z M5 9h2v1H5z M8 9h1v1H8z M11 9h4v1h-4z M2 10h2v1H2z M5 10h5v1H5z M11 10h3v1h-3z M2 11h2v1H2z M6 11h3v1H6z M11 11h3v1h-3z M3 12h2v1H3z M10 12h3v1h-3z M4 13h8v1H4z M6 14h4v1H6z"/></svg>', 'zt-logo')}<span>ZenTao <span class="zt-brand-separator">/ MCP</span></span></div>
       <div class="zt-preferences">
         <label class="zt-language"><svg class="zt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 8 6 6m-7 0 6-6 2-4H2m5-2h1m6 20 5-11 5 11m-8-4h6"/></svg><select id="zt-language"  data-i18n-aria="language" aria-label="语言"><option value="zh">中文</option><option value="en">English</option></select></label>
         <button type="button" id="zt-theme-switch" class="zt-theme-switch" role="switch" aria-checked="false" aria-label="深色模式"><svg class="zt-icon zt-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg><svg class="zt-icon zt-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.9 13A9 9 0 0 1 11 3.1 9 9 0 1 0 20.9 13Z"/></svg></button>
@@ -346,13 +347,13 @@ button:active:not(:disabled) { opacity: .85; }
           <div class="zt-panel-footer"><button type="button" id="zt-back-setup" class="zt-link"><svg class="zt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5m6 6-6-6 6-6"/></svg><span data-i18n="backSetup">返回配置</span></button></div>
         </section>
       </section>
-      <footer class="zt-page-footer"><details class="zt-details"><summary ><span data-i18n="details">接入详情</span><svg class="zt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></summary><div class="zt-details-body"><p><span data-i18n="mcpAddress">MCP 地址：</span><code id="zt-mcp-url"></code></p><p id="zt-address-hint"></p><p id="zt-permissions">${t(options.readOnly ? 'readOnly' : 'readWrite')} · ${escape(options.modules?.join('、') || mcpStartMessages.zh.allModules)} · ${t('accountPermissions')}</p><p><a  href="https://github.com/easysoft/zentao-cli/blob/main/docs/mcp-user-guide.md" target="_blank" rel="noreferrer" data-i18n="guide">完整接入指南 ↗</a></p></div></details></footer>
+      <footer class="zt-page-footer"><details class="zt-details"><summary ><span data-i18n="details">接入详情</span><svg class="zt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></summary><div class="zt-details-body"><p><span data-i18n="mcpAddress">MCP 地址：</span><code id="zt-mcp-url"></code></p><p id="zt-address-hint"></p><p id="zt-permissions">${t(options.readOnly ? 'readOnly' : 'readWrite')} · ${escape(options.modules?.join('、') || mcpStartMessages.zh.allModules)} · ${t('accountPermissions')}</p>${!brand ? `<p><a  href="https://github.com/easysoft/zentao-cli/blob/main/docs/mcp-user-guide.md" target="_blank" rel="noreferrer" data-i18n="guide">完整接入指南 ↗</a></p>` : ''}</div></details></footer>
     </main>
 
 <script nonce="${escape(options.nonce)}">
   const data = ${data};
-  const makeConfig = ${mcpClientConfig.toString()};
-  const makePrompt = ${mcpAgentPrompt.toString()};
+  const makeConfig = ${brandText(mcpClientConfig.toString())};
+  const makePrompt = ${brandText(mcpAgentPrompt.toString())};
   ${mcpStartScript}
 </script>
 </body></html>`;

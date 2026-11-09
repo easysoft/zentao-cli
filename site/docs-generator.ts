@@ -6,13 +6,15 @@ import GithubSlugger from "github-slugger";
 import sanitizeHtml from "sanitize-html";
 import type { Plugin } from "vite";
 import { renderCommandExplorer } from "./command-explorer.js";
+import { loadBrand } from '../scripts/brand-config.js';
 
 const siteRoot = dirname(fileURLToPath(import.meta.url));
-const repositoryRoot = resolve(siteRoot, "..");
+const repositoryRoot = process.env.CLI_DOCUMENT_ROOT || resolve(siteRoot, "..");
 const docsDirectory = resolve(repositoryRoot, "docs");
 const templatePath = resolve(siteRoot, "docs-template.html");
 const explorerPath = resolve(docsDirectory, "command-reference.html");
 const repositoryUrl = "https://github.com/easysoft/zentao-cli/blob/main/";
+const selectedBrand = loadBrand(process.env.CLI_BRAND_FILE);
 
 export type DocumentationSource = {
   sourcePath: string;
@@ -104,6 +106,7 @@ export function getDocumentationSources(): DocumentationSource[] {
   const sources = preferredDocuments.filter((document) =>
     sourcePaths.has(document.sourcePath),
   );
+  if (selectedBrand) sources.splice(1, 0, { sourcePath: 'README.en.md', fileName: 'overview.en.html', title: 'Overview (English)' });
   const knownSources = new Set(sources.map((document) => document.sourcePath));
   for (const name of names) {
     const sourcePath = `docs/${name}`;
@@ -162,6 +165,7 @@ export function rewriteDocumentationLink(
     (document) => document.sourcePath === repositoryPath,
   );
   if (target) return `${target.fileName}${query}${hash}`;
+  if (selectedBrand && repositoryPath === 'LICENSE') return '../LICENSE';
   const encodedPath = repositoryPath
     .split("/")
     .map(encodeURIComponent)

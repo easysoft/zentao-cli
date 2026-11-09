@@ -1,3 +1,4 @@
+import { brandText } from '../brand.js';
 import Configstore from 'configstore';
 import { chmodSync, existsSync } from 'node:fs';
 import { isAbsolute, join, resolve } from 'node:path';
@@ -37,7 +38,7 @@ const configSchema = z.object({
 /** Use an absolute XDG config root, otherwise retain the legacy ~/.config location. */
 function defaultConfigPath(): string {
     const xdg = process.env.XDG_CONFIG_HOME;
-    return join(xdg && isAbsolute(xdg) ? xdg : join(homedir(), '.config'), 'zentao', 'zentao.json');
+    return join(xdg && isAbsolute(xdg) ? xdg : join(homedir(), '.config'), brandText('zentao'), brandText('zentao.json'));
 }
 
 /** 当前生效的配置文件路径，可通过 setConfigPath 在首次使用前覆盖 */
@@ -48,7 +49,7 @@ let store: Configstore | null = null;
 
 function getStore(): Configstore {
     if (!store) {
-        store = new Configstore('zentao-cli', undefined, { configPath, clearInvalidConfig: false });
+        store = new Configstore(brandText('zentao-cli'), undefined, { configPath, clearInvalidConfig: false });
     }
     return store;
 }

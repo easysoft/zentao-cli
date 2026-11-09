@@ -1,7 +1,8 @@
+import { brandText } from '../brand.js';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-export const PACKAGE_NAME = 'zentao-cli';
+export const PACKAGE_NAME = brandText('zentao-cli');
 const REGISTRY_URL = `https://registry.npmjs.org/${PACKAGE_NAME}/latest`;
 
 export interface SemVer {

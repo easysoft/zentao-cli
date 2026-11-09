@@ -63,3 +63,7 @@ rounded:
 | 文字 / 命令 | 本地 Manrope / JetBrains Mono | `--sans` / `--mono` | 页面文字 / 字标与技术信息 |
 
 滚动条全局继承 `--scroll-thumb`、`--scroll-hover` 和 `--scroll-active`，页面预留滚动条空间。浅深主题保持相同排版和交互层次；仅在系统允许时播放入场和控件过渡，强制对比模式停用首屏装饰网格。
+
+## 发行品牌
+
+构建时可通过统一 CliBrandConfig 输出其他发行品牌；仅替换名称、公开链接与 LOGO，保留现有视觉 tokens 和交互。生成的网站文档读取同一品牌的 CLI 文档产物。

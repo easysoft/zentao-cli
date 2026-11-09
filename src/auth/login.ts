@@ -1,3 +1,4 @@
+import { brandText } from '../brand.js';
 import { ZentaoClient, createClient, getServerConfig } from '../api/index.js';
 import type { ApiResponse, ServerConfig } from '../types/index.js';
 import { ZentaoError, mapSdkError } from '../errors.js';
@@ -88,9 +89,9 @@ export async function verifyToken(
 /** 读取 `ZENTAO_URL` / `ZENTAO_ACCOUNT` / `ZENTAO_PASSWORD` / `ZENTAO_TOKEN` */
 export function getEnvCredentials(): EnvCredentials {
     return {
-        url: process.env.ZENTAO_URL,
-        account: process.env.ZENTAO_ACCOUNT,
-        password: process.env.ZENTAO_PASSWORD,
-        token: process.env.ZENTAO_TOKEN,
+        url: process.env[brandText('ZENTAO_URL')],
+        account: process.env[brandText('ZENTAO_ACCOUNT')],
+        password: process.env[brandText('ZENTAO_PASSWORD')],
+        token: process.env[brandText('ZENTAO_TOKEN')],
     };
 }

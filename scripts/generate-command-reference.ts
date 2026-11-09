@@ -1,10 +1,13 @@
+import { mkdirSync } from 'node:fs';
+import { brandDocument, loadBrand, option, outputDirectory } from './brand-config.js';
 import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
-import { getModuleActionParams } from 'zentao-api';
+import { getModuleActionParams as sdkGetModuleActionParams } from 'zentao-api';
+import { brandMetadata } from '../src/brand.js';
 import { registerAllCommands } from '../src/commands/index.js';
 import { addDataOptions } from '../src/commands/register-modules.js';
 import { getAllModules } from '../src/modules/helper.js';
@@ -12,6 +15,10 @@ import { DEFAULT_CONFIG } from '../src/config/defaults.js';
 import packageInfo from '../package.json';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
+const selectedBrand = loadBrand(option(process.argv.slice(2), '--brand'));
+const destination = option(process.argv.slice(2), '--outdir');
+const outputRoot = destination ? outputDirectory(destination, root) : root;
+if (selectedBrand && !destination) throw new Error('--brand requires --outdir');
 const documentPath = join(root, 'docs/command-reference.md');
 const marker = '<!-- BEGIN GENERATED COMMAND REFERENCE -->';
 const document = readFileSync(documentPath, 'utf8');
@@ -19,7 +26,8 @@ assert.equal(document.split(marker).length, 2, 'Expected exactly one generated s
 
 const program = new Command().name('zentao');
 registerAllCommands(program);
-const modules = getAllModules();
+const modules = brandMetadata(getAllModules(), false, selectedBrand);
+const getModuleActionParams: typeof sdkGetModuleActionParams = (...args) => brandMetadata(sdkGetModuleActionParams(...args), false, selectedBrand);
 const builtins = program.commands.filter((command) => !modules.some((mod) => mod.name === command.name()));
 const sdkVersion = JSON.parse(readFileSync(join(root, 'node_modules/zentao-api/package.json'), 'utf8')).version;
 const commonOptions = addDataOptions(new Command()).options;
@@ -238,7 +246,7 @@ for (const mod of modules) {
     }
 }
 
-const output = document.slice(0, document.indexOf(marker)) + marker + '\n\n' + sections.join('\n\n') + '\n';
+let output = document.slice(0, document.indexOf(marker)) + marker + '\n\n' + sections.join('\n\n') + '\n';
 const ids = [...output.matchAll(/<a id="([^"]+)"><\/a>/g)].map((match) => match[1]);
 assert.equal(new Set(ids).size, ids.length, 'Duplicate document anchors');
 for (const [, target] of output.matchAll(/\]\(#([^\s)]+)\)/g)) assert(ids.includes(target), 'Broken document link: ' + target);
@@ -299,17 +307,21 @@ const referenceData = JSON.stringify({
     version: packageInfo.version, sdkVersion, actionCount: modules.reduce((sum, mod) => sum + mod.actions.length, 0),
     modules: modules.map((mod) => ({ name: mod.name, display: mod.display ?? mod.name })), entries,
 }).replaceAll('<', '\\u003c');
-const htmlOutput = htmlTemplate.replace('__REFERENCE_DATA__', () => referenceData);
-const htmlPath = join(root, 'docs/command-reference.html');
+let htmlOutput = htmlTemplate.replace('__REFERENCE_DATA__', () => referenceData);
+const htmlPath = join(outputRoot, 'docs/command-reference.html');
+output = brandDocument(output, selectedBrand, 'docs/command-reference.md');
+htmlOutput = brandDocument(htmlOutput, selectedBrand, 'docs/command-reference.html');
+const outputDocumentPath = join(outputRoot, 'docs/command-reference.md');
 for (const [, script] of htmlOutput.matchAll(/<script>([\s\S]*?)<\/script>/g)) new Function(script);
 assert.equal(JSON.parse(referenceData).entries.length, entries.length, 'Invalid embedded reference data');
 
 if (process.argv.includes('--check')) {
-    assert(document === output, 'Command reference is stale; run bun run scripts/generate-command-reference.ts');
+    assert(readFileSync(outputDocumentPath, 'utf8') === output, 'Command reference is stale; run bun run scripts/generate-command-reference.ts');
     assert(readFileSync(htmlPath, 'utf8') === htmlOutput, 'HTML reference is stale; run bun run scripts/generate-command-reference.ts');
     console.log(`Command references are current: ${builtins.length} built-ins, ${modules.length} modules, ${modules.reduce((sum, mod) => sum + mod.actions.length, 0)} actions, ${parameterCount} parameter entries, ${entries.length} HTML sections.`);
 } else {
-    writeFileSync(documentPath, output);
+    mkdirSync(join(outputRoot, 'docs'), { recursive: true });
+    writeFileSync(outputDocumentPath, output);
     writeFileSync(htmlPath, htmlOutput);
     console.log('Updated docs/command-reference.md and docs/command-reference.html');
 }

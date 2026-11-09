@@ -1,3 +1,4 @@
+import { brandText } from '../brand.js';
 import { Command } from 'commander';
 import { login, getEnvCredentials, verifyToken } from '../auth/login.js';
 import { promptLogin } from '../auth/prompt.js';
@@ -13,8 +14,8 @@ import { canOpenBrowser } from '../auth/browser-open.js';
 export function registerLoginCommand(program: Command): void {
     program
         .command('login')
-        .description('登录禅道服务')
-        .option('-s, --server <url>', '禅道服务地址')
+        .description(brandText('登录禅道服务'))
+        .option('-s, --server <url>', brandText('禅道服务地址'))
         .option('-u, --user <account>', '用户名')
         .option('-p, --password <password>', '密码')
         .option('-t, --token <token>', 'Token')

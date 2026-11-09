@@ -1,3 +1,4 @@
+import { brandText } from '../brand.js';
 import { Command } from 'commander';
 import { removeProfile, getCurrentProfile, profileKey } from '../config/store.js';
 import { ZentaoError } from '../errors.js';
@@ -17,7 +18,7 @@ export function registerLogoutCommand(program: Command): void {
             } else {
                 const current = getCurrentProfile();
                 if (!current) {
-                    console.log('未找到当前用户配置，请先使用 `zentao login` 登录');
+                    console.log(brandText('未找到当前用户配置，请先使用 `zentao login` 登录'));
                     return;
                 }
                 targetKey = profileKey(current.account, current.server);

@@ -1,3 +1,4 @@
+import { brandText } from '../brand.js';
 import { Command } from 'commander';
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -26,7 +27,7 @@ interface McpCredentials {
 
 /* ── Constants ── */
 
-const MCP_NAME = 'zentao-cli';
+const MCP_NAME = brandText('zentao-cli');
 const home = homedir();
 
 function platformAppData(...segments: string[]): string {
@@ -164,12 +165,12 @@ function resolveAgents(agent: string): string[] {
 
 function buildStandardEntry(creds: McpCredentials) {
     return {
-        command: 'zentao',
+        command: brandText('zentao'),
         args: ['mcp'],
         env: {
-            ZENTAO_URL: creds.url,
-            ZENTAO_ACCOUNT: creds.account,
-            ZENTAO_TOKEN: creds.token,
+            [brandText('ZENTAO_URL')]: creds.url,
+            [brandText('ZENTAO_ACCOUNT')]: creds.account,
+            [brandText('ZENTAO_TOKEN')]: creds.token,
         },
     };
 }
@@ -193,11 +194,11 @@ function writeOpenCodeConfig(configPath: string, creds: McpCredentials): void {
     const config = readJsonFile(configPath);
     deepSet(config, ['mcp', MCP_NAME], {
         type: 'local',
-        command: ['zentao', 'mcp'],
+        command: [brandText('zentao'), 'mcp'],
         environment: {
-            ZENTAO_URL: creds.url,
-            ZENTAO_ACCOUNT: creds.account,
-            ZENTAO_TOKEN: creds.token,
+            [brandText('ZENTAO_URL')]: creds.url,
+            [brandText('ZENTAO_ACCOUNT')]: creds.account,
+            [brandText('ZENTAO_TOKEN')]: creds.token,
         },
         enabled: true,
     });
@@ -245,9 +246,9 @@ function writeCodexToml(configPath: string, creds: McpCredentials): void {
         const newline = content.match(/\r?\n/)?.[0] ?? '\n';
         const section = [
             `[mcp_servers.${MCP_NAME}]`,
-            'command = "zentao"',
+            brandText('command = "zentao"'),
             'args = ["mcp"]',
-            `env = { ZENTAO_URL = ${JSON.stringify(creds.url)}, ZENTAO_ACCOUNT = ${JSON.stringify(creds.account)}, ZENTAO_TOKEN = ${JSON.stringify(creds.token)} }`,
+            brandText`env = { ZENTAO_URL = ${JSON.stringify(creds.url)}, ZENTAO_ACCOUNT = ${JSON.stringify(creds.account)}, ZENTAO_TOKEN = ${JSON.stringify(creds.token)} }`,
         ].join(newline) + newline;
 
         writePrivateFile(configPath, replaceCodexServerSection(content, section, newline));
@@ -263,7 +264,7 @@ function printCherryStudioConfig(silent: boolean): void {
     console.log(JSON.stringify({
         name: MCP_NAME,
         type: 'stdio',
-        command: 'zentao',
+        command: brandText('zentao'),
         args: ['mcp'],
     }, null, 2));
 }
@@ -302,7 +303,7 @@ function installMcp(agent: string, creds: McpCredentials, silent: boolean): void
 export function registerAddMcpCommand(program: Command): void {
     program
         .command('add-mcp')
-        .description('配置禅道 MCP 服务到 AI Agent')
+        .description(brandText('配置禅道 MCP 服务到 AI Agent'))
         .argument('[agent]', `目标 Agent (${AGENT_NAMES.join('|')}|all)`)
         .action(async (agent?: string) => {
             const globalOpts = program.opts() as GlobalOptions;

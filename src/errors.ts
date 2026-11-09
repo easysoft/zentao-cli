@@ -1,38 +1,40 @@
+import { ERRORS as SDK_ERRORS } from 'zentao-api';
+import { brandText } from './brand.js';
 /**
  * 错误码与默认消息映射表。
  * 消息模板中的 {key} 占位符会在构造 ZentaoError 时被替换为实际值。
  */
 export const ERROR_CODES = {
     // 认证与配置 (10xx)
-    E1001: '必须提供有效的禅道服务地址、用户名和密码或 TOKEN',
-    E1002: '所提供的禅道服务地址 {url} 无法访问',
+    E1001: brandText('必须提供有效的禅道服务地址、用户名和密码或 TOKEN'),
+    E1002: brandText('所提供的禅道服务地址 {url} 无法访问'),
     E1003: '当前用户名和密码不正确',
     E1004: '所提供的 Token 已失效，请提供密码重新登录，或提供新的 TOKEN',
     E1005: '配置文件损坏或无法读取，请检查 {path}',
-    E1006: '未找到可用的用户配置，请执行 `zentao login --web` 在浏览器中登录；终端登录使用 `zentao login --no-browser`',
-    E1007: '指定的用户配置不存在，请通过 `zentao profile` 查看可用配置',
+    E1006: brandText('未找到可用的用户配置，请执行 `zentao login --web` 在浏览器中登录；终端登录使用 `zentao login --no-browser`'),
+    E1007: brandText('指定的用户配置不存在，请通过 `zentao profile` 查看可用配置'),
     E1008: '浏览器登录已取消',
-    E1009: '浏览器登录等待超时，请重新执行 `zentao login --web`',
-    E1010: '无法启动本地登录服务，请检查本机网络权限，或使用 `zentao login --no-browser`',
+    E1009: brandText('浏览器登录等待超时，请重新执行 `zentao login --web`'),
+    E1010: brandText('无法启动本地登录服务，请检查本机网络权限，或使用 `zentao login --no-browser`'),
     E1011: '配置文件写入失败，请检查 {path} 的目录权限和磁盘空间',
 
     // API 调用 (20xx)
-    E2001: '未找到指定的模块 {module}，请通过 `zentao help` 查看支持的模块',
+    E2001: brandText('未找到指定的模块 {module}，请通过 `zentao help` 查看支持的模块'),
     E2002: '未找到指定的对象 {object}，请检查对象 ID 是否正确',
-    E2003: '缺少必要参数 {fields}，请通过 `zentao {module} help` 查看必要参数',
+    E2003: brandText('缺少必要参数 {fields}，请通过 `zentao {module} help` 查看必要参数'),
     E2004: '{field} 参数值 {value} 无效，请检查参数格式是否正确',
-    E2005: '不支持的操作，请通过 `zentao {module} help` 查看支持的操作',
+    E2005: brandText('不支持的操作，请通过 `zentao {module} help` 查看支持的操作'),
     E2006: '当前用户没有权限执行此操作',
     E2007: '`--data` 参数中的 JSON 数据格式无效',
-    E2008: '禅道服务端返回错误（Url：{url}，Status：{status}），请查看详细错误信息：{serverResponse}',
+    E2008: brandText('禅道服务端返回错误（Url：{url}，Status：{status}），请查看详细错误信息：{serverResponse}'),
     E2009: '选项 {option} 的值无效，{reason}',
-    E2010: '操作 {action} 不支持当前禅道版本 {version}，最低版本要求：{minVersion}，请升级对应系列的禅道版本',
-    E2011: '无法识别禅道版本 {version}，仅支持点分数字的正式版本（如 22.5、biz13.5、max8.5、ipd5.5）',
-    E2012: '无法识别禅道服务端配置，请检查站点根地址的 ?mode=getconfig 是否返回包含 version 的 JSON 对象',
+    E2010: brandText('操作 {action} 不支持当前禅道版本 {version}，最低版本要求：{minVersion}，请升级对应系列的禅道版本'),
+    E2011: brandText('无法识别禅道版本 {version}，仅支持点分数字的正式版本（如 22.5、biz13.5、max8.5、ipd5.5）'),
+    E2012: brandText('无法识别禅道服务端配置，请检查站点根地址的 ?mode=getconfig 是否返回包含 version 的 JSON 对象'),
 
     // 网络通信 (50xx)
-    E5001: '请求超时，请检查网络连接或禅道服务是否正常',
-    E5002: 'SSL/TLS 证书验证失败，请检查禅道服务地址是否正确',
+    E5001: brandText('请求超时，请检查网络连接或禅道服务是否正常'),
+    E5002: brandText('SSL/TLS 证书验证失败，请检查禅道服务地址是否正确'),
     E5003: '请求已取消',
     E5004: '无法启动 MCP HTTP 服务：{reason}',
 } as const;
@@ -57,14 +59,9 @@ export class ZentaoError extends Error {
      * @param details 附加详情，会在 JSON 输出中包含
      */
     constructor(code: ErrorCode, replacements?: Record<string, string>, details?: unknown) {
-        let message = ERROR_CODES[code] as string;
-        if (replacements) {
-            for (const [key, value] of Object.entries(replacements)) {
-                message = message.replaceAll(`{${key}}`, value);
-            }
-        }
+        const message = interpolate(ERROR_CODES[code], replacements);
         super(message);
-        this.name = 'ZentaoError';
+        this.name = brandText('ZentaoError');
         this.code = code.replace('E', '');
         this.details = details;
     }
@@ -75,6 +72,7 @@ interface SdkErrorLike {
     name?: string;
     code?: string;
     message?: string;
+    params?: Readonly<Record<string, string | number>>;
     details?: unknown;
 }
 
@@ -84,11 +82,6 @@ function isSdkError(error: unknown): error is SdkErrorLike {
     return typeof code === 'string' && code.startsWith('E_');
 }
 
-function tail(message: string | undefined, marker: string): string {
-    if (!message) return '';
-    const idx = message.indexOf(marker);
-    return idx >= 0 ? message.slice(idx + marker.length).trim() : message;
-}
 
 /**
  * 将 `zentao-api` SDK 抛出的 {@link import('zentao-api').ZentaoError}（字符串错误码）
@@ -102,6 +95,7 @@ export function mapSdkError(error: unknown): unknown {
     if (!isSdkError(error)) return error;
 
     const { code, message, details } = error;
+    const params = error.params ?? {};
     const d = (details && typeof details === 'object' ? details : {}) as Record<string, unknown>;
 
     switch (code) {
@@ -134,7 +128,7 @@ export function mapSdkError(error: unknown): unknown {
             return new ZentaoError('E2008', {
                 url: '',
                 status: '',
-                serverResponse: tail(message, 'failure:') || (message ?? ''),
+                serverResponse: String(params.message ?? d.message ?? ''),
             }, details);
         case 'E_LOGIN_FAILED':
             return new ZentaoError('E1003', undefined, details);
@@ -145,18 +139,18 @@ export function mapSdkError(error: unknown): unknown {
                 minVersion: Array.isArray(d.minVersion) ? d.minVersion.join(' / ') : String(d.minVersion ?? ''),
             }, details);
         case 'E_INVALID_ZENTAO_VERSION':
-            return new ZentaoError('E2011', { version: tail(message, 'version:') }, details);
+            return new ZentaoError('E2011', { version: String(params.version ?? '') }, details);
         case 'E_INVALID_ZENTAO_CONFIG':
             return new ZentaoError('E2012', undefined, details);
         case 'E_MISSING_PARAM':
-            return new ZentaoError('E2003', { fields: tail(message, 'parameter:'), module: '' }, details);
+            return new ZentaoError('E2003', { fields: String(params.param ?? ''), module: '' }, details);
         case 'E_INVALID_PARAM': {
-            const rest = tail(message, 'parameter ');
-            const [field, value] = rest.split(':').map((s) => s.trim());
+            const field = String(params.param ?? '');
+            const value = String(params.value ?? '');
             return new ZentaoError('E2004', { field: field ?? '', value: value ?? '' }, details);
         }
         case 'E_INVALID_MODULE':
-            return new ZentaoError('E2001', { module: tail(message, 'module:') }, details);
+            return new ZentaoError('E2001', { module: String(params.module ?? '') }, details);
         case 'E_INVALID_ACTION':
         case 'E_INVALID_REQUEST_NAME':
             return new ZentaoError('E2005', { module: '' }, details);
@@ -166,8 +160,18 @@ export function mapSdkError(error: unknown): unknown {
         case 'E_PROFILE_NOT_FOUND':
             return new ZentaoError('E1007', undefined, details);
         default:
-            return new ZentaoError('E2008', { url: '', status: '', serverResponse: message ?? String(code) }, details);
+            return new ZentaoError('E2008', { url: '', status: '', serverResponse: sdkMessage(error) }, details);
     }
+}
+
+function sdkMessage(error: SdkErrorLike): string {
+    const template = SDK_ERRORS[error.code as keyof typeof SDK_ERRORS];
+    if (!template) return error.message ?? String(error.code);
+    return interpolate(brandText(template), error.params);
+}
+
+function interpolate(template: string, params?: Readonly<Record<string, string | number>>): string {
+    return template.replace(/\{([^{}]+)\}/g, (placeholder, key) => params && Object.hasOwn(params, key) ? String(params[key]) : placeholder);
 }
 
 /** 将 ZentaoError 格式化为用户可读的字符串（Markdown 或 JSON） */

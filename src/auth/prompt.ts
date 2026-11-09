@@ -1,3 +1,4 @@
+import { brandText } from '../brand.js';
 import { createInterface } from 'node:readline/promises';
 import { Writable } from 'node:stream';
 
@@ -22,7 +23,7 @@ export async function promptLogin(): Promise<PromptResult> {
     });
     const rl = createInterface({ input: process.stdin, output, terminal: process.stdin.isTTY });
     try {
-        const url = await rl.question('禅道服务地址 (URL): ');
+        const url = await rl.question(brandText('禅道服务地址 (URL): '));
         if (!url) throw new Error('URL is required');
 
         const account = await rl.question('用户名 (Account): ');

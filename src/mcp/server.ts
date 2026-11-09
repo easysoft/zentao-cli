@@ -1,3 +1,4 @@
+import { brandText } from '../brand.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { ensureAuth, type AuthContext } from '../auth/flow.js';
@@ -73,7 +74,7 @@ function createAuthProvider(options?: { insecure?: boolean; timeout?: number }):
 
 export function createMcpServer(auth: AuthProvider, options?: McpToolOptions): McpServer {
     const server = new McpServer(
-        { name: 'zentao-cli', version: getCliVersion() },
+        { name: brandText('zentao-cli'), version: getCliVersion() },
         { capabilities: { tools: {} } },
     );
 

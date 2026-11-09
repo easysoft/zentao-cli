@@ -1,3 +1,4 @@
+import { brandText } from '../brand.js';
 import type { Command } from 'commander';
 import { createClient } from '../api/index.js';
 import { requestToken } from '../auth/token.js';
@@ -11,7 +12,7 @@ export function registerTokenCommand(program: Command): void {
         .command('token')
         .description('获取 Token（默认输出纯文本，不保存配置）')
         .argument('[profileKey]', '已登录的用户配置（account@server，省略时使用当前账号）')
-        .option('-s, --server <url>', '临时获取 Token 的禅道服务地址')
+        .option('-s, --server <url>', brandText('临时获取 Token 的禅道服务地址'))
         .option('-u, --user <account>', '临时获取 Token 的用户名')
         .option('-p, --password <password>', '临时获取 Token 的密码')
         .addHelpText('after', '\n省略凭证时只读取本地 Token，不联网验证。\n临时获取必须同时提供 --server、--user、--password，不能与 profileKey 混用。\n使用 --format json 或 --format raw 可同时输出账号、地址和 Token。')

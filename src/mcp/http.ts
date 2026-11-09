@@ -1,3 +1,4 @@
+import { brandText } from '../brand.js';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import type { AddressInfo, Socket } from 'node:net';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
@@ -106,7 +107,7 @@ export async function startMcpHttpServer(options: McpHttpOptions): Promise<McpHt
         url = new URL(options.url);
         if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) throw new Error();
     } catch {
-        throw new ZentaoError('E2009', { option: 'url', reason: '请提供不含凭证、查询参数或片段的 HTTP(S) 禅道站点地址' });
+        throw new ZentaoError('E2009', { option: 'url', reason: brandText('请提供不含凭证、查询参数或片段的 HTTP(S) 禅道站点地址') });
     }
     const site = createClient(url.toString()).siteUrl;
     const config = { ...DEFAULT_CONFIG, pagers: {}, timeout: options.timeout ?? DEFAULT_CONFIG.timeout, insecure: options.insecure ?? DEFAULT_CONFIG.insecure };
@@ -175,7 +176,7 @@ export async function startMcpHttpServer(options: McpHttpOptions): Promise<McpHt
                 return;
             }
             const token = tokenFromHeaders(req.rawHeaders);
-            if (!token || req.url?.includes('?')) { respond(res, 401, '请通过单个 token 或 Authorization: Bearer 请求头提供禅道 Token'); return; }
+            if (!token || req.url?.includes('?')) { respond(res, 401, brandText('请通过单个 token 或 Authorization: Bearer 请求头提供禅道 Token')); return; }
             const { body, status } = await readBody(req);
             if (finished) return;
             if (status) { respond(res, status, status === 413 ? '请求体超过 1 MiB' : status === 408 ? '接收请求超时' : 'JSON 请求体无效'); return; }
@@ -312,7 +313,7 @@ async function startBunHttpServer(
                     if (route !== '/mcp') return error(404, '未找到接口');
                     if (method !== 'POST') return error(405, '仅支持 POST', { Allow: 'POST' });
                     const token = tokenFromHeaders(Array.from(req.headers).flat());
-                    if (!token || req.url.includes('?')) return error(401, '请通过单个 token 或 Authorization: Bearer 请求头提供禅道 Token');
+                    if (!token || req.url.includes('?')) return error(401, brandText('请通过单个 token 或 Authorization: Bearer 请求头提供禅道 Token'));
                     reader = req.body?.getReader();
                     const chunks: Uint8Array[] = [];
                     let size = 0;

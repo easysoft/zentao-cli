@@ -1,3 +1,4 @@
+import { brandText } from '../brand.js';
 import { randomBytes } from 'node:crypto';
 import { requestToken } from '../auth/token.js';
 import { ZentaoError } from '../errors.js';
@@ -45,7 +46,7 @@ export function createMcpStartHandler(options: McpHttpOptions) {
         try { origin = new URL(headers.get('origin') ?? ''); }
         catch { return error(403, 'invalidOrigin'); }
         if (!['http:', 'https:'].includes(origin.protocol) || origin.origin !== headers.get('origin')
-            || origin.host !== headers.get('host')?.toLowerCase() || headers.get('x-zentao-start') !== key
+            || origin.host !== headers.get('host')?.toLowerCase() || headers.get(brandText('x-zentao-start')) !== key
             || ![null, 'same-origin', 'none'].includes(headers.get('sec-fetch-site'))) {
             return error(403, 'expired');
         }

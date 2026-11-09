@@ -1,3 +1,4 @@
+import { brandText } from '../brand.js';
 import { Command } from 'commander';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -30,7 +31,7 @@ function getModuleCompletions(program: Command) {
     });
 }
 
-function generateBashScript(program: Command, command = 'zentao'): string {
+function generateBashScript(program: Command, command = brandText('zentao')): string {
     const commands = createCandidates(program);
     const commonOptions = getCommonOptions(program);
     return `# bash completion for ${command}
@@ -88,7 +89,7 @@ complete -F _${command}_completion ${command}
 `;
 }
 
-function generateZshScript(program: Command, command = 'zentao'): string {
+function generateZshScript(program: Command, command = brandText('zentao')): string {
     const commands = createCandidates(program);
     const modules = getModuleNames().join(' ');
     const commonOptions = getCommonOptions(program);
@@ -144,7 +145,7 @@ compdef _${command} ${command}
 `;
 }
 
-function generateFishScript(program: Command, command = 'zentao'): string {
+function generateFishScript(program: Command, command = brandText('zentao')): string {
     const commands = createCandidates(program);
     const modules = getModuleNames().join(' ');
     const commonOptions = getCommonOptions(program).join(' ');
@@ -181,7 +182,7 @@ export function generateCompletionScript(shell: string, program: Command): strin
 }
 
 function getCompletionFilePath(shell: string): string {
-    return join(dirname(getDefaultConfigPath()), `.zentao-completion.${shell}`);
+    return join(dirname(getDefaultConfigPath()), brandText`.zentao-completion.${shell}`);
 }
 
 async function promptShellSelection(): Promise<string> {

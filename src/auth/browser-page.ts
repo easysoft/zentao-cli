@@ -1,3 +1,4 @@
+import { brand, brandText, brandLogo } from '../brand.js';
 import { getCliVersion } from '../utils/version.js';
 import { browserMessages } from './browser-messages.js';
 
@@ -22,7 +23,7 @@ export function renderBrowserLoginPage(options: {
       --success: #9ddbbb; --success-bg: #193c32;
     `;
 
-    return `<!doctype html>
+    return brandText`<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
@@ -128,7 +129,7 @@ export function renderBrowserLoginPage(options: {
     <header class="page-header">
       <div class="brand">
       <!-- Original Pixel Tao geometry from site/public/brand/pixel-tao-terminal-blue-flat.svg. -->
-      <svg viewBox="0 0 16 16" aria-hidden="true" fill="currentColor" shape-rendering="crispEdges"><path d="M6 1h4v1H6z M4 2h8v1H4z M3 3h10v1H3z M2 4h2v1H2z M9 4h5v1H9z M2 5h1v1H2z M4 5h2v1H4z M10 5h4v1h-4z M1 6h5v1H1z M11 6h4v1h-4z M1 7h4v1H1z M6 7h4v1H6z M13 7h2v1h-2z M1 8h3v1H1z M5 8h3v1H5z M10 8h5v1h-5z M1 9h3v1H1z M5 9h2v1H5z M8 9h1v1H8z M11 9h4v1h-4z M2 10h2v1H2z M5 10h5v1H5z M11 10h3v1h-3z M2 11h2v1H2z M6 11h3v1H6z M11 11h3v1h-3z M3 12h2v1H3z M10 12h3v1h-3z M4 13h8v1H4z M6 14h4v1H6z"/></svg>
+      ${brandLogo('<svg viewBox="0 0 16 16" aria-hidden="true" fill="currentColor" shape-rendering="crispEdges"><path d="M6 1h4v1H6z M4 2h8v1H4z M3 3h10v1H3z M2 4h2v1H2z M9 4h5v1H9z M2 5h1v1H2z M4 5h2v1H4z M10 5h4v1h-4z M1 6h5v1H1z M11 6h4v1h-4z M1 7h4v1H1z M6 7h4v1H6z M13 7h2v1h-2z M1 8h3v1H1z M5 8h3v1H5z M10 8h5v1h-5z M1 9h3v1H1z M5 9h2v1H5z M8 9h1v1H8z M11 9h4v1h-4z M2 10h2v1H2z M5 10h5v1H5z M11 10h3v1h-3z M2 11h2v1H2z M6 11h3v1H6z M11 11h3v1h-3z M3 12h2v1H3z M10 12h3v1h-3z M4 13h8v1H4z M6 14h4v1H6z"/></svg>', 'brand-logo')}
       <span class="brand-name">ZenTao CLI</span>
       </div>
       <div class="preferences">
@@ -178,7 +179,7 @@ export function renderBrowserLoginPage(options: {
     <footer>
       <span>ZenTao CLI v${escapeHtml(getCliVersion())}</span>
       <a href="https://www.zentao.net/" target="_blank" rel="noopener noreferrer" data-i18n="website" data-i18n-label="websiteLabel" aria-label="${t('websiteLabel')}">${t('website')}</a>
-      <a href="https://github.com/easysoft/zentao-cli" target="_blank" rel="noopener noreferrer" data-i18n-label="githubLabel" aria-label="${t('githubLabel')}">GitHub</a>
+${!brand || brand.repository ? `      <a href="${brand?.repository ?? "https://github.com/easysoft/zentao-cli"}" target="_blank" rel="noopener noreferrer" data-i18n-label="githubLabel" aria-label="${t('githubLabel')}">GitHub</a>` : ''}
     </footer>
   </div>
   <script nonce="${escapeHtml(options.nonce)}">

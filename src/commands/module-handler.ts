@@ -1,5 +1,6 @@
+import { brandText } from '../brand.js';
 import type { ZentaoClient } from '../api/index.js';
-import { getModuleActionParams } from 'zentao-api';
+import { getModuleActionParams } from '../modules/helper.js';
 import type { ModuleDefinition, ModuleAction, ModuleActionType, Profile, ModuleActionName, UserConfig } from '../types/index.js';
 import { getAction, getActionDescription, getAvailableActions, getObjectProps } from '../modules/helper.js';
 import { executeModuleCommand } from '../modules/executor.js';
@@ -289,25 +290,25 @@ export function showModuleHelp(mod: ModuleDefinition): void {
 
     const listAction = getAction(mod, 'list');
     if (listAction) {
-        cmds.push({ cmd: `zentao ${n} [选项]`, desc: getActionDescription(listAction) });
+        cmds.push({ cmd: brandText`zentao ${n} [选项]`, desc: getActionDescription(listAction) });
     }
     const getByIdAction = getAction(mod, 'get');
     if (getByIdAction) {
         const hasId = Object.keys(getByIdAction.pathParams ?? {}).some(name => name.endsWith('ID') && name !== 'scopeID');
-        cmds.push({ cmd: `zentao ${n} ${hasId ? '<id>' : 'get'} [选项]`, desc: getActionDescription(getByIdAction) });
+        cmds.push({ cmd: brandText`zentao ${n} ${hasId ? '<id>' : 'get'} [选项]`, desc: getActionDescription(getByIdAction) });
     }
-    cmds.push({ cmd: `zentao ${n} props [选项]`, desc: '获取对象属性定义' });
+    cmds.push({ cmd: brandText`zentao ${n} props [选项]`, desc: '获取对象属性定义' });
     const createAction = getAction(mod, 'create');
     if (createAction) {
-        cmds.push({ cmd: `zentao ${n} create [--key=value ...]`, desc: getActionDescription(createAction) });
+        cmds.push({ cmd: brandText`zentao ${n} create [--key=value ...]`, desc: getActionDescription(createAction) });
     }
     const updateAction = getAction(mod, 'update');
     if (updateAction) {
-        cmds.push({ cmd: `zentao ${n} update <id> [--key=value ...]`, desc: getActionDescription(updateAction) });
+        cmds.push({ cmd: brandText`zentao ${n} update <id> [--key=value ...]`, desc: getActionDescription(updateAction) });
     }
     const deleteAction = getAction(mod, 'delete');
     if (deleteAction) {
-        cmds.push({ cmd: `zentao ${n} delete <id>[,<id>...] [选项]`, desc: getActionDescription(deleteAction) });
+        cmds.push({ cmd: brandText`zentao ${n} delete <id>[,<id>...] [选项]`, desc: getActionDescription(deleteAction) });
     }
 
     if (cmds.length > 0) {
@@ -323,7 +324,7 @@ export function showModuleHelp(mod: ModuleDefinition): void {
         const extCmds: CmdEntry[] = [];
         for (const actionName of actions) {
             const action = getAction(mod, actionName)!;
-            extCmds.push({ cmd: `zentao ${n} ${actionName} [选项]`, desc: getActionDescription(action) });
+            extCmds.push({ cmd: brandText`zentao ${n} ${actionName} [选项]`, desc: getActionDescription(action) });
         }
         console.log(`\n扩展操作:`);
         const cmdCol = Math.max(...extCmds.map(c => c.cmd.length), 24) + 4;
@@ -396,7 +397,7 @@ export function showModuleHelp(mod: ModuleDefinition): void {
     printParamEntries(commonOpts);
 
     console.log(`\n提示:`);
-    console.log(`  使用 zentao ${n} <操作> --help 查看操作的详细参数说明`);
+    console.log(brandText`  使用 zentao ${n} <操作> --help 查看操作的详细参数说明`);
     console.log(`  参数传入方式: --key=value 或 --params '{"key":"value"}'`);
     console.log(`  请求数据传入: --data '{"key":"value"}' 或直接 --key=value`);
 }
@@ -410,7 +411,7 @@ export function showModuleHelp(mod: ModuleDefinition): void {
  */
 export function showModuleActionHelp(mod: ModuleDefinition, action: ModuleAction): void {
     console.log(action.display ?? `${mod.display ?? mod.name} ${action.name}`);
-    console.log(`最低禅道版本: ${action.minVersion.join(' / ')}`);
+    console.log(brandText`最低禅道版本: ${action.minVersion.join(' / ')}`);
     if (action.description && action.description !== action.display) {
         console.log(`描述: ${action.description}`);
     }

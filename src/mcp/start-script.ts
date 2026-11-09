@@ -1,5 +1,6 @@
+import { brandRaw } from '../brand.js';
 /** Kept as plain JavaScript so the nonce-protected page needs no browser build or runtime. */
-export const mcpStartScript = String.raw`
+export const mcpStartScript = brandRaw`
 (() => {
   const $ = id => document.getElementById(id);
   const root = document.documentElement;

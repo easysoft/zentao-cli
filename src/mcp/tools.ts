@@ -1,5 +1,7 @@
+import { brandText } from '../brand.js';
 import { z } from 'zod';
-import { getModuleActionParams, request } from 'zentao-api';
+import { request } from 'zentao-api';
+import { getModuleActionParams } from '../modules/helper.js';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { getAction, getAllModules, getModule } from '../modules/helper.js';
@@ -31,7 +33,7 @@ function isActionAvailable(action: ModuleAction, options: McpToolOptions): boole
 }
 
 function buildToolDescription(mod: ModuleDefinition): string {
-    return `${mod.display ?? mod.name}操作；参数、示例和最低版本见 zentao_action_help`;
+    return brandText`${mod.display ?? mod.name}操作；参数、示例和最低版本见 zentao_action_help`;
 }
 
 function buildActionEnum(mod: ModuleDefinition): [string, ...string[]] {
@@ -45,7 +47,7 @@ function buildInputSchema(mod: ModuleDefinition) {
     const names = new Set(parameters.map(param => param.name));
     const shape: Record<string, z.ZodType> = {
         action: z.enum(actionEnum).describe(mod.actions.map(action => `${action.name}: ${action.display ?? action.name}`).join('; ')),
-        params: z.record(z.string(), z.unknown()).optional().describe('路径、查询或请求体参数；必填项见 zentao_action_help'),
+        params: z.record(z.string(), z.unknown()).optional().describe(brandText('路径、查询或请求体参数；必填项见 zentao_action_help')),
     };
     if (parameters.some(param => param.role === 'path' && param.name.endsWith('ID') && param.name !== 'scopeID')) {
         shape.id = z.number().int().nonnegative().optional().describe('首个路径 ID 简写；多 ID 用 params');
@@ -78,7 +80,7 @@ function actionExample(mod: ModuleDefinition, action: ModuleAction, splitTools?:
             ?? (param.type === 'number' || (param.role === 'path' && param.name.endsWith('ID')) ? 1
                 : param.type === 'boolean' ? false : param.type === 'object' ? {} : `<${param.name}>`))]));
     return {
-        name: `zentao_${mod.name}${splitTools ? isReadAction(action) ? '_read' : '_write' : ''}`,
+        name: brandText`zentao_${mod.name}${splitTools ? isReadAction(action) ? '_read' : '_write' : ''}`,
         arguments: { action: action.name, ...(Object.keys(params).length ? { params } : {}) },
         note: 'ID、文本等均为格式示例，请替换为实际值后调用。',
     };
@@ -108,7 +110,7 @@ async function handleProfileTool(auth: AuthProvider, signal?: AbortSignal): Prom
             account: null,
             user: null,
             userFound: false,
-            note: '无法仅凭禅道 Token 确定账号，未查询用户详情。',
+            note: brandText('无法仅凭禅道 Token 确定账号，未查询用户详情。'),
         });
     }
     const scopedClient = withRequestSignal(client, signal);
@@ -224,9 +226,9 @@ export function registerModuleTools(server: McpServer, auth: AuthProvider, optio
     if (!selectedModules.length) throw new ZentaoError('E2009', { option: 'modules', reason: '至少指定一个模块' });
 
     server.registerTool(
-        'zentao_action_help',
+        brandText('zentao_action_help'),
         {
-            description: '查看禅道操作的路径、参数定义和最低版本要求，无需登录；调用业务工具前可按需查询',
+            description: brandText('查看禅道操作的路径、参数定义和最低版本要求，无需登录；调用业务工具前可按需查询'),
             inputSchema: z.object({ module: z.string().describe('模块名，如 doc、story'), action: z.string().describe('操作名，如 createMyDoc、getGrades') }).strict(),
             outputSchema,
             annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
@@ -257,7 +259,7 @@ export function registerModuleTools(server: McpServer, auth: AuthProvider, optio
     );
 
     server.registerTool(
-        'zentao_profile',
+        brandText('zentao_profile'),
         {
             description: '获取当前 MCP 绑定的账号和站点；已知账号时查询远端用户详情，仅 Token 认证时账号未知。userFound=false 表示无用户详情，服务端失败会报错',
             inputSchema: z.object({}).strict(),
@@ -274,7 +276,7 @@ export function registerModuleTools(server: McpServer, auth: AuthProvider, optio
     );
 
     if (auth.switchProfile && !options.readOnly) server.registerTool(
-        'zentao_switch_profile',
+        brandText('zentao_switch_profile'),
         {
             description: '切换当前 MCP 实例的登录账号，不改变 CLI 或其他 MCP 实例的账号',
             inputSchema: z.object({ profileKey: z.string().describe('目标用户配置标识，支持 account@server、account 或 account@hostname') }).strict(),
@@ -298,7 +300,7 @@ export function registerModuleTools(server: McpServer, auth: AuthProvider, optio
         for (const group of groups) {
             if (!group.actions.length) continue;
             const mod = { ...source, actions: group.actions };
-            const name = `zentao_${mod.name}${group.suffix}`;
+            const name = brandText`zentao_${mod.name}${group.suffix}`;
             const description = buildToolDescription(mod);
             const inputSchema = buildInputSchema(mod);
             const annotations = toolAnnotations(mod.actions);

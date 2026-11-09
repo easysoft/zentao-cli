@@ -1,3 +1,4 @@
+import { brandText } from '../brand.js';
 import { randomBytes } from 'node:crypto';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import type { Socket } from 'node:net';
@@ -24,11 +25,11 @@ function loginErrorResponse(error: unknown): { errorCode: string; error: string 
     const code = error instanceof ZentaoError ? error.code : '';
     switch (code) {
         case '1003': case '1004': return { errorCode: 'invalidCredentials', error: '用户名或密码不正确，请检查后重试。' };
-        case '1002': return { errorCode: 'unreachable', error: '无法连接禅道，请检查地址和网络连接。' };
-        case '5001': return { errorCode: 'timeout', error: '连接禅道超时，请检查网络后重试。' };
-        case '5002': return { errorCode: 'certificate', error: '禅道的 HTTPS 证书验证失败，请联系管理员检查证书。' };
-        case '2011': case '2012': return { errorCode: 'invalidService', error: '无法识别禅道服务，请填写禅道站点根地址。' };
-        default: return { errorCode: 'loginFailed', error: '登录或保存失败，请检查禅道地址、账号及本地配置文件权限后重试。' };
+        case '1002': return { errorCode: 'unreachable', error: brandText('无法连接禅道，请检查地址和网络连接。') };
+        case '5001': return { errorCode: 'timeout', error: brandText('连接禅道超时，请检查网络后重试。') };
+        case '5002': return { errorCode: 'certificate', error: brandText('禅道的 HTTPS 证书验证失败，请联系管理员检查证书。') };
+        case '2011': case '2012': return { errorCode: 'invalidService', error: brandText('无法识别禅道服务，请填写禅道站点根地址。') };
+        default: return { errorCode: 'loginFailed', error: brandText('登录或保存失败，请检查禅道地址、账号及本地配置文件权限后重试。') };
     }
 }
 
@@ -111,7 +112,7 @@ export async function startBrowserLogin(options: BrowserLoginOptions = {}): Prom
             reply(res, 404, { errorCode: 'notFound', error: '页面不存在。' });
             return;
         }
-        if (req.headers.origin !== origin || req.headers['x-zentao-login'] !== key) {
+        if (req.headers.origin !== origin || req.headers[brandText('x-zentao-login')] !== key) {
             reply(res, 403, { errorCode: 'invalidSession', error: '登录页面已失效或请求来源不正确，请重新发起登录。' });
             return;
         }
@@ -147,12 +148,12 @@ export async function startBrowserLogin(options: BrowserLoginOptions = {}): Prom
             catch { reply(res, 400, { errorCode: 'invalidJson', error: '登录信息格式不正确。' }); return; }
             if (!data || typeof data.server !== 'string' || typeof data.account !== 'string'
                 || typeof data.password !== 'string' || !data.server.trim() || !data.account.trim() || !data.password) {
-                reply(res, 400, { errorCode: 'required', error: '请填写禅道地址、用户名和密码。' });
+                reply(res, 400, { errorCode: 'required', error: brandText('请填写禅道地址、用户名和密码。') });
                 return;
             }
             let url: URL;
             try { url = new URL(data.server.trim()); }
-            catch { reply(res, 400, { errorCode: 'invalidUrl', error: '请填写完整的禅道地址，例如 https://zentao.example.com。' }); return; }
+            catch { reply(res, 400, { errorCode: 'invalidUrl', error: brandText('请填写完整的禅道地址，例如 https://zentao.example.com。') }); return; }
             if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) {
                 reply(res, 400, { errorCode: 'unsafeUrl', error: '请填写 HTTP 或 HTTPS 站点根地址，不要包含账号、密码、查询参数或锚点。' });
                 return;

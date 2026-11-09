@@ -1,3 +1,4 @@
+import { brandText } from './brand.js';
 /**
  * CLI 入口：装配 Commander、注册子命令，并在捕获到 {@link ZentaoError} 时按 `--format` 渲染后退出。
  */
@@ -26,7 +27,7 @@ function resolveCustomConfigPath(argv: readonly string[], env: NodeJS.ProcessEnv
         }
     }
     if (!customPath) {
-        const envPath = env.ZENTAO_CONFIG_FILE;
+        const envPath = env[brandText('ZENTAO_CONFIG_FILE')];
         if (envPath && envPath.trim() !== '') {
             customPath = envPath;
         }
@@ -54,15 +55,15 @@ program.configureOutput({
 });
 
 program
-    .name('zentao')
-    .description('禅道命令行工具，支持在你喜爱的终端里访问和操作禅道数据')
+    .name(brandText('zentao'))
+    .description(brandText('禅道命令行工具，支持在你喜爱的终端里访问和操作禅道数据'))
     .version(getCliVersion(), '-V, --version', '显示版本号')
     .helpOption('-h, --help', '显示命令帮助')
     .option('--format <format>', '输出格式 (markdown|json|raw)')
     .option('--silent', '静默模式')
     .option('--insecure', '跳过 SSL/TLS 证书验证')
     .option('--timeout <ms>', '请求超时时间（毫秒）', parseInt)
-    .option('--config <config_file>', '指定自定义配置文件路径（亦可通过 ZENTAO_CONFIG_FILE 环境变量设置）')
+    .option('--config <config_file>', brandText('指定自定义配置文件路径（亦可通过 ZENTAO_CONFIG_FILE 环境变量设置）'))
     .option('--machine-readable', '禁用 Markdown ANSI 渲染；删除操作仍需显式传入 --yes');
 
 registerAllCommands(program);
@@ -70,7 +71,7 @@ registerAllCommands(program);
 program.addHelpText('after', () => {
     try {
         if (getAllProfiles().length === 0) {
-            return '\n提示：尚未登录禅道服务，请先通过本机浏览器登录：\n\n  zentao login --web\n\n终端交互登录可使用 zentao login --no-browser。\n';
+            return brandText('\n提示：尚未登录禅道服务，请先通过本机浏览器登录：\n\n  zentao login --web\n\n终端交互登录可使用 zentao login --no-browser。\n');
         }
     } catch {
         // 配置文件不可读时静默忽略，不影响帮助输出

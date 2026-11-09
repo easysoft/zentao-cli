@@ -1,3 +1,4 @@
+import { brandText } from '../brand.js';
 import { Command } from 'commander';
 import { cpSync, existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -22,7 +23,7 @@ type SkillSource =
 
 declare const BUILD_SKILL_FILES: Record<string, string> | undefined;
 
-const SKILL_NAMES = ['zentao-cli', 'zentao-tour'] as const;
+const SKILL_NAMES = [brandText('zentao-cli'), brandText('zentao-tour')] as const;
 
 const AGENT_TARGETS: Record<string, AgentTarget> = {
     'claude-code': { label: 'Claude Code', dir: join(homedir(), '.claude', 'skills') },
@@ -48,7 +49,7 @@ function resolveSkillSource(skillName: string): SkillSource {
         if (files['SKILL.md'] === undefined) {
             throw new ZentaoError('E2009', {
                 option: 'add-skill',
-                reason: `找不到内置技能: ${skillName}，请重新安装完整的 zentao-cli。`,
+                reason: brandText`找不到内置技能: ${skillName}，请重新安装完整的 zentao-cli。`,
             });
         }
         return { type: 'embedded', files };
@@ -69,7 +70,7 @@ function resolveSkillSource(skillName: string): SkillSource {
 
     throw new Error(
         `找不到技能源目录，已尝试路径:\n${candidates.map((p) => `  - ${p}`).join('\n')}\n` +
-        '请确认 zentao-cli 安装完整，或从源码目录运行。',
+        brandText('请确认 zentao-cli 安装完整，或从源码目录运行。'),
     );
 }
 
@@ -212,7 +213,7 @@ function exportSkills(output: string, silent: boolean): void {
 export function registerAddSkillCommand(program: Command): void {
     program
         .command('add-skill')
-        .description('安装禅道 CLI 技能到 AI Agent，或导出至指定目录')
+        .description(brandText('安装禅道 CLI 技能到 AI Agent，或导出至指定目录'))
         .argument('[agent]', `目标 Agent (${AGENT_NAMES.join('|')}|all)`)
         .option('-o, --output <path>', '将所有内置技能导出到指定目录')
         .action(async (agent?: string, options: AddSkillOptions = {}) => {
@@ -221,7 +222,7 @@ export function registerAddSkillCommand(program: Command): void {
 
             if (options.output !== undefined) {
                 if (agent) {
-                    throw new Error('不能同时指定 agent 和 --output；导出技能请使用: zentao add-skill --output <path>');
+                    throw new Error(brandText('不能同时指定 agent 和 --output；导出技能请使用: zentao add-skill --output <path>'));
                 }
                 exportSkills(options.output, silent);
                 return;

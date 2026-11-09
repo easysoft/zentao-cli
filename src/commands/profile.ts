@@ -1,3 +1,4 @@
+import { brandText } from '../brand.js';
 import { Command } from 'commander';
 import { getAllProfiles, getCurrentProfile, setCurrentProfile, profileKey, getConfigPath } from '../config/store.js';
 import { resolveAuthSource } from '../auth/flow.js';
@@ -10,7 +11,7 @@ export function registerProfileCommand(program: Command): void {
     program
         .command('profile')
         .description('查看或切换用户配置')
-        .argument('[profileKey]', '要切换到的用户配置（格式：account@server，例如 admin@https://zentao.example.com）')
+        .argument('[profileKey]', brandText('要切换到的用户配置（格式：account@server，例如 admin@https://zentao.example.com）'))
         .option('--effective', '显示业务命令实际使用的认证来源（不验证凭据）')
         .action((key: string | undefined, options: { effective?: boolean }) => {
             const globalOpts = program.opts() as GlobalOptions;
@@ -31,7 +32,7 @@ export function registerProfileCommand(program: Command): void {
                 } else {
                     console.log(renderMarkdown([
                         `* 认证来源: ${result.source === 'environment' ? '环境变量' : '本地 Profile'}`,
-                        `* 禅道地址: ${result.server}`,
+                        brandText`* 禅道地址: ${result.server}`,
                         `* 账号: ${result.account}`,
                         `* 凭据类型: ${result.credentialType === 'token' ? 'Token' : '密码'}`,
                         `* 配置文件: ${result.configFile ?? '未使用'}`,

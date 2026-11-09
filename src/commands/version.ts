@@ -1,3 +1,4 @@
+import { brandText } from '../brand.js';
 import { Command } from 'commander';
 import { getCurrentProfile } from '../config/store.js';
 import type { GlobalOptions } from '../types/index.js';
@@ -13,7 +14,7 @@ export function registerVersionCommand(program: Command): void {
             const version = getCliVersion();
 
             if (globalOpts.format === 'json' || globalOpts.format === 'raw') {
-                const result: Record<string, unknown> = { cli: `zentao-cli ${version}` };
+                const result: Record<string, unknown> = { cli: brandText`zentao-cli ${version}` };
                 const profile = getCurrentProfile();
                 if (profile) {
                     result.server = profile.server;
@@ -22,10 +23,10 @@ export function registerVersionCommand(program: Command): void {
                 return;
             }
 
-            console.log(`Zentao CLI: ${version}`);
+            console.log(brandText`Zentao CLI: ${version}`);
             const profile = getCurrentProfile();
             if (profile) {
-                console.log(`Zentao Server: ${profile.serverConfig?.version ? profile.serverConfig.version.toUpperCase() : 'Unknown'} (${profile.server})`);
+                console.log(brandText`Zentao Server: ${profile.serverConfig?.version ? profile.serverConfig.version.toUpperCase() : 'Unknown'} (${profile.server})`);
             }
         });
 }
