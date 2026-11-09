@@ -217,7 +217,7 @@ WorkBuddy 的 CLI + Skill 连接器资源包使用 `bun run build:workbuddy` 生
 zentao mcp-server https://zentao.example.com
 ```
 
-启动后打开 `http://127.0.0.1:9090/start`，用户可用禅道用户名密码获取个人 Token，或粘贴已有 Token，再复制接入说明让 Agent 协助配置；页面也提供常用 Agent 的手动配置和官方文档链接。管理员通过 HTTPS 反向代理同时提供 `/start` 和 `/mcp`。部署与接入步骤见独立文档：[禅道 MCP 服务部署与 Agent 接入指南](docs/mcp-server.md)。
+启动后打开 `http://127.0.0.1:9090/start`，用户可用禅道用户名密码获取个人 Token，或粘贴已有 Token，再复制接入说明让 Agent 协助配置；页面也提供常用 Agent 的手动配置和官方文档链接。管理员通过 HTTPS 反向代理同时提供 `/start` 和 `/mcp`。管理员部署步骤见[禅道 MCP 服务部署指南](docs/mcp-server.md)，用户接入步骤见[在 Agent 中接入禅道 MCP 服务](docs/mcp-user-guide.md)。
 
 #### 本地 stdio MCP
 
@@ -277,7 +277,8 @@ zentao mcp --split-tools --modules product,story,task,bug
 | [命令、参数与用法参考](docs/command-reference.md) | 全部内置命令、业务操作、参数类型、必填项、可选值和用法 |
 | [CLI 核心功能详解](docs/cli-usage.md) | 用户验证、数据访问与操作、数据处理、输出格式、配置管理等 |
 | [在 Agents 中使用禅道](docs/use-zentao-in-agents.md) | 通过技能或 MCP 在 AI Agents 中使用禅道 |
-| [禅道 MCP 服务部署与 Agent 接入指南](docs/mcp-server.md) | 管理员统一部署、用户获取个人 Token，并让 Agent 协助配置远程 MCP |
+| [禅道 MCP 服务部署指南](docs/mcp-server.md) | 管理员统一部署远程 MCP 服务、配置 HTTPS 反向代理并向用户发布 |
+| [在 Agent 中接入禅道 MCP 服务](docs/mcp-user-guide.md) | 禅道用户获取个人 Token，并在 Agent 中配置远程 MCP |
 | [开发指引](docs/development.md) | 技术栈、项目结构、测试 |
 | [技术方案与实现细节](docs/implementation.md) | 内部接口调用规则、验证机制与持久化配置 |
 | [常见错误排查与参考手册](docs/errors.md) | 错误代码（Exxxx）查阅 |

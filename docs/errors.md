@@ -105,4 +105,4 @@ $ zentao product --format=json
 | 连接禅道超时 | 同 `E5001` |
 | 连接失败，请检查网络后重试 | 浏览器没有收到服务的正常响应，例如网络中断、代理返回 502 或非 JSON 错误页；检查代理是否转发了 `/start/token` |
 
-认证头格式通过检查后，权限和 Token 有效性由禅道业务接口决定。HTTP 传输状态与 MCP 工具结果需要分别检查：业务失败通过工具的 `isError` 和 `structuredContent.error` 返回。部署步骤见[禅道 MCP 服务部署与 Agent 接入指南](mcp-server.md)。
+认证头格式通过检查后，权限和 Token 有效性由禅道业务接口决定。HTTP 传输状态与 MCP 工具结果需要分别检查：业务失败通过工具的 `isError` 和 `structuredContent.error` 返回。部署步骤见[禅道 MCP 服务部署指南](mcp-server.md)，用户接入见[在 Agent 中接入禅道 MCP 服务](mcp-user-guide.md)。

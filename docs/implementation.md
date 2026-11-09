@@ -153,7 +153,7 @@ HTTP 服务提供以下接口：
 | `GET /start` | 无 | 用户接入页面 |
 | `POST /start/token` | 页面密钥 | 只接受该实例生成的接入页面发出的同源 JSON 请求，向固定的禅道站点换取 Token；请求体最大 16 KiB，最多同时处理 8 个，超出返回 429 |
 
-HTTP 模式不读取服务器上的登录记录、配置文件偏好或 `ZENTAO_ACCOUNT`、`ZENTAO_PASSWORD`、`ZENTAO_TOKEN` 环境变量。密码和 Token 不写入磁盘，接入页面和 `/start/token` 的响应禁止缓存。部署示例见[禅道 MCP 服务部署与 Agent 接入指南](mcp-server.md)。
+HTTP 模式不读取服务器上的登录记录、配置文件偏好或 `ZENTAO_ACCOUNT`、`ZENTAO_PASSWORD`、`ZENTAO_TOKEN` 环境变量。密码和 Token 不写入磁盘，接入页面和 `/start/token` 的响应禁止缓存。部署示例见[禅道 MCP 服务部署指南](mcp-server.md)。
 
 ## 禅道 API 调用
 

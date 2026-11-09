@@ -143,7 +143,7 @@ $ ZENTAO_CONFIG_FILE=~/work/zt.json zentao product
 `zentao mcp` 提供 stdio 和 HTTP 两种传输方式，共用业务工具、参数校验和返回格式。
 
 - **本地 stdio 模式**：由 Agent 在本机启动 CLI 进程，使用本机登录的账号，见下文。
-- **远程 HTTP 模式**：由公司管理员统一部署 `zentao mcp-server`，用户在 Agent 中配置服务地址和个人 Token。部署、启动参数、反向代理、用户接入、客户端配置和请求边界均见[禅道 MCP 服务部署与 Agent 接入指南](mcp-server.md)。
+- **远程 HTTP 模式**：由公司管理员统一部署 `zentao mcp-server`，用户在 Agent 中配置服务地址和个人 Token。部署见[禅道 MCP 服务部署指南](mcp-server.md)，用户接入见[在 Agent 中接入禅道 MCP 服务](mcp-user-guide.md)。
 
 ### 本地 stdio 模式
 
@@ -166,11 +166,11 @@ zentao mcp-server https://zentao.example.com
 zentao mcp --transport http --url https://zentao.example.com
 ```
 
-`zentao mcp-server [url]` 固定使用 HTTP，与 `zentao mcp --transport http` 等价，不接受 `--transport`。`--url`、`--host`、`--port` 只适用于 HTTP 模式，在 stdio 模式下使用会报 `E2009`；`--read-only`、`--modules`、`--split-tools` 在两种模式下均可使用。HTTP 模式的完整说明见[禅道 MCP 服务部署与 Agent 接入指南](mcp-server.md)：
+`zentao mcp-server [url]` 固定使用 HTTP，与 `zentao mcp --transport http` 等价，不接受 `--transport`。`--url`、`--host`、`--port` 只适用于 HTTP 模式，在 stdio 模式下使用会报 `E2009`；`--read-only`、`--modules`、`--split-tools` 在两种模式下均可使用。HTTP 模式的完整说明见：
 
 - [启动参数](mcp-server.md#1-安装并试运行)：站点地址、监听地址和端口、`--timeout`、`--insecure`
 - [配置 HTTPS 反向代理](mcp-server.md#3-配置-https-反向代理)：Nginx 示例、路径前缀和多实例部署
-- [手动配置 Agent](mcp-server.md#手动配置-agent)：Claude Code、Cursor、Codex 等客户端的配置格式
+- [手动配置 Agent](mcp-user-guide.md#手动配置-agent)：Claude Code、Cursor、Codex 等客户端的配置格式
 - [HTTP MCP 的请求隔离](implementation.md#http-mcp-的请求隔离)：接口列表、请求限制，以及与 stdio 模式的区别
 
 ### 共用工具与返回格式
