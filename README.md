@@ -225,9 +225,11 @@ zentao mcp-server https://zentao.example.com
 | [后续计划](docs/roadmap.md) | 待实现的功能和改进计划 |
 | [更新日志](CHANGES.md) | 每个版本的变更内容 |
 
+<!-- repository-only:start -->
 ## 参与贡献
 
 欢迎提交 Issue 和 Pull Request。开发环境、项目结构、测试和构建方法见 [开发指引](docs/development.md)。
+<!-- repository-only:end -->
 
 ## 许可证
 

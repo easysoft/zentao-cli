@@ -84,4 +84,5 @@ test('brand builds reject unsafe config and output paths', () => {
 test('removing repository links preserves adjacent controls with multiline HTML tags', () => {
     const html = '<a href="https://github.com/easysoft/zentao-cli">GitHub</a\n  ><button class="theme-toggle">Theme</button><a href="#guide">Guide</a>';
     expect(brandDocument(html, config)).toBe('<button class="theme-toggle">Theme</button><a href="#guide">Guide</a>');
+    expect(brandDocument('License.<span data-repository-only>Source on GitHub.</span><!-- repository-only:start -->Contribute<!-- repository-only:end -->', config)).toBe('License.');
 });

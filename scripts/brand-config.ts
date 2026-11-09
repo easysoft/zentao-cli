@@ -53,6 +53,8 @@ export function prepareOutput(directory: string): void {
 export function brandDocument(text: string, brand?: ResolvedBrand, file = 'README.md'): string {
     if (!brand) return text;
     if (!brand.repository) {
+        text = text.replace(/<!-- repository-only:start -->[\s\S]*?<!-- repository-only:end -->/g, '');
+        text = text.replace(/<span\b[^>]*data-repository-only[^>]*>[\s\S]*?<\/span\s*>/g, '');
         // Source-only files are absent from the published package and static site.
         const sourceOnly = (href: string) => {
             const target = href.replace(/^https:\/\/(?:github\.com\/easysoft\/zentao-cli\/(?:blob|raw)\/[^/]+\/|raw\.githubusercontent\.com\/easysoft\/zentao-cli\/[^/]+\/)/, '');

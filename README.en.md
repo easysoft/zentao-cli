@@ -227,9 +227,11 @@ The linked guides and changelog are currently in Chinese.
 | [Roadmap](docs/roadmap.md) | Planned features and improvements |
 | [Changelog](CHANGES.md) | Changes in each release |
 
+<!-- repository-only:start -->
 ## Contributing
 
 Issues and pull requests are welcome. For development setup, project structure, testing, and builds, see the [Development guide](docs/development.md).
+<!-- repository-only:end -->
 
 ## License
 
