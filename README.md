@@ -2,6 +2,8 @@
 
 ![npm](https://img.shields.io/npm/v/zentao-cli) ![Node.js](https://img.shields.io/node/v/zentao-cli) ![License](https://img.shields.io/npm/l/zentao-cli)
 
+简体中文 | [English](README.en.md)
+
 禅道命令行工具，支持在你喜爱的终端里访问和操作禅道数据，对 AI Agents 友好。
 
 ## 主要特性
