@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
-  <meta name="description" content="禅道 MCP 服务的部署与 Agent 接入指南：管理员部署一次，禅道用户在自己的 Agent 中填写服务地址和个人 Token 即可使用。">
-  <title>禅道 MCP 服务部署与 Agent 接入指南 · ZenTao CLI</title>
+  <meta name="description" content="禅道 MCP 服务的部署指南：管理员部署一次，禅道用户在自己的 Agent 中填写服务地址和个人 Token 即可使用。">
+  <title>禅道 MCP 服务部署指南 · ZenTao CLI</title>
   <script>
     (function () {
       var dark = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
@@ -49,7 +49,6 @@
     [hidden] { display: none !important; }
     html { scroll-padding-top: calc(var(--topbar) + 24px); scrollbar-color: var(--scroll-thumb) transparent; }
     body { margin: 0; background: var(--page); color: var(--ink); font: 15px/1.75 var(--sans); -webkit-font-smoothing: antialiased; }
-    body[data-role="user"] [data-for="admin"], body[data-role="admin"] [data-for="user"] { display: none !important; }
     p, li, dd { text-wrap: pretty; }
     a { color: var(--accent); text-underline-offset: 3px; text-decoration-thickness: 1px; }
     a:hover { color: var(--accent-hover); }
@@ -76,10 +75,6 @@
     .wordmark strong { color: var(--accent); font-weight: 700; }
     .topbar-title { padding-left: 16px; border-left: 1px solid var(--border); color: var(--muted); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .topbar-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
-    .segmented { display: inline-flex; padding: 2px; gap: 2px; border: 1px solid var(--border); border-radius: var(--radius-small); background: var(--surface); }
-    .segmented button { border: 0; border-radius: var(--radius-label); background: transparent; padding: 4px 12px; font-size: 13px; color: var(--muted); white-space: nowrap; }
-    .segmented button:hover { color: var(--ink); background: var(--surface-soft); }
-    .segmented button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); font-weight: 600; }
     .icon-button { width: 34px; height: 34px; display: inline-grid; place-items: center; border: 1px solid var(--border); border-radius: var(--radius-small); background: var(--surface); color: var(--muted); }
     .icon-button:hover { color: var(--ink); border-color: var(--strong-border); }
     .icon-button .sun { display: none; }
@@ -112,15 +107,9 @@
     .eyebrow { margin: 0 0 12px; font: 600 12px/1.4 var(--mono); color: var(--accent); letter-spacing: .06em; text-transform: uppercase; }
     .hero h1 { margin: 0; font-size: clamp(28px, 4vw, 40px); font-weight: 760; letter-spacing: -.025em; line-height: 1.25; }
     .hero .lead { margin: 16px 0 0; max-width: 660px; font-size: 16px; color: var(--muted); }
-    .role-cards { margin-top: 32px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-    .role-card { position: relative; display: grid; gap: 6px; text-align: left; padding: 18px 20px 16px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); transition: border-color .15s, background .15s; }
-    .role-card:hover { border-color: var(--strong-border); }
-    .role-card[aria-pressed="true"] { border-color: var(--accent); background: var(--surface-blue); box-shadow: inset 0 0 0 1px var(--accent); }
-    .role-card .role-title { font-size: 17px; font-weight: 700; }
-    .role-card .role-desc { font-size: 14px; color: var(--muted); line-height: 1.65; }
-    .role-card .role-meta { margin-top: 6px; font-size: 12px; color: var(--subtle); }
-    .role-card .check { position: absolute; top: 16px; right: 16px; width: 18px; height: 18px; border: 1px solid var(--strong-border); border-radius: var(--radius-label); display: grid; place-items: center; color: transparent; }
-    .role-card[aria-pressed="true"] .check { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+    .user-callout { margin-top: 28px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 16px 18px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+    .user-callout p { margin: 0; flex: 1 1 320px; font-size: 14px; color: var(--muted); }
+    .user-callout strong { color: var(--ink); }
 
     .address { margin-top: 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-soft); }
     .address-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; padding: 10px 14px; font-size: 13px; }
@@ -144,7 +133,6 @@
     .button:hover { border-color: var(--accent); color: var(--ink); }
     .button.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
     .button.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); color: var(--on-accent); }
-    .button[disabled] { opacity: .55; cursor: not-allowed; }
 
     /* Sections */
     .doc-section { padding-top: 64px; }
@@ -152,7 +140,6 @@
     .section-head h2 { margin: 0; font-size: 24px; font-weight: 720; flex: 1; min-width: 0; }
     .step-no { width: 30px; height: 30px; flex: none; display: grid; place-items: center; border-radius: var(--radius-label); background: var(--accent-soft); color: var(--accent); font: 700 13px/1 var(--mono); }
     .doc-section[data-done="true"] .step-no { background: var(--accent); color: var(--on-accent); }
-    .tag { font-size: 12px; font-weight: 600; color: var(--accent); border: 1px solid var(--accent); border-radius: var(--radius-label); padding: 0 6px; line-height: 1.6; }
     .done-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); white-space: nowrap; cursor: pointer; user-select: none; }
     .done-toggle input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
     .section-intro { margin: 10px 0 0; color: var(--muted); }
@@ -163,22 +150,7 @@
     .muted { color: var(--muted); }
     .small { font-size: 13px; }
 
-    /* Numbered steps */
-    ol.steps { list-style: none; padding: 0; margin: 20px 0; counter-reset: step; display: grid; gap: 4px; }
-    ol.steps > li { counter-increment: step; position: relative; display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 14px; margin: 0; padding-bottom: 18px; }
-    ol.steps > li::before { content: counter(step); width: 28px; height: 28px; display: grid; place-items: center; border: 1px solid var(--strong-border); border-radius: var(--radius-label); background: var(--surface); font: 600 12px/1 var(--mono); color: var(--accent); }
-    ol.steps > li::after { content: ""; position: absolute; left: 13.5px; top: 34px; bottom: 4px; width: 1px; background: var(--border); }
-    ol.steps > li:last-child::after { display: none; }
-    ol.steps .step-title { font-weight: 700; display: block; margin-top: 1px; }
-    ol.steps p { margin: 4px 0 0; color: var(--muted); }
-    ol.steps .button { margin-top: 10px; }
-
-    /* Cards and lists */
-    .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin: 16px 0; }
-    .card { padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); min-width: 0; }
-    .card h4 { margin: 0 0 4px; font-size: 14px; font-weight: 700; }
-    .card p { margin: 0; font-size: 14px; color: var(--muted); line-height: 1.65; }
-    .card code { font-size: 12px; }
+    /* Definition lists and notes */
     .def-list { margin: 16px 0; border-top: 1px solid var(--border); }
     .def-list > div { display: grid; grid-template-columns: 132px minmax(0, 1fr); gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--border); }
     .def-list dt { font-weight: 700; font-size: 14px; }
@@ -224,7 +196,6 @@
     details.more > summary:hover { background: var(--surface-soft); }
     details.more > summary .chev { color: var(--subtle); transition: transform .15s; }
     details.more[open] > summary .chev { transform: rotate(90deg); }
-    details.more > summary .sum-hint { margin-left: auto; font-size: 12px; font-weight: 400; color: var(--subtle); }
     details.more > .more-body { padding: 2px 16px 12px 36px; font-size: 14px; }
     details.more > .more-body > :first-child { margin-top: 4px; }
     details.more .code { margin: 12px 0; }
@@ -235,43 +206,12 @@
     .tip { position: absolute; left: 50%; bottom: calc(100% + 8px); z-index: 25; width: max-content; max-width: min(300px, 80vw); padding: 8px 11px; border-radius: var(--radius-small); background: var(--ink); color: var(--page); font-size: 13px; font-weight: 400; line-height: 1.6; text-align: left; box-shadow: var(--shadow); transform: translateX(calc(-50% + var(--shift, 0px))); opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .12s; white-space: normal; }
     .term:hover .tip, .term:focus .tip { opacity: 1; visibility: visible; }
 
-    /* Agent tabs */
-    .tablist { display: flex; flex-wrap: wrap; gap: 6px; margin: 16px 0 0; }
-    .tab { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border: 1px solid var(--border); border-radius: var(--radius-small); background: var(--surface); color: var(--muted); font-size: 13px; font-weight: 600; white-space: nowrap; }
-    .tab svg { width: 17px; height: 17px; flex: none; }
-    .tab:hover { color: var(--ink); border-color: var(--strong-border); }
-    .tab[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
-    .tabpanel { margin-top: 10px; padding: 18px 20px 6px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
-    .panel-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-    .panel-head svg { width: 26px; height: 26px; color: var(--ink); }
-    .panel-head h3 { margin: 0; font-size: 18px; flex: 1; }
-    .ext { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; }
-    .panel-meta { margin: 12px 0 4px; display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 4px 12px; font-size: 14px; }
-    .panel-meta dt { color: var(--muted); }
-    .panel-meta dd { margin: 0; }
-    .tabpanel ol { margin: 10px 0; padding-left: 20px; font-size: 14px; }
-    .tabpanel .small-note { font-size: 13px; color: var(--muted); }
-    .auth-notes { margin: 12px 0 0; display: grid; gap: 4px; font-size: 13px; color: var(--muted); padding-left: 18px; }
-
-    /* Copy chips */
-    .prompt-list { display: grid; gap: 8px; margin: 14px 0; }
-    .prompt { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 10px 10px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); font-size: 14px; }
-    .prompt .copy-button { color: var(--accent); border-color: var(--border); }
-    .prompt .copy-button:hover { background: var(--surface-soft); color: var(--ink); }
-    .prompt .copy-button[data-copied="true"] { color: #2f7a52; border-color: #9cc9ae; }
-    :root[data-theme="dark"] .prompt .copy-button[data-copied="true"] { color: #9fe0b9; border-color: #3b6b57; }
-
     /* FAQ */
     .faq-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 18px 0 8px; }
     .search { position: relative; flex: 1 1 240px; }
     .search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--subtle); }
     .search input { width: 100%; height: 36px; padding: 6px 10px 6px 32px; border: 1px solid var(--strong-border); border-radius: var(--radius-small); background: var(--surface); font-size: 14px; }
     .search input::placeholder { color: var(--subtle); }
-    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-    .chip { height: 30px; padding: 0 11px; border: 1px solid var(--border); border-radius: var(--radius-small); background: var(--surface); color: var(--muted); font-size: 13px; }
-    .chip:hover { color: var(--ink); border-color: var(--strong-border); }
-    .chip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--page); }
-    .faq-count { margin: 4px 0 6px; font-size: 12px; color: var(--subtle); }
     .faq-list { border-top: 1px solid var(--border); }
     .faq-item { border-bottom: 1px solid var(--border); }
     .faq-item > summary { list-style: none; display: flex; align-items: baseline; gap: 10px; padding: 12px 4px; cursor: pointer; font-size: 15px; font-weight: 600; }
@@ -279,7 +219,6 @@
     .faq-item > summary:hover { color: var(--accent); }
     .faq-item > summary .chev { align-self: center; color: var(--subtle); transition: transform .15s; }
     .faq-item[open] > summary .chev { transform: rotate(90deg); }
-    .faq-item .cat { margin-left: auto; flex: none; font-size: 12px; font-weight: 400; color: var(--subtle); }
     .faq-body { padding: 0 4px 14px 28px; color: var(--muted); font-size: 14px; }
     .faq-body p { margin: 0; }
     .faq-empty { padding: 28px 4px; color: var(--muted); font-size: 14px; }
@@ -304,13 +243,12 @@
       .shell { padding: 0 16px; }
       .toc { margin: 0 -16px; padding: 8px 16px; }
       .hero { padding-top: 32px; }
-      .role-cards, .field-grid { grid-template-columns: minmax(0, 1fr); }
+      .field-grid { grid-template-columns: minmax(0, 1fr); }
       .flow { grid-template-columns: minmax(0, 1fr); }
       .flow-arrow { padding: 4px 0; grid-auto-flow: column; gap: 8px; }
       .flow-arrow i { transform: rotate(90deg); }
       .def-list > div { grid-template-columns: minmax(0, 1fr); gap: 2px; }
       .section-head { flex-wrap: wrap; }
-      .tabpanel { padding: 16px 14px 4px; }
       details.more > .more-body { padding-left: 16px; }
       .form-actions .footnote { margin-left: 0; }
     }
@@ -319,23 +257,13 @@
     }
     @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
     @media print {
-      .topbar, .toc, .role-cards, .address, .copy-button, .faq-tools, .done-toggle { display: none !important; }
-      body[data-role] [data-for] { display: block !important; }
+      .topbar, .toc, .address, .copy-button, .faq-tools, .done-toggle { display: none !important; }
       .shell { display: block; }
       .code { break-inside: avoid; }
     }
   </style>
 </head>
-<body data-role="user">
-  <script>
-    (function () {
-      var role = new URLSearchParams(location.search).get("role");
-      if (role !== "user" && role !== "admin") {
-        try { role = localStorage.getItem("zentao-mcp-guide-role"); } catch (error) { role = null; }
-      }
-      document.body.dataset.role = role === "admin" ? "admin" : "user";
-    })();
-  </script>
+<body>
   <a class="skip-link" href="#content">跳到正文</a>
 
   <header class="topbar">
@@ -345,12 +273,8 @@
         <svg class="logo-dark" viewBox="0 0 100 100" shape-rendering="crispEdges" aria-hidden="true"><defs><linearGradient id="logo-reverse-blue" x1="14" y1="8" x2="86" y2="94" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#D8EAF0"></stop><stop offset=".35" stop-color="#91B9CB"></stop><stop offset=".72" stop-color="#5B91AA"></stop><stop offset="1" stop-color="#367DA3"></stop></linearGradient></defs><path fill="url(#logo-reverse-blue)" transform="scale(6.25)" d="M6 1h4v1H6z M4 2h8v1H4z M3 3h10v1H3z M2 4h2v1H2z M9 4h5v1H9z M2 5h1v1H2z M4 5h2v1H4z M10 5h4v1h-4z M1 6h5v1H1z M11 6h4v1h-4z M1 7h4v1H1z M6 7h4v1H6z M13 7h2v1h-2z M1 8h3v1H1z M5 8h3v1H5z M10 8h5v1h-5z M1 9h3v1H1z M5 9h2v1H5z M8 9h1v1H8z M11 9h4v1h-4z M2 10h2v1H2z M5 10h5v1H5z M11 10h3v1h-3z M2 11h2v1H2z M6 11h3v1H6z M11 11h3v1h-3z M3 12h2v1H3z M10 12h3v1h-3z M4 13h8v1H4z M6 14h4v1H6z"></path></svg>
         <span class="wordmark">ZenTao <strong>CLI</strong></span>
       </a>
-      <span class="topbar-title">MCP 服务部署与 Agent 接入指南</span>
+      <span class="topbar-title">MCP 服务部署指南</span>
       <div class="topbar-actions">
-        <div class="segmented" role="group" aria-label="选择阅读视图">
-          <button type="button" data-set-role="user" aria-pressed="true">禅道用户</button>
-          <button type="button" data-set-role="admin" aria-pressed="false">管理员</button>
-        </div>
         <button class="icon-button" type="button" id="theme-toggle" aria-label="切换浅色或深色主题">
           <svg class="icon moon" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 9.6A5.6 5.6 0 0 1 6.4 2.5a5.6 5.6 0 1 0 7.1 7.1z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"></path></svg>
           <svg class="icon sun" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.4"></circle><path d="M8 1v1.6M8 13.4V15M1 8h1.6M13.4 8H15M3 3l1.1 1.1M11.9 11.9 13 13M3 13l1.1-1.1M11.9 4.1 13 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></path></svg>
@@ -363,24 +287,16 @@
     <nav class="toc" aria-label="本页目录">
       <p class="toc-label">本页内容</p>
       <ol>
-        <li data-for="user"><a href="#u-prepare"><span class="dot"></span>开始之前</a></li>
-        <li data-for="user"><a href="#u-start"><span class="dot"></span>获取 Token</a></li>
-        <li data-for="user"><a href="#u-agent"><span class="dot"></span>配置 Agent</a></li>
-        <li data-for="user"><a href="#u-verify"><span class="dot"></span>验证并开始使用</a></li>
-        <li data-for="admin"><a href="#a-overview"><span class="dot"></span>服务概览</a></li>
-        <li data-for="admin" data-step-nav="1"><a href="#a-env"><span class="num">1</span>准备环境</a></li>
-        <li data-for="admin" data-step-nav="2"><a href="#a-install"><span class="num">2</span>安装并试运行</a></li>
-        <li data-for="admin" data-step-nav="3"><a href="#a-options"><span class="num">3</span>启动参数</a></li>
-        <li data-for="admin" data-step-nav="4"><a href="#a-systemd"><span class="num">4</span>配置常驻运行</a></li>
-        <li data-for="admin" data-step-nav="5"><a href="#a-proxy"><span class="num">5</span>HTTPS 反向代理</a></li>
-        <li data-for="admin" data-step-nav="6"><a href="#a-verify"><span class="num">6</span>验证部署</a></li>
-        <li data-for="admin" data-step-nav="7"><a href="#a-publish"><span class="num">7</span>向用户发布</a></li>
-        <li data-for="admin" data-step-nav="8"><a href="#a-maintain"><span class="num">8</span>升级与维护</a></li>
+        <li><a href="#a-overview"><span class="dot"></span>服务概览</a></li>
+        <li data-step-nav="1"><a href="#a-install"><span class="num">1</span>安装并试运行</a></li>
+        <li data-step-nav="2"><a href="#a-systemd"><span class="num">2</span>配置常驻运行</a></li>
+        <li data-step-nav="3"><a href="#a-proxy"><span class="num">3</span>HTTPS 反向代理</a></li>
+        <li data-step-nav="4"><a href="#a-verify"><span class="num">4</span>验证并发布</a></li>
+        <li data-step-nav="5"><a href="#a-maintain"><span class="num">5</span>升级与维护</a></li>
         <li><a href="#faq"><span class="dot"></span>常见问题</a></li>
-        <li data-for="admin"><a href="#reference"><span class="dot"></span>接口与请求边界</a></li>
       </ol>
-      <div class="progress" data-for="admin">
-        <div class="progress-row"><span>部署进度</span><strong id="progress-text">0 / 8</strong></div>
+      <div class="progress">
+        <div class="progress-row"><span>部署进度</span><strong id="progress-text">0 / 5</strong></div>
         <div class="progress-bar" aria-hidden="true"><span id="progress-bar"></span></div>
         <button class="text-button" type="button" id="progress-reset">重置进度</button>
       </div>
@@ -389,22 +305,14 @@
     <main id="content">
       <section class="hero" aria-labelledby="page-title">
         <p class="eyebrow">ZenTao CLI · 远程 MCP 服务</p>
-        <h1 id="page-title">禅道 MCP 服务部署与 Agent 接入指南</h1>
+        <h1 id="page-title">禅道 MCP 服务部署指南</h1>
         <p class="lead">管理员部署一次，禅道用户在自己的 Agent 中填写服务地址和个人 Token 即可使用。服务不保存账号、密码或 Token，每个请求都按用户本人在禅道中的权限执行。</p>
 
-        <div class="role-cards" role="group" aria-label="选择你的角色">
-          <button class="role-card" type="button" data-set-role="user" aria-pressed="true">
-            <span class="check" aria-hidden="true"><svg class="icon" viewBox="0 0 16 16"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8"></path></svg></span>
-            <span class="role-title">我是禅道用户</span>
-            <span class="role-desc">在 Claude Code、Cursor 等 Agent 中接入公司的禅道 MCP 服务，本机无需安装软件。</span>
-            <span class="role-meta">需要：管理员提供的接入地址、你的禅道账号</span>
-          </button>
-          <button class="role-card" type="button" data-set-role="admin" aria-pressed="false">
-            <span class="check" aria-hidden="true"><svg class="icon" viewBox="0 0 16 16"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8"></path></svg></span>
-            <span class="role-title">我是管理员</span>
-            <span class="role-desc">在服务器上部署服务、配置 HTTPS 反向代理，验证后把接入方式发给用户。</span>
-            <span class="role-meta">需要：一台能访问禅道的服务器</span>
-          </button>
+        <div class="user-callout" id="u-start">
+          <p><strong>禅道用户不需要阅读本页。</strong>打开管理员提供的接入页面，按提示获取 Token 并完成 Agent 配置，本机无需安装软件。</p>
+          <a class="button primary" data-href="start" href="https://mcp.example.com/start" target="_blank" rel="noreferrer">打开接入页面
+            <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3h7v7M13 3 6 10M11 9v4H3V5h4" fill="none" stroke="currentColor" stroke-width="1.4"></path></svg></a>
+          <a class="button" href="https://github.com/easysoft/zentao-cli/blob/main/docs/mcp-server.md#用户接入" target="_blank" rel="noreferrer">用户接入指南</a>
         </div>
 
         <div class="address" id="address">
@@ -432,307 +340,14 @@
             <div class="form-actions">
               <button class="button primary" type="submit">应用到本页</button>
               <button class="button" type="button" id="address-reset">恢复示例地址</button>
-              <p class="footnote">地址只保存在当前浏览器，用于替换页面中的示例。本页不会要求填写 Token。</p>
+              <p class="footnote">地址只保存在当前浏览器，用于替换页面中的示例。</p>
             </div>
           </form>
         </div>
       </section>
 
-      <!-- ===== User view ===== -->
-      <section class="doc-section" id="u-prepare" data-for="user" aria-labelledby="u-prepare-title">
-        <div class="section-head"><h2 id="u-prepare-title">开始之前</h2></div>
-        <p class="section-intro">你只需要自己的禅道账号，不需要安装 zentao-cli，也不需要在本机启动服务。先向管理员确认以下三项：</p>
-        <div class="card-grid">
-          <div class="card">
-            <h4>接入地址</h4>
-            <p>以 <code>/start</code> 结尾的接入页面地址，或以 <code>/mcp</code> 结尾的 MCP 地址。</p>
-          </div>
-          <div class="card">
-            <h4>网络要求</h4>
-            <p>是否需要连接公司内网或 VPN。运行在厂商云端的 Agent 无法访问内网地址。</p>
-          </div>
-          <div class="card">
-            <h4>开放范围</h4>
-            <p>开放了哪些模块，是否只读。超出范围的操作在 Agent 中不可用。</p>
-          </div>
-        </div>
-        <div class="note"><strong><span class="term" tabindex="0">Token<span class="tip" role="tooltip">禅道为你的账号签发的访问凭据，作用相当于密码。MCP 服务用它以你的身份访问禅道。</span></span> 代表你在禅道中的访问权限。</strong>只保存在个人配置或 Agent 的密钥位置，不要提交到项目仓库；也不要把禅道密码告诉 Agent。</div>
-      </section>
-
-      <section class="doc-section" id="u-start" data-for="user" aria-labelledby="u-start-title">
-        <div class="section-head"><h2 id="u-start-title">获取 Token 并复制接入说明</h2><span class="tag">推荐</span></div>
-        <p class="section-intro">管理员部署的接入页面可以一次完成获取 Token 和准备 Agent 配置。</p>
-        <ol class="steps">
-          <li>
-            <div>
-              <span class="step-title">打开接入页面</span>
-              <p>确认页面上显示的禅道地址与你账号所属的站点一致。</p>
-              <a class="button primary" data-href="start" href="https://mcp.example.com/start" target="_blank" rel="noreferrer">打开 <span data-var="start">https://mcp.example.com/start</span>
-                <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3h7v7M13 3 6 10M11 9v4H3V5h4" fill="none" stroke="currentColor" stroke-width="1.4"></path></svg></a>
-            </div>
-          </li>
-          <li>
-            <div>
-              <span class="step-title">获取 Token</span>
-              <p>选择「账号密码获取」，填写禅道用户名和密码；或选择「已有 Token」，粘贴个人 Token。</p>
-            </div>
-          </li>
-          <li>
-            <div>
-              <span class="step-title">把接入说明发给 Agent</span>
-              <p>点击「复制接入说明」，发给正在使用的 Agent，让它协助完成配置。复制内容默认使用 Token 占位符，勾选「复制内容包含我的 Token」后才会复制真实 Token。想自己动手时，见<a href="#u-agent">配置 Agent</a>。</p>
-            </div>
-          </li>
-          <li>
-            <div>
-              <span class="step-title">重载 Agent 并验证</span>
-              <p>按 Agent 的提示重载或重启，然后<a href="#u-verify">验证连接</a>。</p>
-            </div>
-          </li>
-        </ol>
-        <details class="more">
-          <summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>接入页面如何处理密码和 Token</summary>
-          <div class="more-body">
-            <p>密码只用于本次换取 Token，服务不保存账号、密码或 Token。Token 只保留在当前页面的内存中，刷新或离开页面后清除。</p>
-            <p>页面上的「清除」按钮不会让 Token 失效，也不会删除已保存到 Agent 配置或剪贴板中的内容。</p>
-          </div>
-        </details>
-        <details class="more">
-          <summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>不能使用接入页面？其他获取 Token 的方式</summary>
-          <div class="more-body">
-            <p><strong>方式一：调用禅道 API。</strong>在自己的终端执行，替换用户名和密码。成功后复制响应中 <code>token</code> 字段的值，不带引号。</p>
-            <div class="code"><div class="code-head"><span>bash</span></div><pre><code>curl -X POST "<span class="v" data-var="site">https://zentao.example.com</span>/api.php/v2/users/login" \
-  -H "Content-Type: application/json" \
-  -d '{"account":"用户名","password":"密码"}'</code></pre></div>
-            <p class="muted">命令中含有明文密码，不要在共享终端中执行，也不要保存到共享记录中。</p>
-            <p><strong>方式二：使用 zentao-cli 读取。</strong>已经安装 CLI 并登录过时执行下面的命令。它只读取本地保存的 Token，不联网验证；Token 失效时先执行 <code>zentao login --web</code>。</p>
-            <div class="code"><div class="code-head"><span>bash</span></div><pre><code>zentao token
-<span class="c"># 读取另一个已登录账号</span>
-zentao token 'your-account@<span class="v" data-var="site">https://zentao.example.com</span>'</code></pre></div>
-          </div>
-        </details>
-      </section>
-
-      <section class="doc-section" id="u-agent" data-for="user" aria-labelledby="u-agent-title">
-        <div class="section-head"><h2 id="u-agent-title">配置 Agent</h2></div>
-        <p class="section-intro">接入页面复制的说明已经包含下面的内容，两种方式选一种即可。</p>
-
-        <h3>让 Agent 帮你配置</h3>
-        <p>把下面的说明发给正在使用的 Agent。Token 可以先保留占位符，等 Agent 准备好配置后再在本机填写。</p>
-        <div class="code prose"><div class="code-head"><span>发给 Agent 的说明</span></div><pre><code>请帮我在当前使用的 Agent 中配置公司的禅道 MCP 服务。
-
-服务名称：zentao-remote
-禅道地址：<span class="v" data-var="site">https://zentao.example.com</span>
-MCP 服务地址：<span class="v" data-var="mcp">https://mcp.example.com/mcp</span>
-传输方式：Streamable HTTP
-认证请求头：token: &lt;我的禅道 Token&gt;
-
-请按当前 Agent 的官方文档合并到用户级 MCP 配置，保留已有服务。
-本机无需安装 zentao-cli 或启动 MCP 进程。不要向我索要禅道密码。
-Token 只用于请求头；如果还是占位符，请指导我在本机填写。不要在回复中显示真实 Token，也不要提交到项目仓库。
-如果无法直接配置，请告诉我具体入口。完成后说明是否需要重载或重启 Agent。
-最后验证连接：请通过 zentao-remote MCP 查询我有权访问的产品列表，只显示 ID 和名称。</code></pre></div>
-
-        <h3>手动配置</h3>
-        <p>选择你使用的 Agent。把 <code>&lt;your-zentao-token&gt;</code> 替换为你的 Token，并合并到已有配置，不要覆盖其他服务。</p>
-
-        <div class="tablist" role="tablist" aria-label="选择 Agent">
-          <button class="tab" type="button" role="tab" id="tab-claude" aria-controls="panel-claude" data-agent="claude"><svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" aria-hidden="true"><path clip-rule="evenodd" d="M20.998 10.949H24v3.102h-3v3.028h-1.487V20H18v-2.921h-1.487V20H15v-2.921H9V20H7.488v-2.921H6V20H4.487v-2.921H3V14.05H0V10.95h3V5h17.998v5.949zM6 10.949h1.488V8.102H6v2.847zm10.51 0H18V8.102h-1.49v2.847z"></path></svg>Claude Code</button>
-          <button class="tab" type="button" role="tab" id="tab-cursor" aria-controls="panel-cursor" data-agent="cursor"><svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" aria-hidden="true"><path d="M22.106 5.68L12.5.135a.998.998 0 00-.998 0L1.893 5.68a.84.84 0 00-.419.726v11.186c0 .3.16.577.42.727l9.607 5.547a.999.999 0 00.998 0l9.608-5.547a.84.84 0 00.42-.727V6.407a.84.84 0 00-.42-.726zm-.603 1.176L12.228 22.92c-.063.108-.228.064-.228-.061V12.34a.59.59 0 00-.295-.51l-9.11-5.26c-.107-.062-.063-.228.062-.228h18.55c.264 0 .428.286.296.514z"></path></svg>Cursor</button>
-          <button class="tab" type="button" role="tab" id="tab-codex" aria-controls="panel-codex" data-agent="codex"><svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" aria-hidden="true"><path clip-rule="evenodd" d="M8.086.457a6.105 6.105 0 013.046-.415c1.333.153 2.521.72 3.564 1.7a.117.117 0 00.107.029c1.408-.346 2.762-.224 4.061.366l.063.03.154.076c1.357.703 2.33 1.77 2.918 3.198.278.679.418 1.388.421 2.126a5.655 5.655 0 01-.18 1.631.167.167 0 00.04.155 5.982 5.982 0 011.578 2.891c.385 1.901-.01 3.615-1.183 5.14l-.182.22a6.063 6.063 0 01-2.934 1.851.162.162 0 00-.108.102c-.255.736-.511 1.364-.987 1.992-1.199 1.582-2.962 2.462-4.948 2.451-1.583-.008-2.986-.587-4.21-1.736a.145.145 0 00-.14-.032c-.518.167-1.04.191-1.604.185a5.924 5.924 0 01-2.595-.622 6.058 6.058 0 01-2.146-1.781c-.203-.269-.404-.522-.551-.821a7.74 7.74 0 01-.495-1.283 6.11 6.11 0 01-.017-3.064.166.166 0 00.008-.074.115.115 0 00-.037-.064 5.958 5.958 0 01-1.38-2.202 5.196 5.196 0 01-.333-1.589 6.915 6.915 0 01.188-2.132c.45-1.484 1.309-2.648 2.577-3.493.282-.188.55-.334.802-.438.286-.12.573-.22.861-.304a.129.129 0 00.087-.087A6.016 6.016 0 015.635 2.31C6.315 1.464 7.132.846 8.086.457zm-.804 7.85a.848.848 0 00-1.473.842l1.694 2.965-1.688 2.848a.849.849 0 001.46.864l1.94-3.272a.849.849 0 00.007-.854l-1.94-3.393zm5.446 6.24a.849.849 0 000 1.695h4.848a.849.849 0 000-1.696h-4.848z"></path></svg>Codex</button>
-          <button class="tab" type="button" role="tab" id="tab-vscode" aria-controls="panel-vscode" data-agent="vscode"><svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" aria-hidden="true"><path d="M19.245 5.364c1.322 1.36 1.877 3.216 2.11 5.817.622 0 1.2.135 1.592.654l.73.964c.21.278.323.61.323.955v2.62c0 .339-.173.669-.453.868C20.239 19.602 16.157 21.5 12 21.5c-4.6 0-9.205-2.583-11.547-4.258-.28-.2-.452-.53-.453-.868v-2.62c0-.345.113-.679.321-.956l.73-.963c.392-.517.974-.654 1.593-.654l.029-.297c.25-2.446.81-4.213 2.082-5.52 2.461-2.54 5.71-2.851 7.146-2.864h.198c1.436.013 4.685.323 7.146 2.864zm-7.244 4.328c-.284 0-.613.016-.962.05-.123.447-.305.85-.57 1.108-1.05 1.023-2.316 1.18-2.994 1.18-.638 0-1.306-.13-1.851-.464-.516.165-1.012.403-1.044.996a65.882 65.882 0 00-.063 2.884l-.002.48c-.002.563-.005 1.126-.013 1.69.002.326.204.63.51.765 2.482 1.102 4.83 1.657 6.99 1.657 2.156 0 4.504-.555 6.985-1.657a.854.854 0 00.51-.766c.03-1.682.006-3.372-.076-5.053-.031-.596-.528-.83-1.046-.996-.546.333-1.212.464-1.85.464-.677 0-1.942-.157-2.993-1.18-.266-.258-.447-.661-.57-1.108-.32-.032-.64-.049-.96-.05zm-2.525 4.013c.539 0 .976.426.976.95v1.753c0 .525-.437.95-.976.95a.964.964 0 01-.976-.95v-1.752c0-.525.437-.951.976-.951zm5 0c.539 0 .976.426.976.95v1.753c0 .525-.437.95-.976.95a.964.964 0 01-.976-.95v-1.752c0-.525.437-.951.976-.951zM7.635 5.087c-1.05.102-1.935.438-2.385.906-.975 1.037-.765 3.668-.21 4.224.405.394 1.17.657 1.995.657h.09c.649-.013 1.785-.176 2.73-1.11.435-.41.705-1.433.675-2.47-.03-.834-.27-1.52-.63-1.813-.39-.336-1.275-.482-2.265-.394zm6.465.394c-.36.292-.6.98-.63 1.813-.03 1.037.24 2.06.675 2.47.968.957 2.136 1.104 2.776 1.11h.044c.825 0 1.59-.263 1.995-.657.555-.556.765-3.187-.21-4.224-.45-.468-1.335-.804-2.385-.906-.99-.088-1.875.058-2.265.394zM12 7.615c-.24 0-.525.015-.84.044.03.16.045.336.06.526l-.001.159a2.94 2.94 0 01-.014.25c.225-.022.425-.027.612-.028h.366c.187 0 .387.006.612.028-.015-.146-.015-.277-.015-.409.015-.19.03-.365.06-.526a9.29 9.29 0 00-.84-.044z"></path></svg>VS Code Copilot</button>
-          <button class="tab" type="button" role="tab" id="tab-cherry" aria-controls="panel-cherry" data-agent="cherry"><svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" aria-hidden="true"><path d="M6.513 18.419c-1.6 0-3.107-.64-4.247-1.802A6.146 6.146 0 01.5 12.287c0-1.63.626-3.168 1.766-4.33 1.14-1.162 2.647-1.802 4.247-1.802s3.132.655 4.25 1.795c.835.849.835 2.23 0 3.078a2.11 2.11 0 01-3.02 0 1.737 1.737 0 00-1.234-.521c-.945 0-1.744.813-1.744 1.776 0 .964.799 1.777 1.744 1.777.46 0 .907-.19 1.234-.522a2.11 2.11 0 013.02 0c.835.85.835 2.23 0 3.079a5.997 5.997 0 01-4.25 1.794v.008z"></path><path d="M12.026 24c-1.6 0-3.107-.64-4.247-1.802a6.146 6.146 0 01-1.766-4.33c0-1.63.644-3.193 1.762-4.337a2.11 2.11 0 013.021 0c.834.849.834 2.23 0 3.078-.324.331-.51.788-.51 1.255 0 .964.798 1.777 1.744 1.777.945 0 1.744-.813 1.744-1.777 0-.341-.083-.83-.475-1.233a6.255 6.255 0 01-1.77-4.348c0-1.615.627-3.168 1.767-4.33s2.646-1.802 4.247-1.802c1.6 0 3.107.64 4.247 1.802a6.146 6.146 0 011.766 4.33c0 1.63-.644 3.194-1.762 4.337a2.11 2.11 0 01-3.021 0 2.206 2.206 0 010-3.078c.323-.331.51-.788.51-1.255 0-.964-.798-1.777-1.744-1.777s-1.744.813-1.744 1.777c0 .47.19.935.521 1.27 1.115 1.136 1.727 2.667 1.727 4.311a6.122 6.122 0 01-1.766 4.33C15.137 23.36 13.63 24 12.03 24h-.004z"></path><path d="M12.026 6.867L8.53 3.587a1.336 1.336 0 111.827-1.949l1.4 1.313L13.744.495a1.336 1.336 0 012.075 1.68l-3.798 4.692h.004z"></path></svg>Cherry Studio</button>
-          <button class="tab" type="button" role="tab" id="tab-opencode" aria-controls="panel-opencode" data-agent="opencode"><svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" aria-hidden="true"><path d="M16 6H8v12h8V6zm4 16H4V2h16v20z"></path></svg>OpenCode</button>
-          <button class="tab" type="button" role="tab" id="tab-gemini" aria-controls="panel-gemini" data-agent="gemini"><svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" aria-hidden="true"><path d="M16.793 10.358v3.867L7.236 18.82v-2.8l7.751-3.728-7.75-3.728V5.763l9.556 4.595z"></path><path clip-rule="evenodd" d="M19.608 0A4.392 4.392 0 0124 4.392v15.216A4.392 4.392 0 0119.608 24H4.392A4.392 4.392 0 010 19.608V4.392A4.392 4.392 0 014.392 0h15.216zM4.26 1.444A2.816 2.816 0 001.444 4.26v15.48a2.816 2.816 0 002.816 2.816h15.48a2.816 2.816 0 002.816-2.816V4.26a2.816 2.816 0 00-2.816-2.816H4.26z"></path></svg>Gemini CLI</button>
-          <button class="tab" type="button" role="tab" id="tab-cline" aria-controls="panel-cline" data-agent="cline"><svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" aria-hidden="true"><path d="M17.035 3.991c2.75 0 4.98 2.24 4.98 5.003v1.667l1.45 2.896a1.01 1.01 0 01-.002.909l-1.448 2.864v1.668c0 2.762-2.23 5.002-4.98 5.002H7.074c-2.751 0-4.98-2.24-4.98-5.002V17.33l-1.48-2.855a1.01 1.01 0 01-.003-.927l1.482-2.887V8.994c0-2.763 2.23-5.003 4.98-5.003h9.962zM8.265 9.6a2.274 2.274 0 00-2.274 2.274v4.042a2.274 2.274 0 004.547 0v-4.042A2.274 2.274 0 008.265 9.6zm7.326 0a2.274 2.274 0 00-2.274 2.274v4.042a2.274 2.274 0 104.548 0v-4.042A2.274 2.274 0 0015.59 9.6z"></path><path d="M12.054 5.558a2.779 2.779 0 100-5.558 2.779 2.779 0 000 5.558z"></path></svg>Cline</button>
-        </div>
-
-        <div class="tabpanel" role="tabpanel" id="panel-claude" aria-labelledby="tab-claude">
-          <div class="panel-head"><h3>Claude Code</h3><a class="ext" href="https://code.claude.com/docs/en/mcp" target="_blank" rel="noreferrer">官方文档 ↗</a></div>
-          <ol>
-            <li>在终端执行下面的命令。<code>--scope user</code> 让配置对当前用户的所有项目生效。</li>
-            <li>重新打开会话，输入 <code>/mcp</code> 查看连接状态。</li>
-          </ol>
-          <div class="code"><div class="code-head"><span>bash</span></div><pre><code>claude mcp add --transport http --scope user \
-  --header "token: &lt;your-zentao-token&gt;" \
-  zentao-remote <span class="v" data-var="mcp">https://mcp.example.com/mcp</span></code></pre></div>
-          <details class="more">
-            <summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>或直接编辑 ~/.claude.json</summary>
-            <div class="more-body">
-              <p>合并到顶层的 <code>mcpServers</code>：</p>
-              <div class="code"><div class="code-head"><span>json · ~/.claude.json</span></div><pre><code>{
-  "mcpServers": {
-    "zentao-remote": {
-      "type": "http",
-      "url": "<span class="v" data-var="mcp">https://mcp.example.com/mcp</span>",
-      "headers": { "token": "&lt;your-zentao-token&gt;" }
-    }
-  }
-}</code></pre></div>
-            </div>
-          </details>
-        </div>
-
-        <div class="tabpanel" role="tabpanel" id="panel-cursor" aria-labelledby="tab-cursor">
-          <div class="panel-head"><h3>Cursor</h3><a class="ext" href="https://cursor.com/docs/mcp" target="_blank" rel="noreferrer">官方文档 ↗</a></div>
-          <ol>
-            <li>合并到用户级 <code>~/.cursor/mcp.json</code> 的 <code>mcpServers</code>。</li>
-            <li>在设置的 MCP 页面启用服务，再打开 Agent 会话。</li>
-          </ol>
-          <div class="code"><div class="code-head"><span>json · ~/.cursor/mcp.json</span></div><pre><code>{
-  "mcpServers": {
-    "zentao-remote": {
-      "type": "http",
-      "url": "<span class="v" data-var="mcp">https://mcp.example.com/mcp</span>",
-      "headers": { "token": "&lt;your-zentao-token&gt;" }
-    }
-  }
-}</code></pre></div>
-          <p class="small-note">Cursor 也支持项目内的 <code>.cursor/mcp.json</code>，但项目配置容易被提交到仓库，配置 Token 时请使用用户级文件。</p>
-        </div>
-
-        <div class="tabpanel" role="tabpanel" id="panel-codex" aria-labelledby="tab-codex">
-          <div class="panel-head"><h3>Codex</h3><a class="ext" href="https://developers.openai.com/codex/mcp/" target="_blank" rel="noreferrer">官方文档 ↗</a></div>
-          <ol>
-            <li>合并到 <code>~/.codex/config.toml</code>。</li>
-            <li>重新加载 MCP 或重启应用 / CLI，确认 <code>zentao-remote</code> 已启用。</li>
-          </ol>
-          <div class="code"><div class="code-head"><span>toml · ~/.codex/config.toml</span></div><pre><code>[mcp_servers.zentao-remote]
-url = "<span class="v" data-var="mcp">https://mcp.example.com/mcp</span>"
-http_headers = { token = "&lt;your-zentao-token&gt;" }</code></pre></div>
-          <details class="more">
-            <summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>从环境变量读取 Token</summary>
-            <div class="more-body">
-              <p>将 <code>http_headers</code> 替换为下面这行。环境变量必须对启动 Codex 的进程可见；在另一个终端中设置的变量，不会传给已经打开的应用。</p>
-              <div class="code"><div class="code-head"><span>toml</span></div><pre><code>env_http_headers = { token = "ZENTAO_TOKEN" }</code></pre></div>
-            </div>
-          </details>
-        </div>
-
-        <div class="tabpanel" role="tabpanel" id="panel-vscode" aria-labelledby="tab-vscode">
-          <div class="panel-head"><h3>VS Code Copilot</h3><a class="ext" href="https://code.visualstudio.com/docs/agent-customization/mcp-servers" target="_blank" rel="noreferrer">添加 MCP 服务 ↗</a><a class="ext" href="https://code.visualstudio.com/docs/agents/reference/mcp-configuration" target="_blank" rel="noreferrer">配置格式 ↗</a></div>
-          <ol>
-            <li>从命令面板运行 <code>MCP: Open User Configuration</code>，合并到打开的用户配置。注意顶层字段是 <code>servers</code>，不是 <code>mcpServers</code>。</li>
-            <li>在 Agent 模式中启用该服务的工具。</li>
-          </ol>
-          <div class="code"><div class="code-head"><span>json · 用户级 mcp.json</span></div><pre><code>{
-  "servers": {
-    "zentao-remote": {
-      "type": "http",
-      "url": "<span class="v" data-var="mcp">https://mcp.example.com/mcp</span>",
-      "headers": { "token": "&lt;your-zentao-token&gt;" }
-    }
-  }
-}</code></pre></div>
-        </div>
-
-        <div class="tabpanel" role="tabpanel" id="panel-cherry" aria-labelledby="tab-cherry">
-          <div class="panel-head"><h3>Cherry Studio</h3><a class="ext" href="https://docs.cherryai.com.cn/advanced-basic/extensions/mcp" target="_blank" rel="noreferrer">官方文档 ↗</a></div>
-          <ol>
-            <li>打开「设置 → MCP → MCP 服务器 → 添加」，填写下列信息。</li>
-            <li>启用服务后，在「工作 → Agent 菜单 → 编辑 → MCP」中绑定给当前 Agent。</li>
-          </ol>
-          <div class="code"><div class="code-head"><span>表单字段</span></div><pre><code>名称：zentao-remote
-类型：Streamable HTTP
-URL：<span class="v" data-var="mcp">https://mcp.example.com/mcp</span>
-请求头：token: &lt;your-zentao-token&gt;
-认证：个人 Token（无需 OAuth）</code></pre></div>
-        </div>
-
-        <div class="tabpanel" role="tabpanel" id="panel-opencode" aria-labelledby="tab-opencode">
-          <div class="panel-head"><h3>OpenCode</h3><a class="ext" href="https://opencode.ai/docs/mcp-servers/" target="_blank" rel="noreferrer">官方文档 ↗</a></div>
-          <ol>
-            <li>合并到用户级 <code>~/.config/opencode/opencode.json</code> 的 <code>mcp</code>。</li>
-            <li>重新打开 OpenCode，检查 MCP 服务状态。</li>
-          </ol>
-          <div class="code"><div class="code-head"><span>json · ~/.config/opencode/opencode.json</span></div><pre><code>{
-  "mcp": {
-    "zentao-remote": {
-      "type": "remote",
-      "url": "<span class="v" data-var="mcp">https://mcp.example.com/mcp</span>",
-      "headers": { "token": "&lt;your-zentao-token&gt;" },
-      "oauth": false,
-      "enabled": true
-    }
-  }
-}</code></pre></div>
-        </div>
-
-        <div class="tabpanel" role="tabpanel" id="panel-gemini" aria-labelledby="tab-gemini">
-          <div class="panel-head"><h3>Gemini CLI</h3><a class="ext" href="https://geminicli.com/docs/tools/mcp-server/" target="_blank" rel="noreferrer">官方文档 ↗</a></div>
-          <ol>
-            <li>合并到 <code>~/.gemini/settings.json</code> 的 <code>mcpServers</code>。必须使用 <code>httpUrl</code>；<code>url</code> 字段表示旧版 SSE，不能替代。</li>
-            <li>重新打开 Gemini CLI，输入 <code>/mcp</code> 查看状态。</li>
-          </ol>
-          <div class="code"><div class="code-head"><span>json · ~/.gemini/settings.json</span></div><pre><code>{
-  "mcpServers": {
-    "zentao-remote": {
-      "httpUrl": "<span class="v" data-var="mcp">https://mcp.example.com/mcp</span>",
-      "headers": { "token": "&lt;your-zentao-token&gt;" }
-    }
-  }
-}</code></pre></div>
-        </div>
-
-        <div class="tabpanel" role="tabpanel" id="panel-cline" aria-labelledby="tab-cline">
-          <div class="panel-head"><h3>Cline</h3><a class="ext" href="https://docs.cline.bot/mcp/mcp-overview" target="_blank" rel="noreferrer">官方文档 ↗</a></div>
-          <ol>
-            <li>打开 MCP Servers → Configure → Configure MCP Servers，合并到打开的 JSON 文件。</li>
-            <li>启用服务，检查工具列表。</li>
-          </ol>
-          <div class="code"><div class="code-head"><span>json · cline_mcp_settings.json</span></div><pre><code>{
-  "mcpServers": {
-    "zentao-remote": {
-      "type": "streamableHttp",
-      "url": "<span class="v" data-var="mcp">https://mcp.example.com/mcp</span>",
-      "headers": { "token": "&lt;your-zentao-token&gt;" }
-    }
-  }
-}</code></pre></div>
-        </div>
-
-        <ul class="auth-notes">
-          <li>认证头只配置一种：<code>token: &lt;Token&gt;</code> 或 <code>Authorization: Bearer &lt;Token&gt;</code>，不能同时配置。</li>
-          <li>服务不提供 OAuth 登录，客户端提示 OAuth 时选择不使用。</li>
-        </ul>
-        <details class="more">
-          <summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>改用 Authorization: Bearer 认证</summary>
-          <div class="more-body">
-            <p>把请求头 <code>token: &lt;your-zentao-token&gt;</code> 替换为 <code>Authorization: Bearer &lt;your-zentao-token&gt;</code>。例如：</p>
-            <div class="code"><div class="code-head"><span>JSON 配置</span></div><pre><code>"headers": { "Authorization": "Bearer &lt;your-zentao-token&gt;" }</code></pre></div>
-            <div class="code"><div class="code-head"><span>Codex</span></div><pre><code>http_headers = { Authorization = "Bearer &lt;your-zentao-token&gt;" }</code></pre></div>
-          </div>
-        </details>
-      </section>
-
-      <section class="doc-section" id="u-verify" data-for="user" aria-labelledby="u-verify-title">
-        <div class="section-head"><h2 id="u-verify-title">验证连接并开始使用</h2></div>
-        <p class="section-intro">保存配置后，重载 MCP 服务或重新打开会话，确认服务已启用，并允许当前会话使用它的工具。然后发送一次只读请求：</p>
-        <div class="prompt-list">
-          <div class="prompt"><span>请通过 zentao-remote MCP 查询我有权访问的产品列表，只显示 ID 和名称。</span><button class="copy-button" type="button" data-copy-self>复制</button></div>
-        </div>
-        <p>确认 Agent 实际调用了禅道 MCP 工具并返回了业务数据，<span class="term" tabindex="0">显示「已连接」不代表 Token 有效<span class="tip" role="tooltip">Agent 显示已连接、工具列表能列出来、zentao_profile 调用成功，都不能证明 Token 有效。zentao_profile 在这个服务中只返回站点信息，不识别当前用户。</span></span>。管理员没有开放产品模块时，改为查询已开放模块中的数据。</p>
-
-        <h3>连接成功后，可以试试</h3>
-        <div class="prompt-list">
-          <div class="prompt"><span>产品 1 当前有哪些未解决的 Bug？请按优先级整理。</span><button class="copy-button" type="button" data-copy-self>复制</button></div>
-          <div class="prompt"><span>查看任务 123 的详情，帮我整理需要完成的工作。</span><button class="copy-button" type="button" data-copy-self>复制</button></div>
-          <div class="prompt"><span>查看执行 10 的进展，列出可能影响交付的风险。</span><button class="copy-button" type="button" data-copy-self>复制</button></div>
-        </div>
-
-        <h3>使用时请注意</h3>
-        <div class="card-grid">
-          <div class="card"><h4>写入操作</h4><p>创建、修改或删除前，先让 Agent 展示拟操作的对象和内容，确认后再执行。权限始终受你在禅道中的账号约束。</p></div>
-          <div class="card"><h4>超时与重试</h4><p>写入操作超时或中断后可能已经生效。先查询结果，再决定是否重试。</p></div>
-          <div class="card"><h4>附件</h4><p>不能通过本服务从本地路径上传附件，需要上传时请使用本地 CLI 或 stdio MCP。</p></div>
-          <div class="card"><h4>Token 失效</h4><p>服务不会自动刷新 Token。失效后重新获取，并更新 Agent 配置。</p></div>
-        </div>
-      </section>
-
-      <!-- ===== Admin view ===== -->
-      <section class="doc-section" id="a-overview" data-for="admin" aria-labelledby="a-overview-title">
+      <section class="doc-section" id="a-overview" aria-labelledby="a-overview-title">
         <div class="section-head"><h2 id="a-overview-title">服务概览</h2></div>
-        <p class="section-intro">用户的 Agent 通过 HTTPS 访问反向代理，代理把请求转给本机的 MCP 服务，服务再以用户的 Token 调用禅道 API v2。</p>
         <div class="flow" role="img" aria-label="请求链路：Agent 通过 HTTPS 访问反向代理，代理通过 HTTP 转发给 zentao mcp-server，服务调用禅道 API v2">
           <div class="flow-node"><b>Agent</b><span>携带用户 Token</span></div>
           <div class="flow-arrow"><i>→</i>HTTPS</div>
@@ -742,123 +357,59 @@ URL：<span class="v" data-var="mcp">https://mcp.example.com/mcp</span>
           <div class="flow-arrow"><i>→</i></div>
           <div class="flow-node"><b>禅道 API v2</b><span data-var="site">https://zentao.example.com</span></div>
         </div>
-
-        <h3>三个地址</h3>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>地址</th><th>用途</th><th>由谁使用</th></tr></thead>
+            <thead><tr><th>地址</th><th>用途</th></tr></thead>
             <tbody>
-              <tr><td><code data-var="site">https://zentao.example.com</code></td><td>禅道站点地址；部署在子目录时保留子目录</td><td>MCP 服务连接禅道；用户获取 Token</td></tr>
-              <tr><td><code data-var="mcp">https://mcp.example.com/mcp</code></td><td>MCP 服务地址，必须包含 <code>/mcp</code></td><td>用户在 Agent 中配置</td></tr>
-              <tr><td><code data-var="start">https://mcp.example.com/start</code></td><td>用户接入页面</td><td>用户获取 Token 和接入说明</td></tr>
+              <tr><td><code data-var="site">https://zentao.example.com</code></td><td>禅道站点地址；部署在子目录时保留子目录</td></tr>
+              <tr><td><code data-var="mcp">https://mcp.example.com/mcp</code></td><td>MCP 服务地址，用户在 Agent 中配置，必须包含 <code>/mcp</code></td></tr>
+              <tr><td><code data-var="start">https://mcp.example.com/start</code></td><td>用户接入页面，用于获取 Token 和复制接入说明</td></tr>
             </tbody>
           </table>
         </div>
-        <p class="muted small">禅道地址和 MCP 地址不能互换。可在页面顶部填写公司地址，下面所有命令和配置会随之替换。</p>
-
-        <h3>工作方式</h3>
-        <dl class="def-list">
-          <div><dt>站点</dt><dd>每个服务进程固定连接启动时指定的一个禅道站点。连接多个站点时，分别启动实例。</dd></div>
-          <div><dt>认证</dt><dd>每个请求通过 <code>token</code> 或 <code>Authorization: Bearer</code> 请求头携带用户本人的 Token，两者只能选一个。服务不读取服务器上的登录记录，不保存、也不刷新 Token。</dd></div>
-          <div><dt>权限</dt><dd>管理员通过启动参数决定开放哪些模块、是否只读。在开放范围内，每个操作是否允许由禅道按用户权限判断。</dd></div>
-          <div><dt>传输</dt><dd>使用<span class="term" tabindex="0">无状态<span class="tip" role="tooltip">每个请求独立处理，服务不保存会话。因此 /mcp 可以分发到任意实例，但不支持会话恢复或事件重放。</span></span>的 <span class="term" tabindex="0">Streamable HTTP<span class="tip" role="tooltip">MCP 的 HTTP 传输方式：客户端用 POST 发送请求，结果在同一个响应中以 SSE 流返回。它取代了旧版的独立 /sse 端点。</span></span>，只接受 <code>POST /mcp</code>。不提供旧版 <code>/sse</code> 端点，也不支持浏览器跨域调用。</dd></div>
-        </dl>
+        <p class="muted small">在页面顶部填写公司地址后，下面所有命令和配置会随之替换。</p>
       </section>
 
-      <section class="doc-section" id="a-env" data-for="admin" data-step="1" aria-labelledby="a-env-title">
-        <div class="section-head"><span class="step-no">1</span><h2 id="a-env-title">准备环境</h2><label class="done-toggle"><input type="checkbox" class="step-check" value="1">已完成</label></div>
+      <section class="doc-section" id="a-install" data-step="1" aria-labelledby="a-install-title">
+        <div class="section-head"><span class="step-no">1</span><h2 id="a-install-title">安装并试运行</h2><label class="done-toggle"><input type="checkbox" class="step-check" value="1">已完成</label></div>
+        <p class="section-intro">部署前确认：</p>
         <dl class="def-list">
-          <div><dt>运行环境</dt><dd>一台能访问禅道站点的服务器，安装 Node.js 18.14.1 或更新版本，也可以使用 Bun。</dd></div>
-          <div><dt>用户网络</dt><dd>用户的 Agent 必须能访问服务对外的 HTTPS 地址。内网部署时，应告知用户内网或 VPN 要求；运行在厂商云端的 Agent 无法访问公司内网。</dd></div>
-          <div><dt>对外 HTTPS</dt><dd>MCP 进程本身只提供 HTTP，对外的 HTTPS 由<a href="#a-proxy">反向代理</a>提供。</dd></div>
-          <div><dt>禅道证书</dt><dd>禅道站点使用自签名或公司内部 CA 签发的证书时，服务连接禅道会证书验证失败（<code>E5002</code>）。</dd></div>
+          <div><dt>运行环境</dt><dd>服务器能访问禅道站点，安装了 Node.js 18.14.1 或更新版本，也可以使用 Bun。</dd></div>
+          <div><dt>用户网络</dt><dd>用户的 Agent 能访问服务对外的 HTTPS 地址。部署在内网时，运行在厂商云端的 Agent 无法访问。</dd></div>
+          <div><dt>禅道证书</dt><dd>禅道使用自签名或内部 CA 证书时，服务连接禅道会报 <code>E5002</code>。用环境变量 <code>NODE_EXTRA_CA_CERTS</code> 指定 CA 证书文件；临时方案是加全局选项 <code>--insecure</code>。</dd></div>
         </dl>
-        <details class="more">
-          <summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>禅道使用内部证书时怎么处理<span class="sum-hint">E5002</span></summary>
-          <div class="more-body">
-            <p>建议通过环境变量 <code>NODE_EXTRA_CA_CERTS</code> 指定内部 CA 证书文件；临时方案是加全局选项 <code>--insecure</code>，跳过证书验证。</p>
-            <div class="code"><div class="code-head"><span>bash</span></div><pre><code><span class="c"># 推荐：信任公司内部 CA</span>
-NODE_EXTRA_CA_CERTS=/path/to/company-ca.pem zentao mcp-server <span class="v" data-var="site">https://zentao.example.com</span>
-
-<span class="c"># 临时：跳过禅道证书验证</span>
-zentao --insecure mcp-server <span class="v" data-var="site">https://zentao.example.com</span></code></pre></div>
-          </div>
-        </details>
-      </section>
-
-      <section class="doc-section" id="a-install" data-for="admin" data-step="2" aria-labelledby="a-install-title">
-        <div class="section-head"><span class="step-no">2</span><h2 id="a-install-title">安装并试运行</h2><label class="done-toggle"><input type="checkbox" class="step-check" value="2">已完成</label></div>
-        <p class="section-intro">在服务器上执行。服务器上不需要执行 <code>zentao login</code>，也不需要配置管理员账号或共享 Token。</p>
         <div class="code"><div class="code-head"><span>bash</span></div><pre><code>npm install -g zentao-cli
-zentao --version
-zentao mcp-server --help
-
 zentao mcp-server <span class="v" data-var="site">https://zentao.example.com</span></code></pre></div>
-        <p>服务默认监听 <code>127.0.0.1:9090</code>，在前台运行。启动后，终端会输出 MCP 地址、接入页面地址和客户端配置示例。另开一个终端检查进程：</p>
-        <div class="code"><div class="code-head"><span>bash</span></div><pre><code>curl http://127.0.0.1:9090/healthz
-<span class="c"># {"status":"ok"}</span></code></pre></div>
-        <p class="muted small">这个检查只说明进程可用，不连接禅道，也不验证 Token；完整验证见<a href="#a-verify">第 6 步</a>。</p>
-        <details class="more">
-          <summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>用 --url 或环境变量提供禅道地址</summary>
-          <div class="more-body">
-            <div class="code"><div class="code-head"><span>bash</span></div><pre><code>zentao mcp-server --url <span class="v" data-var="site">https://zentao.example.com</span>
-ZENTAO_URL=<span class="v" data-var="site">https://zentao.example.com</span> zentao mcp-server</code></pre></div>
-            <p>位置参数和 <code>--url</code> 只能用其中一个，同时提供会报 <code>E2009</code>；两者都省略时才读取 <code>ZENTAO_URL</code>。</p>
-          </div>
-        </details>
-      </section>
+        <p>服务默认在前台监听 <code>127.0.0.1:9090</code>。服务器上不需要执行 <code>zentao login</code>，也不需要管理员账号或共享 Token。另开一个终端检查进程：</p>
+        <div class="code"><div class="code-head"><span>bash</span></div><pre><code>curl http://127.0.0.1:9090/healthz   <span class="c"># {"status":"ok"}</span></code></pre></div>
+        <p class="muted small">这个检查不连接禅道，也不验证 Token。</p>
 
-      <section class="doc-section" id="a-options" data-for="admin" data-step="3" aria-labelledby="a-options-title">
-        <div class="section-head"><span class="step-no">3</span><h2 id="a-options-title">启动参数</h2><label class="done-toggle"><input type="checkbox" class="step-check" value="3">已完成</label></div>
-        <p class="section-intro">按公司需要限制开放范围。三个参数可以组合使用：</p>
-        <dl class="def-list">
-          <div><dt><code>--read-only</code></dt><dd>只注册查询工具，执行时也会再次拒绝写入。</dd></div>
-          <div><dt><code>--modules</code></dt><dd>只开放指定的业务模块，用逗号分隔，例如 <code>product,story,task,bug</code>。模块名可通过 <code>zentao help</code> 查看。</dd></div>
-          <div><dt><code>--split-tools</code></dt><dd>将每个模块拆成 <code>_read</code> 和 <code>_write</code> 两个工具，便于在 Agent 中分别授权。</dd></div>
-        </dl>
-        <div class="code"><div class="code-head"><span>bash · 例：只读开放四个模块，访问禅道超时设为 20 秒</span></div><pre><code>zentao --timeout 20000 mcp-server <span class="v" data-var="site">https://zentao.example.com</span> \
+        <h3>启动参数</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>参数</th><th>默认值</th><th>说明</th></tr></thead>
+            <tbody>
+              <tr><td><code>[url]</code> 或 <code>--url</code></td><td><code>ZENTAO_URL</code></td><td>固定连接的禅道站点。位置参数和 <code>--url</code> 只能用一个</td></tr>
+              <tr><td><code>--host</code></td><td><code>127.0.0.1</code></td><td>监听地址。容器内运行时按需使用 <code>0.0.0.0</code></td></tr>
+              <tr><td><code>--port</code></td><td><code>9090</code></td><td>监听端口</td></tr>
+              <tr><td><code>--read-only</code></td><td>关闭</td><td>只开放查询操作</td></tr>
+              <tr><td><code>--modules</code></td><td>全部模块</td><td>只开放指定模块，用逗号分隔，例如 <code>product,story,task,bug</code></td></tr>
+              <tr><td><code>--split-tools</code></td><td>关闭</td><td>每个模块拆成 <code>_read</code> 和 <code>_write</code> 两个工具，便于分别授权</td></tr>
+              <tr><td>全局 <code>--timeout</code></td><td><code>10000</code></td><td>访问禅道的单次请求超时，毫秒</td></tr>
+              <tr><td>全局 <code>--insecure</code></td><td>关闭</td><td>跳过禅道站点的 TLS 证书验证</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="note"><strong>全局选项必须写在 <code>mcp-server</code> 之前。</strong>参数在启动时确定，修改后需要重启。</div>
+        <div class="code"><div class="code-head"><span>bash · 例：只读开放四个模块，超时 20 秒</span></div><pre><code>zentao --timeout 20000 mcp-server <span class="v" data-var="site">https://zentao.example.com</span> \
   --read-only --modules product,story,task,bug</code></pre></div>
-        <div class="note"><strong><code>--timeout</code> 和 <code>--insecure</code> 是全局选项，必须写在 <code>mcp-server</code> 之前。</strong>参数在启动时确定，修改后需要重启服务；模块名无效时，服务会在启动时报错。</div>
-        <details class="more">
-          <summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>全部参数</summary>
-          <div class="more-body">
-            <div class="table-wrap">
-              <table>
-                <thead><tr><th>参数</th><th>默认值</th><th>说明</th></tr></thead>
-                <tbody>
-                  <tr><td><code>[url]</code>、<code>--url</code></td><td><code>ZENTAO_URL</code></td><td>固定连接的禅道站点，不能包含账号、查询参数或 <code>#</code> 片段</td></tr>
-                  <tr><td><code>--host</code></td><td><code>127.0.0.1</code></td><td>监听地址。同机反向代理保持默认；容器内运行时按需使用 <code>0.0.0.0</code></td></tr>
-                  <tr><td><code>--port</code></td><td><code>9090</code></td><td>监听端口，范围 1–65535</td></tr>
-                  <tr><td><code>--read-only</code></td><td>关闭</td><td>只注册查询工具，执行时也会拒绝写入</td></tr>
-                  <tr><td><code>--modules</code></td><td>全部模块</td><td>只开放指定的业务模块，逗号分隔</td></tr>
-                  <tr><td><code>--split-tools</code></td><td>关闭</td><td>每个模块拆成 <code>_read</code> 和 <code>_write</code> 两个工具</td></tr>
-                  <tr><td>全局 <code>--timeout</code></td><td><code>10000</code></td><td>访问禅道时单次请求的超时时间，毫秒</td></tr>
-                  <tr><td>全局 <code>--insecure</code></td><td>关闭</td><td>跳过禅道站点的 TLS 证书验证</td></tr>
-                </tbody>
-              </table>
-            </div>
-            <p><code>zentao mcp --transport http</code> 与 <code>zentao mcp-server</code> 等价，参数相同。</p>
-          </div>
-        </details>
-        <details class="more">
-          <summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>服务会注册哪些工具</summary>
-          <div class="more-body">
-            <ul>
-              <li>每个开放的模块对应一个工具，例如 <code>zentao_task</code>；使用 <code>--split-tools</code> 时拆为 <code>zentao_task_read</code> 和 <code>zentao_task_write</code>。</li>
-              <li><code>zentao_action_help</code>：查询某个操作的参数、调用示例和最低禅道版本。</li>
-              <li><code>zentao_profile</code>：只返回固定的站点信息，不识别当前用户，也不验证 Token。</li>
-            </ul>
-          </div>
-        </details>
       </section>
 
-      <section class="doc-section" id="a-systemd" data-for="admin" data-step="4" aria-labelledby="a-systemd-title">
-        <div class="section-head"><span class="step-no">4</span><h2 id="a-systemd-title">配置常驻运行</h2><label class="done-toggle"><input type="checkbox" class="step-check" value="4">已完成</label></div>
-        <p class="section-intro">以 Linux systemd 为例。先结束上一步的前台进程，避免端口被占用。创建专用服务账号，并确认可执行文件的位置：</p>
-        <div class="code"><div class="code-head"><span>bash</span></div><pre><code>sudo useradd --system --no-create-home --shell /usr/sbin/nologin zentao-mcp
-command -v zentao
-command -v node</code></pre></div>
-        <p>将下面的内容保存为单元文件，把 <code>ExecStart</code> 中的路径替换为上一步查到的实际路径：</p>
+      <section class="doc-section" id="a-systemd" data-step="2" aria-labelledby="a-systemd-title">
+        <div class="section-head"><span class="step-no">2</span><h2 id="a-systemd-title">配置常驻运行</h2><label class="done-toggle"><input type="checkbox" class="step-check" value="2">已完成</label></div>
+        <p class="section-intro">以 Linux systemd 为例。先结束前台进程，创建服务账号，并用 <code>command -v zentao</code> 确认可执行文件路径：</p>
+        <div class="code"><div class="code-head"><span>bash</span></div><pre><code>sudo useradd --system --no-create-home --shell /usr/sbin/nologin zentao-mcp</code></pre></div>
+        <p><code>ExecStart</code> 中的路径改为实际路径，启动参数按第 1 步追加。<code>PATH</code> 需要包含 Node.js 所在目录；装在个人目录（如 nvm）的 Node.js 服务账号通常无法访问，应改为系统级安装。</p>
         <div class="code"><div class="code-head"><span>ini · /etc/systemd/system/zentao-mcp.service</span></div><pre><code>[Unit]
 Description=ZenTao MCP Server
 Wants=network-online.target
@@ -878,37 +429,15 @@ ProtectHome=read-only
 
 [Install]
 WantedBy=multi-user.target</code></pre></div>
-        <details class="more">
-          <summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>路径、参数与安全设置说明</summary>
-          <div class="more-body">
-            <ul>
-              <li><code>PATH</code> 需要包含 Node.js 所在目录。通过 nvm 等方式装在个人目录的 Node.js，服务账号通常无法访问，应改为系统级安装。</li>
-              <li>需要只读、模块限制、<code>--timeout</code> 或 <code>--insecure</code> 时，按<a href="#a-options">启动参数</a>的格式写入 <code>ExecStart</code>。</li>
-              <li><code>NoNewPrivileges</code>、<code>PrivateTmp</code>、<code>ProtectSystem</code>、<code>ProtectHome</code> 用于限制服务进程的权限。HTTP 模式不读写本地登录配置，这些限制不影响正常运行。</li>
-            </ul>
-          </div>
-        </details>
-        <p>启用并启动服务：</p>
         <div class="code"><div class="code-head"><span>bash</span></div><pre><code>sudo systemctl daemon-reload
 sudo systemctl enable --now zentao-mcp
-sudo systemctl status zentao-mcp
 sudo journalctl -u zentao-mcp -n 50 --no-pager</code></pre></div>
-        <p>日志由 systemd 收集，每个请求记录一行方法、路径、状态码和耗时，例如 <code>[mcp-http] POST /mcp 200 812ms</code>。日志<span class="term" tabindex="0">不能用于按用户审计<span class="tip" role="tooltip">日志不记录 Token、认证头、请求体或用户身份。需要审计时，请使用禅道自身的操作记录。</span></span>。</p>
+        <p>日志每个请求一行，例如 <code>[mcp-http] POST /mcp 200 812ms</code>。日志不记录 Token 和用户身份，按用户审计请使用禅道的操作记录。</p>
       </section>
 
-      <section class="doc-section" id="a-proxy" data-for="admin" data-step="5" aria-labelledby="a-proxy-title">
-        <div class="section-head"><span class="step-no">5</span><h2 id="a-proxy-title">配置 HTTPS 反向代理</h2><label class="done-toggle"><input type="checkbox" class="step-check" value="5">已完成</label></div>
-        <p class="section-intro">MCP 进程继续监听回环地址，由反向代理对外提供 HTTPS。需要转发三个路径：</p>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>路径</th><th>用途</th></tr></thead>
-            <tbody>
-              <tr><td><code>/mcp</code></td><td>MCP 端点，供 Agent 调用</td></tr>
-              <tr><td><code>/start</code></td><td>用户接入页面</td></tr>
-              <tr><td><code>/start/token</code></td><td>接入页面用账号密码换取 Token 的接口</td></tr>
-            </tbody>
-          </table>
-        </div>
+      <section class="doc-section" id="a-proxy" data-step="3" aria-labelledby="a-proxy-title">
+        <div class="section-head"><span class="step-no">3</span><h2 id="a-proxy-title">配置 HTTPS 反向代理</h2><label class="done-toggle"><input type="checkbox" class="step-check" value="3">已完成</label></div>
+        <p class="section-intro">MCP 进程只监听本机，由反向代理对外提供 HTTPS，并转发 <code>/mcp</code>、<code>/start</code> 和 <code>/start/token</code> 三个路径。</p>
         <div class="code"><div class="code-head"><span>nginx · 同机部署示例</span></div><pre><code><span class="c"># Place limit_req_zone in the http block.</span>
 limit_req_zone $binary_remote_addr zone=zentao_mcp_token:10m rate=10r/m;
 
@@ -959,19 +488,17 @@ server {
         proxy_set_header Connection "";
     }
 }</code></pre></div>
-        <p>检查配置并重载 Nginx。配置时注意：</p>
+        <p>修改示例时注意：</p>
         <dl class="def-list">
-          <div><dt>请求头</dt><dd>保留客户端的 <code>token</code> 或 <code>Authorization</code> 头。接入页面还依赖 <code>Host</code>（含非默认端口）、<code>Origin</code>、<code>Content-Type</code> 和 <code>X-Zentao-Start</code>。Nginx 默认会转发它们，示例中的 <code>proxy_set_header Host $http_host</code> 用于保留原始 <code>Host</code>。</dd></div>
-          <div><dt>凭据安全</dt><dd>代理层不要写死某个账号的 Token。不要把认证头、请求体或响应体写入日志，<code>/start/token</code> 的请求和响应中包含密码和 Token。</dd></div>
-          <div><dt>限流</dt><dd><code>/start/token</code> 会用用户提交的账号密码登录禅道，示例按客户端 IP 限流，防止被用来猜测密码；被限流时返回页面可识别的 JSON。服务自身最多同时处理 8 个获取请求。</dd></div>
-          <div><dt>超时</dt><dd><code>/mcp</code> 的响应以 <span class="term" tabindex="0">SSE<span class="tip" role="tooltip">Server-Sent Events，服务端以文本流逐段返回数据。代理开启缓冲时，结果会被攒到最后才发出，因此需要关闭缓冲。</span></span> 流返回，需要关闭缓冲。一次工具调用最长执行 60 秒与 <code>--timeout</code> 中的较大值，<code>proxy_read_timeout</code> 应大于这个值。</dd></div>
-          <div><dt>跨域</dt><dd>不需要配置 CORS。<code>/mcp</code> 会拒绝带 <code>Origin</code> 头的请求，接入页面只访问同源接口。</dd></div>
-          <div><dt>HTTPS</dt><dd>远程用户只能通过 HTTPS 在接入页面填写账号密码；只有通过 <code>localhost</code>、<code>127.0.0.1</code> 或 <code>[::1]</code> 访问时才允许使用 HTTP。</dd></div>
+          <div><dt>请求头</dt><dd>保留客户端的 <code>token</code> 和 <code>Authorization</code> 头。接入页面还依赖原始的 <code>Host</code>、<code>Origin</code> 和 <code>X-Zentao-Start</code> 头，不要改写。</dd></div>
+          <div><dt>凭据</dt><dd>不要在代理层写死 Token，也不要记录认证头、请求体或响应体，<code>/start/token</code> 中包含密码和 Token。</dd></div>
+          <div><dt>限流</dt><dd><code>/start/token</code> 会用提交的账号密码登录禅道，需要按 IP 限流，防止被用于猜测密码。</dd></div>
+          <div><dt>超时</dt><dd><code>/mcp</code> 以 <span class="term" tabindex="0">SSE<span class="tip" role="tooltip">Server-Sent Events，服务端以文本流逐段返回数据。代理开启缓冲时，结果会被攒到最后才发出，因此需要关闭缓冲。</span></span> 流返回，需要关闭缓冲。<code>proxy_read_timeout</code> 应大于 60 秒和 <code>--timeout</code> 中的较大值。</dd></div>
         </dl>
         <details class="more">
           <summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>挂在已有域名的子路径下</summary>
           <div class="more-body">
-            <p>例如 <code>https://tools.example.com/zentao-mcp/</code>。应转发整个前缀并去掉前缀，接入页面会根据浏览器中的地址推算出 <code>/zentao-mcp/mcp</code> 和 <code>/zentao-mcp/start/token</code>，不要只转发 <code>/mcp</code>：</p>
+            <p>例如 <code>https://tools.example.com/zentao-mcp/</code>。应转发整个前缀并去掉前缀，不要只转发 <code>/mcp</code>：</p>
             <div class="code"><div class="code-head"><span>nginx</span></div><pre><code>location /zentao-mcp/ {
     proxy_pass http://127.0.0.1:9090/;
     proxy_http_version 1.1;
@@ -981,76 +508,31 @@ server {
     proxy_read_timeout 65s;
     client_max_body_size 1m;
 }</code></pre></div>
-            <p>此时 MCP 地址为 <code>https://tools.example.com/zentao-mcp/mcp</code>，接入页面为 <code>https://tools.example.com/zentao-mcp/start</code>。需要限流时，为 <code>/zentao-mcp/start/token</code> 单独添加 <code>location</code>。</p>
+            <p>此时 MCP 地址为 <code>.../zentao-mcp/mcp</code>，接入页面为 <code>.../zentao-mcp/start</code>。需要限流时，为 <code>/zentao-mcp/start/token</code> 单独添加 <code>location</code>。</p>
           </div>
         </details>
         <details class="more">
           <summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>多个禅道站点或多个实例</summary>
           <div class="more-body">
-            <ul>
-              <li><strong>多个禅道站点</strong>：为每个站点运行一个独立实例，使用不同的端口和对外域名或路径，例如 <code>--port 9090</code> 连接站点 A，<code>--port 9091</code> 连接站点 B。</li>
-              <li><strong>同一站点多实例负载均衡</strong>：<code>/mcp</code> 是无状态的，可以分发到任意实例。<code>/start/token</code> 必须由生成该页面的同一个实例处理，否则会返回 403；请开启会话保持（例如 <code>ip_hash</code>），或将 <code>/start</code> 和 <code>/start/token</code> 固定转发到其中一个实例。</li>
-            </ul>
+            <p>每个禅道站点运行一个实例，使用不同端口。同一站点多实例负载均衡时，<code>/mcp</code> 可以分发到任意实例，但 <code>/start</code> 和 <code>/start/token</code> 必须到达同一实例，请开启会话保持（例如 <code>ip_hash</code>）。</p>
           </div>
         </details>
       </section>
 
-      <section class="doc-section" id="a-verify" data-for="admin" data-step="6" aria-labelledby="a-verify-title">
-        <div class="section-head"><span class="step-no">6</span><h2 id="a-verify-title">验证部署</h2><label class="done-toggle"><input type="checkbox" class="step-check" value="6">已完成</label></div>
-        <p class="section-intro">发布前，用一位普通用户的 Token 从外部网络依次检查：</p>
-        <ol class="steps">
-          <li>
-            <div>
-              <span class="step-title">通过 HTTPS 调用一次只读工具</span>
-              <p>确认代理、Token 和禅道连通性。<code>read -rs</code> 用于避免 Token 留在 Shell 历史中。</p>
-              <div class="code"><div class="code-head"><span>bash</span></div><pre><code>read -rs ZENTAO_TOKEN
+      <section class="doc-section" id="a-verify" data-step="4" aria-labelledby="a-verify-title">
+        <div class="section-head"><span class="step-no">4</span><h2 id="a-verify-title">验证并发布</h2><label class="done-toggle"><input type="checkbox" class="step-check" value="4">已完成</label></div>
+        <p class="section-intro">用一位普通用户的 Token 从外部网络调用一次只读工具（<code>read -rs</code> 避免 Token 留在 Shell 历史中）：</p>
+        <div class="code"><div class="code-head"><span>bash</span></div><pre><code>read -rs ZENTAO_TOKEN
 curl -sS <span class="v" data-var="mcp">https://mcp.example.com/mcp</span> \
   -H "token: $ZENTAO_TOKEN" \
   -H 'Content-Type: application/json' \
   -H 'Accept: application/json, text/event-stream' \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"zentao_product","arguments":{"action":"list","pick":"id,name","recPerPage":5}}}'</code></pre></div>
-            </div>
-          </li>
-          <li>
-            <div>
-              <span class="step-title">检查接入页面</span>
-              <p>在浏览器打开 <a data-href="start" href="https://mcp.example.com/start" target="_blank" rel="noreferrer"><span data-var="start">https://mcp.example.com/start</span></a>，确认显示的禅道地址正确，并用账号密码成功获取一次 Token。</p>
-            </div>
-          </li>
-          <li>
-            <div>
-              <span class="step-title">在 Agent 中端到端验证</span>
-              <p>按用户接入的步骤在一个 Agent 中完成配置，并成功完成一次只读查询。</p>
-              <button class="button" type="button" data-set-role="user" data-jump="u-start">查看用户接入步骤</button>
-            </div>
-          </li>
-        </ol>
-        <h3>如何判断 curl 的结果</h3>
-        <p>响应为 SSE 格式，正文在 <code>data:</code> 行中。有 <code>structuredContent.data</code> 表示调用成功；有 <code>"isError":true</code> 表示业务失败，按 <code>structuredContent.error.code</code> 排查：</p>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>错误码</th><th>含义与处理</th></tr></thead>
-            <tbody>
-              <tr><td><code>E1004</code></td><td>Token 无效或已失效，重新获取 Token</td></tr>
-              <tr><td><code>E2006</code></td><td>该用户没有对应权限</td></tr>
-              <tr><td><code>E5001</code></td><td>访问禅道超时，检查网络或调大 <code>--timeout</code></td></tr>
-              <tr><td><code>E5002</code></td><td>禅道证书验证失败，见<a href="#a-env">准备环境</a>中的证书处理</td></tr>
-              <tr><td><code>E2010</code></td><td>禅道版本不支持该操作</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <details class="more">
-          <summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>没有开放产品模块，或使用了 --split-tools</summary>
-          <div class="more-body">
-            <p>使用 <code>--split-tools</code> 时，工具名改为 <code>zentao_product_read</code>。没有开放产品模块时，换成已开放模块的查询操作；把 <code>method</code> 改为 <code>tools/list</code> 可查看全部工具名，这个请求不访问禅道。</p>
-            <p>如果直接返回 HTTP 状态码而不是 SSE 内容，见<a href="#faq">常见问题</a>。</p>
-          </div>
-        </details>
-      </section>
+        <p>响应的 <code>data:</code> 行中有 <code>structuredContent.data</code> 表示成功；有 <code>"isError":true</code> 时，按 <code>structuredContent.error.code</code> 查<a href="#faq">常见问题</a>。没有开放产品模块时换成已开放的模块；使用 <code>--split-tools</code> 时工具名为 <code>zentao_product_read</code>。</p>
+        <p>然后在浏览器打开 <a data-href="start" href="https://mcp.example.com/start" target="_blank" rel="noreferrer"><span data-var="start">https://mcp.example.com/start</span></a>，确认禅道地址正确并能获取 Token；再按接入页面的提示在一个 Agent 中完成一次查询。</p>
 
-      <section class="doc-section" id="a-publish" data-for="admin" data-step="7" aria-labelledby="a-publish-title">
-        <div class="section-head"><span class="step-no">7</span><h2 id="a-publish-title">向用户发布</h2><label class="done-toggle"><input type="checkbox" class="step-check" value="7">已完成</label></div>
-        <p class="section-intro">验证通过后，把下面的通知发给用户。先在<a href="#address">页面顶部</a>填写公司地址，模板会自动替换。管理员只分发连接说明，用户各自获取和填写 Token。</p>
+        <h3>向用户发布</h3>
+        <p>验证通过后，把下面的通知发给用户。先在<a href="#address">页面顶部</a>填写公司地址，模板会自动替换。</p>
         <div class="code prose"><div class="code-head"><span>通知模板</span></div><pre><code>禅道 MCP 服务已开通：
 
 用户接入页面：<span class="v" data-var="start">https://mcp.example.com/start</span>（推荐，按页面提示完成配置）
@@ -1060,128 +542,44 @@ MCP 地址：<span class="v" data-var="mcp">https://mcp.example.com/mcp</span>
 认证方式：请求头 token，值为你自己的禅道 Token
 网络要求：请填写是否需要公司内网或 VPN
 开放功能：请填写实际开放的模块，以及是否只读
-接入指南：<span class="v" data-var="guide">https://github.com/easysoft/zentao-cli/blob/main/docs/mcp-server.md#用户接入</span></code></pre></div>
-        <div class="form-actions">
-          <button class="button primary" type="button" id="share-link">复制用户接入链接</button>
-          <p class="footnote" id="share-hint">链接会打开本页的用户视图，并预先填入公司地址。</p>
-        </div>
-        <ul class="muted small">
-          <li>本页是单个 HTML 文件，可以和服务一起放到公司内网的网页服务器上，供无法访问 GitHub 的用户查看。放好后，通知中的「接入指南」会自动指向本页。</li>
-          <li>接入页面默认用"查询产品列表"验证连接。没有开放产品模块时，请在通知中给出可用的验证问题。</li>
-        </ul>
+接入指南：https://github.com/easysoft/zentao-cli/blob/main/docs/mcp-server.md#用户接入</code></pre></div>
+        <p class="muted small">没有开放产品模块时，请在通知中给出可用的验证问题。用户无法访问 GitHub 时，可将接入指南的「用户接入」部分发布到内部文档。</p>
       </section>
 
-      <section class="doc-section" id="a-maintain" data-for="admin" data-step="8" aria-labelledby="a-maintain-title">
-        <div class="section-head"><span class="step-no">8</span><h2 id="a-maintain-title">升级与维护</h2><label class="done-toggle"><input type="checkbox" class="step-check" value="8">已完成</label></div>
-        <dl class="def-list">
-          <div><dt>升级</dt><dd>建议安装指定版本，升级后确认版本号，再重启服务。</dd></div>
-          <div><dt>重启后检查</dt><dd>升级或修改启动参数后，重新检查 <code>/healthz</code>，并重复<a href="#a-verify">第 6 步</a>中的只读调用。</dd></div>
-          <div><dt>重启的影响</dt><dd>服务退出时停止接收新请求，最多等待 5 秒后取消未完成的请求，被取消的写入可能已经生效。重启后，用户已打开的接入页面会失效，需要刷新后再获取 Token。</dd></div>
-          <div><dt>Token 失效</dt><dd>服务不保存也不刷新 Token。用户的 Token 失效后，由用户重新获取并更新 Agent 配置，管理员无需操作。</dd></div>
-        </dl>
+      <section class="doc-section" id="a-maintain" data-step="5" aria-labelledby="a-maintain-title">
+        <div class="section-head"><span class="step-no">5</span><h2 id="a-maintain-title">升级与维护</h2><label class="done-toggle"><input type="checkbox" class="step-check" value="5">已完成</label></div>
         <div class="code"><div class="code-head"><span>bash</span></div><pre><code>npm install -g zentao-cli@&lt;版本号&gt;
-zentao --version
 sudo systemctl restart zentao-mcp
 curl http://127.0.0.1:9090/healthz</code></pre></div>
+        <p>升级或修改参数后，重复<a href="#a-verify">第 4 步</a>的只读调用。重启时，未完成的请求最多等待 5 秒后取消，已发出的写入可能已经生效；用户需要刷新已打开的接入页面。用户的 Token 失效由用户自行更新，管理员无需操作。</p>
       </section>
 
-      <!-- ===== Shared ===== -->
       <section class="doc-section" id="faq" aria-labelledby="faq-title">
         <div class="section-head"><h2 id="faq-title">常见问题</h2></div>
-        <p class="section-intro">输入现象、状态码或错误码筛选，例如 <code>401</code>、<code>E1004</code>、<code>证书</code>。</p>
         <div class="faq-tools">
           <label class="search">
             <span class="sr-only">搜索常见问题</span>
             <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.5"></circle><path d="M10.5 10.5 14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></svg>
-            <input type="search" id="faq-search" placeholder="搜索现象或错误码" autocomplete="off">
+            <input type="search" id="faq-search" placeholder="搜索现象或错误码，例如 401、E1004" autocomplete="off">
           </label>
-          <div class="chips" role="group" aria-label="按分类筛选">
-            <button class="chip" type="button" data-cat="all" aria-pressed="true">全部</button>
-            <button class="chip" type="button" data-cat="connect" aria-pressed="false">连接与认证</button>
-            <button class="chip" type="button" data-cat="business" aria-pressed="false">业务错误</button>
-            <button class="chip" type="button" data-cat="start" aria-pressed="false">接入页面</button>
-            <button class="chip" type="button" data-cat="deploy" aria-pressed="false">部署</button>
-          </div>
         </div>
-        <p class="faq-count" id="faq-count" aria-live="polite"></p>
         <div class="faq-list" id="faq-list">
-          <details class="faq-item" data-cat="connect"><summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>无法连接，或返回 HTTP 502<span class="cat">连接与认证</span></summary><div class="faq-body"><p>确认使用了完整的 <code>/mcp</code> 地址。检查 Agent 实际运行环境的内网或 VPN、代理和证书；仍失败时请管理员检查服务进程。</p></div></details>
-          <details class="faq-item" data-cat="connect"><summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>返回 HTTP 401<span class="cat">连接与认证</span></summary><div class="faq-body"><p>认证头缺失、值带多余空白，或同时配置了 <code>token</code> 和 <code>Authorization</code>；MCP 地址带了 <code>?</code> 查询参数也会返回 401。客户端配置正确时，请管理员检查代理是否转发了认证头。</p></div></details>
-          <details class="faq-item" data-cat="connect"><summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>返回 HTTP 403，提示不支持 Origin 请求<span class="cat">连接与认证</span></summary><div class="faq-body"><p>请求带了 <code>Origin</code> 头。该服务只接受原生 MCP 客户端，不提供浏览器跨域接入。</p></div></details>
-          <details class="faq-item" data-cat="connect"><summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>返回 HTTP 405，或访问 /sse 返回 404<span class="cat">连接与认证</span></summary><div class="faq-body"><p>在客户端中选择 Streamable HTTP，并配置 <code>/mcp</code> 地址。浏览器直接打开 <code>/mcp</code> 返回 405 属于正常现象，不表示服务不可用。</p></div></details>
-          <details class="faq-item" data-cat="connect"><summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>返回 HTTP 413<span class="cat">连接与认证</span></summary><div class="faq-body"><p>单次请求超过 1 MiB，请减少一次提交的内容。</p></div></details>
-          <details class="faq-item" data-cat="connect"><summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>返回 HTTP 504，或连接在执行中断开<span class="cat">连接与认证</span></summary><div class="faq-body"><p>工具调用超过执行时限。写入操作先查询是否已生效；经常出现时请管理员调整超时。</p></div></details>
-          <details class="faq-item" data-cat="business"><summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>工具已列出，但业务查询返回 E1004<span class="cat">业务错误</span></summary><div class="faq-body"><p>Token 无效或已失效。从对应的禅道站点重新获取 Token，更新 Agent 配置后重新连接。</p></div></details>
-          <details class="faq-item" data-cat="business"><summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>业务查询返回 E2006<span class="cat">业务错误</span></summary><div class="faq-body"><p>账号在禅道中没有该数据的访问权限，请联系禅道管理员。</p></div></details>
-          <details class="faq-item" data-cat="business"><summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>业务查询返回 E2010<span class="cat">业务错误</span></summary><div class="faq-body"><p>当前禅道版本不支持该操作。</p></div></details>
-          <details class="faq-item" data-cat="business"><summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>zentao_profile 返回 account=null<span class="cat">业务错误</span></summary><div class="faq-body"><p>正常现象。该服务不根据 Token 识别账号，这个工具也不验证 Token。</p></div></details>
-          <details class="faq-item" data-cat="business"><summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>看不到工具，或不能执行某个操作<span class="cat">业务错误</span></summary><div class="faq-body"><p>检查服务是否已绑定到当前 Agent、工具是否已启用，以及管理员设置的只读和模块限制。</p></div></details>
-          <details class="faq-item" data-cat="business"><summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>无法上传本地附件<span class="cat">业务错误</span></summary><div class="faq-body"><p>该服务不支持从本地路径上传文件，请使用本地 CLI 或 stdio MCP。</p></div></details>
-          <details class="faq-item" data-cat="start"><summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>接入页面提示：请求来源不正确或服务已重启<span class="cat">接入页面</span></summary><div class="faq-body"><p>服务已重启，或代理没有保留 <code>Host</code>、<code>Origin</code>、<code>X-Zentao-Start</code> 头。用户刷新页面即可；刷新后仍出现时，管理员检查代理配置和负载均衡的会话保持。</p></div></details>
-          <details class="faq-item" data-cat="start"><summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>接入页面提示：请通过管理员提供的 HTTPS 地址获取 Token<span class="cat">接入页面</span></summary><div class="faq-body"><p>通过非本机的 HTTP 地址访问了页面，请改用 HTTPS 地址。</p></div></details>
-          <details class="faq-item" data-cat="start"><summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>接入页面提示：获取 Token 的用户较多，请稍后重试<span class="cat">接入页面</span></summary><div class="faq-body"><p>同时获取 Token 的请求超过 8 个（HTTP 429），或触发了代理限流，请稍后重试。</p></div></details>
-          <details class="faq-item" data-cat="start"><summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>接入页面提示：禅道的 HTTPS 证书验证失败<span class="cat">接入页面</span></summary><div class="faq-body"><p>服务无法验证禅道站点的证书，管理员按<a href="#a-env">准备环境</a>中的证书说明处理。</p></div></details>
-          <details class="faq-item" data-cat="start"><summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>接入页面提示：连接禅道超时<span class="cat">接入页面</span></summary><div class="faq-body"><p>服务访问禅道超时，管理员检查服务器到禅道的网络，或调大 <code>--timeout</code>。</p></div></details>
-          <details class="faq-item" data-cat="start"><summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>接入页面提示：连接失败，请检查网络后重试<span class="cat">接入页面</span></summary><div class="faq-body"><p>浏览器没有收到服务的正常响应，例如网络中断、代理返回 502，或代理返回了非 JSON 的错误页。管理员检查代理是否转发了 <code>/start/token</code>。</p></div></details>
-          <details class="faq-item" data-cat="deploy"><summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>工具返回 E5002：证书验证失败<span class="cat">部署</span></summary><div class="faq-body"><p>服务无法验证禅道站点的证书。用 <code>NODE_EXTRA_CA_CERTS</code> 指定内部 CA，或临时加全局选项 <code>--insecure</code>，见<a href="#a-env">准备环境</a>。</p></div></details>
-          <details class="faq-item" data-cat="deploy"><summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>工具返回 E5001：请求超时<span class="cat">部署</span></summary><div class="faq-body"><p>服务访问禅道超时。检查服务器到禅道的网络，或调大全局选项 <code>--timeout</code>，并同步调大代理的 <code>proxy_read_timeout</code>。</p></div></details>
-          <details class="faq-item" data-cat="deploy"><summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>服务启动失败，提示 E2009 或 E5004<span class="cat">部署</span></summary><div class="faq-body"><p><code>E2009</code> 表示启动参数无效，例如未指定禅道站点、端口不在 1–65535 范围，或同时提供了位置参数和 <code>--url</code>。<code>E5004</code> 表示监听失败，检查监听地址、端口占用与网络权限。</p></div></details>
-          <details class="faq-item" data-cat="deploy"><summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>/healthz 正常，但业务调用失败<span class="cat">部署</span></summary><div class="faq-body"><p>健康检查只检查服务进程。继续检查禅道地址、Token、账号权限和版本要求，可按<a href="#a-verify">验证部署</a>中的 curl 命令逐项确认。</p></div></details>
+          <details class="faq-item"><summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>无法连接，或返回 HTTP 502</summary><div class="faq-body"><p>确认使用了完整的 <code>/mcp</code> 地址，检查 Agent 所在环境的内网、VPN 和代理；仍失败时检查服务进程和反向代理。</p></div></details>
+          <details class="faq-item"><summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>返回 HTTP 401</summary><div class="faq-body"><p>认证头缺失、带多余空白，或同时配置了 <code>token</code> 和 <code>Authorization</code>；地址带 <code>?</code> 查询参数也会返回 401。客户端配置正确时，检查代理是否转发了认证头。</p></div></details>
+          <details class="faq-item"><summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>返回 HTTP 405，或 /sse 返回 404</summary><div class="faq-body"><p>在客户端中选择 Streamable HTTP 并使用 <code>/mcp</code> 地址。浏览器直接打开 <code>/mcp</code> 返回 405 属于正常现象。</p></div></details>
+          <details class="faq-item"><summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>返回 HTTP 504，或执行中断开</summary><div class="faq-body"><p>调用超过执行时限。写入操作先查询是否已生效；经常出现时调大 <code>--timeout</code> 和代理的 <code>proxy_read_timeout</code>。</p></div></details>
+          <details class="faq-item"><summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>工具返回 E1004</summary><div class="faq-body"><p>Token 无效或已失效，用户从对应的禅道站点重新获取。</p></div></details>
+          <details class="faq-item"><summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>工具返回 E2006，或看不到某些工具</summary><div class="faq-body"><p>账号在禅道中没有权限，或启动时设置了 <code>--read-only</code>、<code>--modules</code> 限制。</p></div></details>
+          <details class="faq-item"><summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>工具返回 E5001 或 E5002</summary><div class="faq-body"><p><code>E5001</code> 是服务访问禅道超时，检查网络或调大 <code>--timeout</code>；<code>E5002</code> 是禅道证书验证失败，见<a href="#a-install">第 1 步</a>的证书说明。</p></div></details>
+          <details class="faq-item"><summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>接入页面提示请求来源不正确</summary><div class="faq-body"><p>服务已重启，用户刷新页面即可；仍出现时，检查代理是否保留了 <code>Host</code>、<code>Origin</code>、<code>X-Zentao-Start</code> 头，以及多实例的会话保持。</p></div></details>
         </div>
-        <p class="faq-empty" id="faq-empty" hidden>没有匹配的问题。<button class="text-button" type="button" id="faq-clear">清除筛选</button></p>
-        <p class="muted small">更多错误码说明见<a href="https://github.com/easysoft/zentao-cli/blob/main/docs/errors.md#http-mcp-排查" target="_blank" rel="noreferrer">错误排查手册</a>。</p>
-      </section>
-
-      <section class="doc-section" id="reference" data-for="admin" aria-labelledby="reference-title">
-        <div class="section-head"><h2 id="reference-title">接口与请求边界</h2></div>
-        <p class="section-intro">排查问题或评估安全性时参考。</p>
-        <details class="more">
-          <summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>服务提供的接口</summary>
-          <div class="more-body">
-            <div class="table-wrap">
-              <table>
-                <thead><tr><th>请求</th><th>认证</th><th>行为</th></tr></thead>
-                <tbody>
-                  <tr><td><code>POST /mcp</code></td><td>需要 Token</td><td>处理 MCP 请求；结果以 SSE 流返回，客户端需声明接受 <code>application/json</code> 和 <code>text/event-stream</code></td></tr>
-                  <tr><td><code>GET /mcp</code>、<code>DELETE /mcp</code></td><td>—</td><td>返回 HTTP 405；服务是无状态的，不维护会话</td></tr>
-                  <tr><td><code>GET /healthz</code></td><td>无需认证</td><td>只检查服务进程，不检查禅道是否可用或 Token 是否有效</td></tr>
-                  <tr><td><code>GET /start</code></td><td>无需认证</td><td>用户接入页面</td></tr>
-                  <tr><td><code>POST /start/token</code></td><td>页面密钥</td><td>只接受接入页面发出的同源 JSON 请求，向固定的禅道站点换取 Token</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </details>
-        <details class="more">
-          <summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>请求限制</summary>
-          <div class="more-body">
-            <ul>
-              <li><strong>请求体</strong>：<code>/mcp</code> 最大 1 MiB，<code>/start/token</code> 最大 16 KiB；请求体需要在 30 秒内接收完成。</li>
-              <li><strong>执行时限</strong>：一次工具调用的执行时限是 60 秒与 <code>--timeout</code> 中的较大值，每次访问禅道的请求仍受 <code>--timeout</code> 限制。</li>
-              <li><strong>取消</strong>：客户端断开连接会取消该请求中尚未完成的禅道调用；已经发出的写入可能已生效。</li>
-              <li><strong>并发</strong>：<code>/start/token</code> 最多同时处理 8 个请求，超出时返回 429。</li>
-              <li><strong>日志与缓存</strong>：服务日志不记录 Token、认证头和请求体。密码和 Token 不写入磁盘，接入页面和 <code>/start/token</code> 的响应禁止缓存。</li>
-            </ul>
-          </div>
-        </details>
-        <details class="more">
-          <summary><svg class="icon chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>与本地 CLI 和 stdio MCP 的区别</summary>
-          <div class="more-body">
-            <ul>
-              <li>凭据只从每个请求的请求头中读取。不读取服务器上的登录记录、配置文件中的分页等偏好，也不读取 <code>ZENTAO_ACCOUNT</code>、<code>ZENTAO_PASSWORD</code>、<code>ZENTAO_TOKEN</code> 环境变量。</li>
-              <li>不注册切换账号的 <code>zentao_switch_profile</code> 工具。<code>zentao_profile</code> 只返回站点信息，<code>account</code>、<code>user</code> 均为 <code>null</code>，<code>userFound</code> 为 <code>false</code>。</li>
-              <li>禁用需要读取本地文件路径的上传操作（例如 <code>file/create</code>），避免远程用户读取服务器上的文件。<code>zentao_action_help</code> 对这类操作返回 <code>available=false</code>；附件的更新、删除等其他操作不受影响。</li>
-              <li>不支持会话恢复、事件重放或跨请求取消。</li>
-            </ul>
-            <p>工具参数、返回格式和本地数据处理规则在两种传输方式下相同，见 <a href="https://github.com/easysoft/zentao-cli/blob/main/docs/cli-usage.md#共用工具与返回格式" target="_blank" rel="noreferrer">CLI 文档的 MCP 工具与返回格式</a>。</p>
-          </div>
-        </details>
+        <p class="faq-empty" id="faq-empty" hidden>没有匹配的问题。<button class="text-button" type="button" id="faq-clear">清除搜索</button></p>
+        <p class="muted small">更多现象、接入页面提示和错误码见<a href="https://github.com/easysoft/zentao-cli/blob/main/docs/errors.md#http-mcp-排查" target="_blank" rel="noreferrer">错误排查手册</a>；接口列表和请求限制见<a href="https://github.com/easysoft/zentao-cli/blob/main/docs/implementation.md#http-mcp-的请求隔离" target="_blank" rel="noreferrer">实现说明</a>。</p>
       </section>
 
       <footer>
-        <span>内容与 <a href="https://github.com/easysoft/zentao-cli/blob/main/docs/mcp-server.md" target="_blank" rel="noreferrer">docs/mcp-server.md</a> 保持一致</span>
+        <span>内容与 <a href="https://github.com/easysoft/zentao-cli/blob/main/docs/mcp-server.md" target="_blank" rel="noreferrer">docs/mcp-server.md</a> 的管理员部署部分保持一致</span>
         <span>个人电脑使用 CLI 或本地 stdio MCP，见 <a href="https://github.com/easysoft/zentao-cli/blob/main/docs/use-zentao-in-agents.md" target="_blank" rel="noreferrer">在 Agents 中使用禅道</a></span>
-        <span>Agent 图标来自 <a href="https://github.com/lobehub/lobe-icons" target="_blank" rel="noreferrer">lobe-icons</a>（MIT 许可）</span>
       </footer>
     </main>
   </div>
@@ -1197,8 +595,7 @@ curl http://127.0.0.1:9090/healthz</code></pre></div>
         set: function (key, value) { try { localStorage.setItem(key, value); } catch (error) { /* storage unavailable */ } },
         remove: function (key) { try { localStorage.removeItem(key); } catch (error) { /* storage unavailable */ } }
       };
-      var KEYS = { theme: "zentao-site-theme", role: "zentao-mcp-guide-role", address: "zentao-mcp-guide-address", steps: "zentao-mcp-guide-steps", agent: "zentao-mcp-guide-agent" };
-      var GUIDE_URL = "https://github.com/easysoft/zentao-cli/blob/main/docs/mcp-server.md#用户接入";
+      var KEYS = { theme: "zentao-site-theme", address: "zentao-mcp-guide-address", steps: "zentao-mcp-guide-progress" };
       var DEFAULTS = { base: "https://mcp.example.com", site: "https://zentao.example.com" };
       var root = document.documentElement;
       var body = document.body;
@@ -1214,41 +611,6 @@ curl http://127.0.0.1:9090/healthz</code></pre></div>
       matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function (event) {
         var saved = store.get(KEYS.theme);
         if (saved !== "light" && saved !== "dark") root.dataset.theme = event.matches ? "dark" : "light";
-      });
-
-      /* Role */
-      function setRole(role, persist) {
-        body.dataset.role = role;
-        $$("[data-set-role]").forEach(function (button) {
-          if (!button.dataset.jump) button.setAttribute("aria-pressed", String(button.dataset.setRole === role));
-        });
-        if (persist !== false) store.set(KEYS.role, role);
-        try {
-          var url = new URL(location.href);
-          url.searchParams.set("role", role);
-          history.replaceState(null, "", url);
-        } catch (error) { /* file URLs in some browsers */ }
-        observeSections();
-      }
-      function roleOf(element) {
-        var owner = element && element.closest("[data-for]");
-        return owner ? owner.dataset.for : null;
-      }
-      $$("[data-set-role]").forEach(function (button) {
-        button.addEventListener("click", function () {
-          setRole(button.dataset.setRole);
-          if (button.dataset.jump) {
-            var target = document.getElementById(button.dataset.jump);
-            if (target) { target.scrollIntoView(); history.replaceState(null, "", "#" + button.dataset.jump); }
-          }
-        });
-      });
-      document.addEventListener("click", function (event) {
-        var link = event.target.closest('a[href^="#"]');
-        if (!link) return;
-        var target = document.getElementById(link.getAttribute("href").slice(1));
-        var needed = roleOf(target);
-        if (needed && needed !== body.dataset.role) setRole(needed);
       });
 
       /* Addresses */
@@ -1279,19 +641,10 @@ curl http://127.0.0.1:9090/healthz</code></pre></div>
         return { base: DEFAULTS.base, site: DEFAULTS.site };
       }
       var address = loadAddress();
-      function shareLink() {
-        if (location.protocol !== "http:" && location.protocol !== "https:") return null;
-        var url = new URL(location.pathname, location.origin);
-        url.searchParams.set("role", "user");
-        url.searchParams.set("mcp", address.base);
-        url.searchParams.set("zentao", address.site);
-        url.hash = "u-start";
-        return url.href;
-      }
       function applyAddress() {
         var custom = address.base !== DEFAULTS.base || address.site !== DEFAULTS.site;
         var host = new URL(address.base).host;
-        var values = { base: address.base, site: address.site, mcp: address.base + "/mcp", start: address.base + "/start", host: host, guide: shareLink() || GUIDE_URL };
+        var values = { base: address.base, site: address.site, mcp: address.base + "/mcp", start: address.base + "/start", host: host };
         $$("[data-var]").forEach(function (element) { element.textContent = values[element.dataset.var]; });
         $$("[data-href]").forEach(function (element) { element.href = values[element.dataset.href]; });
         body.dataset.customAddress = String(custom);
@@ -1299,11 +652,6 @@ curl http://127.0.0.1:9090/healthz</code></pre></div>
         $("#address-edit").textContent = custom ? "修改地址" : "填写公司地址";
         $("#addr-base").value = custom ? address.base : "";
         $("#addr-site").value = custom ? address.site : "";
-        var share = $("#share-link");
-        if (!shareLink()) {
-          share.disabled = true;
-          $("#share-hint").textContent = "把本页放到网页服务器上后，可以复制预先填入公司地址的用户链接。";
-        }
       }
       var form = $("#address-form");
       var editButton = $("#address-edit");
@@ -1393,45 +741,13 @@ curl http://127.0.0.1:9090/healthz</code></pre></div>
           copyText(source.textContent).then(function (ok) { flash(button, ok, source); });
         });
       });
-      $$("[data-copy-self]").forEach(function (button) {
-        button.addEventListener("click", function () {
-          var source = button.previousElementSibling;
-          copyText(source.textContent.trim()).then(function (ok) { flash(button, ok, source); });
-        });
-      });
-      $("#share-link").addEventListener("click", function () {
-        var link = shareLink();
-        var button = this;
-        if (link) copyText(link).then(function (ok) { flash(button, ok); });
-      });
-
-      /* Agent tabs */
-      var tabs = $$('[role="tab"]');
-      function selectTab(tab, focus) {
-        tabs.forEach(function (item) {
-          var selected = item === tab;
-          item.setAttribute("aria-selected", String(selected));
-          item.tabIndex = selected ? 0 : -1;
-          document.getElementById(item.getAttribute("aria-controls")).hidden = !selected;
-        });
-        store.set(KEYS.agent, tab.dataset.agent);
-        if (focus) tab.focus();
-      }
-      tabs.forEach(function (tab, index) {
-        tab.addEventListener("click", function () { selectTab(tab); });
-        tab.addEventListener("keydown", function (event) {
-          var next = { ArrowRight: index + 1, ArrowDown: index + 1, ArrowLeft: index - 1, ArrowUp: index - 1, Home: 0, End: tabs.length - 1 }[event.key];
-          if (next === undefined) return;
-          event.preventDefault();
-          selectTab(tabs[(next + tabs.length) % tabs.length], true);
-        });
-      });
-      selectTab(tabs.filter(function (tab) { return tab.dataset.agent === store.get(KEYS.agent); })[0] || tabs[0]);
 
       /* Deployment progress */
+      var checks = $$(".step-check");
       var done = [];
       try { done = JSON.parse(store.get(KEYS.steps) || "[]"); } catch (error) { done = []; }
-      var checks = $$(".step-check");
+      if (!Array.isArray(done)) done = [];
+      done = done.filter(function (value) { return checks.some(function (check) { return check.value === value; }); });
       function renderProgress() {
         checks.forEach(function (check) {
           var isDone = done.indexOf(check.value) !== -1;
@@ -1461,31 +777,19 @@ curl http://127.0.0.1:9090/healthz</code></pre></div>
       /* FAQ filter */
       var faqItems = $$(".faq-item");
       var faqSearch = $("#faq-search");
-      var category = "all";
       function filterFaq() {
         var query = faqSearch.value.trim().toLowerCase();
-        var matches = [];
-        faqItems.forEach(function (item) {
-          var ok = (category === "all" || item.dataset.cat === category) && (!query || item.textContent.toLowerCase().indexOf(query) !== -1);
+        var matches = faqItems.filter(function (item) {
+          var ok = !query || item.textContent.toLowerCase().indexOf(query) !== -1;
           item.hidden = !ok;
-          if (ok) matches.push(item);
+          return ok;
         });
         if (query && matches.length <= 2) matches.forEach(function (item) { item.open = true; });
-        $("#faq-count").textContent = query || category !== "all" ? "找到 " + matches.length + " 条" : "共 " + faqItems.length + " 条";
         $("#faq-empty").hidden = matches.length > 0;
       }
       faqSearch.addEventListener("input", filterFaq);
-      $$(".chip").forEach(function (chip) {
-        chip.addEventListener("click", function () {
-          category = chip.dataset.cat;
-          $$(".chip").forEach(function (item) { item.setAttribute("aria-pressed", String(item === chip)); });
-          filterFaq();
-        });
-      });
       $("#faq-clear").addEventListener("click", function () {
         faqSearch.value = "";
-        category = "all";
-        $$(".chip").forEach(function (item) { item.setAttribute("aria-pressed", String(item.dataset.cat === "all")); });
         filterFaq();
         faqSearch.focus();
       });
@@ -1508,6 +812,7 @@ curl http://127.0.0.1:9090/healthz</code></pre></div>
       var activeId = null;
       var spyQueued = false;
       var tocLinks = $$(".toc a");
+      var sections = $$("main .doc-section");
       function setActive(id) {
         if (id === activeId) return;
         activeId = id;
@@ -1516,40 +821,29 @@ curl http://127.0.0.1:9090/healthz</code></pre></div>
           var active = link.getAttribute("href") === "#" + id;
           link.classList.toggle("active", active);
           if (active && matchMedia("(max-width: 1040px)").matches) {
-            var bar = $(".toc");
-            bar.scrollTo({ left: link.offsetLeft - 24, behavior: "smooth" });
+            $(".toc").scrollTo({ left: link.offsetLeft - 24, behavior: "smooth" });
           }
         });
       }
       function updateSpy() {
         spyQueued = false;
         var current = null;
-        var sections = $$("main .doc-section").filter(function (section) { return section.offsetParent !== null; });
         sections.forEach(function (section) {
           if (section.getBoundingClientRect().top <= 120) current = section;
         });
-        if (innerHeight + scrollY >= document.documentElement.scrollHeight - 4 && sections.length) {
-          current = sections[sections.length - 1];
-        }
+        if (innerHeight + scrollY >= document.documentElement.scrollHeight - 4) current = sections[sections.length - 1];
         setActive(current ? current.id : null);
-      }
-      function observeSections() {
-        activeId = undefined;
-        updateSpy();
       }
       addEventListener("scroll", function () {
         if (!spyQueued) { spyQueued = true; requestAnimationFrame(updateSpy); }
       }, { passive: true });
-      addEventListener("resize", observeSections);
+      addEventListener("resize", function () { activeId = undefined; updateSpy(); });
 
       /* Initial state */
-      var initialTarget = location.hash ? document.getElementById(decodeURIComponent(location.hash.slice(1))) : null;
-      var initialRole = roleOf(initialTarget) || body.dataset.role;
-      setRole(initialRole, Boolean(roleOf(initialTarget)) || new URLSearchParams(location.search).has("role"));
       applyAddress();
       renderProgress();
       filterFaq();
-      if (initialTarget) requestAnimationFrame(function () { initialTarget.scrollIntoView(); });
+      updateSpy();
     })();
   </script>
 </body>

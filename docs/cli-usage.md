@@ -168,10 +168,10 @@ zentao mcp --transport http --url https://zentao.example.com
 
 `zentao mcp-server [url]` 固定使用 HTTP，与 `zentao mcp --transport http` 等价，不接受 `--transport`。`--url`、`--host`、`--port` 只适用于 HTTP 模式，在 stdio 模式下使用会报 `E2009`；`--read-only`、`--modules`、`--split-tools` 在两种模式下均可使用。HTTP 模式的完整说明见[禅道 MCP 服务部署与 Agent 接入指南](mcp-server.md)：
 
-- [启动参数](mcp-server.md#3-启动参数)：站点地址、监听地址和端口、`--timeout`、`--insecure` 及注册的工具
-- [配置 HTTPS 反向代理](mcp-server.md#5-配置-https-反向代理)：Nginx 示例、路径前缀和多实例部署
+- [启动参数](mcp-server.md#1-安装并试运行)：站点地址、监听地址和端口、`--timeout`、`--insecure`
+- [配置 HTTPS 反向代理](mcp-server.md#3-配置-https-反向代理)：Nginx 示例、路径前缀和多实例部署
 - [手动配置 Agent](mcp-server.md#手动配置-agent)：Claude Code、Cursor、Codex 等客户端的配置格式
-- [接口与请求边界](mcp-server.md#接口与请求边界)：接口列表、请求限制，以及与 stdio 模式的区别
+- [HTTP MCP 的请求隔离](implementation.md#http-mcp-的请求隔离)：接口列表、请求限制，以及与 stdio 模式的区别
 
 ### 共用工具与返回格式
 

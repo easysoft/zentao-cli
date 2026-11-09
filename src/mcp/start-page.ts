@@ -30,20 +30,24 @@ export function mcpAgentPrompt(site: string, url: string, token: string, locale:
         'Help me configure our ZenTao MCP service in the Agent I am currently using.', '',
         'Server name: zentao-remote', `ZenTao site: ${site}`, `MCP server URL: ${url}`,
         'Transport: Streamable HTTP', `Authentication header: token: ${token}`, '',
-        'Follow the official documentation for this Agent and merge into the user-level MCP configuration, preserving existing services.',
-        'There is no need to install zentao-cli or start an MCP process locally. Do not ask for my ZenTao password.',
-        'Use the token only in request headers. If it is still a placeholder, help me fill it in locally. Do not display the real token in replies or commit it to a repository.',
-        'If you cannot configure the Agent directly, tell me where to enter the settings. Explain whether reloading or restarting is required.',
+        'Follow the official documentation for this Agent to prepare the user-level MCP configuration, preserving existing services.',
+        'Tell me the full path of the MCP configuration file to edit, the field for the token request header, and how to set it. For settings managed through a UI, give me the entry point and field.',
+        'If the token is a placeholder, I will fill in the real value locally. Do not ask me to send my ZenTao password or token in this conversation.',
+        'There is no need to install zentao-cli or start an MCP process locally.',
+        'Use the token only in request headers. Do not display the real token in replies or commit it to a repository.',
+        'Wait until I have set the token locally, then explain how to reload or restart the Agent.',
         'Finally, verify the connection: Use the zentao-remote MCP to query the products I can access. Show only their IDs and names.',
     ].join('\n');
     return [
         '请帮我在当前使用的 Agent 中配置公司的禅道 MCP 服务。', '',
         '服务名称：zentao-remote', `禅道地址：${site}`, `MCP 服务地址：${url}`,
         '传输方式：Streamable HTTP', `认证请求头：token: ${token}`, '',
-        '请按当前 Agent 的官方文档合并到用户级 MCP 配置，保留已有服务。',
-        '本机无需安装 zentao-cli 或启动 MCP 进程。不要向我索要禅道密码。',
-        'Token 只用于请求头；如果还是占位符，请指导我在本机填写。不要在回复中显示真实 Token，也不要提交到项目仓库。',
-        '如果无法直接配置，请告诉我具体入口。完成后说明是否需要重载或重启 Agent。',
+        '请按当前 Agent 的官方文档准备用户级 MCP 配置，保留已有服务。',
+        '请告知需要修改的 MCP 配置文件完整路径，以及设置 token 请求头的具体字段和方法；若通过界面配置，请给出入口和字段。',
+        'Token 为占位符时，由我在本机填写真实值。不要要求我在对话中提供禅道密码或 Token。',
+        '本机无需安装 zentao-cli 或启动 MCP 进程。',
+        'Token 只用于请求头。不要在回复中显示真实 Token，也不要提交到项目仓库。',
+        '等我在本机设置好 Token 后，再指导我重载或重启 Agent。',
         '最后验证连接：请通过 zentao-remote MCP 查询我有权访问的产品列表，只显示 ID 和名称。',
     ].join('\n');
 }
@@ -300,13 +304,13 @@ button:active:not(:disabled) { opacity: .85; }
                   <button type="button" id="zt-change-token" class="zt-link" data-i18n="changeToken">更换 Token</button>
                   <button type="button" id="zt-clear-token" class="zt-link zt-clear" data-i18n="clearToken">清除 Token</button>
                 </div>
-                <label class="zt-checkbox"><input id="zt-include" type="checkbox" disabled><span data-i18n="includeToken">复制说明或配置时附带 Token</span></label>
-                <p id="zt-include-warning" class="zt-caption" data-i18n="includeWarning" hidden></p>
+                <label class="zt-checkbox"><input id="zt-include" type="checkbox" aria-describedby="zt-include-warning" disabled><span data-i18n="includeToken">${t('includeToken')}</span></label>
+                <p id="zt-include-warning" class="zt-caption" data-i18n="includeWarning" role="status" hidden>${t('includeWarning')}</p>
               </div>
               <p id="zt-token-feedback" class="zt-feedback zt-token-feedback" role="status" aria-live="polite"></p>
             </section>
             <div id="zt-assisted-setup">
-              <p class="zt-setup-text" data-i18n="setupIntro">复制说明，粘贴给你正在使用的 Agent。</p>
+              <p class="zt-setup-text" data-i18n="setupIntro">${t('setupIntro')}</p>
               <div class="zt-prompt-card">
                 <button type="button" id="zt-preview-toggle" class="zt-preview-trigger" aria-expanded="false" aria-controls="zt-prompt-preview" aria-label="展开接入说明">
                   <span class="zt-preview-heading"><span data-i18n="previewPrompt">预览说明</span><span id="zt-preview-action">展开</span></span>
