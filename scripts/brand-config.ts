@@ -79,5 +79,5 @@ export function brandDocument(text: string, brand?: ResolvedBrand, file = 'READM
     text = formatBrandText(text, brand).replace(/\u0001(\d+)\u0001/g, (_, index) => saved[Number(index)]);
     // GitHub/Vite heading slugs lowercase Latin words after the visible title is branded.
     text = text.replace(/(\]\([^\s)]*#)([^)]+)(\))/g, (_, prefix, hash, suffix) => prefix + hash.replaceAll(brand.displayName, brand.displayName.toLowerCase()) + suffix);
-    return text;
+    return text.replace(/^[\t ]+$/gm, '');
 }
