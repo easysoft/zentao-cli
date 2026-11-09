@@ -1,6 +1,6 @@
 # 禅道 MCP 服务部署指南
 
-`zentao mcp-server` 将禅道 API v2 以 MCP（Model Context Protocol）服务的形式提供给 Agent。管理员统一部署一次，禅道用户在自己的 Agent 中填写服务地址和个人 Token 即可使用，本机无需安装 zentao-cli。服务不保存账号、密码或 Token，每个请求都按用户本人在禅道中的权限执行。
+禅道 MCP 服务由禅道 CLI 实现，安装后可以通过 `zentao mcp-server` 命令将禅道 API v2 以 MCP（Model Context Protocol）服务的形式提供给 Agent。管理员统一部署一次，禅道用户在自己的 Agent 中填写服务地址和个人 Token 即可使用，本机无需安装 zentao-cli。服务不保存账号、密码或 Token，每个请求都按用户本人在禅道中的权限执行。
 
 本文面向管理员，按 5 个步骤完成部署和发布。禅道用户请阅读[在 Agent 中接入禅道 MCP 服务](mcp-user-guide.md)；在个人电脑上使用 CLI 技能或本地 stdio MCP，见[在 Agents 中使用禅道](use-zentao-in-agents.md)。
 
