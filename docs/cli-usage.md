@@ -155,6 +155,26 @@ zentao --config ./zentao.json mcp --read-only --modules product,story,task,bug
 
 stdio 是默认模式，由 MCP 客户端启动并管理进程。通过 `zentao login` 保存本地账号，或在客户端启动配置中提供 `ZENTAO_URL`、`ZENTAO_ACCOUNT` 与 `ZENTAO_TOKEN`/`ZENTAO_PASSWORD`。`zentao add-mcp` 只生成这种本地配置；HTTP 客户端需要手动配置。
 
+`zentao add-mcp` 复用当前 Profile 中的 Token，写入如下配置：
+
+```json
+{
+  "mcpServers": {
+    "zentao-cli": {
+      "command": "zentao",
+      "args": ["mcp"],
+      "env": {
+        "ZENTAO_URL": "https://zentao.example.com",
+        "ZENTAO_ACCOUNT": "admin",
+        "ZENTAO_TOKEN": "<your-token>"
+      }
+    }
+  }
+}
+```
+
+在 macOS/Linux 上，写入的 Agent 配置文件权限会收紧为 `0600`。手动配置时也应避免写入账号密码，并限制配置文件的访问权限。包含注释或尾逗号的 JSONC 配置不会被自动重写，命令会保持原文件不变并提示手动配置。
+
 stdio 在首次业务调用时绑定账号和站点，环境凭证不会写入本地 Profile。`zentao_switch_profile` 只切换当前 stdio MCP 实例，不改变 CLI 或其他实例的当前账号；在 CLI 中切换账号也不会改变已运行的实例。显式选择的本地 Profile 会读取同一账号的 Token 和配置更新，删除该 Profile 后后续调用会报错。
 
 stdio 的 `zentao_profile` 返回绑定的 `account`、`server`、远端详情 `user` 和 `userFound`。详情按账号过滤并按需翻页，仅返回 ID、账号、姓名、部门、角色；未找到时 `user=null`、`userFound=false`。远端权限、Token 或业务错误会明确报错。

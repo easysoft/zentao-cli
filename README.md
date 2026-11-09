@@ -1,89 +1,51 @@
 # Zentao CLI
 
+![npm](https://img.shields.io/npm/v/zentao-cli) ![Node.js](https://img.shields.io/node/v/zentao-cli) ![License](https://img.shields.io/npm/l/zentao-cli)
+
 禅道命令行工具，支持在你喜爱的终端里访问和操作禅道数据，对 AI Agents 友好。
 
 ## 主要特性
 
-* ✅ 基于最新的禅道 RESTful API 2.0 实现
-* ✅ 覆盖 26 个模块、229 个 API 操作，调用前按禅道版本检查接口兼容性
-* ✅ 使用便捷，可通过 `npx zentao-cli` 立即运行
-* ✅ 安全的用户认证管理，支持多用户切换
-* ✅ 支持对数据进行摘取、过滤、排序等处理，并自动将 HTML 转换为 Markdown
-* ✅ 对 AI Agents 友好，帮助信息完善，支持输出 Markdown
-* ✅ 支持以 AI 技能的方式使用，支持通过 `zentao add-skill` 一键安装技能到 AI Agent
-* ✅ 支持 stdio 与远程 HTTP MCP 服务，多客户端可使用各自的禅道 Token
-* ✅ 使用现代的 bun 与 TypeScript 开发，具备类型安全
-* ✅ 提供完善的测试覆盖，保障代码质量
+* 基于禅道 RESTful API 2.0，覆盖 40 多个模块、300 多个 API 操作，调用前按禅道版本检查接口兼容性
+* 可通过 `npx zentao-cli` 免安装运行
+* 通过浏览器登录，只保存 Token、不保存密码，支持多账号切换
+* 支持对数据进行摘取、过滤、排序，并自动将 HTML 转换为 Markdown
+* 对 AI Agents 友好：帮助信息完善，支持 Markdown 与 JSON 输出
+* 通过 `zentao add-skill` 一键安装技能到 AI Agent
+* 提供本地 stdio 与远程 HTTP MCP 服务，多个客户端可使用各自的禅道 Token
 
-待实现特性：
+## 环境要求
 
-* [ ] 支持工作区管理，支持记住用户上次访问的产品、项目和执行信息
-* [ ] 支持批量创建和更新操作
-* [ ] 对象预设 pick 列表
-* [ ] Markdown 输出渲染，提供适合人阅读的终端渲染模式，为 Markdown 内容应用多彩格式，代码块支持高亮
-* [ ] 支持适合开发者手动使用的极客版，有友好的 TUI 界面，支持在一个界面提供交互式操作
-* [ ] 一键安装脚本，支持自动根据用户环境选择安装方式
-* [ ] 国际化支持，支持多语言
-* [ ] 多级别日志功能
+* Node.js 18 或更高版本
+* 禅道开源版 22.0、企业版 biz13.0、旗舰版 max8.0 或 IPD 版 ipd5.0 及以上
 
-## 快速使用
+部分操作要求更高的禅道版本，CLI 会在发送请求前检查并提示。详见 [API 覆盖与版本兼容](docs/cli-usage.md#api-覆盖与版本兼容)。
+
+## 快速开始
 
 ```bash
-# 全局安装 zentao-cli 工具
+# 全局安装
 npm install -g zentao-cli
 
-# 其他安装与运行方式
-# bun install -g zentao-cli  # ← 使用 bun 安装
-# npx zentao-cli             # ← 通过 npx 免安装运行
-# pnpm dlx zentao-cli        # ← 通过 pnpm 免安装运行
+# 也可以使用 bun 安装，或免安装运行
+# bun install -g zentao-cli
+# npx zentao-cli
+# pnpm dlx zentao-cli
 
-# 首次使用：在本机浏览器中输入禅道地址、用户名和密码
-zentao login --web
+# 登录：自动打开浏览器，输入禅道地址、用户名和密码
+zentao login
 
-# 直接执行获取可用命令帮助
-zentao
-
-# 查看禅道产品
+# 查看产品列表
 zentao product
-
-# 查看指定 ID 的产品
-zentao product 1
-
-# 更新禅道产品 #1
-zentao product update --id=1 --name=产品1
-
-# 更多功能可通过 help 查看
-zentao help
-
-# 查看禅道产品帮助
-zentao product help
-
-# 安装 zentao-cli 技能
-zentao add-skill
 ```
 
-桌面环境执行 `zentao login` 会自动打开浏览器，登录后保存 Token，不保存密码。Agent 可执行 `zentao login --web` 并保持进程运行，让用户在浏览器完成验证后继续工作。终端交互登录使用 `zentao login --no-browser`；浏览器未自动打开时，可手动访问命令输出的本机链接。远程或容器中的链接属于 CLI 执行端。
+没有图形界面的终端可使用 `zentao login --no-browser` 交互登录。环境变量登录、多账号切换和退出登录见 [用户验证](docs/cli-usage.md#用户验证)。
 
-## 核心命令
+## 常用命令
 
-当前使用 `zentao-api 0.8.2`，支持文档、待办、地盘、问题、风险、会议和工作流等模块。各操作的最低禅道版本可通过 `zentao <模块> <操作> --help` 查看；开源版、企业版、旗舰版和 IPD 版分别比较，版本不足时会在发送业务请求前报错。详见[API 覆盖与版本兼容](docs/cli-usage.md#api-覆盖与版本兼容)。
+命令格式为 `zentao <模块名> [操作] [参数]`。省略操作时查看列表，只传 ID 时查看详情。
 
-zentao-cli 的命令格式简单直观：`zentao <模块名> [操作] [参数]`。下面通过常见场景快速上手。
-
-### 获取 Token
-
-```bash
-# 读取当前或指定账号已保存的 Token
-zentao token
-zentao token 'admin@https://zentao.example.com'
-
-# 临时获取新 Token，不保存到 CLI 配置
-zentao token --server https://zentao.example.com --user admin --password '<password>'
-```
-
-默认只输出一行 Token，便于复制或用于脚本。读取已保存的 Token 不联网验证；临时获取须提供完整地址、账号和密码。两种方式均不修改配置或切换账号，也不使用认证环境变量。使用 `--format json` 可同时输出服务地址、账号和 Token。详见[获取 Token](docs/cli-usage.md#获取-token)。
-
-### 查看与管理产品
+### 产品
 
 ```bash
 # 查看产品列表
@@ -102,30 +64,30 @@ zentao product update 1 --name=产品新名称
 zentao product delete 1
 ```
 
-### 查看与处理 Bug
+### Bug
 
 ```bash
-# 查看 Bug 列表
+# 查看产品 #1 的 Bug 列表
 zentao bug --product=1
 
 # 查看 Bug 详情
 zentao bug 329
 
-# 解决 Bug（执行操作）
+# 解决 Bug
 zentao bug resolve 329 --resolution=fixed
 ```
 
 ### 需求与任务
 
 ```bash
-# 查看需求列表
+# 查看产品 #1 的需求列表
 zentao story --product=1
 
-# 创建任务
+# 在执行 #10 中创建任务
 zentao task create --name=实现登录功能 --executionID=10
 ```
 
-### 数据筛选与搜索
+### 筛选与输出格式
 
 ```bash
 # 只显示指定字段
@@ -140,7 +102,7 @@ zentao story --product=1 --search=登录 --search-fields=title
 # 按字段排序
 zentao bug --product=1 --sort=id:desc
 
-# JSON 格式输出（适合程序处理）
+# JSON 格式输出，适合程序处理
 zentao product --format=json
 ```
 
@@ -150,55 +112,57 @@ zentao product --format=json
 # 查看所有命令
 zentao help
 
-# 查看指定模块的帮助（可用操作与参数）
+# 查看模块的可用操作与参数
 zentao bug --help
+
+# 查看操作的参数和最低禅道版本
+zentao bug resolve --help
 ```
 
-更多功能（环境变量、账户切换、批量操作、管道输入、分页控制等）请参考 [CLI 核心功能详解](docs/cli-usage.md)。
+### 获取 Token
+
+脚本或 MCP 配置需要 Token 时，可用 `zentao token` 读取：
+
+```bash
+# 读取当前账号或指定账号已保存的 Token
+zentao token
+zentao token 'admin@https://zentao.example.com'
+
+# 临时获取新 Token，不保存到 CLI 配置
+zentao token --server https://zentao.example.com --user admin --password '<password>'
+```
+
+默认只输出一行 Token。读取已保存的 Token 不会联网验证，也不会修改配置或切换账号。详见 [获取 Token](docs/cli-usage.md#获取-token)。
+
+管道输入、批量操作、分页控制和配置管理等更多功能见 [CLI 核心功能详解](docs/cli-usage.md)。
 
 ## 在 AI Agents 中使用
 
-### 通过 Zentao CLI 技能使用
+可以通过以下三种方式在 AI Agents 中使用禅道：
 
-支持通过 `zentao-cli` 技能访问和操作禅道数据。安装技能可以通过 `zentao add-skill` 一键安装技能到 AI Agent，目前支持 Claude Code、Cursor、Cherry Studio、Codex、OpenCode、VS Code 等 AI Agent。
+| 方式 | 适用场景 | 是否需要安装 CLI |
+| --- | --- | --- |
+| 技能（Skill） | 个人使用，Agent 在终端中调用 CLI | 需要 |
+| 本地 MCP | 个人使用，Agent 通过 MCP 工具调用 CLI | 需要 |
+| 远程 MCP | 公司统一部署，用户用个人 Token 接入 | 不需要 |
 
-Agent 可先执行 `zentao profile --effective --format=json` 查看业务命令实际使用的账号与凭据来源，输出不包含 Token 或密码，也不会发起登录。支持环境凭据注入、只读配置挂载和通过 `--config`、`ZENTAO_CONFIG_FILE`、`XDG_CONFIG_HOME` 指定配置位置，示例见 [Agent 接入指南](docs/use-zentao-in-agents.md#agentci-与容器中的凭据)。
+完整说明见 [在 Agents 中使用禅道](docs/use-zentao-in-agents.md)。
 
-详细使用可以参考：[在 Agents 中使用禅道](docs/use-zentao-in-agents.md)，下面简单介绍。
+### 通过技能使用
 
 ```bash
-# 安装 zentao-cli 技能
-$ zentao add-skill
+# 一键安装、登录并安装技能（交互选择目标 Agent）
+npm install -g zentao-cli && zentao login && zentao add-skill
 
-请选择要安装的 AI Agent:
-  1) Claude Code
-  2) Cursor
-  3) Cherry Studio
-  4) Codex
-  5) OpenCode
-  6) VS Code
-  7) Antigravity
-  8) Gemini
-  9) 全部安装
-请输入编号 (1-9):9
-
-# 安装技能到 Claude Code
-$ zentao add-skill claude-code
+# 直接指定目标 Agent，all 表示全部安装
+zentao add-skill claude-code
+zentao add-skill all
 
 # 将所有内置技能导出到指定目录
-$ zentao add-skill --output ./skills
+zentao add-skill --output ./skills
 ```
 
-如果还未安装 zentao-cli，可以通过下面的命令，一键安装、登录和配置 Skill：
-
-```bash
-# 一键安装、登录和配置 Skill
-$ pnpm install -g zentao-cli && zentao login && zentao add-skill all
-```
-
-安装技能后即可在对应 Agent 工具中使用禅道 CLI 技能。
-
-WorkBuddy 的 CLI + Skill 连接器资源包使用 `bun run build:workbuddy` 生成，提交方式与首次终端登录限制见 [连接器说明](./connectors/workbuddy/README.md)。
+支持 Claude Code、Cursor、Cherry Studio、Codex、OpenCode、VS Code、Antigravity 和 Gemini。安装后即可在 Agent 中用自然语言提问：
 
 ```txt
 禅道中有哪些产品？
@@ -208,66 +172,40 @@ WorkBuddy 的 CLI + Skill 连接器资源包使用 `bun run build:workbuddy` 生
 需求 xxx 有哪些风险？
 ```
 
-### 通过 MCP 服务使用
+由 Agent 发起登录时，使用 `zentao login --web` 并保持进程运行，等用户在浏览器中完成验证后再继续。在 CI 或容器中，可以注入环境凭据或挂载配置文件；Agent 可先执行 `zentao profile --effective --format=json` 确认实际使用的账号，输出不包含 Token 或密码。详见 [Agent、CI 与容器中的凭据](docs/use-zentao-in-agents.md#agentci-与容器中的凭据)。
 
-`zentao mcp-server` 适合由公司管理员统一部署，再引导禅道用户在自己的 Agent 中配置。用户只需 MCP 服务地址和自己的禅道 Token，无需安装 zentao-cli；禅道按各自账号的权限处理请求。
+### 通过本地 MCP 使用
+
+```bash
+# 一键安装、登录并配置本地 stdio MCP（交互选择目标 Agent）
+npm install -g zentao-cli && zentao login && zentao add-mcp
+```
+
+`zentao add-mcp` 会复用当前账号的 Token，不会将禅道密码写入 Agent 配置。可在 MCP 配置的 `args` 中追加启动选项来限制开放范围：
+
+```bash
+# 只开放查询，并限定业务模块
+zentao mcp --read-only --modules product,story,task,bug
+
+# 将每个模块拆分为查询和写入两个工具，方便客户端分别授权
+zentao mcp --split-tools --modules product,story,task,bug
+```
+
+生成的配置格式和全部启动选项见 [MCP 服务](docs/cli-usage.md#mcp-服务)。
+
+### 通过远程 MCP 使用
+
+`zentao mcp-server` 适合由公司管理员统一部署。用户只需服务地址和自己的禅道 Token，无需安装 zentao-cli；禅道按各自账号的权限处理请求。
 
 ```bash
 # 管理员在服务器上启动服务，固定连接一个禅道站点
 zentao mcp-server https://zentao.example.com
 ```
 
-启动后打开 `http://127.0.0.1:9090/start`，用户可用禅道用户名密码获取个人 Token，或粘贴已有 Token，再复制接入说明让 Agent 协助配置；页面也提供常用 Agent 的手动配置和官方文档链接。管理员通过 HTTPS 反向代理同时提供 `/start` 和 `/mcp`。管理员部署步骤见[禅道 MCP 服务部署指南](docs/mcp-server.md)，用户接入步骤见[在 Agent 中接入禅道 MCP 服务](docs/mcp-user-guide.md)。
+启动后打开 `http://127.0.0.1:9090/start`，用户可在页面上获取个人 Token，并复制接入说明让 Agent 协助配置。管理员需通过 HTTPS 反向代理同时提供 `/start` 和 `/mcp`。
 
-#### 本地 stdio MCP
-
-Zentao CLI 支持一键配置本地 stdio MCP 服务。先通过 `zentao login` 登录，再执行 `zentao add-mcp`；命令会复用当前 Profile 中的 Token，不会将禅道密码写入 Agent 配置。
-
-```bash
-# 一键配置 MCP 服务
-$ zentao login
-$ zentao add-mcp
-# 然后选择目标 Agent
-```
-
-如果还未安装 zentao-cli，可以通过下面的命令，一键安装、登录和配置 MCP 服务：
-
-```bash
-# 一键安装、登录和配置 MCP 服务
-$ pnpm install -g zentao-cli && zentao login && zentao add-mcp
-```
-
-`zentao mcp` 默认使用 stdio，由 MCP 客户端启动并管理进程。`zentao add-mcp` 会写入如下配置：
-
-```json
-{
-  "mcpServers": {
-    "zentao-cli": {
-      "command": "zentao",
-      "args": ["mcp"],
-      "env": {
-        "ZENTAO_URL": "https://zentao.example.com",
-        "ZENTAO_ACCOUNT": "admin",
-        "ZENTAO_TOKEN": "<your-token>"
-      }
-    }
-  }
-}
-```
-
-可在 MCP 配置的 `args` 中追加以下启动选项：
-
-```sh
-zentao mcp --read-only --modules product,story,task,bug
-zentao mcp --split-tools --modules product,story,task,bug
-```
-
-`--read-only` 仅开放查询并在执行时拦截写入；`--modules` 限定业务模块。默认保留 `zentao_<模块>` 工具名；`--split-tools` 改为 `zentao_<模块>_read` / `_write`，方便客户端分别授权查询和写入。这些选项也适用于 HTTP 模式。
-
-`zentao add-mcp` 在 macOS/Linux 上会将写入的 Agent 配置权限收紧为 `0600`。手动配置时也应避免写入账号密码，并限制 Token 配置文件的访问权限。
-为避免破坏已有注释，包含注释或尾逗号的 JSONC 配置不会被自动重写；命令会保持原文件不变并提示手动配置。
-
-`zentao add-mcp` 只配置本地 stdio。更多启动参数和工具行为见 [MCP 服务参考](docs/cli-usage.md#mcp-服务)。
+* 管理员部署：[禅道 MCP 服务部署指南](docs/mcp-server.md)
+* 用户接入：[在 Agent 中接入禅道 MCP 服务](docs/mcp-user-guide.md)
 
 ## 文档
 
@@ -279,8 +217,16 @@ zentao mcp --split-tools --modules product,story,task,bug
 | [在 Agents 中使用禅道](docs/use-zentao-in-agents.md) | 通过技能或 MCP 在 AI Agents 中使用禅道 |
 | [禅道 MCP 服务部署指南](docs/mcp-server.md) | 管理员统一部署远程 MCP 服务、配置 HTTPS 反向代理并向用户发布 |
 | [在 Agent 中接入禅道 MCP 服务](docs/mcp-user-guide.md) | 禅道用户获取个人 Token，并在 Agent 中配置远程 MCP |
-| [开发指引](docs/development.md) | 技术栈、项目结构、测试 |
+| [开发指引](docs/development.md) | 技术栈、项目结构、测试与构建 |
 | [技术方案与实现细节](docs/implementation.md) | 内部接口调用规则、验证机制与持久化配置 |
 | [常见错误排查与参考手册](docs/errors.md) | 错误代码（Exxxx）查阅 |
 | [后续计划](docs/roadmap.md) | 待实现的功能和改进计划 |
 | [更新日志](CHANGES.md) | 每个版本的变更内容 |
+
+## 参与贡献
+
+欢迎提交 Issue 和 Pull Request。开发环境、项目结构、测试和构建方法见 [开发指引](docs/development.md)。
+
+## 许可证
+
+[MIT](LICENSE)

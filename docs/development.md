@@ -58,7 +58,12 @@ bun run build:sf -- --targets=linux-x64,darwin-arm64 --outdir ./artifacts
 
 # 单目标构建时指定完整输出文件
 bun run build:sf -- --targets=linux-x64 --outfile ./release/zentao
+
+# 生成 WorkBuddy 的 CLI + Skill 连接器资源包
+bun run build:workbuddy
 ```
+
+WorkBuddy 连接器的提交方式与首次终端登录限制见 [连接器说明](../connectors/workbuddy/README.md)。
 
 ## 更多技术文档
 
