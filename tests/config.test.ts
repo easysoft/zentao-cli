@@ -527,6 +527,16 @@ describe('profile management', () => {
         expect(getAllProfiles().length).toBe(1);
     });
 
+    test('revoking an old token cannot delete a concurrently refreshed profile', () => {
+        saveAndSelectProfile(mockProfile);
+        saveProfile({ ...mockProfile, token: 'fresh-token' });
+        const key = profileKey(mockProfile.account, mockProfile.server);
+        expect(removeProfile(key, mockProfile.token)).toBe(false);
+        expect(getCurrentProfile()?.token).toBe('fresh-token');
+        expect(removeProfile(key, 'fresh-token')).toBe(true);
+        expect(getCurrentProfile()).toBeUndefined();
+    });
+
     test('removing the default clears the selection', () => {
         const profile2: Profile = {
             ...mockProfile,

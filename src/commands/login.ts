@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import { login, getEnvCredentials, verifyToken } from '../auth/login.js';
 import { promptLogin } from '../auth/prompt.js';
-import { saveProfile, profileKey, getProfile, buildProfile, normalizeServerUrl } from '../config/store.js';
+import { saveProfile, profileKey, setCurrentProfile, buildProfile, normalizeServerUrl } from '../config/store.js';
 import { ZentaoError } from '../errors.js';
 import type { Profile } from '../types/index.js';
 import type { GlobalOptions } from '../types/index.js';
@@ -22,10 +22,15 @@ export function registerLoginCommand(program: Command): void {
         .option('-t, --token <token>', 'Token')
         .option('--use-env', '强制使用环境变量登录')
         .option('--web', '通过本机浏览器页面登录')
+        .option('--no-open', '仅输出浏览器登录链接，由调用方打开（需 --web）')
+        .option('--select', '登录成功后将该账号设为当前配置')
         .option('--message <text>', '自定义浏览器登录页面的副标题提示语')
         .option('--no-browser', '使用终端交互登录，不打开浏览器')
         .action(async (opts) => {
             const globalOpts = program.optsWithGlobals() as GlobalOptions;
+            if (opts.open === false && !opts.web) {
+                throw new ZentaoError('E2009', { option: '--no-open', reason: '必须与 --web 一起使用' });
+            }
             if (opts.web && (opts.browser === false || opts.useEnv || opts.password !== undefined || opts.token !== undefined)) {
                 throw new ZentaoError('E2009', {
                     option: '--web',
@@ -48,11 +53,13 @@ export function registerLoginCommand(program: Command): void {
                     insecure: globalOpts.insecure,
                     timeout: globalOpts.timeout,
                     signal: commandSignal(),
-                    open: desktop,
+                    open: opts.open !== false && desktop,
                     fallbackToTerminal: !opts.web && Boolean(process.stdin.isTTY),
                 });
                 if (profile) {
-                    emitResult({ saved: profileKey(profile.account, profile.server), selected: false }, globalOpts);
+                    const key = profileKey(profile.account, profile.server);
+                    if (opts.select) setCurrentProfile(key);
+                    emitResult({ saved: key, selected: Boolean(opts.select) }, globalOpts);
                     return;
                 }
             }
@@ -109,7 +116,8 @@ export function registerLoginCommand(program: Command): void {
             }
 
             saveProfile(profile);
-
-            emitResult({ saved: profileKey(account, server), selected: false }, globalOpts);
+            const key = profileKey(account, server);
+            if (opts.select) setCurrentProfile(key);
+            emitResult({ saved: key, selected: Boolean(opts.select) }, globalOpts);
         });
 }

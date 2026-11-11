@@ -219,11 +219,11 @@ export function saveProfile(profile: Profile): void {
 }
 
 /** Removing the default clears it; only profile use selects an identity. */
-export function removeProfile(key: string): boolean {
+export function removeProfile(key: string, expectedToken?: string): boolean {
     return transaction(data => {
         const previous = data.profiles ?? [];
-        data.profiles = previous.filter(p => profileKey(p.account, p.server) !== key);
-        if (data.currentProfile === key) data.currentProfile = undefined;
+        data.profiles = previous.filter(p => profileKey(p.account, p.server) !== key || (expectedToken !== undefined && p.token !== expectedToken));
+        if (data.currentProfile === key && !data.profiles.some(p => profileKey(p.account, p.server) === key)) data.currentProfile = undefined;
         return data.profiles.length !== previous.length;
     });
 }

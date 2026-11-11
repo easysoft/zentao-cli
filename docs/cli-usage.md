@@ -70,7 +70,9 @@ zentao mcp serve --transport http --url https://zentao.example.com
 
 认证优先级：`--profile` → 完整环境凭据 → 保存的默认账号。不完整的环境凭据直接报错；同账号或同主机简写存在多个匹配时必须使用完整 key。
 
-`auth login` 只保存凭据，不改变默认身份；`profile use` 才选择默认身份。普通业务调用和 `auth status` 默认不修改配置。`auth status --verify` 才在线验证。配置写入以短事务串行化，只更新目标字段，网络等待不占锁；进程被强制终止后如遗留 `.lock` 目录，先确认没有 CLI 写入进程，再删除该锁目录后重试。
+`auth login` 默认只保存凭据，不改变默认身份；使用 `profile use` 或登录时显式添加 `--select` 选择身份。宿主负责打开链接时使用 `auth login --web --no-open --select`。普通业务调用和 `auth status` 默认不修改配置；`auth status --verify` 使用已有 Token 时通过一次当前用户会话查询在线验证。
+
+`auth logout --revoke` 先撤销远端会话，并核实 Token 已失效，再删除本地记录；失败时保留记录以便重试。加上 `--all` 会处理当前配置文件中的全部账号，未登录时也成功。配置写入以短事务串行化，只更新目标字段，网络等待不占锁；并发重新登录的 Token 不会被旧登出请求删除。进程被强制终止后如遗留 `.lock` 目录，先确认没有 CLI 写入进程，再删除该锁目录后重试。
 
 stdout 用于结果和批量报告；stderr 用于进度、诊断和无法产生结果的错误。JSON 模式的参数错误也是 `{ok:false,error}`。退出码：0 成功、1 执行失败、2 用法错误、130 取消。
 

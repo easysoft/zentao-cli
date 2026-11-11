@@ -20,6 +20,7 @@
 | 1009 | 浏览器登录等待超时，请重新执行 `zentao auth login --web` |
 | 1010 | 无法启动本地登录服务，请检查本机网络权限，或使用 `zentao auth login --no-browser` |
 | 1011 | 配置文件写入失败，请检查目录权限和磁盘空间；`error.details.systemCode` 提供 `EACCES`、`ENOSPC` 等系统错误码 |
+| 1012 | 未能确认远端会话已撤销，已保留本地登录记录；请重试断开连接或联系禅道管理员 |
 | **API 调用 (20xx)** | |
 | 2001 | 未找到指定的模块（moduleName），请通过 `zentao help` 查看支持的模块 |
 | 2002 | 未找到指定的对象（objectType #id），请检查对象 ID 是否正确 |

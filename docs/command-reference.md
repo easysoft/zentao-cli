@@ -148,12 +148,12 @@ Usage: zentao auth [options] [command]
 认证与凭据
 
 Options:
-  -h, --help        显示命令帮助
+  -h, --help              显示命令帮助
 
 Commands:
-  login [options]   登录禅道服务
-  logout [key]      删除本地登录记录
-  status [options]  显示认证来源；默认离线
+  login [options]         登录禅道服务
+  logout [options] [key]  删除本地登录记录
+  status [options]        显示认证来源；默认离线
 ```
 
 <a id="command-auth-login"></a>
@@ -172,6 +172,8 @@ Options:
   -t, --token <token>        Token
   --use-env                  强制使用环境变量登录
   --web                      通过本机浏览器页面登录
+  --no-open                  仅输出浏览器登录链接，由调用方打开（需 --web）
+  --select                   登录成功后将该账号设为当前配置
   --message <text>           自定义浏览器登录页面的副标题提示语
   --no-browser               使用终端交互登录，不打开浏览器
   -h, --help                 显示命令帮助
@@ -187,6 +189,8 @@ Usage: zentao auth logout [options] [key]
 删除本地登录记录
 
 Options:
+  --all       清理选定配置文件中的全部账号；空配置也成功
+  --revoke    先撤销并验证远端会话；失败时保留该账号以便重试
   -h, --help  显示命令帮助
 ```
 

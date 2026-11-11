@@ -34,7 +34,9 @@ zentao profile use 'admin@https://zentao.example.com'
 
 缺少凭据时，Agent 可发起 `zentao auth login --web` 并保持进程运行，让用户在本机浏览器完成验证；不要在对话中收集密码。`--no-input` 明确禁止所有交互，包括浏览器。终端交互使用 `zentao auth login --no-browser`。远程运行时链接属于 CLI 执行端。
 
-登录只保存凭据，不改变默认账号；随后使用 `profile use`，或业务命令显式 `--profile`。自动化环境提供 ZENTAO_URL + ZENTAO_ACCOUNT + ZENTAO_TOKEN 或 ZENTAO_PASSWORD，同源 Token 优先。完整环境凭据不读取本地 Profile；只有明确要求保存环境登录时使用 `auth login --use-env`。
+登录默认只保存凭据，不改变默认账号；随后使用 `profile use`，或业务命令显式 `--profile`。明确需要登录后选中账号时使用 `auth login --select`；由宿主打开浏览器链接时使用 `auth login --web --no-open`。自动化环境提供 ZENTAO_URL + ZENTAO_ACCOUNT + ZENTAO_TOKEN 或 ZENTAO_PASSWORD，同源 Token 优先。完整环境凭据不读取本地 Profile；只有明确要求保存环境登录时使用 `auth login --use-env`。
+
+`auth status --verify` 使用已保存 Token 时只查询一次当前用户会话；失败不修改本地凭据。`auth logout --revoke` 撤销并核实远端会话后才删除本地记录；失败时保留记录供重试。`--all` 清理当前配置文件的全部账号，空配置也成功，不影响其他配置文件。
 
 配置路径：--config → ZENTAO_CONFIG_FILE → 绝对路径 XDG_CONFIG_HOME/zentao/zentao.json → ~/.config/zentao/zentao.json。遵守用户选定路径，普通查询不会写回配置。
 
