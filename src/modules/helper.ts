@@ -7,7 +7,6 @@ import {
     getModuleActionParams as sdkGetModuleActionParams,
 } from 'zentao-api';
 import type { ModuleDefinition, ModuleAction, ModuleActionType } from '../types/index.js';
-import './overrides.js';
 
 /** 按名称（大小写不敏感）查找模块定义；未注册时返回 undefined */
 export function getModule(name: string): ModuleDefinition | undefined {

@@ -92,7 +92,7 @@ MCP 保留 structuredContent/outputSchema 与执行时策略检查。知识 POST
 
 ## 覆盖范围
 
-开发版本 CLI **0.4.3** / SDK **0.8.4**，14 个内置一级命令、42 个模块、361 个业务动作。数量、参数和实际 Commander 命令来自同一注册表。
+开发版本 CLI **0.4.3** / SDK **0.8.5**，14 个内置一级命令、42 个模块、361 个业务动作。数量、参数和实际 Commander 命令来自同一注册表。
 
 <a id="global-options"></a>
 
@@ -2935,11 +2935,11 @@ Options:
                           | forum 论坛 | other 其他)
   --verify <value>        验收标准
   --assigned-to <value>   指派给
+  --status <value>        无有效评审人时默认 active，可显式指定状态；有有效评审人时固定为 reviewing。
   --reviewer <value>      评审人员，如果无需评审则不传
   --project <value>       所属项目
   --execution <value>     所属执行
   --grade <value>         需求层级，可用的需求层级可以通过 story-getGrades 操作获取
-  --status <value>        无有效评审人时默认 active，可显式指定状态；有有效评审人时固定为 reviewing。
   --product <id>          productID 或 scope/scopeID 别名
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   -h, --help              显示命令帮助
@@ -2962,11 +2962,11 @@ Options:
 | --source | source | body | string | 否 | — | 来源(customer 客户 \| user 用户 \| po 产品经理 \| market 市场 \| service 客服 \| operation 运营 \| support 技术支持 \| competitor 竞争对手 \| partner 合作伙伴 \| dev 开发人员 \| tester 测试人员 \| bug Bug \| forum 论坛 \| other 其他)<br>{} |
 | --verify | verify | body | string | 否 | — | 验收标准<br>{} |
 | --assigned-to | assignedTo | body | string | 否 | — | 指派给<br>{} |
+| --status | status | body | string | 否 | — | 无有效评审人时默认 active，可显式指定状态；有有效评审人时固定为 reviewing。<br>{} |
 | --reviewer | reviewer | body | array | 否 | — | 评审人员，如果无需评审则不传<br>{"items":{"type":"string"}} |
 | --project | project | body | integer | 否 | — | 所属项目<br>{"format":"int32"} |
 | --execution | execution | body | integer | 否 | — | 所属执行<br>{"format":"int32"} |
 | --grade | grade | body | integer | 否 | — | 需求层级，可用的需求层级可以通过 story-getGrades 操作获取<br>{} |
-| --status | status | body | string | 否 | — | 无有效评审人时默认 active，可显式指定状态；有有效评审人时固定为 reviewing。<br>{} |
 
 <a id="action-story-get"></a>
 
@@ -3183,10 +3183,10 @@ Arguments:
 Options:
   --story-id <value>      需求ID（必填）
   --title <value>         需求名称
+  --status <value>        无有效评审人时默认 active，可显式指定状态；有有效评审人时固定为 reviewing。
   --reviewer <value>      评审人员，如果无需评审则不传
   --spec <value>          需求描述
   --verify <value>        验收标准
-  --status <value>        无有效评审人时默认 active，可显式指定状态；有有效评审人时固定为 reviewing。
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   --ids <ids>             批量目标 ID，逗号分隔并去重
   --batch-fail-fast       失败后跳过剩余目标
@@ -3201,10 +3201,10 @@ Options:
 | --- | --- | --- | --- | --- | --- | --- |
 | --story-id | storyID | path | integer | 是 | — | 需求ID<br>{} |
 | --title | title | body | string | 否 | — | 需求名称<br>{} |
+| --status | status | body | string | 否 | — | 无有效评审人时默认 active，可显式指定状态；有有效评审人时固定为 reviewing。<br>{} |
 | --reviewer | reviewer | body | array | 否 | — | 评审人员，如果无需评审则不传<br>{"items":{"type":"string"}} |
 | --spec | spec | body | string | 否 | — | 需求描述<br>{} |
 | --verify | verify | body | string | 否 | — | 验收标准<br>{} |
-| --status | status | body | string | 否 | — | 无有效评审人时默认 active，可显式指定状态；有有效评审人时固定为 reviewing。<br>{} |
 
 <a id="action-story-close"></a>
 
@@ -3387,8 +3387,8 @@ Options:
                           | forum 论坛 | other 其他)
   --verify <value>        验收标准
   --assigned-to <value>   指派给
-  --reviewer <value>      评审人员，如果无需评审则不传
   --status <value>        无有效评审人时默认 active，可显式指定状态；有有效评审人时固定为 reviewing。
+  --reviewer <value>      评审人员，如果无需评审则不传
   --product <id>          productID 或 scope/scopeID 别名
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   -h, --help              显示命令帮助
@@ -3411,8 +3411,8 @@ Options:
 | --source | source | body | string | 否 | — | 来源(customer 客户 \| user 用户 \| po 产品经理 \| market 市场 \| service 客服 \| operation 运营 \| support 技术支持 \| competitor 竞争对手 \| partner 合作伙伴 \| dev 开发人员 \| tester 测试人员 \| bug Bug \| forum 论坛 \| other 其他)<br>{} |
 | --verify | verify | body | string | 否 | — | 验收标准<br>{} |
 | --assigned-to | assignedTo | body | string | 否 | — | 指派给<br>{} |
-| --reviewer | reviewer | body | array | 否 | — | 评审人员，如果无需评审则不传<br>{"items":{"type":"string"}} |
 | --status | status | body | string | 否 | — | 无有效评审人时默认 active，可显式指定状态；有有效评审人时固定为 reviewing。<br>{} |
+| --reviewer | reviewer | body | array | 否 | — | 评审人员，如果无需评审则不传<br>{"items":{"type":"string"}} |
 
 <a id="action-epic-get"></a>
 
@@ -3568,10 +3568,10 @@ Arguments:
 Options:
   --story-id <value>      需求ID（必填）
   --title <value>         需求名称
+  --status <value>        无有效评审人时默认 active，可显式指定状态；有有效评审人时固定为 reviewing。
   --reviewer <value>      评审人员，如果无需评审则不传
   --spec <value>          需求描述
   --verify <value>        验收标准
-  --status <value>        无有效评审人时默认 active，可显式指定状态；有有效评审人时固定为 reviewing。
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   --ids <ids>             批量目标 ID，逗号分隔并去重
   --batch-fail-fast       失败后跳过剩余目标
@@ -3586,10 +3586,10 @@ Options:
 | --- | --- | --- | --- | --- | --- | --- |
 | --story-id | storyID | path | integer | 是 | — | 需求ID<br>{} |
 | --title | title | body | string | 否 | — | 需求名称<br>{} |
+| --status | status | body | string | 否 | — | 无有效评审人时默认 active，可显式指定状态；有有效评审人时固定为 reviewing。<br>{} |
 | --reviewer | reviewer | body | array | 否 | — | 评审人员，如果无需评审则不传<br>{"items":{"type":"string"}} |
 | --spec | spec | body | string | 否 | — | 需求描述<br>{} |
 | --verify | verify | body | string | 否 | — | 验收标准<br>{} |
-| --status | status | body | string | 否 | — | 无有效评审人时默认 active，可显式指定状态；有有效评审人时固定为 reviewing。<br>{} |
 
 <a id="action-epic-close"></a>
 
@@ -3745,8 +3745,8 @@ Options:
                           | forum 论坛 | other 其他)
   --verify <value>        验收标准
   --assigned-to <value>   指派给
-  --reviewer <value>      评审人员，如果无需评审则不传
   --status <value>        无有效评审人时默认 active，可显式指定状态；有有效评审人时固定为 reviewing。
+  --reviewer <value>      评审人员，如果无需评审则不传
   --product <id>          productID 或 scope/scopeID 别名
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   -h, --help              显示命令帮助
@@ -3769,8 +3769,8 @@ Options:
 | --source | source | body | string | 否 | — | 来源(customer 客户 \| user 用户 \| po 产品经理 \| market 市场 \| service 客服 \| operation 运营 \| support 技术支持 \| competitor 竞争对手 \| partner 合作伙伴 \| dev 开发人员 \| tester 测试人员 \| bug Bug \| forum 论坛 \| other 其他)<br>{} |
 | --verify | verify | body | string | 否 | — | 验收标准<br>{} |
 | --assigned-to | assignedTo | body | string | 否 | — | 指派给<br>{} |
-| --reviewer | reviewer | body | array | 否 | — | 评审人员，如果无需评审则不传<br>{"items":{"type":"string"}} |
 | --status | status | body | string | 否 | — | 无有效评审人时默认 active，可显式指定状态；有有效评审人时固定为 reviewing。<br>{} |
+| --reviewer | reviewer | body | array | 否 | — | 评审人员，如果无需评审则不传<br>{"items":{"type":"string"}} |
 
 <a id="action-requirement-get"></a>
 
@@ -3928,8 +3928,8 @@ Options:
   --title <value>         需求名称
   --spec <value>          需求描述
   --verify <value>        验收标准
-  --reviewer <value>      评审人员，如果无需评审则不传
   --status <value>        无有效评审人时默认 active，可显式指定状态；有有效评审人时固定为 reviewing。
+  --reviewer <value>      评审人员，如果无需评审则不传
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   --ids <ids>             批量目标 ID，逗号分隔并去重
   --batch-fail-fast       失败后跳过剩余目标
@@ -3946,8 +3946,8 @@ Options:
 | --title | title | body | string | 否 | — | 需求名称<br>{} |
 | --spec | spec | body | string | 否 | — | 需求描述<br>{} |
 | --verify | verify | body | string | 否 | — | 验收标准<br>{} |
-| --reviewer | reviewer | body | array | 否 | — | 评审人员，如果无需评审则不传<br>{"items":{"type":"string"}} |
 | --status | status | body | string | 否 | — | 无有效评审人时默认 active，可显式指定状态；有有效评审人时固定为 reviewing。<br>{} |
+| --reviewer | reviewer | body | array | 否 | — | 评审人员，如果无需评审则不传<br>{"items":{"type":"string"}} |
 
 <a id="action-requirement-close"></a>
 
