@@ -12,10 +12,13 @@ import { executeModuleCommand } from '../modules/executor.js';
 import { ZentaoError } from '../errors.js';
 import type { AuthProvider } from './server.js';
 import { withRequestSignal } from '../api/index.js';
+import { validateAssistant } from '../api/assistant.js';
 import { getScopeAliasTarget, normalizeToolParams } from './params.js';
 import { listOutputSchema, outputSchema, toolError, toolResult } from './results.js';
 
 export interface McpToolOptions {
+    /** Startup default; individual tool calls may override or disable it. */
+    assistant?: string;
     readOnly?: boolean;
     modules?: string[];
     splitTools?: boolean;
@@ -46,6 +49,7 @@ function buildInputSchema(mod: ModuleDefinition) {
     const parameters = mod.actions.flatMap(action => getModuleActionParams(mod.name, action.name));
     const names = new Set(parameters.map(param => param.name));
     const shape: Record<string, z.ZodType> = {
+        assistant: z.string().optional().describe('本次操作来源标记；省略继承服务设置，空字符串关闭'),
         action: z.enum(actionEnum).describe(mod.actions.map(action => `${action.name}: ${action.display ?? action.name}`).join('; ')),
         params: z.record(z.string(), z.unknown()).optional().describe(brandText('路径、查询或请求体参数；必填项见 zentao_action_help')),
     };
@@ -87,6 +91,7 @@ function actionExample(mod: ModuleDefinition, action: ModuleAction, splitTools?:
 }
 
 interface ToolInput {
+    assistant?: string;
     action: string;
     id?: number;
     product?: number;
@@ -102,7 +107,8 @@ interface ToolInput {
     recPerPage?: number;
 }
 
-async function handleProfileTool(auth: AuthProvider, signal?: AbortSignal): Promise<CallToolResult> {
+async function handleProfileTool(auth: AuthProvider, signal?: AbortSignal, assistant?: string): Promise<CallToolResult> {
+    if (assistant !== undefined) validateAssistant(assistant);
     const { client, identity: profile } = await auth.getContext(signal);
     if (profile.account === undefined) {
         return toolResult({
@@ -114,7 +120,7 @@ async function handleProfileTool(auth: AuthProvider, signal?: AbortSignal): Prom
         });
     }
     const scopedClient = withRequestSignal(client, signal);
-    const { user } = await findRemoteUser(scopedClient, profile.account);
+    const { user } = await findRemoteUser(scopedClient, profile.account, assistant);
     const identity = {
         account: profile.account,
         server: profile.server,
@@ -143,6 +149,8 @@ async function handleModuleTool(
     options: McpToolOptions,
     signal?: AbortSignal,
 ): Promise<CallToolResult> {
+    const assistant = input.assistant ?? options.assistant;
+    if (assistant !== undefined) validateAssistant(assistant);
     const action = getAction(mod, input.action);
     if (!action) throw new ZentaoError('E2005', { module: mod.name });
     if (!isActionAvailable(action, options)) {
@@ -158,6 +166,7 @@ async function handleModuleTool(
     const actionName = input.action;
 
     const opts: ModuleActionOptions = {
+        assistant,
         pick: input.pick,
         filter: input.filter,
         sort: input.sort,
@@ -237,13 +246,13 @@ export function registerModuleTools(server: McpServer, auth: AuthProvider, optio
         brandText('zentao_profile'),
         {
             description: '获取当前 MCP 绑定的账号和站点；已知账号时查询远端用户详情，仅 Token 认证时账号未知。userFound=false 表示无用户详情，服务端失败会报错',
-            inputSchema: z.object({}).strict(),
+            inputSchema: z.object({ assistant: z.string().optional().describe('本次操作来源标记；省略继承服务设置，空字符串关闭') }).strict(),
             outputSchema,
             annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
         },
-        async (_input, extra) => {
+        async (input, extra) => {
             try {
-                return await handleProfileTool(auth, extra.signal);
+                return await handleProfileTool(auth, extra.signal, input.assistant ?? options.assistant);
             } catch (error) {
                 return toolError(error, { module: 'user', action: 'list' });
             }

@@ -6,6 +6,7 @@ import { findProfileByKey, getCurrentProfile } from '../config/store.js';
 import { mapSdkError, ZentaoError } from '../errors.js';
 import type { GlobalOptions } from '../types/index.js';
 import { commandSignal } from '../utils/lifecycle.js';
+import { resolveAssistant } from '../api/assistant.js';
 
 /** Read a saved token or obtain a temporary token without persisting credentials. */
 export function registerTokenCommand(program: Command): void {
@@ -35,6 +36,7 @@ export function registerTokenCommand(program: Command): void {
                 if (!opts.server || !opts.user || !opts.password) throw new ZentaoError('E1001');
                 try {
                     token = await requestToken(opts.server, opts.user, opts.password, {
+                        actionAssistant: resolveAssistant(globalOpts.assistant),
                         insecure: globalOpts.insecure,
                         timeout: globalOpts.timeout,
                         signal: commandSignal(),

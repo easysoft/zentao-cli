@@ -8,7 +8,7 @@ import { formatJson } from '../utils/format.js';
 import type { GlobalOptions } from '../types/index.js';
 
 const BOOLEAN_CONFIG_KEYS = new Set([
-    'insecure', 'htmlToMarkdown', 'batchFailFast', 'jsonPretty',
+    'insecure', 'htmlToMarkdown', 'batchFailFast', 'jsonPretty', 'autoAssistant',
 ]);
 
 function invalidConfigValue(key: string, value: string): never {

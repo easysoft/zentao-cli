@@ -116,6 +116,7 @@ export async function executeModuleCommand(
 
     const requestOptions: RequestOptions = {
         client,
+        actionAssistant: options.assistant,
         autoFill: action.type === 'update',
         throwOnFail: true,
         recPerPage: pagination ? String(getParam(pagination.size.name)) : undefined,

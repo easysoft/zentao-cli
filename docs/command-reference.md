@@ -103,6 +103,7 @@ MCP 保留 structuredContent/outputSchema 与执行时策略检查。知识 POST
 | -V, --version | 显示 CLI 版本号 |
 | --format &lt;format&gt; | 输出格式 |
 | --profile &lt;key&gt; | 仅本次命令选择账号（优先于环境凭据） |
+| --assistant &lt;value&gt; | 本次操作来源标记；空字符串关闭标记 |
 | --config &lt;file&gt; | 配置文件路径（也支持 ZENTAO_CONFIG_FILE） |
 | --no-input | 禁止浏览器、输入提示和选择菜单 |
 | -y, --yes | 确认操作，不补全缺失参数 |
@@ -120,6 +121,7 @@ MCP 保留 structuredContent/outputSchema 与执行时策略检查。知识 POST
 
 | 配置项 | 默认值 |
 | --- | --- |
+| autoAssistant | true |
 | defaultOutputFormat | "table" |
 | defaultRecPerPage | 20 |
 | insecure | false |

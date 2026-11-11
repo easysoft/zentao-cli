@@ -9,6 +9,7 @@ import { ZentaoError } from '../errors.js';
 import { DEFAULT_CONFIG } from './defaults.js';
 
 const userConfigSchema = z.object({
+    autoAssistant: z.boolean(),
     defaultOutputFormat: z.enum(['table', 'markdown', 'json', 'raw']),
     defaultRecPerPage: z.number().int().positive().max(1000),
     insecure: z.boolean(),

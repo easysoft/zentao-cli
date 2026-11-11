@@ -1,6 +1,6 @@
 import { brandText } from '../brand.js';
 import { findRemoteUser } from './user.js';
-import { ZentaoClient, createClient, getServerConfig } from '../api/index.js';
+import { ZentaoClient, createClient, getServerConfig, type ClientOptions } from '../api/index.js';
 import type { ApiResponse, ServerConfig } from '../types/index.js';
 import { ZentaoError, mapSdkError } from '../errors.js';
 
@@ -28,7 +28,7 @@ export async function login(
     serverUrl: string,
     account: string,
     password: string,
-    options?: { insecure?: boolean; timeout?: number; signal?: AbortSignal },
+    options?: ClientOptions & { signal?: AbortSignal },
 ): Promise<LoginResult> {
     const client = createClient(serverUrl, undefined, options);
     const originalFetch = client.fetch;

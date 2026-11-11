@@ -9,6 +9,7 @@ import { registerModuleTools, type McpToolOptions } from './tools.js';
 import { getCliVersion } from '../utils/version.js';
 import type { UserConfig } from '../types/index.js';
 import type { ZentaoClient } from '../api/index.js';
+import { resolveAssistant } from '../api/assistant.js';
 
 export interface McpAuthContext {
     client: ZentaoClient;
@@ -29,7 +30,9 @@ function toMcpContext({ client, profile }: AuthContext): McpAuthContext {
     };
 }
 
-export function createAuthProvider(options?: { insecure?: boolean; timeout?: number; profile?: string }): AuthProvider {
+export function createAuthProvider(options?: { insecure?: boolean; timeout?: number; profile?: string; assistant?: string }): AuthProvider {
+    resolveAssistant(options?.assistant, true, 'stdio');
+    const authOptions = { ...options, assistantSource: 'stdio' as const };
     let context: Promise<AuthContext> | undefined;
     let flight: { promise: Promise<AuthContext>; controller: AbortController; pending: boolean; waiters: number } | undefined;
     const env = getEnvCredentials();
@@ -40,7 +43,7 @@ export function createAuthProvider(options?: { insecure?: boolean; timeout?: num
             if (signal?.aborted) throw new ZentaoError('E5003');
             if (!context) {
                 const controller = new AbortController();
-                const initial = ensureAuth({ ...options, signal: controller.signal });
+                const initial = ensureAuth({ ...authOptions, signal: controller.signal });
                 const attempt = { promise: initial, controller, pending: true, waiters: 0 };
                 flight = attempt;
                 context = initial;
@@ -75,10 +78,11 @@ export function createAuthProvider(options?: { insecure?: boolean; timeout?: num
             const cachedConfig = getProfileConfig(cached.profile);
             if (current.token === cached.profile.token
                 && (options?.timeout ?? currentConfig.timeout) === (options?.timeout ?? cachedConfig.timeout)
-                && (options?.insecure ?? currentConfig.insecure) === (options?.insecure ?? cachedConfig.insecure)) {
+                && (options?.insecure ?? currentConfig.insecure) === (options?.insecure ?? cachedConfig.insecure)
+                && resolveAssistant(options?.assistant, currentConfig.autoAssistant, 'stdio') === resolveAssistant(options?.assistant, cachedConfig.autoAssistant, 'stdio')) {
                 return toMcpContext({ client: cached.client, profile: current });
             }
-            const refreshed = ensureAuth({ ...options, profile: current });
+            const refreshed = ensureAuth({ ...authOptions, profile: current });
             // A concurrent explicit switch must remain selected for future calls.
             if (context === selected) context = refreshed;
             return toMcpContext(await refreshed);
@@ -86,7 +90,7 @@ export function createAuthProvider(options?: { insecure?: boolean; timeout?: num
         async switchProfile(key: string): Promise<McpAuthContext> {
             const profile = findProfileByKey(key);
             if (!profile) throw new ZentaoError('E1007');
-            const selected = await ensureAuth({ ...options, profile });
+            const selected = await ensureAuth({ ...authOptions, profile });
             context = Promise.resolve(selected);
             environmentPinned = false;
             return toMcpContext(selected);

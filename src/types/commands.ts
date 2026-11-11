@@ -2,6 +2,8 @@ import type { OutputFormat } from './config.js';
 
 /** Commander 顶层 `program` 上挂载的全局 CLI 选项 */
 export interface GlobalOptions {
+    /** Runtime operation attribution; an empty string disables the header. */
+    assistant?: string;
     profile?: string;
     input?: boolean;
     quiet?: boolean;

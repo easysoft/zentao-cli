@@ -8,13 +8,12 @@ import { renderBrowserLoginPage } from './browser-page.js';
 import { buildProfile, getProfile, normalizeServerUrl, saveProfile } from '../config/store.js';
 import { ZentaoError } from '../errors.js';
 import type { Profile } from '../types/index.js';
+import type { ClientOptions } from '../api/index.js';
 
-interface BrowserLoginOptions {
+interface BrowserLoginOptions extends ClientOptions {
     server?: string;
     account?: string;
     message?: string;
-    insecure?: boolean;
-    timeout?: number;
     open?: boolean;
     fallbackToTerminal?: boolean;
     waitTimeoutMs?: number;

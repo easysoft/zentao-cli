@@ -10,7 +10,7 @@ export function kebabCase(name: string): string {
 // Reserve global and processing flags so business fields cannot be consumed by Commander.
 export function parameterFlag(name: string): string {
     const flag = kebabCase(name);
-    return `--${['deadline', 'timeout', 'profile', 'config', 'format', 'color', 'input', 'yes', 'quiet', 'insecure', 'data', 'ids', 'fields', 'all', 'max-items', 'filter', 'sort', 'search'].includes(flag) ? 'data-' : ''}${flag}`;
+    return `--${['deadline', 'timeout', 'profile', 'config', 'format', 'color', 'input', 'yes', 'quiet', 'insecure', 'assistant', 'data', 'ids', 'fields', 'all', 'max-items', 'filter', 'sort', 'search'].includes(flag) ? 'data-' : ''}${flag}`;
 }
 
 export function actionParameters(mod: ModuleDefinition, action: ModuleAction) {

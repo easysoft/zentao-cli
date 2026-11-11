@@ -9,8 +9,19 @@ import { startCommandLifecycle, commandAbortReason } from './utils/lifecycle.js'
 
 const argv = process.argv.slice(2);
 function argumentValue(name: string): string | undefined {
-    const index = argv.findIndex(arg => arg === name || arg.startsWith(`${name}=`));
-    return index < 0 ? undefined : argv[index].includes('=') ? argv[index].slice(name.length + 1) : argv[index + 1];
+    let result: string | undefined;
+    for (let index = 0; index < argv.length; index++) {
+        const arg = argv[index];
+        if (arg === '--') break;
+        const separator = arg.indexOf('=');
+        const flag = separator < 0 ? arg : arg.slice(0, separator);
+        const option = program.options.find(option => option.long === flag || option.short === flag);
+        if (!option) continue;
+        // Required values can look like flags, including --assistant '--config=...'.
+        const value = separator >= 0 ? arg.slice(separator + 1) : option.required ? argv[++index] : undefined;
+        if (option.long === name) result = value;
+    }
+    return result;
 }
 const program = createProgram();
 let cleanup: (() => void) | undefined;

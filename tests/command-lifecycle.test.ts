@@ -8,7 +8,10 @@ import { createProgram } from '../src/cli.js';
 test('completion follows real actions and skips preceding global option values', () => {
     const program = createProgram();
     expect(completionCandidates(program, ['--profile', 'admin', 'bug', 'cr'])).toEqual(['create']);
-    expect(completionCandidates(program, ['--format=json', 'bug', 'create', '--ass'])).toEqual(['--assigned-to']);
+    expect(completionCandidates(program, ['--format=json', 'bug', 'create', '--ass'])).toEqual(['--assigned-to', '--assistant']);
+    for (const flags of [['--assistant', 'AI <codex>'], ['--assistant', ''], ['--assistant=']]) {
+        expect(completionCandidates(program, [...flags, 'bug', 'cr'])).toEqual(['create']);
+    }
     expect(completionCandidates(program, ['--format', 'j'])).toEqual(['json']);
 });
 test.each(['deadline', 'interrupt'])('%s cancels authentication and prevents later requests', async (mode) => {

@@ -1,4 +1,4 @@
-import { createClient, withRequestSignal, type ZentaoClient } from '../api/index.js';
+import { createClient, withRequestSignal, type ClientOptions, type ZentaoClient } from '../api/index.js';
 import { mapSdkError, ZentaoError } from '../errors.js';
 import type { Profile } from '../types/index.js';
 
@@ -18,7 +18,7 @@ export async function verifySession(client: ZentaoClient, profile: Pick<Profile,
 }
 
 /** Revoke only this API session, and confirm that its token is no longer usable. */
-export async function revokeSession(profile: Profile, options: { timeout?: number; insecure?: boolean; signal?: AbortSignal }): Promise<void> {
+export async function revokeSession(profile: Profile, options: ClientOptions & { signal?: AbortSignal }): Promise<void> {
     const client = withRequestSignal(createClient(profile.server, profile.token, options), options.signal);
     let failure: unknown;
     try {

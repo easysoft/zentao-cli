@@ -140,6 +140,8 @@ By default, the command outputs only the token on a single line. Reading a saved
 
 For more features, including piped input, batch operations, pagination, and configuration management, see the [CLI guide](docs/cli-usage.md).
 
+The CLI sends a versioned operation marker by default; MCP markers distinguish stdio from HTTP. Use `--assistant 'AI <codex>'` to replace the marker for one invocation, `--assistant ''` to disable it once, or `zentao config set autoAssistant false` to disable automatic markers for the current profile. MCP tools accept a top-level `assistant` string for per-call overrides. See [Operation markers](docs/cli-usage.md#操作来源标记).
+
 ## Use with AI agents
 
 There are three ways to use ZenTao with AI agents:

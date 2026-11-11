@@ -104,6 +104,20 @@ Agent 必须实际调用禅道工具并返回业务数据，才说明配置成�
 - **附件**：本服务不支持从本地路径上传附件，需要时请使用本地 CLI 或 stdio MCP。
 - **Token 失效**：服务不会自动刷新 Token。失效后重新获取，并更新 Agent 配置。
 
+## 操作来源标记
+
+远程 HTTP MCP 默认向禅道发送 `AI <zentao-cli VERSION, mcp: http>`，VERSION 为服务端 CLI 版本。本地 stdio MCP 使用 `mcp: stdio`。支持该功能的禅道服务端可在操作日志中记录此标记。
+
+业务工具（含拆分的 `_read`/`_write`）和 `zentao_profile` 支持顶层 `assistant` 字符串，与 `action`、`params` 同级：
+
+```json
+{"action":"get","id":1,"assistant":"AI <codex 0.164.0, model: gpt-6.1-sol>"}
+```
+
+请用已确认的 Agent 信息替换示例，未知版本或模型省略。省略 `assistant` 继承服务设置；`"assistant":""` 仅关闭该次调用的标记，不影响其他调用。该参数完整覆盖默认内容，不能放入业务 `params`。标记须符合 HTTP 请求头限制，不能包含中文或非法换行。
+
+优先级为工具 `assistant` → 服务启动时的 `--assistant` → profile 自动开关 → 入口默认值。profile 开关只用于以本地 profile 认证的 stdio MCP；HTTP 不读取本地 profile。共享的环境密码登录使用服务默认标记，工具覆盖只影响该次调用的业务请求和内部请求。完整说明见 [CLI 操作来源标记](cli-usage.md#操作来源标记)。
+
 ## 常见问题
 
 | 现象 | 原因与处理 |

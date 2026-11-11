@@ -4,6 +4,7 @@ import type { AddressInfo, Socket } from 'node:net';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 import { createClient } from '../api/index.js';
+import { resolveAssistant } from '../api/assistant.js';
 import { DEFAULT_CONFIG } from '../config/defaults.js';
 import { ZentaoError } from '../errors.js';
 import { createMcpServer } from './server.js';
@@ -89,6 +90,7 @@ function readBody(req: IncomingMessage, limit = MAX_BODY_BYTES): Promise<{ body?
 }
 
 export async function startMcpHttpServer(options: McpHttpOptions): Promise<McpHttpServer> {
+    const actionAssistant = resolveAssistant(options.assistant, true, 'http');
     options = { ...options, allowLocalFiles: false };
     if (!process.versions.bun) {
         const [major, minor, patch] = process.versions.node.split('.').map(Number);
@@ -114,7 +116,7 @@ export async function startMcpHttpServer(options: McpHttpOptions): Promise<McpHt
     const startPage = createMcpStartHandler({ ...options, url: site, timeout: config.timeout });
     const authFor = (token?: string) => ({
         async getContext() {
-            return { client: createClient(site, token, config), config, identity: { server: site } };
+            return { client: createClient(site, token, { ...config, actionAssistant }), config, identity: { server: site } };
         },
     });
     // Validate tool selection at startup, rather than failing the first client request.

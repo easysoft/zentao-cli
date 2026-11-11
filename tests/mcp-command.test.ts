@@ -7,6 +7,7 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 import { getStaticTOMLValue, parseTOML } from 'toml-eslint-parser';
 import { runCliWithoutAuth } from './helpers.js';
 import { toolData } from './mcp-helpers.js';
+import { getCliVersion } from '../src/utils/version.js';
 
 test.each([
     ['mcp', '--transport', 'sse'],
@@ -66,11 +67,18 @@ test.each([
         profiles: [{ server: 'https://saved.example.com', account: 'saved', token: 'saved-secret' }],
     });
     writeFileSync(configFile, initialConfig);
+    const assistant = source === 'option' ? 'AI <http-startup>' : source === 'positional' ? '' : undefined;
+    const markers: Array<string | null> = [];
     const upstream = Bun.serve({
         hostname: '127.0.0.1', port: 0,
-        fetch: req => new URL(req.url).searchParams.has('mode')
-            ? Response.json({ version: '22.5' })
-            : Response.json({ product: { id: 1, name: req.headers.get('token') } }),
+        fetch: req => {
+            if (new URL(req.url).searchParams.has('mode')) {
+                expect(req.headers.get('ZenTao-Action-Assistant')).toBeNull();
+                return Response.json({ version: '22.5' });
+            }
+            markers.push(req.headers.get('ZenTao-Action-Assistant'));
+            return Response.json({ product: { id: 1, name: req.headers.get('token') } });
+        },
     });
     const reservation = Bun.serve({ hostname: '127.0.0.1', port: 0, fetch: () => new Response() });
     const port = reservation.port!;
@@ -79,6 +87,7 @@ test.each([
         : source === 'option' ? ['--url', upstream.url.origin] : [];
     const child = Bun.spawn({
         cmd: [process.execPath, '--no-env-file', resolve('src/index.ts'), '--config', configFile,
+            ...(assistant === undefined ? [] : ['--assistant', assistant]),
             '--timeout', '1500', '--insecure', ...command.split(' '), ...(command !== 'mcp-server' ? ['--transport', 'http'] : []),
             ...siteArgs, '--port', String(port), '--modules', 'product',
             ...(restricted ? ['--host', '127.0.0.1', '--read-only', '--split-tools'] : [])],
@@ -123,6 +132,7 @@ test.each([
             .toMatchObject({ server: upstream.url.origin, account: null, userFound: false });
         expect(toolData(await client.callTool({ name: productTool, arguments: { action: 'get', id: 1 } })))
             .toMatchObject({ id: 1, name: 'client-secret' });
+        expect(markers).toEqual([assistant === '' ? null : assistant ?? `AI <zentao-cli ${getCliVersion()}, mcp: http>`]);
         await client.close();
         child.kill(signal);
         expect(await child.exited).toBe(0);

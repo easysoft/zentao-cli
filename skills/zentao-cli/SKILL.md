@@ -60,6 +60,8 @@ zentao doc my-docs --space-id 1 --lib-id 2
 
 ## 执行与核实
 
+Agent 发起 API 操作时，通过全局 `--assistant` 标注自身，例如 `zentao --assistant 'AI <codex 0.164.0, model: gpt-6.1-sol>' product list`。名称、版本和模型须使用当前已确认的信息；示例不能照抄，未知版本或模型省略，例如 `AI <codex>`。MCP 工具使用同义的顶层 `assistant` 字符串参数。用户要求关闭标记时传空字符串，不自行恢复；不要为添加标记修改用户的持久配置。标记须符合 HTTP 请求头字符限制，不能使用中文或换行。
+
 机器处理显式 `--format=json --no-input`；结果是 `{ok,data,meta}`，失败在 stderr 返回 `{ok:false,error}`。不要把退出码 0、HTTP 200 或 raw 当成已完成写入的唯一证据。创建、更新和流转后按返回 ID 再查详情或所属列表，核对关键字段。
 
 分页默认一页；全量任务用支持的 `--all`，通过 meta.total/returned/hasMore/truncated 判断范围。服务器总数是本地处理前的数量。见 [数据与输出](references/data-output.md)。

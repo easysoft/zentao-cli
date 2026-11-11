@@ -5,17 +5,19 @@ import { request } from 'node:http';
 import { getStaticTOMLValue, parseTOML } from 'toml-eslint-parser';
 import { startMcpHttpServer } from '../src/mcp/http.js';
 import { mcpAgentPrompt, mcpClientConfig, mcpStartGuides, renderMcpStartPage } from '../src/mcp/start-page.js';
+import { getCliVersion } from '../src/utils/version.js';
 
 let buildDir: string;
 beforeAll(async () => {
     // Keep external package resolution identical to the published Node build.
     buildDir = mkdtempSync(resolve('node_modules/.mcp-start-test-'));
-    const build = await Bun.build({ entrypoints: ['src/mcp/http.ts'], outdir: buildDir, target: 'node', packages: 'external', minify: true });
+    const build = await Bun.build({ entrypoints: ['src/mcp/http.ts'], outdir: buildDir, target: 'node', packages: 'external', minify: true,
+        define: { BUILD_VERSION: JSON.stringify(getCliVersion()) } });
     if (!build.success) throw new Error('Could not build the Node HTTP test entrypoint');
 });
 afterAll(() => rmSync(buildDir, { recursive: true, force: true }));
 
-async function fixture(runtime: string, handler: (request: Request) => Response | Promise<Response>, timeout = 200) {
+async function fixture(runtime: string, handler: (request: Request) => Response | Promise<Response>, timeout = 200, assistant?: string) {
     const api = Bun.serve({ hostname: '127.0.0.1', port: 0, fetch: handler });
     const site = `${api.url.origin}/zentao`;
     let base: URL;
@@ -29,7 +31,7 @@ async function fixture(runtime: string, handler: (request: Request) => Response 
         const child = Bun.spawn({
             cmd: ['node', '--input-type=module', '-e', `
                 import { startMcpHttpServer } from ${JSON.stringify(join(buildDir, 'http.js'))};
-                const running = await startMcpHttpServer({ url: process.env.MCP_TEST_SITE, port: 0, timeout: ${timeout}, modules: ['product'], readOnly: true });
+                const running = await startMcpHttpServer({ url: process.env.MCP_TEST_SITE, port: 0, timeout: ${timeout}, modules: ['product'], readOnly: true, assistant: ${JSON.stringify(assistant)} });
                 console.log(running.url.href);
                 process.once('SIGTERM', () => { void running.close(); });
             `],
@@ -51,7 +53,7 @@ async function fixture(runtime: string, handler: (request: Request) => Response 
             api.stop(true);
         };
     } else {
-        const server = await startMcpHttpServer({ url: site, port: 0, timeout, modules: ['product'], readOnly: true });
+        const server = await startMcpHttpServer({ url: site, port: 0, timeout, modules: ['product'], readOnly: true, assistant });
         base = server.url;
         close = async () => { await server.close(); api.stop(true); };
     }
@@ -80,14 +82,15 @@ async function fixture(runtime: string, handler: (request: Request) => Response 
 }
 
 for (const runtime of ['bun', 'node']) {
-    test(`${runtime}: start page and concurrent token requests use only the fixed site without local credentials`, async () => {
+    test.each([undefined, 'AI <browser-token>', ''])(`${runtime}: start page and concurrent token requests use only the fixed site with assistant=%j`, async assistant => {
         const seen: unknown[] = [];
         const f = await fixture(runtime, async req => {
             const body = await req.json() as { account: string; password: string };
+            expect(req.headers.get('ZenTao-Action-Assistant')).toBe(assistant === '' ? null : assistant ?? `AI <zentao-cli ${getCliVersion()}, mcp: http>`);
             seen.push({ path: new URL(req.url).pathname, body, token: req.headers.get('token') });
             await Bun.sleep(body.account === 'alice' ? 20 : 1);
             return Response.json({ status: 'success', token: `${body.account}-token` });
-        });
+        }, 200, assistant);
         try {
             expect(f.page.status).toBe(200);
             expect(f.page.headers.get('cache-control')).toBe('no-store');

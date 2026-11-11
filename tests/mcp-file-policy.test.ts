@@ -62,17 +62,19 @@ test('remote MCP blocks server file uploads before authentication while stdio pr
         const stdio = await createMcpTestClient(async req => {
             if (new URL(req.url).searchParams.get('mode') === 'getconfig') return Response.json({ version: '22.5' });
             expect(req.method).toBe('POST');
+            expect(req.headers.get('ZenTao-Action-Assistant')).toBe('AI <upload>');
             expect(new URL(req.url).pathname).toBe('/api.php/v2/files');
             const form = await req.formData();
             uploaded = await (form.get('file') as File).text();
             expect(form.get('objectType')).toBe('story');
             expect(form.get('objectID')).toBe('1');
+            expect(form.has('assistant')).toBe(false);
             return Response.json({ id: 42 });
         }, ['--modules', 'file']);
         try {
             const help = toolData(await stdio.client.callTool({ name: 'zentao_action_help', arguments: { module: 'file', action: 'create' } }));
             expect(help.available).toBe(true);
-            const result = await stdio.client.callTool({ name: 'zentao_file', arguments: { action: 'create', params: { data: body } } });
+            const result = await stdio.client.callTool({ name: 'zentao_file', arguments: { action: 'create', assistant: 'AI <upload>', params: { data: body } } });
             expect(result.isError).not.toBe(true);
             expect(uploaded).toBe(sentinel);
         } finally {

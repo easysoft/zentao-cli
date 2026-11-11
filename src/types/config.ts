@@ -4,6 +4,8 @@ export type { ServerConfig };
 
 /** 用户可配置的选项，存储在 profile.config 中 */
 export interface UserConfig {
+    /** Automatically identify CLI/MCP operations unless explicitly overridden. */
+    autoAssistant?: boolean;
     /** 默认输出格式 */
     defaultOutputFormat?: 'table' | 'markdown' | 'json' | 'raw';
     /** 默认每页记录数 */

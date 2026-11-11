@@ -49,12 +49,15 @@ curl http://127.0.0.1:9090/healthz   # {"status":"ok"}
 | `--split-tools` | 关闭 | 每个模块拆成 `_read` 和 `_write` 两个工具，便于分别授权 |
 | 全局 `--timeout <ms>` | `10000` | 访问禅道的单次请求超时 |
 | 全局 `--insecure` | 关闭 | 跳过禅道站点的 TLS 证书验证 |
+| 全局 `--assistant <value>` | `AI <zentao-cli VERSION, mcp: http>` | 服务默认操作来源标记；空字符串关闭，工具的 `assistant` 参数可逐次覆盖 |
 
 全局选项必须写在 `mcp-server` 之前。参数在启动时确定，修改后需要重启：
 
 ```bash
 zentao --timeout 20000 mcp-server https://zentao.example.com --read-only --modules product,story,task,bug
 ```
+
+HTTP MCP 不读取本地 profile。启动时的标记也用于接入页面获取 Token；业务工具可逐次覆盖，匿名服务配置探测不携带标记。详见[操作来源标记](mcp-user-guide.md#操作来源标记)。
 
 ## 2. 配置常驻运行
 

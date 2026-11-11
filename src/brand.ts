@@ -27,11 +27,13 @@ export function formatBrandText(text: string, config?: ResolvedBrand): string {
     return text
         .replace(/https:\/\/www\.zentao\.net\//g, brand.homepage)
         .replace(/zentao-api/g, '\u0000sdk\u0000')
+        .replace(/ZenTao-Action-Assistant/g, '\u0000assistant-header\u0000')
         .replace(/zentao-cli/g, brand.packageName)
         .replace(/禅道|禪道|ZenTao|Zentao/g, brand.displayName)
         .replace(/ZENTAO/g, brand.commandName.toUpperCase())
         .replace(/zentao/g, brand.commandName)
-        .replace(/\u0000sdk\u0000/g, 'zentao-api');
+        .replace(/\u0000sdk\u0000/g, 'zentao-api')
+        .replace(/\u0000assistant-header\u0000/g, 'ZenTao-Action-Assistant');
 }
 
 const metadataCaches = new WeakMap<ResolvedBrand, WeakMap<object, unknown>>();

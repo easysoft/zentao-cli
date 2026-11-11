@@ -331,6 +331,28 @@ stdout 用于结果和批量报告；stderr 用于进度、诊断和无法产生
 MCP 保留 structuredContent/outputSchema 与执行时策略检查。知识 POST 搜索可供只读工具使用；SQL 查询保守地留在写工具组。HTTP MCP 不发现或执行本地文件上传；stdio 可上传。取消涵盖认证和业务调用，取消一个并发调用不会终止其他调用。
 
 
+## 操作来源标记
+
+CLI 默认通过 `ZenTao-Action-Assistant` 请求头发送 `ZenTao CLI <zentao-cli VERSION>`，供支持该功能的禅道服务端记录操作来源；VERSION 为实际 CLI 版本。stdio MCP 和 HTTP MCP 分别使用 `AI <zentao-cli VERSION, mcp: stdio>` 和 `AI <zentao-cli VERSION, mcp: http>`。
+
+```bash
+# 自定义一次命令的标记，覆盖默认值
+zentao --assistant 'AI <codex 0.164.0, model: gpt-6.1-sol>' product list
+# 本次关闭；也支持 --assistant=
+zentao --assistant '' product list
+# 关闭当前 profile 的自动标记；unset 恢复默认开启
+zentao config set autoAssistant false
+zentao config unset autoAssistant
+```
+
+示例中的 Agent 版本和模型须替换为已确认的信息，未知项省略。自定义标记不追加默认内容，不编码或截断，须符合原生 HTTP 请求头限制；中文等非 Latin-1 字符或非法换行会在认证前报 `E2009`。
+
+优先级为 **MCP 工具单次 `assistant` → 命令行 `--assistant` → profile 的 `autoAssistant` → 入口默认值**。每一层的空字符串都表示关闭；profile 关闭自动标记后，显式非空标记仍可生效。自定义标记仅在运行时有效，不保存到 profile，也不会进入业务请求体。
+
+一次 CLI 命令中的登录、在线验证、撤销、上传、分页、批量和内部预读沿用有效标记，匿名服务配置探测不携带。完整环境凭据、显式登录和临时 Token 使用运行时选项及默认值，不读取本地 profile 的开关。
+
+MCP 业务工具（含 `_read`/`_write`）和 `zentao_profile` 接受顶层 `assistant` 字符串，省略继承服务设置，空字符串关闭。stdio 会随已选 profile 的切换和配置变化刷新默认标记；共享的环境密码登录使用服务默认标记，逐次覆盖用于该次工具的业务请求及内部请求。HTTP 不读取本地 profile，服务默认标记可在启动时覆盖，例如 `zentao --assistant '' mcp-server https://zentao.example.com`；工具参数仍可逐次覆盖。
+
 ## 配置、版本与补全
 
 `config list` 列出全部配置，`config get <key>` 读取单项，`config set <key> <value>` 修改，`config unset <key>` 恢复默认值。`version` 离线显示 CLI、SDK 与运行时版本。

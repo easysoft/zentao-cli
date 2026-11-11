@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { createAuthProvider } from '../src/mcp/server.js';
+import { getCliVersion } from '../src/utils/version.js';
 
 test.each([false, true])('authentication cancellation preserves other callers: allCancelled=%p', async (allCancelled) => {
     let release!: () => void; let notify!: () => void;
@@ -8,6 +9,7 @@ test.each([false, true])('authentication cancellation preserves other callers: a
     const calls: string[] = [];
     const server = Bun.serve({ hostname: '127.0.0.1', port: 0, async fetch(req) {
         const url = new URL(req.url); calls.push(url.pathname + url.search);
+        expect(req.headers.get('ZenTao-Action-Assistant')).toBe(url.searchParams.has('mode') ? null : `AI <zentao-cli ${getCliVersion()}, mcp: stdio>`);
         if (url.pathname.endsWith('/users/login')) { notify(); await gate; return Response.json({ status: 'success', token: 'shared-token' }); }
         if (url.searchParams.has('mode')) return Response.json({ version: '22.7' });
         return Response.json({ users: [{ id: 1, account: 'test' }] });

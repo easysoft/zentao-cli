@@ -54,6 +54,7 @@ function addMcpOptions(command: Command): Command {
 
 async function runMcpCommand(options: McpCommandOptions, globalOpts: GlobalOptions): Promise<void> {
     const toolOptions = {
+        assistant: globalOpts.assistant,
         insecure: globalOpts.insecure,
         timeout: globalOpts.timeout,
         profile: globalOpts.profile,

@@ -290,6 +290,7 @@ describe('profile management', () => {
         { profiles: [{ ...mockProfile, server: 'invalid-url' }] },
         { profiles: [{ ...mockProfile, token: 123 }] },
         { profiles: [{ ...mockProfile, config: { timeout: '1000' } }] },
+        { profiles: [{ ...mockProfile, config: { autoAssistant: 'false' } }] },
         { profiles: [{ ...mockProfile, serverConfig: { version: 22.5 } }] },
     ].map(data => ({ data })))('rejects invalid config structure without overwriting it: %#', ({ data }) => {
         const file = join(tempDir, 'config.json');

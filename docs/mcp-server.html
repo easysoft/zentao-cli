@@ -397,12 +397,14 @@ zentao mcp-server <span class="v" data-var="site">https://zentao.example.com</sp
               <tr><td><code>--split-tools</code></td><td>关闭</td><td>每个模块拆成 <code>_read</code> 和 <code>_write</code> 两个工具，便于分别授权</td></tr>
               <tr><td>全局 <code>--timeout</code></td><td><code>10000</code></td><td>访问禅道的单次请求超时，毫秒</td></tr>
               <tr><td>全局 <code>--insecure</code></td><td>关闭</td><td>跳过禅道站点的 TLS 证书验证</td></tr>
+              <tr><td>全局 <code>--assistant</code></td><td><code>AI &lt;zentao-cli VERSION, mcp: http&gt;</code></td><td>服务默认操作来源标记；空字符串关闭，工具的 <code>assistant</code> 参数可逐次覆盖</td></tr>
             </tbody>
           </table>
         </div>
         <div class="note"><strong>全局选项必须写在 <code>mcp-server</code> 之前。</strong>参数在启动时确定，修改后需要重启。</div>
         <div class="code"><div class="code-head"><span>bash · 例：只读开放四个模块，超时 20 秒</span></div><pre><code>zentao --timeout 20000 mcp-server <span class="v" data-var="site">https://zentao.example.com</span> \
   --read-only --modules product,story,task,bug</code></pre></div>
+        <p>HTTP MCP 不读取本地 profile。启动时的标记也用于接入页面获取 Token；业务工具可逐次覆盖，匿名服务配置探测不携带标记。详见<a href="mcp-user-guide.md#操作来源标记">操作来源标记</a>。</p>
       </section>
 
       <section class="doc-section" id="a-systemd" data-step="2" aria-labelledby="a-systemd-title">

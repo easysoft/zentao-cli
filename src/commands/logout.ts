@@ -5,6 +5,7 @@ import { ZentaoError } from '../errors.js';
 import { emitResult } from '../utils/output.js';
 import { revokeSession } from '../auth/session.js';
 import { commandSignal } from '../utils/lifecycle.js';
+import { resolveAssistant } from '../api/assistant.js';
 export function registerLogoutCommand(program: Command): void {
     program.command('logout').description('删除本地登录记录').argument('[key]')
         .option('--all', '清理选定配置文件中的全部账号；空配置也成功')
@@ -20,7 +21,8 @@ export function registerLogoutCommand(program: Command): void {
             for (const item of profiles) {
                 if (options.revoke) {
                     const config = getProfileConfig(item);
-                    await revokeSession(item, { timeout: options.timeout ?? config.timeout, insecure: options.insecure ?? config.insecure, signal: commandSignal() });
+                    await revokeSession(item, { timeout: options.timeout ?? config.timeout, insecure: options.insecure ?? config.insecure,
+                        actionAssistant: resolveAssistant(options.assistant, config.autoAssistant), signal: commandSignal() });
                 }
                 const fullKey = profileKey(item.account, item.server);
                 // A concurrent login may have replaced the token while revocation was in flight.

@@ -18,6 +18,7 @@ export function buildParams(
     args?: string[],
 ): Record<string, unknown> {
     const params: Record<string, unknown> = { ...options };
+    delete params.assistant;
 
     const extraArgs = args ? [...args] : [];
     if (extraArgs.length > 0 && extraArgs[0] === actionName) {

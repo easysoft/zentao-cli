@@ -2,7 +2,7 @@ import { request } from 'zentao-api';
 import type { ZentaoClient } from '../api/index.js';
 import { ZentaoError } from '../errors.js';
 
-export async function findRemoteUser(client: ZentaoClient, account: string) {
+export async function findRemoteUser(client: ZentaoClient, account: string, assistant?: string) {
     let user: Record<string, unknown> | undefined;
     let hadUsers = false;
     let previousPage: string | undefined;
@@ -10,7 +10,7 @@ export async function findRemoteUser(client: ZentaoClient, account: string) {
         const response = await request('user/list', {
             browseType: 'inside', orderBy: 'id_asc', recPerPage: 100, pageID,
             filters: [{ field: 'account', operator: '=', value: account }],
-        }, { client: client, throwOnFail: true });
+        }, { client, throwOnFail: true, actionAssistant: assistant });
         const users = Array.isArray(response.data) ? response.data as Record<string, unknown>[] : [];
         hadUsers ||= users.length > 0;
         user = users.find(item => item.account === account);

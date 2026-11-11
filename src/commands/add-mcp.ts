@@ -113,7 +113,7 @@ function writePrivateFile(filePath: string, content: string): void {
 
 /* ── Credential Resolution ── */
 
-async function resolveCredentials(options: { insecure?: boolean; timeout?: number; profile?: string }): Promise<McpCredentials> {
+async function resolveCredentials(options: GlobalOptions): Promise<McpCredentials> {
     const { profile } = await ensureAuth(options);
     return { url: profile.server, account: profile.account, token: profile.token };
 }
@@ -295,11 +295,7 @@ export function registerAddMcpCommand(program: Command, name = 'install'): void 
 
             if (!agent && globalOpts.input === false) throw new ZentaoError('E2009', { option: 'agent', reason: '--no-input 时必须指定安装目标' });
             const agents = agent ? resolveAgents(agent) : await promptAgentSelection();
-            const creds = await resolveCredentials({
-                insecure: globalOpts.insecure,
-                timeout: globalOpts.timeout,
-                profile: globalOpts.profile,
-            });
+            const creds = await resolveCredentials(globalOpts);
 
             for (const a of agents) installMcp(a, creds);
             emitResult(agents.map(agent => ({ agent, path: AGENT_TARGETS[agent].configPath,

@@ -5,6 +5,7 @@ import { ZentaoError } from '../errors.js';
 import { renderMcpStartPage } from './start-page.js';
 import { mcpStartMessages } from './start-messages.js';
 import type { McpHttpOptions } from './http.js';
+import { resolveAssistant } from '../api/assistant.js';
 
 export const START_BODY_LIMIT = 16_384;
 export const isStartRoute = (path: string) => ['/start', '/start/', '/start/token'].includes(path);
@@ -19,6 +20,7 @@ interface StartRequest {
 
 /** Shared by Node and Bun; this public page never uses the service machine's credentials. */
 export function createMcpStartHandler(options: McpHttpOptions) {
+    const actionAssistant = resolveAssistant(options.assistant, true, 'http');
     const key = randomBytes(32).toString('hex');
     let pending = 0;
     return async ({ path, method, headers, signal, readBody }: StartRequest): Promise<Response> => {
@@ -69,7 +71,7 @@ export function createMcpStartHandler(options: McpHttpOptions) {
                 return error(400, 'invalidCredentialsInput');
             }
             if (signal.aborted) return error(400, 'cancelled');
-            const token = await requestToken(options.url, data.account.trim(), data.password, { ...options, signal });
+            const token = await requestToken(options.url, data.account.trim(), data.password, { ...options, actionAssistant, signal });
             if (!/^[A-Za-z0-9\-._~+/]+=*$/.test(token)) return error(502, 'invalidTokenResponse');
             return Response.json({ token }, { headers: responseHeaders });
         } catch (cause) {

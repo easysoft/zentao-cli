@@ -5,3 +5,5 @@ export { renderBrowserLoginPage } from '../src/auth/browser-page.js';
 export { getAllModules, getModuleActionParams, getObjectProps } from '../src/modules/helper.js';
 export { registerAllCommands } from '../src/commands/index.js';
 export { buildInstallCommand } from '../src/utils/update-notifier.js';
+export { createClient } from '../src/api/index.js';
+export { resolveAssistant } from '../src/api/assistant.js';

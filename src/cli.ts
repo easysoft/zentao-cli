@@ -3,6 +3,7 @@ import { registerAllCommands } from './commands/index.js';
 import { getCliVersion } from './utils/version.js';
 import { ZentaoError } from './errors.js';
 import { brandText } from './brand.js';
+import { validateAssistant } from './api/assistant.js';
 
 function positive(value: string): number {
     if (!/^\d+$/.test(value) || !Number.isSafeInteger(Number(value)) || Number(value) < 1) {
@@ -20,6 +21,7 @@ export function createProgram(): Command {
         .helpOption('-h, --help', '显示命令帮助')
         .addOption(new Option('--format <format>', '输出格式').choices(['table', 'json', 'markdown', 'raw']))
         .option('--profile <key>', '仅本次命令选择账号（优先于环境凭据）')
+        .option('--assistant <value>', '本次操作来源标记；空字符串关闭标记', validateAssistant)
         .option('--config <file>', brandText('配置文件路径（也支持 ZENTAO_CONFIG_FILE）'))
         .option('--no-input', '禁止浏览器、输入提示和选择菜单')
         .option('-y, --yes', '确认操作，不补全缺失参数')

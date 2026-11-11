@@ -11,6 +11,7 @@ import { browserLogin } from '../auth/browser-login.js';
 import { commandSignal } from '../utils/lifecycle.js';
 import { emitResult } from '../utils/output.js';
 import { canOpenBrowser } from '../auth/browser-open.js';
+import { resolveAssistant } from '../api/assistant.js';
 
 /** Register login with browser, terminal, explicit credential, and environment modes. */
 export function registerLoginCommand(program: Command): void {
@@ -29,6 +30,7 @@ export function registerLoginCommand(program: Command): void {
         .option('--no-browser', '使用终端交互登录，不打开浏览器')
         .action(async (opts) => {
             const globalOpts = program.optsWithGlobals() as GlobalOptions;
+            const actionAssistant = resolveAssistant(globalOpts.assistant);
             if (opts.open === false && !opts.web) {
                 throw new ZentaoError('E2009', { option: '--no-open', reason: '必须与 --web 一起使用' });
             }
@@ -48,6 +50,7 @@ export function registerLoginCommand(program: Command): void {
             const desktop = canOpenBrowser();
             if (opts.web || (!opts.useEnv && !fullCredentials && opts.browser !== false && desktop)) {
                 const profile = await browserLogin({
+                    actionAssistant,
                     server: opts.server,
                     account: opts.user,
                     message: opts.message,
@@ -101,6 +104,7 @@ export function registerLoginCommand(program: Command): void {
             if (token) {
                 // 检查 token 是否有效
                 const client = createClient(server, token, {
+                    actionAssistant,
                     insecure: globalOpts.insecure,
                     timeout: globalOpts.timeout,
                 });
@@ -108,6 +112,7 @@ export function registerLoginCommand(program: Command): void {
                 profile = buildProfile(server, account, token, serverConfig, user);
             } else {
                 const result = await login(server, account, password, {
+                    actionAssistant,
                     insecure: globalOpts.insecure,
                     timeout: globalOpts.timeout,
                     signal: commandSignal(),

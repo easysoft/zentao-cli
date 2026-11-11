@@ -125,6 +125,23 @@ describe('browser login session', () => {
         await expect(fetch(new URL('/', session.url))).rejects.toThrow();
     });
 
+    test.each(['AI <browser-login>', ''])('web login forwards runtime attribution without saving it: %j', async assistant => {
+        let marker: string | null | undefined;
+        const server = mockZentao(req => {
+            marker = req.headers.get('ZenTao-Action-Assistant');
+            return Response.json({ status: 'success', token });
+        });
+        const result = await runCli(['--assistant', assistant, 'auth', 'login', '--web', '--no-open'], {}, async url => {
+            const response = await submit({ url }, { server, account: 'admin', password });
+            expect(response.status).toBe(200);
+            await response.text();
+        });
+        expect(result.exitCode, result.stderr).toBe(0);
+        expect(marker).toBe(assistant || null);
+        expect(readFileSync(configFile, 'utf8')).not.toContain('assistant');
+        expect(readFileSync(configFile, 'utf8')).not.toContain('AI <browser-login>');
+    });
+
     test('keeps failed login retryable and never renders upstream error details', async () => {
         let attempts = 0;
         const server = mockZentao(() => {

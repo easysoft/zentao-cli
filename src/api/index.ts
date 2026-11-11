@@ -1,4 +1,5 @@
-import { ZentaoClient } from 'zentao-api';
+import { ZentaoClient, type ActionAssistant } from 'zentao-api';
+import { resolveAssistant } from './assistant.js';
 import { mapSdkError, ZentaoError } from '../errors.js';
 import type { ServerConfig } from '../types/index.js';
 
@@ -6,6 +7,8 @@ export { ZentaoClient };
 
 /** 创建 {@link ZentaoClient} 时的可选行为（TLS、超时等） */
 export interface ClientOptions {
+    /** Runtime-only operation attribution; an empty string disables the header. */
+    actionAssistant?: ActionAssistant;
     /** 为 true 时跳过 TLS 证书校验（仅 Node.js 运行时支持） */
     insecure?: boolean;
     /** 默认请求超时（毫秒） */
@@ -22,6 +25,7 @@ export function createClient(serverUrl: string, token?: string, options?: Client
         token,
         insecure: options?.insecure,
         timeout: options?.timeout,
+        actionAssistant: options?.actionAssistant ?? resolveAssistant(),
     });
 }
 

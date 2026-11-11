@@ -140,6 +140,8 @@ zentao token --server https://zentao.example.com --user admin --password '<passw
 
 管道输入、批量操作、分页控制和配置管理等更多功能见 [CLI 核心功能详解](docs/cli-usage.md)。
 
+CLI 默认发送带版本的操作来源标记，MCP 自动区分 stdio/HTTP。用 `--assistant 'AI <codex>'` 自定义本次标记，`--assistant ''` 本次关闭，或 `zentao config set autoAssistant false` 关闭当前 profile 的自动标记。MCP 工具可用顶层 `assistant` 参数逐次覆盖。详见[操作来源标记](docs/cli-usage.md#操作来源标记)。
+
 ## 在 AI Agents 中使用
 
 可以通过以下三种方式在 AI Agents 中使用禅道：

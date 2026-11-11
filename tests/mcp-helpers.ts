@@ -13,7 +13,7 @@ export function toolData(result: unknown): any {
 }
 
 /** Run the real stdio entrypoint against an isolated local API and config. */
-export async function createMcpTestClient(handler: (req: Request) => Response | Promise<Response>, args: string[] = []) {
+export async function createMcpTestClient(handler: (req: Request) => Response | Promise<Response>, args: string[] = [], entrypoint: 'mcp' | 'mcp serve' = 'mcp serve') {
     const server = Bun.serve({ hostname: '127.0.0.1', port: 0, fetch: handler });
     const dir = mkdtempSync(join(tmpdir(), 'zentao-cli-mcp-test-'));
     const configFile = join(dir, 'config.json');
@@ -21,7 +21,7 @@ export async function createMcpTestClient(handler: (req: Request) => Response | 
     const client = new Client({ name: 'zentao-cli-test', version: '0.0.0' });
     const transport = new StdioClientTransport({
         command: process.execPath,
-        args: ['--no-env-file', join(repoRoot, 'src/index.ts'), '--config', configFile, 'mcp', 'serve', ...args],
+        args: ['--no-env-file', join(repoRoot, 'src/index.ts'), '--config', configFile, ...entrypoint.split(' '), ...args],
         cwd: dir,
         env: { ...process.env, ZENTAO_URL: server.url.toString(), ZENTAO_ACCOUNT: 'audit', ZENTAO_TOKEN: 'test-token', ZENTAO_PASSWORD: '' },
     });

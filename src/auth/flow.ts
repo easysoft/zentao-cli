@@ -4,6 +4,7 @@ import { ZentaoError } from '../errors.js';
 import { getCurrentProfile, getProfileConfig, buildProfile, normalizeServerUrl, findProfileByKey } from '../config/store.js';
 import { commandSignal } from '../utils/lifecycle.js';
 import { login, getEnvCredentials } from './login.js';
+import { resolveAssistant, type AssistantSource } from '../api/assistant.js';
 
 /** 已通过鉴权后的运行时上下文，供命令层发起 API 调用 */
 export interface AuthContext {
@@ -48,31 +49,32 @@ export function resolveAuthSource(profile?: Profile | string) {
 }
 
 /** Resolve credentials first; only environment password authentication requires a login request. */
-export async function ensureAuth(options?: { insecure?: boolean; timeout?: number; profile?: Profile | string; signal?: AbortSignal }): Promise<AuthContext> {
+export async function ensureAuth(options?: { insecure?: boolean; timeout?: number; profile?: Profile | string; signal?: AbortSignal; assistant?: string; assistantSource?: AssistantSource }): Promise<AuthContext> {
     const signal = options?.signal ?? commandSignal();
     if (signal?.aborted) throw new ZentaoError('E5003');
     const auth = resolveAuthSource(options?.profile);
+    const config = auth.source === 'profile' ? getProfileConfig(auth.profile) : undefined;
+    const clientOpts = {
+        insecure: options?.insecure ?? config?.insecure,
+        timeout: options?.timeout ?? config?.timeout,
+        actionAssistant: resolveAssistant(options?.assistant, config?.autoAssistant, options?.assistantSource),
+    };
     if (auth.source === 'environment') {
         const { server, account, token, password } = auth;
         if (token) {
             return {
-                client: withRequestSignal(createClient(server, token, options), signal),
+                client: withRequestSignal(createClient(server, token, clientOpts), signal),
                 profile: buildProfile(server, account, token),
             };
         }
 
-        const result = await login(server, account, password!, { ...options, signal });
+        const result = await login(server, account, password!, { ...clientOpts, signal });
         return {
             client: withRequestSignal(result.client, signal),
             profile: buildProfile(server, account, result.token, result.serverConfig, result.user),
         };
     }
 
-    const config = getProfileConfig(auth.profile);
-    const clientOpts = {
-        insecure: options?.insecure ?? config.insecure,
-        timeout: options?.timeout ?? config.timeout,
-    };
     return {
         client: withRequestSignal(createClient(auth.server, auth.token, clientOpts), signal),
         profile: auth.profile,

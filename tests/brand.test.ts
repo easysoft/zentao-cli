@@ -20,6 +20,29 @@ afterAll(() => rmSync(directory, { recursive: true, force: true }));
 test('brand templates preserve interpolated business values', () => {
     expect(branded.brandText`禅道服务：${'禅道 zentao'}`).toBe('Example服务：禅道 zentao');
     expect(branded.brandText('ZENTAO_CONFIG_FILE zentao-cli ZenTao')).toBe('EXAMPLE_CONFIG_FILE example-cli Example');
+    expect(branded.brandText('ZenTao-Action-Assistant')).toBe('ZenTao-Action-Assistant');
+});
+
+test('branded operation headers use ASCII build identity even with a non-Latin display name', async () => {
+    const outdir = join(directory, 'unicode');
+    const result = await Bun.build({ entrypoints: [resolve('tests/brand-fixture.ts')], outdir, minify: true, target: 'node', packages: 'external',
+        define: { BUILD_BRAND: JSON.stringify({ ...config, displayName: '示例' }), BUILD_VERSION: '"1.2.3"' } });
+    expect(result.success).toBe(true);
+    const unicode = await import(join(outdir, 'brand-fixture.js')) as typeof branded;
+    const seen: Array<string | null> = [];
+    const api = Bun.serve({ hostname: '127.0.0.1', port: 0, fetch(req) {
+        seen.push(req.headers.get('ZenTao-Action-Assistant'));
+        return Response.json({});
+    } });
+    try {
+        await branded.createClient(api.url.origin).get('/products');
+        await unicode.createClient(api.url.origin).get('/products');
+        await unicode.createClient(api.url.origin, undefined, { actionAssistant: unicode.resolveAssistant(undefined, true, 'http') }).get('/products');
+        await unicode.createClient(api.url.origin, undefined, { actionAssistant: 'AI <custom>' }).get('/products');
+        expect(seen).toEqual(['example CLI <example-cli 0.0.0>', 'example CLI <example-cli 1.2.3>',
+            'AI <example-cli 1.2.3, mcp: http>', 'AI <custom>']);
+        expect(brandDocument('ZenTao-Action-Assistant', { ...config, displayName: '示例' })).toBe('ZenTao-Action-Assistant');
+    } finally { api.stop(true); }
 });
 
 test('the full command tree and upgrade target use the built brand', () => {
