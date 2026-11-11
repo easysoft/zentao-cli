@@ -9,20 +9,30 @@
     "win32": "npm.cmd install -g zentao-cli@0.4.0 --no-audit --no-fund"
   },
   "auth": {
-    "darwin": "node -e \"console.error('请先在交互终端执行：npx --yes zentao-cli@0.4.0 --config ~/.config/zentao/workbuddy.json auth login，并用 profile use 选择账号；完成后返回 WorkBuddy 重新连接。');process.exitCode=1\"",
-    "linux": "node -e \"console.error('请先在交互终端执行：npx --yes zentao-cli@0.4.0 --config ~/.config/zentao/workbuddy.json auth login，并用 profile use 选择账号；完成后返回 WorkBuddy 重新连接。');process.exitCode=1\"",
-    "win32": "node -e \"console.error('请先在交互终端执行：npx --yes zentao-cli@0.4.0 --config ~/.config/zentao/workbuddy.json auth login，并用 profile use 选择账号；完成后返回 WorkBuddy 重新连接。');process.exitCode=1\""
+    "darwin": "zentao --config \"~/.config/zentao/workbuddy.json\" --timeout 5000 --deadline 290000 auth login --web --no-open --select",
+    "linux": "zentao --config \"~/.config/zentao/workbuddy.json\" --timeout 5000 --deadline 290000 auth login --web --no-open --select",
+    "win32": "zentao.cmd --config \"~/.config/zentao/workbuddy.json\" --timeout 5000 --deadline 290000 auth login --web --no-open --select"
   },
+  "authWaitForExit": true,
+  "authUrlDomain": "127.0.0.1",
   "status": {
-    "darwin": "zentao --config \"~/.config/zentao/workbuddy.json\" auth status --format=json",
-    "linux": "zentao --config \"~/.config/zentao/workbuddy.json\" auth status --format=json",
-    "win32": "zentao.cmd --config \"~/.config/zentao/workbuddy.json\" auth status --format=json"
+    "darwin": "zentao --config \"~/.config/zentao/workbuddy.json\" --timeout 2500 --deadline 8000 --no-input auth status --verify --format=json",
+    "linux": "zentao --config \"~/.config/zentao/workbuddy.json\" --timeout 2500 --deadline 8000 --no-input auth status --verify --format=json",
+    "win32": "zentao.cmd --config \"~/.config/zentao/workbuddy.json\" --timeout 2500 --deadline 8000 --no-input auth status --verify --format=json"
   },
   "statusMatch": "\"ok\"\\s*:\\s*true",
   "unAuth": {
-    "darwin": "node -e \"require('node:fs').rmSync(require('node:path').join(require('node:os').homedir(),'.config','zentao','workbuddy.json'),{force:true});console.log('已清理 WorkBuddy 禅道登录记录')\"",
-    "linux": "node -e \"require('node:fs').rmSync(require('node:path').join(require('node:os').homedir(),'.config','zentao','workbuddy.json'),{force:true});console.log('已清理 WorkBuddy 禅道登录记录')\"",
-    "win32": "node -e \"require('node:fs').rmSync(require('node:path').join(require('node:os').homedir(),'.config','zentao','workbuddy.json'),{force:true});console.log('已清理 WorkBuddy 禅道登录记录')\""
+    "darwin": "zentao --config \"~/.config/zentao/workbuddy.json\" --timeout 5000 --deadline 25000 --no-input auth logout --all --revoke --format=json",
+    "linux": "zentao --config \"~/.config/zentao/workbuddy.json\" --timeout 5000 --deadline 25000 --no-input auth logout --all --revoke --format=json",
+    "win32": "zentao.cmd --config \"~/.config/zentao/workbuddy.json\" --timeout 5000 --deadline 25000 --no-input auth logout --all --revoke --format=json"
+  },
+  "versionCheck": {
+    "command": {
+      "darwin": "zentao --version",
+      "linux": "zentao --version",
+      "win32": "zentao.cmd --version"
+    },
+    "minVersion": "0.4.0"
   },
   "env": {
     "ZENTAO_URL": "",

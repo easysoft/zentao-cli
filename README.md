@@ -187,7 +187,7 @@ $ pnpm install -g zentao-cli && zentao auth login && zentao skill install all
 
 安装技能后即可在对应 Agent 工具中使用禅道 CLI 技能。
 
-WorkBuddy 的 CLI + Skill 连接器资源包使用 `bun run build:workbuddy` 生成，提交方式与首次终端登录限制见 [连接器说明](./connectors/workbuddy/README.md)。
+WorkBuddy 的 CLI + Skill 连接器使用本机浏览器登录、在线状态检查和远端会话撤销。`bun run build:workbuddy` 从 npm 安装并验证目标版本后生成提交包；本地发布前验证使用 `bun run build:workbuddy --local`。两者需要 Node.js 22，详见 [连接器说明](./connectors/workbuddy/README.md)。
 
 ```txt
 禅道中有哪些产品？
