@@ -88,7 +88,7 @@ MCP 保留 structuredContent/outputSchema 与执行时策略检查。知识 POST
 
 ## 覆盖范围
 
-开发版本 CLI **0.4.0** / SDK **0.8.2**，9 个内置一级命令、42 个模块、361 个业务动作。数量、参数和实际 Commander 命令来自同一注册表。
+开发版本 CLI **0.4.0** / SDK **0.8.4**，9 个内置一级命令、42 个模块、361 个业务动作。数量、参数和实际 Commander 命令来自同一注册表。
 
 <a id="global-options"></a>
 
