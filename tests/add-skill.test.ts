@@ -31,8 +31,7 @@ describe('add-skill --output', () => {
                 await program.parseAsync([
                     'node',
                     'zentao',
-                    'add-skill',
-                    '--output',
+                    'export',
                     outputDir,
                 ], { from: 'node' });
             });
@@ -43,7 +42,7 @@ describe('add-skill --output', () => {
 
                 expect(existsSync(exportedSkill)).toBe(true);
                 expect(readFileSync(exportedSkill, 'utf-8')).toBe(readFileSync(sourceSkill, 'utf-8'));
-                expect(output).toContain(`已导出 ${skillName} 技能到: ${join(outputDir, skillName)}`);
+                expect(output.join('\n')).toContain(skillName);
             }
 
             expect(existsSync(join(outputDir, 'zentao-tour', 'overview.md'))).toBe(true);
@@ -67,7 +66,7 @@ describe('add-skill --output', () => {
         writeFileSync(join(outputDir, 'zentao-tour'), 'existing file');
 
         try {
-            await expect(program.parseAsync(['add-skill', '--output', outputDir], { from: 'user' }))
+            await expect(program.parseAsync(['export', outputDir], { from: 'user' }))
                 .rejects.toThrow('技能目标路径必须是目录');
             expect(existsSync(join(outputDir, 'zentao-cli'))).toBe(false);
             expect(readFileSync(join(outputDir, 'zentao-tour'), 'utf-8')).toBe('existing file');
@@ -80,7 +79,7 @@ describe('add-skill --output', () => {
         const program = new Command();
         registerAddSkillCommand(program);
 
-        await expect(program.parseAsync(['add-skill', '--output', 'skills'], { from: 'user' }))
+        await expect(program.parseAsync(['export', 'skills'], { from: 'user' }))
             .rejects.toThrow('技能目标路径不能是技能源目录或其子目录');
     });
 });

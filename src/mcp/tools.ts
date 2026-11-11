@@ -1,4 +1,6 @@
 import { brandText } from '../brand.js';
+import { findRemoteUser } from '../auth/user.js';
+import { actionContract, actionIsReadOnly } from '../modules/contract.js';
 import { z } from 'zod';
 import { request } from 'zentao-api';
 import { getModuleActionParams } from '../modules/helper.js';
@@ -23,9 +25,7 @@ export interface McpToolOptions {
 
 const LOCAL_FILE_UPLOAD_UNAVAILABLE = 'HTTP MCP 不支持通过本地路径上传服务端文件，请使用本地 CLI 或 stdio MCP';
 
-function isReadAction(action: ModuleAction): boolean {
-    return (action.type === 'list' || action.type === 'get') && (action.method ?? 'get').toLowerCase() === 'get';
-}
+function isReadAction(action: ModuleAction): boolean { return actionIsReadOnly(action); }
 
 function isActionAvailable(action: ModuleAction, options: McpToolOptions): boolean {
     return (!options.readOnly || isReadAction(action))
@@ -103,7 +103,7 @@ interface ToolInput {
 }
 
 async function handleProfileTool(auth: AuthProvider, signal?: AbortSignal): Promise<CallToolResult> {
-    const { client, identity: profile } = await auth.getContext();
+    const { client, identity: profile } = await auth.getContext(signal);
     if (profile.account === undefined) {
         return toolResult({
             server: profile.server,
@@ -114,26 +114,7 @@ async function handleProfileTool(auth: AuthProvider, signal?: AbortSignal): Prom
         });
     }
     const scopedClient = withRequestSignal(client, signal);
-    let user: Record<string, unknown> | undefined;
-    let previousPage: string | undefined;
-    for (let pageID = 1; ; pageID++) {
-        const response = await request('user/list', {
-            browseType: 'inside', orderBy: 'id_asc', recPerPage: 100, pageID,
-            filters: [{ field: 'account', operator: '=', value: profile.account }],
-        }, { client: scopedClient, throwOnFail: true });
-        const users = Array.isArray(response.data) ? response.data as Record<string, unknown>[] : [];
-        user = users.find(item => item.account === profile.account);
-        if (user || !users.length) break;
-        // Older servers may ignore filters; continue paging without silently truncating.
-        const page = JSON.stringify(users.map(item => [item.id, item.account]));
-        if (page === previousPage || (response.pager && response.pager.page !== pageID)) {
-            throw new ZentaoError('E2008', { url: profile.server, status: '', serverResponse: '用户列表分页未向前推进，无法确认当前用户详情' });
-        }
-        previousPage = page;
-        if (response.pager
-            ? pageID * response.pager.recPerPage >= response.pager.total
-            : users.length < 100) break;
-    }
+    const { user } = await findRemoteUser(scopedClient, profile.account);
     const identity = {
         account: profile.account,
         server: profile.server,
@@ -173,7 +154,7 @@ async function handleModuleTool(
         }
     }
     const params = normalizeToolParams(mod, action, input);
-    const { client, config } = await auth.getContext();
+    const { client, config } = await auth.getContext(signal);
     const actionName = input.action;
 
     const opts: ModuleActionOptions = {
@@ -240,13 +221,7 @@ export function registerModuleTools(server: McpServer, auth: AuthProvider, optio
                 const definition = getAction(mod, action);
                 if (!definition) throw new ZentaoError('E2005', { module: mod.name });
                 return toolResult({
-                    module: mod.name,
-                    action: definition.name,
-                    display: definition.display,
-                    type: definition.type,
-                    path: definition.path,
-                    minVersion: definition.minVersion,
-                    parameters: getModuleActionParams(mod.name, definition.name),
+                    ...actionContract(mod, definition),
                     available: selectedModules.some(selected => selected.name === mod.name) && isActionAvailable(definition, options),
                     ...(options.allowLocalFiles === false && definition.requestBody?.mediaType === 'multipart/form-data'
                         ? { unavailableReason: LOCAL_FILE_UPLOAD_UNAVAILABLE } : {}),
@@ -293,7 +268,7 @@ export function registerModuleTools(server: McpServer, auth: AuthProvider, optio
     );
 
     for (const source of new Set(selectedModules)) {
-        const actions = options.readOnly ? source.actions.filter(isReadAction) : source.actions;
+        const actions = source.actions.filter(action => isActionAvailable(action, options));
         const groups = options.splitTools
             ? [{ suffix: '_read', actions: actions.filter(isReadAction) }, { suffix: '_write', actions: actions.filter(action => !isReadAction(action)) }]
             : [{ suffix: '', actions }];

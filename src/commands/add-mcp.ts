@@ -1,4 +1,6 @@
 import { brandText } from '../brand.js';
+import { commandSignal } from '../utils/lifecycle.js';
+import { emitResult } from '../utils/output.js';
 import { Command } from 'commander';
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -111,7 +113,7 @@ function writePrivateFile(filePath: string, content: string): void {
 
 /* ── Credential Resolution ── */
 
-async function resolveCredentials(options: { insecure?: boolean; timeout?: number }): Promise<McpCredentials> {
+async function resolveCredentials(options: { insecure?: boolean; timeout?: number; profile?: string }): Promise<McpCredentials> {
     const { profile } = await ensureAuth(options);
     return { url: profile.server, account: profile.account, token: profile.token };
 }
@@ -120,9 +122,7 @@ async function resolveCredentials(options: { insecure?: boolean; timeout?: numbe
 
 async function promptAgentSelection(): Promise<string[]> {
     if (!process.stdin.isTTY || !process.stderr.isTTY) {
-        throw new Error(
-            `未指定 agent，请在交互终端中选择，或显式传入: ${AGENT_NAMES.join('|')}|all`,
-        );
+        throw new ZentaoError('E2009', { option: 'agent', reason: `未指定 agent，请显式传入: ${AGENT_NAMES.join('|')}|all` });
     }
 
     const choices = [...AGENT_NAMES, 'all'];
@@ -140,10 +140,10 @@ async function promptAgentSelection(): Promise<string[]> {
     });
 
     try {
-        const answer = await rl.question(`请输入编号 (1-${choices.length}): `);
+        const answer = await rl.question(`请输入编号 (1-${choices.length}): `, { signal: commandSignal() });
         const idx = Number(answer.trim());
         if (!Number.isInteger(idx) || idx < 1 || idx > choices.length) {
-            throw new Error(`无效选择: ${answer || '(empty)'}`);
+            throw new ZentaoError('E2009', { option: 'agent', reason: `无效选择: ${answer || '(empty)'}` });
         }
         const selected = choices[idx - 1];
         return selected === 'all' ? [...AGENT_NAMES] : [selected];
@@ -166,7 +166,7 @@ function resolveAgents(agent: string): string[] {
 function buildStandardEntry(creds: McpCredentials) {
     return {
         command: brandText('zentao'),
-        args: ['mcp'],
+        args: ['mcp', 'serve'],
         env: {
             [brandText('ZENTAO_URL')]: creds.url,
             [brandText('ZENTAO_ACCOUNT')]: creds.account,
@@ -194,7 +194,7 @@ function writeOpenCodeConfig(configPath: string, creds: McpCredentials): void {
     const config = readJsonFile(configPath);
     deepSet(config, ['mcp', MCP_NAME], {
         type: 'local',
-        command: [brandText('zentao'), 'mcp'],
+        command: [brandText('zentao'), 'mcp', 'serve'],
         environment: {
             [brandText('ZENTAO_URL')]: creds.url,
             [brandText('ZENTAO_ACCOUNT')]: creds.account,
@@ -247,7 +247,7 @@ function writeCodexToml(configPath: string, creds: McpCredentials): void {
         const section = [
             `[mcp_servers.${MCP_NAME}]`,
             brandText('command = "zentao"'),
-            'args = ["mcp"]',
+            'args = ["mcp", "serve"]',
             brandText`env = { ZENTAO_URL = ${JSON.stringify(creds.url)}, ZENTAO_ACCOUNT = ${JSON.stringify(creds.account)}, ZENTAO_TOKEN = ${JSON.stringify(creds.token)} }`,
         ].join(newline) + newline;
 
@@ -258,20 +258,9 @@ function writeCodexToml(configPath: string, creds: McpCredentials): void {
     }
 }
 
-function printCherryStudioConfig(silent: boolean): void {
-    if (silent) return;
-    process.stderr.write('\nCherry Studio 不支持文件配置，请在 Settings > MCP Server 中手动添加（运行时复用当前登录）:\n\n');
-    console.log(JSON.stringify({
-        name: MCP_NAME,
-        type: 'stdio',
-        command: brandText('zentao'),
-        args: ['mcp'],
-    }, null, 2));
-}
-
 /* ── Main Install Logic ── */
 
-function installMcp(agent: string, creds: McpCredentials, silent: boolean): void {
+function installMcp(agent: string, creds: McpCredentials): void {
     const target = AGENT_TARGETS[agent];
 
     switch (target.format) {
@@ -288,35 +277,32 @@ function installMcp(agent: string, creds: McpCredentials, silent: boolean): void
             writeCodexToml(target.configPath, creds);
             break;
         case 'cherry-studio':
-            printCherryStudioConfig(silent);
             return;
     }
 
-    if (!silent) {
-        console.log(`已配置 MCP 到 ${target.label}: ${tildeDisplay(target.configPath)}`);
-    }
 }
 
 /* ── Command Registration ── */
 
 /** 注册 `zentao add-mcp`：配置禅道 MCP 服务到 AI Agent */
-export function registerAddMcpCommand(program: Command): void {
+export function registerAddMcpCommand(program: Command, name = 'install'): void {
     program
-        .command('add-mcp')
+        .command(name)
         .description(brandText('配置禅道 MCP 服务到 AI Agent'))
         .argument('[agent]', `目标 Agent (${AGENT_NAMES.join('|')}|all)`)
         .action(async (agent?: string) => {
-            const globalOpts = program.opts() as GlobalOptions;
-            const silent = !!globalOpts.silent;
+            const globalOpts = program.optsWithGlobals() as GlobalOptions;
 
+            if (!agent && globalOpts.input === false) throw new ZentaoError('E2009', { option: 'agent', reason: '--no-input 时必须指定安装目标' });
             const agents = agent ? resolveAgents(agent) : await promptAgentSelection();
             const creds = await resolveCredentials({
                 insecure: globalOpts.insecure,
                 timeout: globalOpts.timeout,
+                profile: globalOpts.profile,
             });
 
-            for (const a of agents) {
-                installMcp(a, creds, silent);
-            }
+            for (const a of agents) installMcp(a, creds);
+            emitResult(agents.map(agent => ({ agent, path: AGENT_TARGETS[agent].configPath,
+                ...(agent === 'cherry-studio' ? { manual: { name: MCP_NAME, type: 'stdio', command: brandText('zentao'), args: ['mcp', 'serve'] } } : {}) })), globalOpts);
         });
 }

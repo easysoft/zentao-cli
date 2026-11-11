@@ -1,12 +1,14 @@
+import { resolveAuthSource } from '../auth/flow.js';
 import { Command } from 'commander';
-import { getCurrentProfile, getProfileConfig, setProfileConfig } from '../config/store.js';
-import { VALID_CONFIG_KEYS } from '../config/defaults.js';
+import { getCurrentProfile, getProfileConfig, setProfileConfig, findProfileByKey, getConfigPath } from '../config/store.js';
+import { emitResult } from '../utils/output.js';
+import { DEFAULT_CONFIG, VALID_CONFIG_KEYS } from '../config/defaults.js';
 import { ZentaoError } from '../errors.js';
 import { formatJson } from '../utils/format.js';
 import type { GlobalOptions } from '../types/index.js';
 
 const BOOLEAN_CONFIG_KEYS = new Set([
-    'insecure', 'htmlToMarkdown', 'batchFailFast', 'silent', 'jsonPretty',
+    'insecure', 'htmlToMarkdown', 'batchFailFast', 'jsonPretty',
 ]);
 
 function invalidConfigValue(key: string, value: string): never {
@@ -15,7 +17,7 @@ function invalidConfigValue(key: string, value: string): never {
 
 function parseConfigValue(key: string, value: string): unknown {
     if (key === 'defaultOutputFormat') {
-        return ['markdown', 'json', 'raw'].includes(value) ? value : invalidConfigValue(key, value);
+        return ['table', 'markdown', 'json', 'raw'].includes(value) ? value : invalidConfigValue(key, value);
     }
     if (BOOLEAN_CONFIG_KEYS.has(key)) {
         if (value === 'true') return true;
@@ -45,65 +47,36 @@ function parseConfigValue(key: string, value: string): unknown {
     return invalidConfigValue(key, value);
 }
 
-/** 注册 `zentao config get|set`：读写当前 Profile 下的用户偏好 */
+/** Configuration writes patch one field in the selected saved profile. */
 export function registerConfigCommand(program: Command): void {
-    const configCmd = program
-        .command('config')
-        .description('管理用户配置');
-
-    configCmd
-        .command('get')
-        .description('查看配置')
-        .argument('[key]', '配置项名称')
-        .action((key: string | undefined) => {
-            const globalOpts = program.opts() as GlobalOptions;
-            const profile = getCurrentProfile();
-            if (!profile) throw new ZentaoError('E1006');
-
-            const config = getProfileConfig(profile);
-
-            if (key) {
-                if (!VALID_CONFIG_KEYS.includes(key)) {
-                    throw new ZentaoError('E2004', { field: key, value: '' });
-                }
-                const value = config[key as keyof typeof config];
-                if (globalOpts.format === 'json' || globalOpts.format === 'raw') {
-                    console.log(formatJson({ [key]: value }));
-                } else {
-                    console.log(typeof value === 'object' ? formatJson(value) : String(value));
-                }
-                return;
-            }
-
-            if (globalOpts.format === 'json' || globalOpts.format === 'raw') {
-                console.log(formatJson(config));
-            } else {
-                for (const [k, v] of Object.entries(config)) {
-                    console.log(`${k}: ${JSON.stringify(v)}`);
-                }
-            }
-        });
-
-    configCmd
-        .command('set')
-        .description('设置配置')
-        .argument('<key>', '配置项名称')
-        .argument('<value>', '配置值')
-        .action((key: string, value: string) => {
-            const globalOpts = program.opts() as GlobalOptions;
-            const profile = getCurrentProfile();
-            if (!profile) throw new ZentaoError('E1006');
-
-            if (!VALID_CONFIG_KEYS.includes(key)) {
-                throw new ZentaoError('E2004', { field: key, value });
-            }
-
-            const parsed = parseConfigValue(key, value);
-
-            setProfileConfig(profile, key, parsed);
-
-            if (!globalOpts.silent) {
-                console.log(`已设置 ${key} = ${JSON.stringify(parsed)}`);
-            }
-        });
+    const config = program.command('config').description('查询配置来源并修改已保存账号的偏好');
+    config.action(() => config.outputHelp());
+    const selected = (cmd: Command) => {
+        try { return resolveAuthSource(cmd.optsWithGlobals().profile).profile; }
+        catch (error) {
+            if (error instanceof ZentaoError && error.code === '1006') return undefined;
+            throw error;
+        }
+    };
+    const check = (key: string) => { if (!VALID_CONFIG_KEYS.includes(key)) throw new ZentaoError('E2004', { field: key, value: '' }); };
+    config.command('path').description('显示配置文件路径').action((_opts, cmd: Command) => emitResult({ path: getConfigPath() }, cmd.optsWithGlobals()));
+    config.command('list').description('列出有效配置及来源').action((_opts, cmd: Command) => {
+        const profile = selected(cmd);
+        const values = profile ? getProfileConfig(profile) : DEFAULT_CONFIG;
+        emitResult(Object.entries(DEFAULT_CONFIG).map(([key]) => ({ key, value: values[key as keyof typeof values],
+            source: profile?.config && Object.hasOwn(profile.config, key) ? 'profile' : 'default' })), cmd.optsWithGlobals());
+    });
+    config.command('get').argument('<key>').description('查看一个配置项').action((key: string, _opts, cmd: Command) => {
+        check(key); const profile = selected(cmd); const values = profile ? getProfileConfig(profile) : DEFAULT_CONFIG;
+        emitResult({ key, value: values[key as keyof typeof values], source: profile?.config && Object.hasOwn(profile.config, key) ? 'profile' : 'default' }, cmd.optsWithGlobals());
+    });
+    config.command('set').argument('<key>').argument('<value>').description('修改一个配置项').action((key: string, value: string, _opts, cmd: Command) => {
+        check(key); const parsed = parseConfigValue(key, value); const profile = selected(cmd);
+        if (!profile) throw new ZentaoError('E1006');
+        setProfileConfig(profile, key, parsed); emitResult({ key, value: parsed, source: 'profile' }, cmd.optsWithGlobals());
+    });
+    config.command('unset').argument('<key>').description('恢复默认值').action((key: string, _opts, cmd: Command) => {
+        check(key); const profile = selected(cmd); if (!profile) throw new ZentaoError('E1006');
+        setProfileConfig(profile, key, undefined); emitResult({ key, value: DEFAULT_CONFIG[key as keyof typeof DEFAULT_CONFIG], source: 'default' }, cmd.optsWithGlobals());
+    });
 }

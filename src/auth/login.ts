@@ -1,4 +1,5 @@
 import { brandText } from '../brand.js';
+import { findRemoteUser } from './user.js';
 import { ZentaoClient, createClient, getServerConfig } from '../api/index.js';
 import type { ApiResponse, ServerConfig } from '../types/index.js';
 import { ZentaoError, mapSdkError } from '../errors.js';
@@ -33,8 +34,10 @@ export async function login(
     const originalFetch = client.fetch;
     if (options?.signal) {
         // This client belongs to this login attempt; cover every SDK request, including config loading.
-        client.fetch = (url, request, token, fetchOptions) => originalFetch.call(client, url,
-            { ...request, signal: options.signal }, token, fetchOptions);
+        client.fetch = (url, request, token, fetchOptions) => {
+            if (options.signal?.aborted) throw new ZentaoError('E5003');
+            return originalFetch.call(client, url, { ...request, signal: options.signal }, token, fetchOptions);
+        };
     }
 
     try {
@@ -72,14 +75,8 @@ export async function verifyToken(
 ): Promise<{ serverConfig: ServerConfig; user?: Record<string, unknown> }> {
     try {
         const serverConfig = await getServerConfig(client);
-        const usersResp = await client.get<ApiResponse>('/users', {
-            query: { browseType: 'inside', recPerPage: 100 },
-        });
-        const users = usersResp.users as Array<Record<string, unknown>> | undefined;
-        if (!users?.length) {
-            throw new ZentaoError('E1004');
-        }
-        const user = users.find((u) => u.account === account);
+        const { user, hadUsers } = await findRemoteUser(client, account);
+        if (!hadUsers) throw new ZentaoError('E1004');
         return { serverConfig, user };
     } catch (error) {
         throw mapSdkError(error);

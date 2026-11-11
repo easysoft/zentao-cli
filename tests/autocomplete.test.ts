@@ -1,62 +1,20 @@
-import { describe, expect, test } from 'bun:test';
-import { Command } from 'commander';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { AGENT_NAMES as MCP_AGENT_NAMES } from '../src/commands/add-mcp.js';
-import { AGENT_NAMES as SKILL_AGENT_NAMES } from '../src/commands/add-skill.js';
-import { generateCompletionScript } from '../src/commands/autocomplete.js';
-import { registerModuleCommands } from '../src/commands/register-modules.js';
-import { registerMcpCommand } from '../src/commands/mcp.js';
+import { expect, test } from 'bun:test';
+import { generateCompletionScript, completionCandidates } from '../src/commands/autocomplete.js';
+import { createProgram } from '../src/cli.js';
+import { runCliWithoutAuth } from './helpers.js';
 
-function makeProgram(): Command {
-    const program = new Command()
-        .version('1.0.0')
-        .helpOption('-h, --help')
-        .option('--config <file>')
-        .option('--machine-readable');
-    for (const name of ['help', 'upgrade']) program.command(name);
-    registerMcpCommand(program);
-    registerModuleCommands(program);
-    return program;
-}
-
-describe('autocomplete scripts', () => {
-    test('writes completion under XDG_CONFIG_HOME and quotes its source path', async () => {
-        const directory = mkdtempSync(join(tmpdir(), 'zentao-completion-'));
-        const xdg = join(directory, "config's directory");
-        const file = join(xdg, 'zentao', '.zentao-completion.bash');
-        try {
-            const child = Bun.spawn({
-                cmd: [process.execPath, '--no-env-file', 'src/index.ts', '--config', join(directory, 'other.json'), 'autocomplete', 'bash'],
-                env: { ...process.env, XDG_CONFIG_HOME: xdg },
-                stdin: 'ignore', stdout: 'pipe', stderr: 'pipe',
-            });
-            const [stdout, stderr, exitCode] = await Promise.all([
-                new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited,
-            ]);
-            expect(exitCode).toBe(0);
-            expect(stderr).toBe('');
-            expect(readFileSync(file, 'utf8')).toContain('# bash completion for zentao');
-            expect(readFileSync(file, 'utf8')).toContain('mcp-server');
-            expect(stdout).toContain(`source '${file.replaceAll("'", "'\\''")}'`);
-        } finally {
-            rmSync(directory, { recursive: true, force: true });
-        }
-    });
-
-    for (const shell of ['bash', 'zsh', 'fish']) {
-        test(`${shell} uses registered commands, global options, and agent names`, () => {
-            const script = generateCompletionScript(shell, makeProgram());
-
-            for (const value of [
-                'help', 'mcp', 'mcp-server', 'upgrade', '-h', '--help', '-V', '--version', '--config', '--machine-readable',
-                ...SKILL_AGENT_NAMES, ...MCP_AGENT_NAMES,
-                'getGrades', 'createMyDoc', 'updateLib', 'projectExecutions', 'my', 'todos',
-            ]) {
-                expect(script).toContain(value);
-            }
-            expect(script).toContain(shell === 'fish' ? 'productplan plan' : 'productplan|plan');
-        });
-    }
+test.each(['bash', 'zsh', 'fish'])('%s completion is an offline stdout artifact', async shell => {
+    const result = await runCliWithoutAuth(['completion', shell]);
+    expect(result.exitCode).toBe(0); expect(result.stderr).toBe('');
+    expect(result.stdout).toBe(generateCompletionScript(shell));
+    expect(result.stdout).toContain('zentao completion candidates');
+});
+test('completion discovers actions and action options with preceding global flags', () => {
+    const program = createProgram();
+    expect(completionCandidates(program, ['--config', '/tmp/example.json', 'doc', 'create-'])).toContain('create-my-doc');
+    expect(completionCandidates(program, ['--profile=admin', 'doc', 'create-my-doc', '--space'])).toEqual(['--space-id']);
+    expect(completionCandidates(program, ['mcp', ''])).toContain('serve');
+    expect(completionCandidates(program, ['mcp-'])).toContain('mcp-server');
+    expect(completionCandidates(program, ['mcp-server', '--u'])).toContain('--url');
+    expect(completionCandidates(program, ['--format', 'j'])).toEqual(['json']);
 });

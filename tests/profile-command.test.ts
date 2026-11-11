@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { mockProfile, stripAnsi } from './helpers.js';
 
-describe('profile --effective', () => {
+describe('auth status and profile isolation', () => {
     let directory: string;
     let configFile: string;
 
@@ -18,9 +18,9 @@ describe('profile --effective', () => {
 
     afterEach(() => rmSync(directory, { recursive: true, force: true }));
 
-    async function runProfile(args = ['--effective', '--format=json'], env: NodeJS.ProcessEnv = {}) {
+    async function runProfile(args = ['auth', 'status', '--format=json'], env: NodeJS.ProcessEnv = {}) {
         const child = Bun.spawn({
-            cmd: [process.execPath, '--no-env-file', 'src/index.ts', '--config', configFile, 'profile', ...args],
+            cmd: [process.execPath, '--no-env-file', 'src/index.ts', '--config', configFile, ...args],
             env: { ...process.env, ZENTAO_URL: '', ZENTAO_ACCOUNT: '', ZENTAO_TOKEN: '', ZENTAO_PASSWORD: '', ...env },
             stdin: 'ignore', stdout: 'pipe', stderr: 'pipe',
         });
@@ -46,8 +46,7 @@ describe('profile --effective', () => {
             });
             expect(result.exitCode).toBe(0);
             expect(result.stderr).toBe('');
-            expect(JSON.parse(result.stdout)).toEqual({
-                status: 'success', source: 'environment', server: server.url.toString().replace(/\/$/, ''),
+            expect(JSON.parse(result.stdout).data).toEqual({ source: 'environment', server: server.url.toString().replace(/\/$/, ''),
                 account: 'env-user', credentialType, configFile: null, verified: false,
             });
             expect(requests).toBe(0);
@@ -57,23 +56,20 @@ describe('profile --effective', () => {
         }
     });
 
-    test.each(['json', 'raw', 'markdown'])('reports saved credentials in %s and preserves a read-only file', async (format) => {
+    test.each(['json', 'markdown'])('reports saved credentials in %s and preserves a read-only file', async (format) => {
         if (process.platform !== 'win32') chmodSync(configFile, 0o400);
         const original = readFileSync(configFile, 'utf8');
         const before = statSync(configFile);
-        const result = await runProfile(['--effective', `--format=${format}`], {
+        const result = await runProfile(['auth', 'status', '--profile', mockProfile.account, `--format=${format}`], {
             ZENTAO_URL: 'https://partial.example.com', ZENTAO_TOKEN: 'unused-partial-token',
         });
         expect(result.exitCode).toBe(0);
         expect(result.stderr).toBe('');
         if (format === 'markdown') {
-            expect(result.stdout).toContain('本地 Profile');
             expect(result.stdout).toContain(mockProfile.account);
             expect(result.stdout).toContain(configFile);
-            expect(result.stdout).toContain('尚未进行网络验证');
         } else {
-            expect(JSON.parse(result.stdout)).toEqual({
-                status: 'success', source: 'profile', server: mockProfile.server, account: mockProfile.account,
+            expect(JSON.parse(result.stdout).data).toEqual({ source: 'profile', server: mockProfile.server, account: mockProfile.account,
                 credentialType: 'token', configFile, verified: false,
             });
         }
@@ -86,10 +82,29 @@ describe('profile --effective', () => {
 
     test('rejects combining inspection and account switching without changing config', async () => {
         const original = readFileSync(configFile, 'utf8');
-        const result = await runProfile(['--effective', mockProfile.account, '--format=json']);
-        expect(result.exitCode).toBe(1);
+        const result = await runProfile(['auth', 'status', mockProfile.account, '--format=json']);
+        expect(result.exitCode).toBe(2);
         expect(JSON.parse(result.stderr).error.code).toBe('2009');
         expect(readFileSync(configFile, 'utf8')).toBe(original);
+    });
+
+    test('partial environment fails instead of falling back', async () => {
+        const result = await runProfile(undefined, { ZENTAO_URL: 'https://partial.example.com' });
+        expect(result.exitCode).toBe(1);
+        expect(JSON.parse(result.stderr).error.code).toBe('1001');
+    });
+
+    test('environment config reads use defaults and raw mutations are rejected before writing', async () => {
+        const original = readFileSync(configFile, 'utf8');
+        const raw = await runProfile(['config', 'set', 'timeout', '5000', '--format=raw']);
+        expect(raw.exitCode).toBe(2);
+        expect(readFileSync(configFile, 'utf8')).toBe(original);
+        writeFileSync(configFile, '{ invalid local config');
+        const result = await runProfile(['config', 'get', 'timeout', '--format=json'], {
+            ZENTAO_URL: 'https://env.example.com', ZENTAO_ACCOUNT: 'env-user', ZENTAO_TOKEN: 'token',
+        });
+        expect(result.exitCode, result.stderr).toBe(0);
+        expect(JSON.parse(result.stdout).data).toEqual({ key: 'timeout', value: 10000, source: 'default' });
     });
 
     test('reports missing credentials without creating a config file', async () => {
@@ -101,10 +116,10 @@ describe('profile --effective', () => {
     });
 
     test('keeps the local listing separate and preserves config errors', async () => {
-        const listed = await runProfile(['--format=json'], {
+        const listed = await runProfile(['profile', 'list', '--format=json'], {
             ZENTAO_URL: 'https://env.example.com', ZENTAO_ACCOUNT: 'env-user', ZENTAO_TOKEN: 'private-token',
         });
-        expect(JSON.parse(listed.stdout).profiles).toEqual([{
+        expect(JSON.parse(listed.stdout).data).toEqual([{
             key: `${mockProfile.account}@${mockProfile.server}`, server: mockProfile.server,
             account: mockProfile.account, current: true,
         }]);

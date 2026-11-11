@@ -28,9 +28,9 @@ describe('config set validation', () => {
 
     async function setConfig(key: string, value: string): Promise<number> {
         const proc = Bun.spawn({
-            cmd: [process.execPath, 'src/index.ts', '--config', configFile, 'config', 'set', key, value],
+            cmd: [process.execPath, '--no-env-file', 'src/index.ts', '--config', configFile, 'config', 'set', key, value],
             cwd: process.cwd(),
-            env: process.env,
+            env: { ...process.env, ZENTAO_URL: '', ZENTAO_ACCOUNT: '', ZENTAO_TOKEN: '', ZENTAO_PASSWORD: '' },
             stdout: 'ignore',
             stderr: 'ignore',
         });
@@ -44,7 +44,7 @@ describe('config set validation', () => {
     });
 
     test('rejects invalid values without changing the profile', async () => {
-        expect(await setConfig('insecure', 'yes')).toBe(1);
+        expect(await setConfig('insecure', 'yes')).toBe(2);
         const data = JSON.parse(readFileSync(configFile, 'utf-8'));
         expect(data.profiles[0].config).toBeUndefined();
     });

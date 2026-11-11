@@ -7,7 +7,7 @@
 已有产品时先复用用户选定的范围；需要候选时展示一页：
 
 ```bash
-zentao product --pick=id,name --page=1 --recPerPage=10
+zentao product list --fields=id,name --page=1 --page-size=10
 ```
 
 只想聊点子时先聊，无需建产品。用户没有想法，可给桌面便签、内部表单等两三个贴近背景的例子。名称与简介可从用户原话整理；明确要创建后再执行：
@@ -23,7 +23,7 @@ zentao product create --name="<名称>" --desc="<简介>"
 挑一个具体场景聊目标用户、触发条件、想完成的事和验收结果。把原话整理成可检查的需求，保留用户给定的 MVP 边界；优先级给出建议及理由，不自行扩大范围。
 
 ```bash
-zentao story create --productID=<产品ID> --title="<标题>" --pri=<1-4> --spec="<场景与需求描述>" --verify="<验收标准>"
+zentao story create --product-id=<产品ID> --title="<标题>" --pri=<1-4> --spec="<场景与需求描述>" --verify="<验收标准>"
 ```
 
 在用户授权范围内写入；已批准一组需求时可以顺序完成，不要求逐条重新确认。反馈只指出实际内容，例如“这条把操作和预期结果都写上了”，不固定套用夸奖。创建需求并不等于通过评审或批准开发，实际状态以返回结果为准。
@@ -37,7 +37,7 @@ zentao story create --productID=<产品ID> --title="<标题>" --pri=<1-4> --spec
 明确用户选中的需求、计划名和日期后创建：
 
 ```bash
-zentao productplan create --productID=<产品ID> --title="<计划名>" --begin=<YYYY-MM-DD> --end=<YYYY-MM-DD>
+zentao productplan create --product-id=<产品ID> --title="<计划名>" --begin=<YYYY-MM-DD> --end=<YYYY-MM-DD>
 ```
 
 再将已选需求安排进计划：
@@ -49,13 +49,13 @@ zentao story update <storyID> --plan=<计划ID>
 更新前留意原有计划，避免未经授权改动已排期的需求；创建计划成功不等于关联全部成功。完成后按实际返回结果回顾，需要汇总时分页查询并按计划 ID 筛选：
 
 ```bash
-zentao story --product=<产品ID> --browseType=allstory --pick=id,title,pri,status,plan --page=<页码> --recPerPage=100 --format=json
+zentao story list --product=<产品ID> --browse-type=allstory --fields=id,title,pri,status,plan --page=<页码> --page-size=100 --format=json
 ```
 
 仅查看本次几条需求时，也可按已知 ID 查询，无需把整个产品拉一遍。不要因为当前页没出现刚创建的需求就重复创建。
 
 ## 继续探索或收尾
 
-用户问任务分派时转到 [项目经理视角](pjm.md)。问更高层需求时，可查看 `zentao epic --help`、`zentao requirement --help`；问发布时查看 `zentao release --help`，按实际业务选择一个入口，不自动把相关模块全走一遍。
+用户问任务分派时转到 [项目经理视角](pjm.md)。问更高层需求时，可查看 `zentao epic --help`、`zentao requirement --help`；问发布时查看 `zentao release list --help`，按实际业务选择一个入口，不自动把相关模块全走一遍。
 
 结束时说明已确认的产品、需求和计划关联，以及尚未写入或失败的部分，按 [收尾规则](../SKILL.md) 保留数据。

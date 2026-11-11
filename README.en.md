@@ -11,9 +11,9 @@ A command-line tool for ZenTao that lets you access and manage ZenTao data from 
 * Built on ZenTao RESTful API 2.0, covering more than 40 modules and 300 API operations, with version compatibility checks before each request
 * Run without installation using `npx zentao-cli`
 * Log in through your browser, store only tokens instead of passwords, and switch between multiple accounts
-* Select fields, filter and sort data, and automatically convert HTML to Markdown
+* Select fields, filter and sort data, and explicitly convert HTML to Markdown
 * Built for AI agents, with comprehensive help and Markdown and JSON output
-* Install skills into AI agents with `zentao add-skill`
+* Install skills into AI agents with `zentao skill install`
 * Run a local stdio or remote HTTP MCP service, with each client using its own ZenTao token
 
 ## Requirements
@@ -24,6 +24,8 @@ A command-line tool for ZenTao that lets you access and manage ZenTao data from 
 Some operations require a newer ZenTao version. The CLI checks compatibility and reports any requirements before sending a request. See [API coverage and version compatibility](docs/cli-usage.md#api-覆盖与版本兼容).
 
 ## Quick start
+
+The source includes command changes that have not been released. For installed 0.4.3 packages, follow the local `--help` output.
 
 ```bash
 # Install globally
@@ -38,23 +40,23 @@ npm install -g zentao-cli
 zentao login
 
 # List products
-zentao product
+zentao product list
 ```
 
 In a terminal without a graphical environment, use `zentao login --no-browser` for interactive login. For environment variables, account switching, and logout, see [Authentication](docs/cli-usage.md#用户验证).
 
 ## Common commands
 
-Commands follow the format `zentao <module> [action] [arguments]`. Omit the action to list items, or provide only an ID to view an item's details.
+Commands follow the format `zentao <module> <action> [target] [options]`. Use `list` for lists and `get` for details; omitting the action displays help.
 
 ### Products
 
 ```bash
 # List products
-zentao product
+zentao product list
 
 # View product details
-zentao product 1
+zentao product get 1
 
 # Create a product
 zentao product create --name="New product"
@@ -70,10 +72,10 @@ zentao product delete 1
 
 ```bash
 # List bugs for product #1
-zentao bug --product=1
+zentao bug list --product=1
 
 # View bug details
-zentao bug 329
+zentao bug get 329
 
 # Resolve a bug
 zentao bug resolve 329 --resolution=fixed
@@ -83,29 +85,29 @@ zentao bug resolve 329 --resolution=fixed
 
 ```bash
 # List stories for product #1
-zentao story --product=1
+zentao story list --product=1
 
 # Create a task in execution #10
-zentao task create --name="Implement login" --executionID=10
+zentao task create --name="Implement login" --execution-id=10
 ```
 
 ### Filtering and output formats
 
 ```bash
 # Show only the selected fields
-zentao product --pick=id,name
+zentao product list --fields=id,name
 
 # Filter by a condition
-zentao bug --product=1 --filter 'status=active'
+zentao bug list --product=1 --filter 'status=active'
 
 # Fuzzy search
-zentao story --product=1 --search=login --search-fields=title
+zentao story list --product=1 --search=login --search-fields=title
 
 # Sort by a field
-zentao bug --product=1 --sort=id:desc
+zentao bug list --product=1 --sort=id:desc
 
 # Output JSON for use in scripts
-zentao product --format=json
+zentao product list --format=json
 ```
 
 ### Help
@@ -154,14 +156,14 @@ For full instructions, see [Use ZenTao with agents](docs/use-zentao-in-agents.md
 
 ```bash
 # Install, log in, and install skills (choose the target agent interactively)
-npm install -g zentao-cli && zentao login && zentao add-skill
+npm install -g zentao-cli && zentao login && zentao skill install
 
 # Specify the target agent directly; all installs into every supported agent
-zentao add-skill claude-code
-zentao add-skill all
+zentao skill install claude-code
+zentao skill install all
 
 # Export all built-in skills to a directory
-zentao add-skill --output ./skills
+zentao skill export ./skills
 ```
 
 Supported agents include Claude Code, Cursor, Cherry Studio, Codex, OpenCode, VS Code, Antigravity, and Gemini. After installation, ask your agent questions in natural language:
@@ -174,7 +176,7 @@ Which stories are under development for product xxx?
 What risks are associated with story xxx?
 ```
 
-When an agent starts the login flow, it should use `zentao login --web` and keep the process running until the user finishes authentication in the browser. In CI or containers, you can inject credentials through environment variables or mount a configuration file. The agent can first run `zentao profile --effective --format=json` to confirm which account is in use; the output contains no token or password. See [Credentials for agents, CI, and containers](docs/use-zentao-in-agents.md#agentci-与容器中的凭据).
+When an agent starts the login flow, it should use `zentao login --web` and keep the process running until the user finishes authentication in the browser. In CI or containers, you can inject credentials through environment variables or mount a configuration file. The agent can first run `zentao auth status --format=json` to confirm which account is in use; the output contains no token or password. See [Credentials for agents, CI, and containers](docs/use-zentao-in-agents.md#agentci-与容器中的凭据).
 
 ### Use local MCP
 

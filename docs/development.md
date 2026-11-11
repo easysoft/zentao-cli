@@ -63,7 +63,7 @@ bun run build:sf -- --targets=linux-x64 --outfile ./release/zentao
 bun run build:workbuddy
 ```
 
-WorkBuddy 连接器的提交方式与首次终端登录限制见 [连接器说明](../connectors/workbuddy/README.md)。
+WorkBuddy 连接器的浏览器登录、本地预览与发布前校验见 [连接器说明](../connectors/workbuddy/README.md)。
 
 ## 更多技术文档
 
@@ -74,7 +74,7 @@ bun run scripts/generate-command-reference.ts
 bun run scripts/generate-command-reference.ts --check
 ```
 
-文档开头的用法与场景示例手动维护；生成标记之后的内容来自命令注册、API 参数定义和脚本内的用户说明。HTML 页面模板位于 `scripts/command-reference.template.html`，与 Markdown 共用同一份正文。生成过程只读取离线帮助，不访问禅道服务。
+用法与场景示例维护在 `docs/command-guide.md`；生成标记之后的内容来自共享命令契约与实际 Commander 命令树。HTML 页面模板位于 `scripts/command-reference.template.html`，与 Markdown 共用同一份正文。生成过程只读取离线帮助，不访问禅道服务。
 
 * [技术方案与实现细节](./implementation.md) - 详解内部接口调用规则、验证机制与持久化配置
 * [常见错误排查与参考手册](./errors.md) - 使用命令遇到错误（格式：Exxxx）时进行查阅

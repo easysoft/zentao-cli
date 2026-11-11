@@ -14,12 +14,19 @@ interface McpCommandOptions {
     splitTools?: boolean;
 }
 
-export function registerMcpCommand(program: Command): void {
-    addMcpOptions(program
+export function registerMcpCommand(program: Command): Command {
+    const mcp = addMcpOptions(program
         .command('mcp')
         .description(brandText('启动 MCP 服务，支持本地 stdio 或多客户端 HTTP 访问禅道数据'))
         .option('--transport <type>', '传输方式 (stdio|http)', 'stdio'))
-        .action((options: McpCommandOptions) => runMcpCommand(options, program.opts() as GlobalOptions));
+        .action((options: McpCommandOptions) => runMcpCommand(options, program.optsWithGlobals() as GlobalOptions));
+    addMcpOptions(mcp.command('serve').description('启动 MCP 服务')
+        .option('--transport <type>', '传输方式 (stdio|http)', 'stdio'))
+        .action((_options: McpCommandOptions, command: Command) => {
+            // Commander can consume shared MCP flags on the parent command.
+            const options = command.optsWithGlobals<McpCommandOptions & GlobalOptions>();
+            return runMcpCommand(options, options);
+        });
 
     addMcpOptions(program
         .command('mcp-server')
@@ -30,8 +37,9 @@ export function registerMcpCommand(program: Command): void {
             if (url !== undefined && options.url !== undefined) {
                 throw new ZentaoError('E2009', { option: '--url', reason: '位置参数 URL 与 --url 不能同时提供' });
             }
-            return runMcpCommand({ ...options, url: url ?? options.url, transport: 'http' }, program.opts() as GlobalOptions);
+            return runMcpCommand({ ...options, url: url ?? options.url, transport: 'http' }, program.optsWithGlobals() as GlobalOptions);
         });
+    return mcp;
 }
 
 function addMcpOptions(command: Command): Command {
@@ -48,6 +56,7 @@ async function runMcpCommand(options: McpCommandOptions, globalOpts: GlobalOptio
     const toolOptions = {
         insecure: globalOpts.insecure,
         timeout: globalOpts.timeout,
+        profile: globalOpts.profile,
         readOnly: options.readOnly,
         modules: options.modules,
         splitTools: options.splitTools,

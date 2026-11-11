@@ -32,7 +32,7 @@
     "typecheck": "tsc --noEmit",
     "test": "bun test",
     "coverage": "bun test --coverage",
-    "prepublishOnly": "bun run typecheck && bun test && bun run build && node bin/zentao.js -V",
+    "prepublishOnly": "bun run typecheck && bun test && bun run scripts/generate-command-reference.ts --check && bun run build && node bin/zentao.js -V",
     "build:site": "bun run scripts/build-site.ts"
   },
   "dependencies": {
@@ -41,7 +41,7 @@
     "configstore": "^7.0.0",
     "toml-eslint-parser": "^0.10.0",
     "turndown": "^7.2.0",
-    "zentao-api": "0.8.3",
+    "zentao-api": "0.8.4",
     "zod": "^4.3.6"
   },
   "devDependencies": {

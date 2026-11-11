@@ -30,8 +30,9 @@ export function withRequestSignal(client: ZentaoClient, signal?: AbortSignal): Z
     if (!signal) return client;
     const scoped = new ZentaoClient(client.siteUrl);
     const optionsWithSignal = <T extends object>(options: T): T & { signal: AbortSignal } => {
-        if (signal.aborted) throw new ZentaoError('E5003');
-        return { ...options, signal };
+        const selected = ('signal' in options ? options.signal as AbortSignal | undefined : undefined) ?? signal;
+        if (selected.aborted) throw new ZentaoError('E5003');
+        return { ...options, signal: selected };
     };
     // SDK 0.7 high-level requests omit signal; its public transport accepts it.
     // Forwarding preserves credentials, transport options and the config cache.

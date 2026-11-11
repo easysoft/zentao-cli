@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Command } from 'commander';
 import { registerAllCommands } from '../src/commands/index.js';
-import { generateCompletionScript } from '../src/commands/autocomplete.js';
+import { completionCandidates } from '../src/commands/autocomplete.js';
 import { mockProfile } from './helpers.js';
 
 describe('token command', () => {
@@ -170,7 +170,7 @@ describe('token command', () => {
         }
         for (const args of [['other-user', ...credentials()], ['other-user', '--password', 'temporary-password']]) {
             const result = await run([...args, '--format=json']);
-            expect(result.exitCode).toBe(1);
+            expect(result.exitCode).toBe(2);
             expect(result.stdout).toBe('');
             expect(JSON.parse(result.stderr).error.code).toBe('2009');
         }
@@ -210,6 +210,10 @@ describe('token command', () => {
         expect(timeout.exitCode).toBe(1);
         expect(timeout.stdout).toBe('');
         expect(JSON.parse(timeout.stderr).error.code).toBe('5001');
+        const deadline = await run([...credentials(), '--deadline', '20', '--format=json']);
+        expect(deadline.exitCode).toBe(1);
+        expect(deadline.stdout).toBe('');
+        expect(JSON.parse(deadline.stderr).error.code).toBe('5001');
         expect(snapshot()).toEqual(before);
     });
 
@@ -234,9 +238,7 @@ describe('token command', () => {
         }
         const program = new Command();
         registerAllCommands(program);
-        for (const shell of ['bash', 'zsh', 'fish']) {
-            expect(generateCompletionScript(shell, program)).toMatch(/\btoken\b/);
-        }
+        expect(completionCandidates(program, ['tok'])).toContain('token');
         expect(requests).toEqual([]);
         expect(existsSync(configFile)).toBe(false);
     });

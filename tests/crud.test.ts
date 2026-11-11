@@ -60,138 +60,98 @@ describe('CLI command entry points', () => {
         return { stdout, stderr, exitCode };
     }
 
-    test.each([
-        ['product', 'delete', '1,2'],
-        ['delete', 'product', '1,2'],
-        ['do', 'product', 'delete', '1,2'],
-    ].map(args => ({ args })))('preserves positional batch targets through %j', async ({ args }) => {
-        const result = await run([...args, '--id=4,5', '--params={"id":3}', '--yes']);
-        expect(result.exitCode).toBe(0);
-        expect(result.stderr).toBe('');
+    test('explicit batch IDs are deduplicated and routed in order', async () => {
+        const result = await run(['product', 'delete', '--ids=1,2,1', '--yes']);
+        expect(result.exitCode, result.stderr).toBe(0);
         expect(requests.map(({ method, path }) => ({ method, path }))).toEqual([
-            { method: 'DELETE', path: '/products/1' },
-            { method: 'DELETE', path: '/products/2' },
+            { method: 'DELETE', path: '/products/1' }, { method: 'DELETE', path: '/products/2' },
         ]);
-        expect(JSON.parse(result.stdout).result.success).toEqual([1, 2]);
+        expect(JSON.parse(result.stdout)).toMatchObject({ ok: true, meta: { success: 2, failed: 0 } });
     });
 
-    test.each([
-        ['product', 'delete', '1'], ['delete', 'product', '1'],
-        ['product', 'get', '1'], ['get', 'product', '1'], ['product', '1'],
-    ].map(args => ({ args })))('preserves a positional target through %j', async ({ args }) => {
-        const result = await run([...args, '--params={"id":3}', '--yes']);
-        expect(result.exitCode).toBe(0);
+    test.each([['product', 'delete', '1,2'], ['delete', 'product', '1'], ['do', 'product', 'get', '1'], ['product', '1'], ['ls', 'product']])(
+        'removed implicit syntax is rejected before HTTP: %j', async (...args) => {
+            const result = await run(args as string[]);
+            expect(result.exitCode).toBe(2);
+            expect(requests).toEqual([]);
+        },
+    );
+
+    test.each(['delete', 'get'])('routes one positional target for %s', async action => {
+        const result = await run(['product', action, '1', '--yes']);
+        expect(result.exitCode, result.stderr).toBe(0);
         expect(requests.map(({ path }) => path)).toEqual(['/products/1']);
     });
 
-    test('selects the batch from the final merged parameters', async () => {
-        const result = await run(['product', 'delete', '--id=4,5', '--params={"id":"1,2"}', '--yes']);
-        expect(result.exitCode).toBe(0);
-        expect(requests.map(({ path }) => path)).toEqual(['/products/1', '/products/2']);
-        expect(JSON.parse(result.stdout).result.success).toEqual([1, 2]);
-    });
-
-    test.each(['ls', 'list'])('%s preserves pagination, processing and dynamic options', async (command) => {
-        const options = ['--page=2', '--recPerPage=10', '--pick=id', '--limit=1', '--orderBy=id_desc'];
-        const direct = await run(['product', ...options]);
-        const directRequests = [...requests];
-        requests.length = 0;
-        const shortcut = await run([command, 'product', ...options]);
-
-        expect(shortcut).toEqual(direct);
-        expect(shortcut.exitCode).toBe(0);
-        expect(JSON.parse(shortcut.stdout).data).toEqual([{ id: 1 }]);
-        expect(requests).toEqual(directRequests);
+    test('list separates server page size from local maximum and field selection', async () => {
+        const result = await run(['product', 'list', '--page=2', '--page-size=10', '--fields=id', '--max-items=1', '--order-by=id_desc']);
+        expect(result.exitCode, result.stderr).toBe(0);
+        expect(JSON.parse(result.stdout).data).toEqual([{ id: 1 }]);
         expect(requests[0].query).toMatchObject({ pageID: '2', recPerPage: '10', orderBy: 'id_desc' });
     });
 
-    test('ls passes scope options to scoped list actions', async () => {
-        const result = await run(['ls', 'bug', '--product=1']);
-        expect(result.exitCode).toBe(0);
+    test('scope aliases route scoped list actions', async () => {
+        const result = await run(['bug', 'list', '--product=1']);
+        expect(result.exitCode, result.stderr).toBe(0);
         expect(requests.map(({ path }) => path)).toEqual(['/products/1/bugs']);
     });
 
-    test('generic get supports queries without a path ID and preserves dynamic options', async () => {
-        const options = ['--type=person', '--projectID=1', '--accounts=developer'];
-        const direct = await run(['resourcecalendar', 'get', ...options]);
-        const shortcut = await run(['get', 'resourcecalendar', ...options]);
-        expect(shortcut).toEqual(direct);
-        expect(shortcut.exitCode).toBe(0);
-        expect(JSON.parse(shortcut.stdout)).toEqual({ developer: { tasks: [] } });
-        expect(requests).toHaveLength(2);
-        expect(requests[0]).toEqual(requests[1]);
-        expect(requests[0]).toEqual({ method: 'GET', path: '/resourcecalendars', query: { type: 'person', mode: 'wait', projectID: '1', accounts: 'developer' } });
+    test('get without a target supports schema-typed query options', async () => {
+        const result = await run(['resourcecalendar', 'get', '--type=person', '--project-id=1', '--accounts=developer']);
+        expect(result.exitCode, result.stderr).toBe(0);
+        expect(JSON.parse(result.stdout).data).toEqual({ developer: { tasks: [] } });
+        expect(requests).toEqual([{ method: 'GET', path: '/resourcecalendars', query: { type: 'person', mode: 'wait', projectID: '1', accounts: 'developer' } }]);
     });
 
-    test('generic get still requires the ID declared by the selected action', async () => {
-        const result = await run(['get', 'product']);
-        expect(result.exitCode).toBe(1);
+    test('get requires its declared target', async () => {
+        const result = await run(['product', 'get']);
+        expect(result.exitCode).toBe(2);
         expect(JSON.parse(result.stderr).error.code).toBe('2003');
         expect(requests).toEqual([]);
     });
 
-    test('JSON examples preserve repository ID arrays and an explicit false SQL count', async () => {
+    test('request bodies preserve numeric arrays and explicit false SQL count', async () => {
         const repo = { space: 10, product: [12, 13], name: 'demo_repo' };
         expect((await run(['repo', 'create', '--data', JSON.stringify(repo)])).exitCode).toBe(0);
         expect(requests[0]).toMatchObject({ method: 'POST', path: '/repos', body: repo });
         const query = { sql: 'SELECT id, account FROM zt_user', page: 1, limit: 20, count: false };
-        expect((await run(['db', 'query', '--params', JSON.stringify(query)])).exitCode).toBe(0);
+        const result = await run(['db', 'query', '--data', JSON.stringify(query)]);
+        expect(result.exitCode, result.stderr).toBe(0);
         expect(requests[1]).toMatchObject({ method: 'POST', path: '/db/query', body: query });
     });
 
-    test('deliverable options remain an object and submitted deliverables retain their pager', async () => {
-        const options = await run(['deliverable', 'options', '--projectID=2']);
-        expect(options.exitCode).toBe(0);
-        expect(JSON.parse(options.stdout)).toEqual({ 3: '开发说明', 8: '验收报告' });
-        expect(requests[0]).toEqual({ method: 'GET', path: '/projects/2/deliverable-options', query: {} });
-        const list = await run(['deliverable', 'list', '--projectID=2', '--browseType=reviewing', '--page=2', '--recPerPage=10']);
-        expect(list.exitCode).toBe(0);
-        expect(JSON.parse(list.stdout)).toMatchObject({ data: [{ id: 7, name: '开发说明' }], pager: { page: 2, recPerPage: 10, total: 21 } });
+    test('deliverable options stay an object and list metadata retains its pager', async () => {
+        const options = await run(['deliverable', 'options', '--project-id=2']);
+        expect(options.exitCode, options.stderr).toBe(0);
+        expect(JSON.parse(options.stdout).data).toEqual({ 3: '开发说明', 8: '验收报告' });
+        const list = await run(['deliverable', 'list', '--project-id=2', '--browse-type=reviewing', '--page=2', '--page-size=10']);
+        expect(list.exitCode, list.stderr).toBe(0);
+        expect(JSON.parse(list.stdout)).toMatchObject({ ok: true, data: [{ id: 7, name: '开发说明' }], meta: { page: 2, pageSize: 10, total: 21 } });
         expect(requests[1]).toMatchObject({ path: '/projects/2/deliverables', query: { browseType: 'reviewing', pageID: '2', recPerPage: '10' } });
     });
 
-    test('relation unlink uses a relation record ID through each CLI entry point', async () => {
-        for (const args of [
-            ['relation', 'unlink', '--relationID=8'],
-            ['relation', 'unlink', '8'],
-            ['do', 'relation', 'unlink', '--id=8'],
-        ]) {
-            const result = await run([...args, '--yes']);
+    test('relation unlink accepts only its relation ID with confirmation', async () => {
+        for (const args of [['--relation-id=8'], ['8']]) {
+            const result = await run(['relation', 'unlink', ...args, '--yes']);
             expect(result.exitCode, result.stderr).toBe(0);
             expect(requests.at(-1)).toEqual({ method: 'DELETE', path: '/relations/8', query: {} });
         }
-        expect(requests).toHaveLength(3);
+        expect(requests).toHaveLength(2);
     });
 
-    test('relation unlink rejects legacy object selectors even when an ID could be resolved', async () => {
-        const legacy = { objectType: 'story', objectID: 42, relatedObjectType: 'bug', relatedObjectID: 43, relationName: 'related' };
-        for (const args of [
-            ['42', ...Object.entries(legacy).map(([key, value]) => `--${key}=${value}`)],
-            ['--id=42', '--params', JSON.stringify(legacy)],
-            ['--relationID=8', '--objectID=42'],
-            Object.entries(legacy).map(([key, value]) => `--${key}=${value}`),
-        ]) {
-            const result = await run(['relation', 'unlink', ...args, '--yes']);
-            expect(result.exitCode, args.join(' ')).toBe(1);
-            expect(JSON.parse(result.stderr).error).toMatchObject({ code: '2009', message: expect.stringContaining('relationID') });
-        }
+    test.each([['--object-id=42'], ['--id=8'], ['--relation-id=8', '--object-id=42']])('relation unlink rejects unsupported selectors: %j', async (...args) => {
+        const result = await run(['relation', 'unlink', ...(args as string[]), '--yes']);
+        expect(result.exitCode).toBe(2);
         expect(requests).toEqual([]);
     });
 
-    test('relation unlink still requires a relation ID and explicit deletion confirmation', async () => {
-        const missingID = await run(['relation', 'unlink', '--yes']);
-        expect(missingID.exitCode).toBe(1);
-        expect(JSON.parse(missingID.stderr).error.code).toBe('2003');
-        const unconfirmed = await run(['relation', 'unlink', '--relationID=8']);
-        expect(unconfirmed.exitCode).toBe(1);
+    test('unlink requires a relation ID and explicit deletion confirmation', async () => {
+        const missing = await run(['relation', 'unlink', '--yes']);
+        expect(missing.exitCode).toBe(2);
+        expect(JSON.parse(missing.stderr).error.code).toBe('2003');
+        const unconfirmed = await run(['relation', 'unlink', '--relation-id=8']);
+        expect(unconfirmed.exitCode).toBe(2);
         expect(JSON.parse(unconfirmed.stderr).error.message).toContain('--yes');
-        expect(requests).toEqual([]);
-    });
-
-    test('ls refuses unsupported automatic pagination before requesting a page', async () => {
-        const result = await run(['ls', 'product', '--all']);
-        expect(result.exitCode).toBe(1);
-        expect(JSON.parse(result.stderr).error.code).toBe('2009');
         expect(requests).toEqual([]);
     });
 });

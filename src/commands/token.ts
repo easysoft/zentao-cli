@@ -5,6 +5,7 @@ import { requestToken } from '../auth/token.js';
 import { findProfileByKey, getCurrentProfile } from '../config/store.js';
 import { mapSdkError, ZentaoError } from '../errors.js';
 import type { GlobalOptions } from '../types/index.js';
+import { commandSignal } from '../utils/lifecycle.js';
 
 /** Read a saved token or obtain a temporary token without persisting credentials. */
 export function registerTokenCommand(program: Command): void {
@@ -15,8 +16,9 @@ export function registerTokenCommand(program: Command): void {
         .option('-s, --server <url>', brandText('临时获取 Token 的禅道服务地址'))
         .option('-u, --user <account>', '临时获取 Token 的用户名')
         .option('-p, --password <password>', '临时获取 Token 的密码')
+        .option('--silent', '不输出 Token，错误仍写入 stderr')
         .addHelpText('after', '\n省略凭证时只读取本地 Token，不联网验证。\n临时获取必须同时提供 --server、--user、--password，不能与 profileKey 混用。\n使用 --format json 或 --format raw 可同时输出账号、地址和 Token。')
-        .action(async (key: string | undefined, opts: { server?: string; user?: string; password?: string }) => {
+        .action(async (key: string | undefined, opts: { server?: string; user?: string; password?: string; silent?: boolean }) => {
             const globalOpts = program.opts() as GlobalOptions;
             const temporary = opts.server !== undefined || opts.user !== undefined || opts.password !== undefined;
             if (temporary && key !== undefined) {
@@ -35,6 +37,7 @@ export function registerTokenCommand(program: Command): void {
                     token = await requestToken(opts.server, opts.user, opts.password, {
                         insecure: globalOpts.insecure,
                         timeout: globalOpts.timeout,
+                        signal: commandSignal(),
                     });
                     server = createClient(opts.server).siteUrl;
                     account = opts.user;
@@ -48,7 +51,7 @@ export function registerTokenCommand(program: Command): void {
                 ({ server, account, token } = profile);
             }
 
-            if (globalOpts.silent) return;
+            if (opts.silent) return;
             if (globalOpts.format === 'json' || globalOpts.format === 'raw') {
                 console.log(JSON.stringify({ status: 'success', server, account, token }, null, 4));
             } else {

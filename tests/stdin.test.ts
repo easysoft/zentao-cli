@@ -58,10 +58,8 @@ describe('module stdin data', () => {
         });
     });
 
-    test('uses piped JSON when --data is omitted', async () => {
-        expect(await executeCreateWithStdin(undefined, data)).toEqual({
-            body: { account: 'dev1', realname: 'Dev One', password: 'secret' },
-        });
+    test('does not consume stdin unless explicitly requested', async () => {
+        expect(await executeCreateWithStdin(undefined, data)).toEqual({ code: '2003' });
     });
 
     test('maps malformed piped JSON to E2007', async () => {

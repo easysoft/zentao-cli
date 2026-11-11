@@ -2,11 +2,15 @@ import type { OutputFormat } from './config.js';
 
 /** Commander 顶层 `program` 上挂载的全局 CLI 选项 */
 export interface GlobalOptions {
+    profile?: string;
+    input?: boolean;
+    quiet?: boolean;
+    color?: 'auto' | 'always' | 'never';
+    deadline?: number;
+    signal?: AbortSignal;
     /** 默认输出格式，可被子命令 `--format` 覆盖 */
     format?: OutputFormat;
 
-    /** 是否静默模式 */
-    silent?: boolean;
 
     /** 是否跳过 SSL/TLS 证书验证 */
     insecure?: boolean;
@@ -23,6 +27,10 @@ export interface GlobalOptions {
 
 /** 模块操作选项 */
 export interface ModuleActionOptions extends GlobalOptions {
+    /** Explicit, validated and deduplicated batch targets. */
+    ids?: string;
+    maxItems?: string;
+    htmlToMarkdown?: boolean;
     /** 摘取指定字段（逗号分隔），适用于 resultType 为 object 或 list 的模块操作 */
     pick?: string;
 
@@ -44,7 +52,7 @@ export interface ModuleActionOptions extends GlobalOptions {
     /** 每页条数，适用于 resultType 为 list 的模块操作 */
     recPerPage?: string;
 
-    /** Reserved option that currently fails explicitly instead of implying automatic pagination. */
+    /** Explicitly fetch every available page before local processing. */
     all?: boolean;
 
     /** 限制获取数量，适用于 resultType 为 list 的模块操作 */
@@ -59,8 +67,6 @@ export interface ModuleActionOptions extends GlobalOptions {
     /** 是否跳过确认，适用于 actionType 为 delete 操作 */
     yes?: boolean;
 
-    /** 是否静默模式，适用于所有操作  */
-    silent?: boolean;
 
     /** 批量操作出错时停止，适用于 actionType 为 create、update 和 action 操作 */
     batchFailFast?: boolean;

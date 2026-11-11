@@ -75,3 +75,16 @@ test('read-only handlers enforce the action subset even without input schema val
     expect(() => registerModuleTools(server, auth, { modules: ['unknown'] })).toThrow('未找到指定的模块 unknown');
     expect(() => registerModuleTools(server, auth, { modules: [] })).toThrow('至少指定一个模块');
 });
+
+test('read-only knowledge discovery includes POST searches while SQL stays excluded', async () => {
+    const mcp = await createMcpTestClient(() => Response.json({ version: '22.7', data: [] }), ['--read-only', '--modules', 'knowledge,db']);
+    try {
+        const { tools } = await mcp.client.listTools();
+        const names = (name: string) => (tools.find(tool => tool.name === name)!.inputSchema.properties!.action as { enum: string[] }).enum;
+        expect(names('zentao_knowledge')).toContain('search');
+        expect(names('zentao_knowledge')).toContain('embeddingsSearch');
+        expect(names('zentao_db')).not.toContain('query');
+        const result = await mcp.client.callTool({ name: 'zentao_knowledge', arguments: { action: 'search', params: { keywords: ['test'], libIDs: [1] } } });
+        expect(result.isError).not.toBe(true);
+    } finally { await mcp.close(); }
+});

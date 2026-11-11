@@ -12,18 +12,19 @@ export const ERROR_CODES = {
     E1004: '所提供的 Token 已失效，请提供密码重新登录，或提供新的 TOKEN',
     E1005: '配置文件损坏或无法读取，请检查 {path}',
     E1006: brandText('未找到可用的用户配置，请执行 `zentao login --web` 在浏览器中登录；终端登录使用 `zentao login --no-browser`'),
-    E1007: brandText('指定的用户配置不存在，请通过 `zentao profile` 查看可用配置'),
+    E1007: brandText('指定的用户配置不存在，请通过 `zentao profile list` 查看可用配置'),
     E1008: '浏览器登录已取消',
     E1009: brandText('浏览器登录等待超时，请重新执行 `zentao login --web`'),
     E1010: brandText('无法启动本地登录服务，请检查本机网络权限，或使用 `zentao login --no-browser`'),
     E1011: '配置文件写入失败，请检查 {path} 的目录权限和磁盘空间',
+    E1012: brandText('未能确认远端会话已撤销，已保留本地登录记录，请重试或联系禅道管理员'),
 
     // API 调用 (20xx)
     E2001: brandText('未找到指定的模块 {module}，请通过 `zentao help` 查看支持的模块'),
     E2002: '未找到指定的对象 {object}，请检查对象 ID 是否正确',
-    E2003: brandText('缺少必要参数 {fields}，请通过 `zentao {module} help` 查看必要参数'),
+    E2003: brandText('缺少必要参数 {fields}，请通过 `zentao {module} --help` 查看必要参数'),
     E2004: '{field} 参数值 {value} 无效，请检查参数格式是否正确',
-    E2005: brandText('不支持的操作，请通过 `zentao {module} help` 查看支持的操作'),
+    E2005: brandText('不支持的操作，请通过 `zentao {module} --help` 查看支持的操作'),
     E2006: '当前用户没有权限执行此操作',
     E2007: '`--data` 参数中的 JSON 数据格式无效',
     E2008: brandText('禅道服务端返回错误（Url：{url}，Status：{status}），请查看详细错误信息：{serverResponse}'),
@@ -178,6 +179,7 @@ function interpolate(template: string, params?: Readonly<Record<string, string |
 export function formatError(error: ZentaoError, format: string): string {
     if (format === 'json' || format === 'raw') {
         const obj: Record<string, unknown> = {
+            ok: false,
             error: {
                 code: error.code,
                 message: error.message,

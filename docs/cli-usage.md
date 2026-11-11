@@ -34,15 +34,15 @@ zentao login --web --message "完成登录后，回到 Codex 即可继续使用�
 
 默认 `zentao login` 若打开浏览器失败且当前有交互终端，会关闭临时服务并改用终端登录；显式 `--web` 始终保留链接供手动打开。登录页面最多等待 5 分钟。
 
-完整参数 `--server <url> --user <account> --password <password>`（或 `--token <token>`）仍可直接登录，同时提供密码和 Token 时优先使用 Token。`--web` 不能与 `--no-browser`、`--useEnv`、`--password` 或 `--token` 混用。非交互环境未选择浏览器且没有完整凭证时，会报错而不等待终端输入。
+完整参数 `--server <url> --user <account> --password <password>`（或 `--token <token>`）仍可直接登录，同时提供密码和 Token 时优先使用 Token。`--web` 不能与 `--no-browser`、`--use-env`、`--password` 或 `--token` 混用。非交互环境未选择浏览器且没有完整凭证时，会报错而不等待终端输入。
 
 ### 环境变量
 
-`zentao-cli` 支持从环境变量中读取禅道服务地址、用户账号和密码或 Token。业务命令优先使用完整环境凭证，再回退到当前本地登录记录；`zentao login` 则通过 `--useEnv` 显式选择环境变量登录。
+`zentao-cli` 支持从环境变量中读取禅道服务地址、用户账号和密码或 Token。业务命令按 `--profile`、完整环境凭证、当前本地登录记录的顺序选择身份；不完整环境凭据会报错；`zentao login` 则通过 `--use-env` 显式选择环境变量登录。
 
 使用完整环境凭证执行业务命令时，不读取或写入本地 Profile，也不改变本地默认账号。即使配置文件缺失、损坏或不可访问，也可以运行。此时使用 CLI 默认配置，可通过 `--timeout`、`--insecure`、`--format` 等命令行选项覆盖，不继承本地 Profile 的配置。
 
-需要使用环境变量重新验证并保存登录记录时，执行 `zentao login --useEnv`。
+需要使用环境变量重新验证并保存登录记录时，执行 `zentao login --use-env`。
 
 支持如下环境变量：
 
@@ -53,25 +53,16 @@ zentao login --web --message "完成登录后，回到 Codex 即可继续使用�
 
 ### 账户切换
 
-`zentao-cli` 支持登录多个禅道服务，或在同一服务下登录多个账号。登录成功后，默认将最后一次登录的服务账号设为当前账户。可以通过 `zentao profile` 查看当前用户信息并切换当前用户。
+`zentao login` 登录并选择当前账号；`zentao auth login` 默认只保存凭据，显式添加 `--select` 才选择账号。两种入口均支持 `--web --no-open`，供宿主打开输出的登录链接。
 
 ```bash
-# 查看当前用户信息
-$ zentao profile
-
-* admin@https://zentao.example.com (当前)
-* dev1@https://zentao.example.com
-
-# 切换当前用户
-$ zentao profile dev1@https://zentao.example.com
-
-* admin@https://zentao.example.com
-* dev1@https://zentao.example.com (当前)
+zentao profile list
+zentao profile use 'dev1@https://zentao.example.com'
+zentao auth status --format=json
+zentao auth status --verify --format=json
 ```
 
-执行 `zentao profile --effective --format=json` 可只读查看业务命令实际使用的认证来源。输出包含 `source`（`environment` 或 `profile`）、`server`、`account`、`credentialType`（`token` 或 `password`）和 `configFile`。环境凭证完整时优先使用环境变量，`configFile` 为 `null`，且不会读取本地配置；环境凭证不完整时回退到当前保存的 Profile。
-
-此命令不显示 Token 或密码，不发起网络请求或登录，`verified` 固定为 `false`；如需验证连接，应执行目标范围内的只读业务查询。`--effective` 不能与切换账号的参数同时使用；不加该选项时，`profile` 仍只查看或切换本地账号。
+`auth status` 只读显示实际认证来源、站点、账号、凭据类型和配置路径，不显示 Token 或密码；`--verify` 才联网验证。完整环境凭据不读取本地 Profile，部分环境凭据会报错。`--profile <key>` 仅选择本次命令的身份，不改变默认账号。
 
 ### 获取 Token
 
@@ -120,7 +111,7 @@ $ zentao logout dev1@https://zentao.example.com
 
 未设置 XDG 时，原有配置路径保持不变。显式设置 XDG 后不会迁移、覆盖或回退读取旧路径；如需继续使用旧配置，可指定 `--config "$HOME/.config/zentao/zentao.json"`。这能避免新目录尚未登录时意外使用另一个目录中的账号。XDG 路径中的 `~` 不会展开，应使用如 `XDG_CONFIG_HOME="$HOME/work/config"` 的绝对路径。
 
-`autocomplete` 的补全脚本也跟随 XDG 配置根目录，未设置时仍位于 `~/.config/zentao/`；`--config` 和 `ZENTAO_CONFIG_FILE` 仅改变账号配置文件的位置。
+`completion` 将补全脚本写入 stdout，由调用方选择保存路径；`--config` 和 `ZENTAO_CONFIG_FILE` 仅改变账号配置文件的位置。
 
 使用已保存的 Profile 执行业务命令时，不会更新最近使用时间、重写配置文件或修改文件权限，因此配置文件及其所在目录可以只读。登录、退出、切换账号和修改配置仍需写入权限；在支持 POSIX 权限的平台上，写入后的配置文件权限为 `0600`（仅当前用户可读写），新建配置目录权限为 `0700`。
 
@@ -130,10 +121,10 @@ $ zentao logout dev1@https://zentao.example.com
 
 ```bash
 # 通过 --config 选项使用自定义配置文件
-$ zentao --config /path/to/zt.json profile
+$ zentao --config /path/to/zt.json profile list
 
 # 通过环境变量指定（便于在 shell 中持久设置）
-$ ZENTAO_CONFIG_FILE=~/work/zt.json zentao product
+$ ZENTAO_CONFIG_FILE=~/work/zt.json zentao product list
 ```
 
 路径支持 `~` 展开与相对路径（相对当前工作目录）。当 `--config` 与 `ZENTAO_CONFIG_FILE` 同时存在时，`--config` 优先。
@@ -162,7 +153,7 @@ stdio 是默认模式，由 MCP 客户端启动并管理进程。通过 `zentao 
   "mcpServers": {
     "zentao-cli": {
       "command": "zentao",
-      "args": ["mcp"],
+      "args": ["mcp", "serve"],
       "env": {
         "ZENTAO_URL": "https://zentao.example.com",
         "ZENTAO_ACCOUNT": "admin",
@@ -211,15 +202,15 @@ MCP 发送请求前按动作定义检查必填字段、JSON 类型、明确枚�
 
 ### API 覆盖与版本兼容
 
-CLI 使用 `zentao-api 0.8.3` 的注册表，提供 42 个模块、361 个操作，覆盖问题（`issue`）、风险（`risk`）、会议（`meeting`）、工作流（`workflow`）、文档（`doc`）、待办（`todo`）、地盘（`my`）和代码库（`repo`）等模块，并支持项目集/项目/执行下的关联列表、需求层级、附件上传和 Markdown 文档正文。
+CLI 使用 `zentao-api 0.8.4` 的注册表，提供 42 个模块、361 个操作，覆盖问题（`issue`）、风险（`risk`）、会议（`meeting`）、工作流（`workflow`）、文档（`doc`）、待办（`todo`）、地盘（`my`）和代码库（`repo`）等模块，并支持项目集/项目/执行下的关联列表、需求层级、附件上传和 Markdown 文档正文。
 
 SDK 0.8.2 修正了 `story`、`requirement`、`epic` 的 `create` / `change`：未提供有效评审人时发送 `needNotReview: "1"`，状态默认 `active`；显式传入的非空状态会保留，空字符串仍回落为 `active`。提供有效评审人时状态为 `reviewing`，优先于显式状态。CLI 支持 `--status=draft` 或 `--data '{"status":"draft"}'`；MCP 使用 `params.status` 或 `params.data.status`。`change` 不会自动读取并保留原状态，需要保留草稿时应明确传入 `draft`。
 
 SDK 0.8.0 按禅道 22.7 调整了地盘（`my`）列表的 `browseType` 默认值和可选值，例如任务与 Bug 默认 `assignedTo`（区分大小写），项目默认 `doing`。依赖旧筛选范围的脚本应查看对应操作的 `--help`，显式传入受支持的值。
 
-SDK 0.8.1 的解除关联改为 `zentao relation unlink --relationID=8 --yes`，请求 `DELETE /relations/8`。从 `relation list` 的结果中选择 `relationType=custom` 的关系，读取其 `relationID`；这个值是关系记录 ID，不是关联对象 ID 或 `relationKey`。此动作的位置 ID / `--id` 也改为表示 `relationID`。旧的 `objectType`、`objectID`、`relatedObjectType`、`relatedObjectID`、`relationName` 参数会被拒绝，脚本需显式迁移。
+SDK 0.8.1 的解除关联改为 `zentao relation unlink 8 --yes`，请求 `DELETE /relations/8`。从 `relation list` 的结果中选择 `relationType=custom` 的关系，读取其 `relationID`；这个值是关系记录 ID，不是关联对象 ID 或 `relationKey`。此动作的位置目标表示 `relationID`。旧的 `objectType`、`objectID`、`relatedObjectType`、`relatedObjectID`、`relationName` 参数会被拒绝，脚本需显式迁移。
 
-新增 `zentao deliverable options --projectID=2 --format=json`，返回可提交的交付物定义 ID 到名称的映射对象，不分页；已提交交付物仍通过 `deliverable list` 查询分页数组。列表新增 `wait`（未提交）、`mine`（我提交）、`reviewing`（评审中）筛选；`normal` 默认值表示已提交，`pending` 表示待评审，`submitbyme` 表示由我发起。详情中的 `docInfo` 按字符串处理。地盘十个搜索接口的 `param` 和待办的 `status` 参数继续保留。
+新增 `zentao deliverable options --project-id=2 --format=json`，返回可提交的交付物定义 ID 到名称的映射对象，不分页；已提交交付物仍通过 `deliverable list` 查询分页数组。列表新增 `wait`（未提交）、`mine`（我提交）、`reviewing`（评审中）筛选；`normal` 默认值表示已提交，`pending` 表示待评审，`submitbyme` 表示由我发起。详情中的 `docInfo` 按字符串处理。地盘十个搜索接口的 `param` 和待办的 `status` 参数继续保留。
 
 每个操作都带有最低禅道版本要求。常见版本基线如下，具体以操作帮助为准：
 
@@ -239,667 +230,114 @@ SDK 0.8.1 的解除关联改为 `zentao relation unlink --relationID=8 --yes`，
 
 ```bash
 # 不需要对象 ID 的命名列表
-zentao story getGrades
-zentao my tasks --pick=id,name,status
+zentao story get-grades
+zentao my tasks --fields=id,name,status
 
 # 直接查询项目下的执行
-zentao execution projectExecutions --projectID=5 --browseType=all
+zentao execution project-executions --project-id=5 --browse-type=all
 
 # 创建 Markdown 文档：多个路径 ID 必须分别传入
-zentao doc createMyDoc --spaceID=1 --libID=2 --data '{"title":"开发说明","content":"# 开发说明","contentType":"doc"}'
+zentao doc create-my-doc --space-id=1 --lib-id=2 --data '{"title":"开发说明","content":"# 开发说明","contentType":"doc"}'
 
 # 修改文档库，自动从同一路径的详情接口补全已有字段
-zentao doc updateLib --libID=2 --name=开发文档
+zentao doc update-lib --lib-id=2 --name=开发文档
 
 # SDK 自动按 multipart/form-data 上传本地文件（默认上限 50 MiB）
-zentao file create --file=/path/to/screenshot.png --objectType=bug --objectID=1
+zentao file create --file=/path/to/screenshot.png --object-type=bug --object-id=1
 
 # 查看路径、查询、请求体参数和最低版本
-zentao doc createMyDoc --help
+zentao doc create-my-doc --help
 ```
 
-`id` 或首个位置参数只是首个路径 ID 的简写，其他路径参数需使用各自的名称。`doc`、`my` 等没有默认 `list` 的模块，在省略操作时会显示帮助。命名的列表、详情、创建、更新和删除操作遵循各自的类型，删除操作仍需确认或显式 `--yes`。
+首个位置参数是首个路径目标的简写，其他路径参数使用各自的 kebab-case 选项。`doc`、`my` 等没有默认 `list` 的模块，在省略操作时会显示帮助。命名的列表、详情、创建、更新和删除操作遵循各自的类型，删除操作仍需确认或显式 `--yes`。
 
-### 命令调用方式
+<a id="usage"></a>
+## 命令格式与传参
 
-禅道数据访问和操作支持两种调用方式：
-
-第一种：**原始方式**，通过如下 `ls`、`get` 等命令访问和操作禅道数据，具体包括：
-
-* `zentao ls`：获取对象列表
-* `zentao get <moduleName> [objectID]`：详情或查询，仅在操作声明路径 ID 时必填
-* `zentao delete <moduleName> <objectID>`：删除对象
-* `zentao create <moduleName> [params]`：创建对象
-* `zentao update <moduleName> <objectID> [params]`：更新对象
-* `zentao do <moduleName> <action> <objectID> [params]`：执行对象操作
-* `zentao help <moduleName>`：获取模块帮助信息
-
-第二种：**简写方式**，通过如下 `zentao <moduleName>` 命令访问和操作禅道数据，具体包括：
-
-* `zentao <moduleName>`：获取对象列表
-* `zentao <moduleName> <objectID>`：获取单个对象
-* `zentao <moduleName> props`：获取对象属性定义
-* `zentao <moduleName> delete <objectID>`：删除对象
-* `zentao <moduleName> create [params]`：创建对象
-* `zentao <moduleName> update <objectID> [params]`：更新对象
-* `zentao <moduleName> <action> <objectID> [params]`：执行对象操作
-* `zentao <moduleName> help`：获取模块帮助信息
-
-> [!TIP]
-> 推荐优先使用简写方式。当简写方式中的模块名与命令行一级命令冲突时，必须改用原始方式调用。
-
-### 获取禅道对象列表
-
-支持通过 `zentao <moduleName>` 的方式获取指定模块的对象列表。
+开发分支的新命令契约（2026-10-23）。这是不兼容调整，尚未发布；安装版本不同请以本机 `--help` 为准。
 
 ```bash
-# 获取禅道产品列表
-$ zentao product
-
-| id | name | ... |
-| --- | --- | --- |
-| 1 | 产品1 | ... |
-| 2 | 产品2 | ... |
-
-已显示 2 项，共 2 项，当前第 1 页，每页 100 条
-
-# 获取禅道产品列表，并输出 JSON 格式
-$ zentao product --format=json
-
-{
-    "status": "success",
-    "data": [
-        {"id": 1, "name": "产品1", ...},
-        {"id": 2, "name": "产品2", ...}
-    ],
-    "pager": {
-        "total": 2,
-        "page": 1,
-        "recPerPage": 100,
-        "totalPage": 1
-    }
-}
-
-# 查询项目下的执行（要求 22.5 / biz13.5 / max8.5 / ipd5.5）
-$ zentao execution projectExecutions --projectID=5 --browseType=all
-
-# 旧版服务器：以全局列表当前页返回值做客户端项目过滤，汇总时需逐页读取
-$ zentao execution --browseType=all --filter='project=5'
-
-# 输出略
+zentao <resource> <action> [target] [options]
+zentao bug list --product 12
+zentao bug get 123
+zentao bug resolve 123 --resolution fixed
+zentao db table zt_user
+zentao help bug create --format=json
 ```
 
-<details>
-<summary>原始方式</summary>
+资源名称沿用 SDK，动作和选项使用 kebab-case，例如 `doc create-my-doc --space-id 1 --lib-id 2`。无动作时只显示帮助。根级 CRUD、`do`、隐式 list/get、`--id`、`--params`、位置 JSON 已移除。
 
-通过 `zentao ls <moduleName>` 获取指定模块的对象列表。
+- `--title 内容` 与 `--title=内容` 等价。字符串 `007`、`true` 保留原文。
+- 数字、布尔和数组按当前动作的 schema 校验；`--count` / `--no-count` 或 `--count=false` 明确设置布尔值。
+- 简单数组可重复选项（`--lib-ids 12 --lib-ids 18`），复杂数组使用 JSON。JSON 内保留 SDK 字段名和类型。
+- 请求体使用 `--data '{"title":"示例"}'`、`--data @body.json` 或显式 `--data @-`。没有 `@-` 就不读取 stdin；POST 查询也遵守同一规则。
+- 与全局或输出选项重名的业务字段加 `data-` 前缀，例如 `task update 123 --data-deadline 2026-10-30` 和工作流的 `--data-fields`；JSON 字段名保持原样。
+- 未知字段、非法值、重复来源冲突和多个范围会在认证之前失败。省略、空字符串与 null 不混同；null 仅在 schema 允许时有效。
+- `--ids 123,124` 仅用于支持批量的对象操作，与单个目标互斥，先校验全部 ID 再去重。创建多条记录请显式逐条调用 create，不将对象 ID 当成批量创建输入。
+- 删除需要确认；非交互调用必须 `--yes`。批量部分失败会保留逐项结果并返回非零退出码；`--batch-fail-fast` 跳过后续项，不回滚。
+- 更新只自动补全动作声明的可写字段，存在匹配详情操作时才生效。
+
+<a id="examples"></a>
+## 常用示例
 
 ```bash
-# 获取禅道产品列表
-$ zentao ls product
-
-# 输出略
-
-已显示 2 项，共 2 项，当前第 1 页，每页 100 条
-
-# 获取禅道产品列表，并输出 JSON 格式
-$ zentao ls product --format=json
-
-# 输出略
+zentao auth login --web
+zentao profile list
+zentao profile use 'admin@https://zentao.example.com'
+zentao auth status --verify --format=json
+zentao --profile 'admin@https://zentao.example.com' product list --page-size 20
+zentao bug create --product 12 --title '登录失败' --opened-build trunk
+cat query.json | zentao db query --data @- --format=json
+zentao knowledge search --keywords 登录 --keywords 超时 --lib-ids 12 --page 2
+zentao bug resolve --ids 123,124 --resolution fixed --format=json
+zentao bug delete --ids 123,124 --yes --no-input --format=json
+zentao config set timeout 30000
+zentao config unset timeout
+zentao completion zsh > ~/.zentao-completion.zsh
+zentao skill install codex
+zentao skill export ./exported-skills
+zentao mcp install codex
+zentao mcp serve --read-only --modules product,story,task,bug
+zentao mcp serve --transport http --url https://zentao.example.com
 ```
 
-</details>
+<a id="data-options"></a>
+## 分页与输出
 
-### 获取禅道对象属性定义
+默认只取一页。支持分页的动作才有 `--page`、`--page-size` 和 `--all`；`--all` 与 `--page` 互斥。`--max-items` 限制最终结果数量，服务端原生 `limit` 不再用于本地截断。SQL 查询的 `--page-size` 映射到请求体 limit；向量搜索的 `--limit` 仍是服务器字段。
 
-使用 `zentao <moduleName> props` 获取模块对应对象的属性名及中文说明。属性定义来自本地 `zentao-api` 注册表，不会连接禅道服务，也不要求登录。
+`--filter`、`--search` 和 `--sort` 只处理已获取的范围：默认当前页，`--all` 时为全部页面。全量抓取后统一处理，再按 `--max-items` 截断。复杂处理也可通过 JSON 管道交给 jq。服务端遗漏分页信息、返回重复页或空页却宣称还有数据时，`--all` 报错，避免虚报完整结果。
 
-```bash
-$ zentao product props
+- `table`：默认终端精简列，长值以 `…` 标记截断；`--fields` 自定义字段。
+- `markdown`：文档表格或详情，保留完整文本。
+- `json`：稳定封装 `{ok,data,meta}`，保留原始字段类型及 HTML；需要转换时显式加 `--html-to-markdown`。
+- `raw`：原始业务响应，拒绝批量、字段摘取、本地处理和自动翻页；内置命令仅 `token` 保留原有 JSON/raw Token 输出。
 
-* id: 编号
-* program: 所属项目集
-* name: 产品名称
-* code: 产品代号
-* ...
+列表 meta 包含 returned、fetched、page、pageSize、total、hasMore、truncated、processingScope。total 是服务器处理前的总数；未知值为 null。过滤后空页仍保留 hasMore。批量 data 为逐项 objectID/ok/data/error，meta 为成功、失败与跳过数量。
 
-$ zentao product props --format=json
+<a id="errors"></a>
+## 身份、交互与错误
 
-{
-    "id": "编号",
-    "program": "所属项目集",
-    "name": "产品名称",
-    "code": "产品代号"
-}
-```
+认证优先级：`--profile` → 完整环境凭据 → 保存的默认账号。不完整的环境凭据直接报错；同账号或同主机简写存在多个匹配时必须使用完整 key。
 
-### 获取禅道单个对象
+`auth login` 默认只保存凭据，不改变默认身份；使用 `profile use` 或登录时显式添加 `--select` 选择身份。宿主负责打开链接时使用 `auth login --web --no-open --select`。普通业务调用和 `auth status` 默认不修改配置；`auth status --verify` 使用已有 Token 时通过一次当前用户会话查询在线验证。
 
-支持通过 `zentao <moduleName> <objectID>` 获取指定模块、指定 ID 的对象信息。
+`auth logout --revoke` 先撤销远端会话，并核实 Token 已失效，再删除本地记录；失败时保留记录以便重试。加上 `--all` 会处理当前配置文件中的全部账号，未登录时也成功。配置写入以短事务串行化，只更新目标字段，网络等待不占锁；并发重新登录的 Token 不会被旧登出请求删除。进程被强制终止后如遗留 `.lock` 目录，先确认没有 CLI 写入进程，再删除该锁目录后重试。
 
-```bash
-# 获取禅道产品 #1 信息
-$ zentao product 1
+stdout 用于结果和批量报告；stderr 用于进度、诊断和无法产生结果的错误。JSON 模式的参数错误也是 `{ok:false,error}`。退出码：0 成功、1 执行失败、2 用法错误、130 取消。
 
-* id: 1
-* name: 产品1
-* ...
-```
+`--no-input` 禁止浏览器和所有提示；`--yes` 只确认明确操作；`--quiet` 压制进度，保留结果和错误。`--color auto|always|never` 独立控制终端颜色。`--timeout` 限制单个请求，`--deadline` 限制整次命令，包括登录、预取与执行。
 
-<details>
-<summary>原始方式</summary>
+MCP 保留 structuredContent/outputSchema 与执行时策略检查。知识 POST 搜索可供只读工具使用；SQL 查询保守地留在写工具组。HTTP MCP 不发现或执行本地文件上传；stdio 可上传。取消涵盖认证和业务调用，取消一个并发调用不会终止其他调用。
 
-通过 `zentao get <moduleName> <objectID>` 获取指定模块、指定 ID 的对象信息。没有路径 ID 的查询可省略 ID，例如 `zentao get resourcecalendar --type=person --projectID=1`，等同于 `zentao resourcecalendar get --type=person --projectID=1`。
+
+## 配置、版本与补全
+
+`config list` 列出全部配置，`config get <key>` 读取单项，`config set <key> <value>` 修改，`config unset <key>` 恢复默认值。`version` 离线显示 CLI、SDK 与运行时版本。
 
 ```bash
-# 获取禅道产品 #1 信息
-$ zentao get product 1
-
-# 输出略
-```
-
-</details>
-
-### 删除禅道对象
-
-支持通过 `zentao <moduleName> delete <objectIDs>` 删除指定模块中的指定 ID 对象。删除多个对象时，可使用逗号分隔多个 ID。默认删除前会输出待删除对象的详细信息供用户确认；如果无需确认，可通过 `--yes` 参数强制删除。
-
-```bash
-# 删除禅道产品 #1
-$ zentao product delete 1
-
-要删除的产品 #1：
-
-* id: 1
-* name: 产品1
-* ...
-
-是否继续？（y/n）: y
-已删除 产品 #1
-
-# 删除禅道产品 #1 和 #2
-$ zentao product delete 1,2
-
-要删除的产品（共 2 个）：
-
-| id | name | ... |
-| --- | --- | --- |
-| 1 | 产品1 | ... |
-| 2 | 产品2 | ... |
-
-是否继续？（y/n）: y
-已删除 2 个产品
-
-# 强制删除禅道产品 #1 和 #2
-$ zentao product delete 1,2 --yes
-
-操作成功：1, 2
-操作失败：无
-
-# 使用 JSON 输出
-$ zentao product delete 1,2 --yes --format=json
-
-{
-    "status": "success",
-    "result": {
-        "success": [1, 2],
-        "failed": [],
-        "skipped": [],
-        "errors": []
-    }
-}
-```
-
-<details>
-<summary>原始方式</summary>
-
-通过 `zentao delete <moduleName> <objectIDs>` 删除指定模块中的指定 ID 对象。删除多个对象时，可通过逗号分隔多个 ID。
-
-```bash
-# 删除禅道产品 #1
-$ zentao delete product 1
-
-# 输出略
-
-# 删除禅道产品 #1 和 #2
-$ zentao delete product 1,2
-
-# 输出略
-```
-
-</details>
-
-### 创建禅道对象
-
-支持通过 `zentao <moduleName> create [params]` 创建指定模块中的对象。
-
-```bash
-# 创建禅道产品
-$ zentao product create --name=产品1
-```
-
-也可以通过 `--data='JSON_STRING'` 指定创建对象所需的 JSON 数据。
-
-```bash
-# 创建禅道产品，并指定 JSON 数据
-$ zentao product create --data='{"name": "产品1"}'
-```
-
-<details>
-<summary>原始方式</summary>
-
-通过 `zentao create <moduleName> [params]` 创建指定模块中的对象。
-
-```bash
-# 创建禅道产品
-$ zentao create product --name=产品1
-```
-
-也可以通过 `--data='JSON_STRING'` 指定创建对象所需的 JSON 数据。
-
-```bash
-# 创建禅道产品，并指定 JSON 数据
-$ zentao create product --data='{"name": "产品1"}'
-```
-
-</details>
-
-### 更新禅道对象
-
-支持通过 `zentao <moduleName> update [objectID] [params]` 更新指定模块中指定 ID 的对象。
-
-```bash
-# 更新禅道产品 #1
-$ zentao product update 1 --name=产品1
-```
-
-也可以通过 `--data='JSON_STRING'` 指定更新对象所需的 JSON 数据。
-
-```bash
-# 更新禅道产品 #1，并指定 JSON 数据
-$ zentao product update 1 --data='{"name": "产品1"}'
-```
-
-<details>
-<summary>原始方式</summary>
-
-通过 `zentao update <moduleName> [objectID] [params]` 更新指定模块中指定 ID 的对象。
-
-```bash
-# 更新禅道产品 #1
-$ zentao update product 1 --name=产品1
-```
-
-也可以通过 `--data='JSON_STRING'` 指定更新对象所需的 JSON 数据。
-
-```bash
-# 更新禅道产品 #1，并指定 JSON 数据
-$ zentao update product 1 --data='{"name": "产品1"}'
-```
-
-</details>
-
-### 其他操作
-
-支持通过 `zentao <moduleName> <action> <objectID> [params]` 对指定模块、指定 ID 的对象执行特定操作。
-
-```bash
-# 解决禅道 BUG #1
-$ zentao bug resolve 1 --resolution=fixed --comment "已解决"
-```
-
-不同对象支持的操作不同，具体可通过 `zentao <moduleName> <action> --help` 查看对应模块支持的操作。
-
-<details>
-<summary>原始方式</summary>
-
-通过 `zentao do <moduleName> <action> <objectID> [params]` 对指定模块、指定 ID 的对象执行特定操作。
-
-```bash
-# 解决禅道 BUG #1
-$ zentao do bug resolve 1 --resolution=fixed --comment "已解决"
-```
-
-不同对象支持的操作不同，具体可通过 `zentao do <moduleName> help` 查看对应模块支持的操作。
-
-</details>
-
-## 命令行管道与标准输入 (Stdin) 支持
-
-支持通过命令行管道与标准输入（Stdin）传递 `--data` 参数。例如，创建产品时可以通过管道传入 JSON 数据：
-
-```bash
-# 创建禅道产品，通过管道传递 JSON 数据
-$ cat products.json | zentao product create --data @-
-
-# 或者直接通过管道传递
-echo '{"name": "新产品"}' | zentao product create
-```
-
-## 批量操作错误处理
-
-进行批量操作时，默认会在某个对象出错后自动跳过该对象，并继续执行后续操作。如果希望在出错后立即停止，可使用 `--batch-fail-fast` 参数。
-
-也可以通过 `batchFailFast` 配置项在全局范围内开启此行为。下面是批量删除产品出错时的输出示例：
-
-```bash
-# 批量删除 5 个产品，但在第三个产品时出错
-$ zentao product delete 1,2,3,4,5 --yes
-
-操作成功：1, 2, 4, 5
-操作失败：3
-3: E2006: 当前用户没有权限执行此操作
-
-# 批量删除 5 个产品，但在第三个产品时出错，使用 batchFailFast 选项
-$ zentao product delete 1,2,3,4,5 --yes --batch-fail-fast
-
-操作成功：1, 2
-操作失败：3
-已跳过：4, 5
-3: E2006: 当前用户没有权限执行此操作
-
-# 使用 JSON 输出
-$ zentao product delete 1,2,3,4,5 --yes --batch-fail-fast --format=json
-
-{
-    "status": "failed",
-    "result": {
-        "success": [1, 2],
-        "failed": [3],
-        "skipped": [4, 5],
-        "errors": [
-            {
-                "objectID": 3,
-                "error": {
-                    "code": "2006",
-                    "message": "当前用户没有权限执行此操作"
-                }
-            }
-        ]
-    }
-}
-```
-
-## 静默模式
-
-支持通过 `--silent` 参数在执行命令时启用静默模式。启用后，不再输出普通信息，仅在出错时输出错误信息。
-
-```bash
-# 启用静默模式，仅在出错时输出错误信息
-$ zentao product create --silent
-```
-
-也可以通过 `silent` 配置项在全局范围内开启该功能。
-
-```bash
-# 设置全局静默模式
-$ zentao config set silent true
-```
-
-## 获取帮助
-
-支持通过 `zentao help` 获取所有一级命令的帮助信息，也支持通过 `zentao <command> help` 获取指定命令的帮助信息。
-
-```bash
-# 获取所有一级命令帮助信息
-$ zentao help
-
-# 获取指定命令的帮助信息
-$ zentao <command> help
-```
-
-## 输出格式
-
-支持通过 `--format=json|markdown|raw` 参数指定输出格式。默认输出 Markdown 格式，其中 `raw` 表示输出原始 JSON 数据。
-
-```bash
-# 获取禅道产品信息，并输出 Markdown 格式
-$ zentao product
-
-| id | name | ... |
-| --- | --- | --- |
-| 1 | 产品1 | ... |
-| 2 | 产品2 | ... |
-
-已显示 2 项，共 2 项，当前第 1 页，每页 100 条
-
-# 如果获取的是单个对象，则以列表形式输出
-$ zentao product 1
-
-* id: 1
-* name: 产品1
-* ...
-
-# 获取禅道产品信息，并输出 JSON 格式
-$ zentao product --format=json
-
-{
-    status: "success",
-    data: [
-        {"id": 1, "name": "产品1", ...},
-        {"id": 2, "name": "产品2", ...}
-    ],
-    pager: {
-        total: 2,
-        page: 1,
-        recPerPage: 100,
-        totalPage: 1,
-    }
-}
-
-# 获取禅道产品信息，并输出原始 JSON 格式
-$ zentao product --format=raw
-
-{
-    "status": "success",
-    "products": [
-        {"id": 1, "name": "产品1", ...},
-        {"id": 2, "name": "产品2", ...}
-    ],
-    "pager": {
-        "recTotal": 5,
-        "recPerPage": 20,
-        "pageTotal": 1,
-        "pageID": 1
-    }
-}
-```
-
-## 数据处理
-
-`zentao-cli` 支持对数据进行摘取、过滤、排序等处理，方便用户快速获取所需信息。
-
-### 摘取给定属性
-
-支持通过 `--pick=<field1>,<field2>,...` 参数指定需要输出的字段。多个字段用逗号分隔，支持通过 `.` 访问子字段；JSON 输出会保留嵌套对象结构，不存在的字段路径会被忽略。
-
-```bash
-# 获取禅道产品信息，并摘取产品名称和 ID
-$ zentao product --pick=id,name
-
-| id | name |
-| --- | --- |
-| 1 | 产品1 |
-| 2 | 产品2 |
-
-已显示 2 项，共 2 项，当前第 1 页，每页 100 条
-```
-
-### 过滤数据
-
-支持通过 `--filter=<field1><operator><value>,<field2><operator><value>,...` 参数指定过滤条件。多个条件用逗号分隔，字段名支持通过 `.` 访问子字段。当参数值中包含逗号时，需要使用引号包裹；`[a,b]` 数组值中的逗号不会被拆分。
-
-在同一个 `--filter` 参数内使用逗号分隔多个条件时，会按 AND 逻辑进行过滤。如果需要 OR 逻辑，则可使用多个 `--filter` 参数。
-
-支持的运算符：
-
-* `=` 等于（推荐）
-* `:` 等于（兼容旧写法）
-* `!=` 不等于
-* `>` 大于
-* `<` 小于
-* `>=` 大于等于
-* `<=` 小于等于
-* `~` 包含
-* `!~` 不包含
-
-下面是一些使用示例：
-
-```bash
-# 获取禅道产品信息，并过滤名称包含 "产品" 的产品
-$ zentao product --filter 'name~产品'
-
-| id | name | ... |
-| --- | --- | --- |
-| 1 | 产品1 | ... |
-| 2 | 产品2 | ... |
-
-已显示 2 项，共 2 项，当前第 1 页，每页 100 条
-
-# 获取禅道产品信息，并过滤名称包含 "产品" 或名称为 "项目1" 的产品
-$ zentao product --filter 'name~产品' --filter 'name=项目1'
-
-| id | name | ... |
-| --- | --- | --- |
-| 1 | 产品1 | ... |
-| 2 | 产品2 | ... |
-| 3 | 项目1 | ... |
-| 4 | 项目2 | ... |
-
-已显示 4 项，共 4 项，当前第 1 页，每页 100 条
-
-# 当参数值中包含逗号时，需要使用引号包裹，例如：
-$ zentao product --filter 'name="产品1,产品2"'
-
-# 输出略
-```
-
-### 模糊搜索
-
-当输出结果为列表时，支持通过 `--search=<keyword>,<keyword>,...` 参数进行大小写不敏感的模糊搜索。同一参数内多个关键词使用逗号分隔并按 AND 匹配；多个 `--search` 参数之间按 OR 匹配。通过 `--search-fields=<field1>,<field2>,...` 指定搜索字段，多个字段用逗号分隔并支持通过 `.` 访问子字段；未指定字段时会递归搜索嵌套对象和数组中的值。
-
-```bash
-# 获取禅道产品信息，并搜索名称或描述中包含 "产品" 的产品
-$ zentao product --search=产品 --search-fields=name,desc
-
-| id | name | ... |
-| --- | --- | --- |
-| 1 | 产品1 | ... |
-| 2 | 产品2 | ... |
-
-已显示 2 项，共 2 项，当前第 1 页，每页 100 条
-
-# 获取禅道产品信息，并搜索名称中包含 "产品1" 或 "产品2" 的产品
-$ zentao product --search=产品1 --search=产品2
-
-| id | name | ... |
-| --- | --- | --- |
-| 1 | 产品1 | ... |
-| 2 | 产品2 | ... |
-
-已显示 2 项，共 2 项，当前第 1 页，每页 100 条
-```
-
-### 排序数据
-
-支持通过 `--sort=<field1>:asc,<field2>:desc,...` 参数指定排序条件。多个排序条件用逗号分隔，字段名支持通过 `.` 访问子字段；同时兼容原有的 `<field>_asc`、`<field>_desc` 写法。
-
-```bash
-# 获取禅道产品信息，并按产品名称排序
-$ zentao ls product --sort=name:asc
-
-| id | name |
-| --- | --- |
-| 1 | 产品1 |
-| 2 | 产品2 |
-
-已显示 2 项，共 2 项，当前第 1 页，每页 100 条
-```
-
-### 分页数据
-
-当输出结果为列表时，可以通过如下选项控制分页：
-
-* `--page=<pageNumber>`：指定页码，默认值为 1
-* `--recPerPage=<recPerPage>`：指定分页大小，默认值为 20
-* `--limit=<number>`：截取当前返回页的数据；仅非负有限数值生效，小数向下取整
-
-CLI 当前不会自动翻页。仅当该列表操作的 `--help` 显示 `--page` / `--recPerPage` 时才可使用这两个参数；需要全量数据且返回了 pager 时，重复调整 `--page`，直到已读取条数覆盖总数。
-
-```bash
-# 获取禅道产品信息，并分页获取
-$ zentao product --page=1 --recPerPage=100
-
-| id | name |
-| --- | --- |
-| 1 | 产品1 |
-| 2 | 产品2 |
-
-已显示 2 项，共 2 项，当前第 1 页，每页 100 条
-```
-
-## 设置默认配置
-
-支持通过 `zentao config set <key> <value>` 设置默认配置，支持的配置项包括：
-
-* `defaultOutputFormat`：默认输出格式，支持 `markdown`、`json`、`raw`
-* `defaultRecPerPage`：默认分页大小
-* `insecure`：是否忽略 SSL/TLS 证书验证
-* `timeout`：请求超时时间
-* `htmlToMarkdown`：是否将对象属性中的 HTML 转换为 Markdown
-* `batchFailFast`：是否在批量操作出错时停止执行后续操作
-* `pagers`：分页配置，支持 `product`、`project`、`execution` 等模块
-* `silent`：是否启用静默模式，默认值为 `false`
-* `jsonPretty`：是否在 JSON 格式化时添加空格，默认值为 `false`
-
-```bash
-# 设置默认输出格式为 JSON
-$ zentao config set defaultOutputFormat json
-
-```
-
-通过 `zentao config get [key]` 查看默认配置；如果不指定 `key`，则返回全部默认配置。
-
-```bash
-# 查看默认输出格式
-$ zentao config get defaultOutputFormat
-
-json
-
-# 查看所有默认配置
-$ zentao config get
-
-defaultOutputFormat: "json"
-defaultRecPerPage: 20
-insecure: false
-timeout: 10000
-htmlToMarkdown: true
-batchFailFast: false
-```
-
-## 获取版本信息
-
-通过 `zentao version` 获取 `zentao-cli` 版本信息；如果已经登录禅道，还会同时输出当前登录的禅道版本信息。
-
-```bash
-# 获取 zentao-cli 版本信息
-$ zentao version
-
-Zentao CLI: 0.1.0
-Zentao Server: 22.1 (https://zentao.example.com)
-```
-
-## 自动补全
-
-支持通过 `zentao autocomplete` 命令生成自动补全脚本，支持 `zsh`、`bash` 和 `fish` 三种 shell。
-
-```bash
-# 生成 zsh 自动补全脚本
-$ zentao autocomplete zsh
-
-# 生成 bash 自动补全脚本
-$ zentao autocomplete bash
-
-# 生成 fish 自动补全脚本
-$ zentao autocomplete fish
+zentao config list
+zentao config set defaultOutputFormat json
+zentao completion zsh > ~/.zentao-completion.zsh
+source ~/.zentao-completion.zsh
 ```

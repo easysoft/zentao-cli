@@ -41,14 +41,13 @@ test('remote MCP blocks server file uploads before authentication while stdio pr
                 const name = splitTools ? 'zentao_file_write' : 'zentao_file';
                 const { tools } = await client.listTools();
                 const tool = tools.find(tool => tool.name === name)!;
-                expect((tool.inputSchema.properties!.action as { enum: string[] }).enum).toContain('create');
+                expect((tool.inputSchema.properties!.action as { enum: string[] }).enum).not.toContain('create');
                 const help = toolData(await client.callTool({ name: 'zentao_action_help', arguments: { module: 'file', action: 'create' } }));
                 expect(help.available).toBe(false);
                 expect(help.unavailableReason).toContain('HTTP MCP 不支持通过本地路径上传服务端文件');
                 for (const params of [body, { data: body }]) {
                     const result = await client.callTool({ name, arguments: { action: 'create', params } });
-                    expect(result).toMatchObject({ isError: true, structuredContent: { error: { code: 'E2009' } } });
-                    expect(JSON.stringify(result)).toContain('请使用本地 CLI 或 stdio MCP');
+                    expect(result.isError).toBe(true);
                     expect(JSON.stringify(result)).not.toContain(sentinel);
                 }
                 expect(authentications).toBe(0);

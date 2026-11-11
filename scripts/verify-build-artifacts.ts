@@ -44,7 +44,7 @@ try {
         ['standalone', [executable]],
     ] as const) {
         const outputDir = join(temporaryDir, `${name}-skills`);
-        run([...command, '--config', configPath, 'add-skill', '--output', outputDir], runtimeDir);
+        run([...command, '--config', configPath, 'skill', 'export', outputDir], runtimeDir);
         assert.deepEqual(listFiles(outputDir), expectedFiles);
         for (const file of expectedFiles) {
             assert.deepEqual(readFileSync(join(outputDir, file)), readFileSync(join(sourceDir, file)), file);
@@ -53,14 +53,14 @@ try {
         // Repeated exports replace bundled files without deleting unrelated user files.
         writeFileSync(join(outputDir, expectedFiles[0]), 'outdated');
         writeFileSync(join(outputDir, 'user-note.txt'), 'keep');
-        run([...command, '--config', configPath, 'add-skill', '--output', outputDir], runtimeDir);
+        run([...command, '--config', configPath, 'skill', 'export', outputDir], runtimeDir);
         assert.deepEqual(readFileSync(join(outputDir, expectedFiles[0])), readFileSync(join(sourceDir, expectedFiles[0])));
         assert.equal(readFileSync(join(outputDir, 'user-note.txt'), 'utf-8'), 'keep');
 
         const conflictDir = join(temporaryDir, `${name}-conflict`);
         mkdirSync(conflictDir);
         writeFileSync(join(conflictDir, 'zentao-tour'), 'existing file');
-        const error = run([...command, '--config', configPath, 'add-skill', '--output', conflictDir], runtimeDir, 1);
+        const error = run([...command, '--config', configPath, 'skill', 'export', conflictDir], runtimeDir, 1);
         assert.match(error, /技能目标路径必须是目录/);
         assert.equal(existsSync(join(conflictDir, 'zentao-cli')), false);
         assert.equal(readFileSync(join(conflictDir, 'zentao-tour'), 'utf-8'), 'existing file');

@@ -1,7 +1,8 @@
 import type { Profile } from '../types/index.js';
-import { ZentaoClient, createClient } from '../api/index.js';
+import { ZentaoClient, createClient, withRequestSignal } from '../api/index.js';
 import { ZentaoError } from '../errors.js';
-import { getCurrentProfile, getProfileConfig, buildProfile, normalizeServerUrl } from '../config/store.js';
+import { getCurrentProfile, getProfileConfig, buildProfile, normalizeServerUrl, findProfileByKey } from '../config/store.js';
+import { commandSignal } from '../utils/lifecycle.js';
 import { login, getEnvCredentials } from './login.js';
 
 /** 已通过鉴权后的运行时上下文，供命令层发起 API 调用 */
@@ -17,8 +18,16 @@ export interface AuthContext {
  * Environment credentials never access local profiles, and authentication
  * never persists credentials or changes the saved default profile.
  */
-export function resolveAuthSource(profile?: Profile) {
+export function resolveAuthSource(profile?: Profile | string) {
+    if (typeof profile === 'string') {
+        const selected = findProfileByKey(profile);
+        if (!selected) throw new ZentaoError('E1007');
+        profile = selected;
+    }
     const env = getEnvCredentials();
+    if (!profile && Object.values(env).some(Boolean) && !(env.url && env.account && (env.token || env.password))) {
+        throw new ZentaoError('E1001', {}, { reason: 'incomplete_environment' });
+    }
     if (!profile && env.url && env.account && (env.token || env.password)) {
         return {
             source: 'environment' as const,
@@ -39,20 +48,22 @@ export function resolveAuthSource(profile?: Profile) {
 }
 
 /** Resolve credentials first; only environment password authentication requires a login request. */
-export async function ensureAuth(options?: { insecure?: boolean; timeout?: number; profile?: Profile }): Promise<AuthContext> {
+export async function ensureAuth(options?: { insecure?: boolean; timeout?: number; profile?: Profile | string; signal?: AbortSignal }): Promise<AuthContext> {
+    const signal = options?.signal ?? commandSignal();
+    if (signal?.aborted) throw new ZentaoError('E5003');
     const auth = resolveAuthSource(options?.profile);
     if (auth.source === 'environment') {
         const { server, account, token, password } = auth;
         if (token) {
             return {
-                client: createClient(server, token, options),
+                client: withRequestSignal(createClient(server, token, options), signal),
                 profile: buildProfile(server, account, token),
             };
         }
 
-        const result = await login(server, account, password!, options);
+        const result = await login(server, account, password!, { ...options, signal });
         return {
-            client: result.client,
+            client: withRequestSignal(result.client, signal),
             profile: buildProfile(server, account, result.token, result.serverConfig, result.user),
         };
     }
@@ -63,7 +74,7 @@ export async function ensureAuth(options?: { insecure?: boolean; timeout?: numbe
         timeout: options?.timeout ?? config.timeout,
     };
     return {
-        client: createClient(auth.server, auth.token, clientOpts),
+        client: withRequestSignal(createClient(auth.server, auth.token, clientOpts), signal),
         profile: auth.profile,
     };
 }

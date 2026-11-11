@@ -1,36 +1,32 @@
 import { brandText } from '../brand.js';
 import { Command } from 'commander';
-import { removeProfile, getCurrentProfile, profileKey } from '../config/store.js';
+import { removeProfile, getCurrentProfile, getAllProfiles, getProfileConfig, profileKey, findProfileByKey } from '../config/store.js';
 import { ZentaoError } from '../errors.js';
-import type { GlobalOptions } from '../types/index.js';
-
-/** 注册 `zentao logout`：按 key 删除本地保存的 Profile */
+import { emitResult } from '../utils/output.js';
+import { revokeSession } from '../auth/session.js';
+import { commandSignal } from '../utils/lifecycle.js';
 export function registerLogoutCommand(program: Command): void {
-    program
-        .command('logout')
-        .description('退出当前用户登录')
-        .argument('[profileKey]', '要退出的用户配置（格式：account@server）')
-        .action((key: string | undefined) => {
-            const globalOpts = program.opts() as GlobalOptions;
-            let targetKey: string;
-            if (key) {
-                targetKey = key;
-            } else {
-                const current = getCurrentProfile();
-                if (!current) {
-                    console.log(brandText('未找到当前用户配置，请先使用 `zentao login` 登录'));
-                    return;
+    program.command('logout').description('删除本地登录记录').argument('[key]')
+        .option('--all', '清理选定配置文件中的全部账号；空配置也成功')
+        .option('--revoke', '先撤销并验证远端会话；失败时保留该账号以便重试')
+        .action(async (key: string | undefined, _opts, cmd: Command) => {
+            const options = cmd.optsWithGlobals();
+            if (options.all && (key || options.profile)) throw new ZentaoError('E2009', { option: '--all', reason: '不能同时指定账号或 --profile' });
+            const selected = key ?? options.profile;
+            const profile = selected ? findProfileByKey(selected) : getCurrentProfile();
+            if (!options.all && !profile) throw new ZentaoError('E1007');
+            const profiles = options.all ? getAllProfiles() : [profile!];
+            const removed: string[] = [];
+            for (const item of profiles) {
+                if (options.revoke) {
+                    const config = getProfileConfig(item);
+                    await revokeSession(item, { timeout: options.timeout ?? config.timeout, insecure: options.insecure ?? config.insecure, signal: commandSignal() });
                 }
-                targetKey = profileKey(current.account, current.server);
+                const fullKey = profileKey(item.account, item.server);
+                // A concurrent login may have replaced the token while revocation was in flight.
+                if (removeProfile(fullKey, item.token)) removed.push(fullKey);
+                else if (options.revoke && findProfileByKey(fullKey)) throw new ZentaoError('E1012');
             }
-
-            const removed = removeProfile(targetKey);
-            if (!removed) {
-                throw new ZentaoError('E1007');
-            }
-
-            if (!globalOpts.silent) {
-                console.log(`已退出: ${targetKey}`);
-            }
+            emitResult({ removed: options.all ? removed : removed[0] ?? null }, options);
         });
 }

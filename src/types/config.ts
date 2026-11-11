@@ -5,7 +5,7 @@ export type { ServerConfig };
 /** 用户可配置的选项，存储在 profile.config 中 */
 export interface UserConfig {
     /** 默认输出格式 */
-    defaultOutputFormat?: 'markdown' | 'json' | 'raw';
+    defaultOutputFormat?: 'table' | 'markdown' | 'json' | 'raw';
     /** 默认每页记录数 */
     defaultRecPerPage?: number;
     /** 是否跳过 SSL/TLS 证书验证 */
@@ -18,8 +18,6 @@ export interface UserConfig {
     batchFailFast?: boolean;
     /** 各模块自定义分页大小，key 为模块名 */
     pagers?: Record<string, number>;
-    /** 是否启用静默模式（仅输出错误信息） */
-    silent?: boolean;
     /** JSON 输出是否美化（带缩进） */
     jsonPretty?: boolean;
 }
@@ -56,4 +54,4 @@ export interface ConfigData {
 }
 
 /** 支持的输出格式 */
-export type OutputFormat = 'markdown' | 'json' | 'raw';
+export type OutputFormat = 'table' | 'markdown' | 'json' | 'raw';

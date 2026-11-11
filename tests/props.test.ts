@@ -7,7 +7,7 @@ describe('zentao <module> props', () => {
 
         expect(result.exitCode).toBe(0);
         expect(result.stderr).toBe('');
-        const props = JSON.parse(result.stdout);
+        const props = JSON.parse(result.stdout).data;
         expect(props.id).toBe('编号');
         expect(props.name).toBe('产品名称');
     });
@@ -20,11 +20,11 @@ describe('zentao <module> props', () => {
         expect(result.stdout).toContain('title: Bug标题');
     });
 
-    test('respects silent mode', async () => {
-        const result = await runCliWithoutAuth(['task', 'props', '--silent']);
+    test('quiet preserves requested data', async () => {
+        const result = await runCliWithoutAuth(['task', 'props', '--quiet']);
 
         expect(result.exitCode).toBe(0);
-        expect(result.stdout).toBe('');
+        expect(result.stdout).toContain('id:');
         expect(result.stderr).toBe('');
     });
 });

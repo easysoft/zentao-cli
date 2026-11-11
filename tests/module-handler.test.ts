@@ -1,6 +1,8 @@
+import { createProgram } from '../src/cli.js';
+import { kebabCase } from '../src/modules/contract.js';
 import { describe, expect, test } from 'bun:test';
 import type { ZentaoClient } from '../src/api/index';
-import { handleModuleCommand, showModuleHelp, showModuleAllActionsHelp, showModuleActionHelp } from '../src/commands/module-handler';
+import { handleModuleCommand } from '../src/commands/module-handler';
 import { getAllModules, getAvailableActions, getModule } from '../src/modules';
 import type { ModuleActionName, ModuleActionOptions } from '../src/types';
 import { mockProfile, runCliWithoutAuth } from './helpers';
@@ -44,20 +46,21 @@ function stubIsTTY(stream: { isTTY?: boolean }, value: boolean): () => void {
 
 describe('expanded SDK actions', () => {
     test('shows every registered action and its version requirement exactly once in detailed help', async () => {
+        const program = createProgram();
         for (const mod of getAllModules()) {
-            const summary = (await captureConsoleLog(async () => showModuleHelp(mod))).join('\n');
-            for (const action of getAvailableActions(mod)) {
-                expect(summary).toContain(`zentao ${mod.name} ${action} [选项]`);
+            const command = program.commands.find(command => command.name() === mod.name)!;
+            expect(command.commands.filter(child => child.name() !== 'props')).toHaveLength(mod.actions.length);
+            for (const action of mod.actions) {
+                const child = command.commands.find(child => child.name() === kebabCase(action.name))!;
+                expect(child.helpInformation()).toContain(action.minVersion.join(' / '));
             }
-            const details = await captureConsoleLog(async () => showModuleAllActionsHelp(mod));
-            expect(details.filter((line) => line.startsWith('最低禅道版本:'))).toHaveLength(mod.actions.length);
         }
     });
 
     test('shows named list operations without advertising a nonexistent default list', async () => {
         const result = await runCliWithoutAuth(['my']);
         expect(result.exitCode).toBe(0);
-        expect(result.stdout).toContain('zentao my tasks [选项]');
+        expect(result.stdout).toContain('tasks [options]');
         expect(result.stdout).not.toContain('zentao my [选项]');
         expect(result.stderr).toBe('');
     });
@@ -65,9 +68,9 @@ describe('expanded SDK actions', () => {
     test('preserves distinct document path parameters in help and requests', async () => {
         const mod = getModule('doc')!;
         const action = mod.actions.find((action) => action.name === 'createMyDoc')!;
-        const help = (await captureConsoleLog(async () => showModuleActionHelp(mod, action))).join('\n');
-        expect(help).toContain('--spaceID <number>');
-        expect(help).toContain('--libID <number>');
+        const help = createProgram().commands.find(cmd => cmd.name() === 'doc')!.commands.find(cmd => cmd.name() === 'create-my-doc')!.helpInformation();
+        expect(help).toContain('--space-id <value>');
+        expect(help).toContain('--lib-id <value>');
         expect(help).toContain('22.5 / biz13.5 / max8.5 / ipd5.5');
 
         const requests: Array<{ path: string; options: { method?: string; body?: unknown } }> = [];
@@ -79,7 +82,7 @@ describe('expanded SDK actions', () => {
             },
         } as unknown as ZentaoClient;
         await handleModuleCommand(client, mod, 'createMyDoc', ['--spaceID=1', '--libID=2'], mockProfile, {
-            silent: true, data: '{"title":"新文档","content":"# 正文","contentType":"doc"}',
+            quiet: true, data: '{"title":"新文档","content":"# 正文","contentType":"doc"}',
         });
         expect(requests).toEqual([{
             path: '/doc/my/spaces/1/libs/2/docs',
@@ -98,14 +101,14 @@ describe('expanded SDK actions', () => {
                     : { status: 'success', id: 2 };
             },
         } as unknown as ZentaoClient;
-        await handleModuleCommand(client, getModule('doc')!, 'updateLib', ['--libID=2', '--name=新文档库'], mockProfile, { silent: true });
+        await handleModuleCommand(client, getModule('doc')!, 'updateLib', ['--libID=2', '--name=新文档库'], mockProfile, { quiet: true });
         expect(requests.map(({ path, method }) => ({ path, method }))).toEqual([
             { path: '/doc/libs/2', method: 'GET' },
             { path: '/doc/libs/2', method: 'PUT' },
         ]);
         expect(requests[1].body).toMatchObject({ name: '新文档库', acl: 'private', users: ['admin'] });
         requests.length = 0;
-        await expect(handleModuleCommand(client, getModule('doc')!, 'updateLib', [], mockProfile, { silent: true })).rejects.toMatchObject({ code: '2003' });
+        await expect(handleModuleCommand(client, getModule('doc')!, 'updateLib', [], mockProfile, { quiet: true })).rejects.toMatchObject({ code: '2003' });
         expect(requests).toHaveLength(0);
     });
 });
@@ -127,14 +130,14 @@ describe('handleModuleCommand batch ids', () => {
             'delete' as ModuleActionName,
             args,
             mockProfile,
-            { yes: true, silent: true, ...options },
+            { yes: true, quiet: true, ...options },
         );
 
         return requests;
     }
 
-    test('executes comma-separated positional ids as batch delete', async () => {
-        const requests = await runDelete(['1,2']);
+    test('deduplicates explicit batch ids', async () => {
+        const requests = await runDelete([], { ids: '1,2,1' });
 
         expect(requests).toEqual([
             { method: 'delete', path: '/products/1' },
@@ -142,8 +145,8 @@ describe('handleModuleCommand batch ids', () => {
         ]);
     });
 
-    test('executes comma-separated --id option as batch delete', async () => {
-        const requests = await runDelete([], { id: '1,2' });
+    test('executes explicit --ids as batch delete', async () => {
+        const requests = await runDelete([], { ids: '1,2' });
 
         expect(requests).toEqual([
             { method: 'delete', path: '/products/1' },
@@ -162,16 +165,16 @@ describe('handleModuleCommand batch ids', () => {
                 client,
                 getModule('product')!,
                 'delete' as ModuleActionName,
-                ['1,2'],
+                [],
                 mockProfile,
-                { yes: true, format: 'json' },
+                { ids: '1,2', yes: true, format: 'json' },
             );
         });
 
         expect(output).toHaveLength(1);
         expect(JSON.parse(output[0])).toEqual({
-            status: 'success',
-            result: { success: [1, 2], failed: [], skipped: [], errors: [] },
+            ok: true, data: [{ objectID: 1, ok: true, data: null }, { objectID: 2, ok: true, data: null }],
+            meta: { success: 2, failed: 0, skipped: 0 },
         });
     });
 
@@ -189,29 +192,19 @@ describe('handleModuleCommand batch ids', () => {
                 client,
                 getModule('product')!,
                 'get' as ModuleActionName,
-                ['1,2'],
+                [],
                 mockProfile,
-                { format: 'json' },
+                { ids: '1,2', format: 'json' },
             );
         });
 
         expect(output).toHaveLength(1);
-        expect(JSON.parse(output[0])).toEqual({
-            status: 'success',
-            result: {
-                success: [1, 2],
-                failed: [],
-                skipped: [],
-                data: [
-                    { objectID: 1, value: { id: 1, name: '产品1' } },
-                    { objectID: 2, value: { id: 2, name: '产品2' } },
-                ],
-                errors: [],
-            },
-        });
+        expect(JSON.parse(output[0])).toEqual({ ok: true,
+            data: [1, 2].map(id => ({ objectID: id, ok: true, data: { id, name: `产品${id}` } })),
+            meta: { success: 2, failed: 0, skipped: 0 } });
     });
 
-    test('silent batch failures do not print successful object data', async () => {
+    test('quiet batch failures retain per-target results and errors', async () => {
         const client = {
             getZentaoConfig: async () => ({ version: '22.5' }),
             request: async (path: string) => {
@@ -223,27 +216,20 @@ describe('handleModuleCommand batch ids', () => {
         process.exitCode = undefined;
 
         try {
-            const output = await captureConsoleError(async () => {
+            const output = await captureConsoleLog(async () => {
                 await handleModuleCommand(
                     client,
                     getModule('product')!,
                     'get' as ModuleActionName,
-                    ['1,2'],
+                    [],
                     mockProfile,
-                    { format: 'json', silent: true },
+                    { ids: '1,2', format: 'json', quiet: true },
                 );
             });
 
             expect(output).toHaveLength(1);
-            expect(output[0]).not.toContain('private value');
-            expect(JSON.parse(output[0])).toEqual({
-                status: 'failed',
-                result: {
-                    failed: [2],
-                    skipped: [],
-                    errors: [{ objectID: 2, error: { message: 'request failed' } }],
-                },
-            });
+            expect(output[0]).toContain('private value');
+            expect(JSON.parse(output[0])).toMatchObject({ ok: false, data: [{ objectID: 1, ok: true }, { objectID: 2, ok: false, error: { message: 'request failed' } }], meta: { failed: 1, skipped: 0 } });
         } finally {
             process.exitCode = previousExitCode ?? 0;
         }
@@ -268,30 +254,23 @@ describe('handleModuleCommand batch ids', () => {
                     client,
                     getModule('product')!,
                     'delete' as ModuleActionName,
-                    ['1,2,3'],
+                    [],
                     mockProfile,
-                    { yes: true, format: 'json' },
+                    { ids: '1,2,3', yes: true, format: 'json' },
                 );
             });
 
             expect(requests).toEqual(['/products/1', '/products/2', '/products/3']);
             expect(output).toHaveLength(1);
-            expect(JSON.parse(output[0])).toEqual({
-                status: 'failed',
-                result: {
-                    success: [1, 3],
-                    failed: [2],
-                    skipped: [],
-                    errors: [{ objectID: 2, error: { message: 'request failed' } }],
-                },
-            });
+            expect(JSON.parse(output[0])).toMatchObject({ ok: false, meta: { success: 2, failed: 1, skipped: 0 } });
+            expect(JSON.parse(output[0]).data.find((item: { objectID: number }) => item.objectID === 2)).toMatchObject({ ok: false, error: { message: 'request failed' } });
             expect(Number(process.exitCode)).toBe(1);
         } finally {
             process.exitCode = previousExitCode ?? 0;
         }
     });
 
-    test.each([false, true])('records raw API failures with batchFailFast=%p', async (batchFailFast) => {
+    test.each([false, true])('records API failures with batchFailFast=%p', async (batchFailFast) => {
         const requests: string[] = [];
         const failure = { status: 'fail', message: { name: ['Cannot delete this product'] } };
         const client = {
@@ -309,24 +288,16 @@ describe('handleModuleCommand batch ids', () => {
                 client,
                 getModule('product')!,
                 'delete',
-                ['1,2,3'],
+                [],
                 mockProfile,
-                { yes: true, format: 'raw', batchFailFast },
+                { ids: '1,2,3', yes: true, format: 'json', batchFailFast },
             ));
 
             expect(requests).toEqual(batchFailFast
                 ? ['/products/1', '/products/2']
                 : ['/products/1', '/products/2', '/products/3']);
             expect(output).toHaveLength(1);
-            expect(JSON.parse(output[0])).toMatchObject({
-                status: 'failed',
-                result: {
-                    success: batchFailFast ? [1] : [1, 3],
-                    failed: [2],
-                    skipped: batchFailFast ? [3] : [],
-                    errors: [{ objectID: 2, error: { code: '2008', details: failure } }],
-                },
-            });
+            expect(JSON.parse(output[0])).toMatchObject({ ok: false, meta: { success: batchFailFast ? 1 : 2, failed: 1, skipped: batchFailFast ? 1 : 0 } });
             expect(output[0]).toContain('Cannot delete this product');
             expect(Number(process.exitCode)).toBe(1);
         } finally {
@@ -404,7 +375,7 @@ describe('handleModuleCommand rendered output', () => {
 
         expect(output).toHaveLength(1);
         expect(output[0]).not.toContain('\x1b');
-        expect(JSON.parse(output[0])).toEqual({ id: 1, name: '产品1' });
+        expect(JSON.parse(output[0])).toMatchObject({ ok: true, data: { id: 1, name: '产品1' }, meta: {} });
     });
 
     test('does not render Markdown ANSI when stdout is not a TTY', async () => {

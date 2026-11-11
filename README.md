@@ -11,9 +11,9 @@
 * 基于禅道 RESTful API 2.0，覆盖 40 多个模块、300 多个 API 操作，调用前按禅道版本检查接口兼容性
 * 可通过 `npx zentao-cli` 免安装运行
 * 通过浏览器登录，只保存 Token、不保存密码，支持多账号切换
-* 支持对数据进行摘取、过滤、排序，并自动将 HTML 转换为 Markdown
+* 支持对数据进行摘取、过滤、排序，可显式将 HTML 转换为 Markdown
 * 对 AI Agents 友好：帮助信息完善，支持 Markdown 与 JSON 输出
-* 通过 `zentao add-skill` 一键安装技能到 AI Agent
+* 通过 `zentao skill install` 一键安装技能到 AI Agent
 * 提供本地 stdio 与远程 HTTP MCP 服务，多个客户端可使用各自的禅道 Token
 
 ## 环境要求
@@ -24,6 +24,8 @@
 部分操作要求更高的禅道版本，CLI 会在发送请求前检查并提示。详见 [API 覆盖与版本兼容](docs/cli-usage.md#api-覆盖与版本兼容)。
 
 ## 快速开始
+
+当前源码包含尚未发布的命令契约调整；已安装的 0.4.3 请以本机 `--help` 为准。
 
 ```bash
 # 全局安装
@@ -38,23 +40,23 @@ npm install -g zentao-cli
 zentao login
 
 # 查看产品列表
-zentao product
+zentao product list
 ```
 
 没有图形界面的终端可使用 `zentao login --no-browser` 交互登录。环境变量登录、多账号切换和退出登录见 [用户验证](docs/cli-usage.md#用户验证)。
 
 ## 常用命令
 
-命令格式为 `zentao <模块名> [操作] [参数]`。省略操作时查看列表，只传 ID 时查看详情。
+命令格式为 `zentao <模块名> <操作> [目标] [选项]`。使用 `list` 查看列表、`get` 查看详情；省略操作时显示帮助。
 
 ### 产品
 
 ```bash
 # 查看产品列表
-zentao product
+zentao product list
 
 # 查看产品详情
-zentao product 1
+zentao product get 1
 
 # 创建产品
 zentao product create --name=新产品
@@ -70,10 +72,10 @@ zentao product delete 1
 
 ```bash
 # 查看产品 #1 的 Bug 列表
-zentao bug --product=1
+zentao bug list --product=1
 
 # 查看 Bug 详情
-zentao bug 329
+zentao bug get 329
 
 # 解决 Bug
 zentao bug resolve 329 --resolution=fixed
@@ -83,29 +85,29 @@ zentao bug resolve 329 --resolution=fixed
 
 ```bash
 # 查看产品 #1 的需求列表
-zentao story --product=1
+zentao story list --product=1
 
 # 在执行 #10 中创建任务
-zentao task create --name=实现登录功能 --executionID=10
+zentao task create --name=实现登录功能 --execution-id=10
 ```
 
 ### 筛选与输出格式
 
 ```bash
 # 只显示指定字段
-zentao product --pick=id,name
+zentao product list --fields=id,name
 
 # 按条件过滤
-zentao bug --product=1 --filter 'status=active'
+zentao bug list --product=1 --filter 'status=active'
 
 # 模糊搜索
-zentao story --product=1 --search=登录 --search-fields=title
+zentao story list --product=1 --search=登录 --search-fields=title
 
 # 按字段排序
-zentao bug --product=1 --sort=id:desc
+zentao bug list --product=1 --sort=id:desc
 
 # JSON 格式输出，适合程序处理
-zentao product --format=json
+zentao product list --format=json
 ```
 
 ### 查看帮助
@@ -154,14 +156,14 @@ zentao token --server https://zentao.example.com --user admin --password '<passw
 
 ```bash
 # 一键安装、登录并安装技能（交互选择目标 Agent）
-npm install -g zentao-cli && zentao login && zentao add-skill
+npm install -g zentao-cli && zentao login && zentao skill install
 
 # 直接指定目标 Agent，all 表示全部安装
-zentao add-skill claude-code
-zentao add-skill all
+zentao skill install claude-code
+zentao skill install all
 
 # 将所有内置技能导出到指定目录
-zentao add-skill --output ./skills
+zentao skill export ./skills
 ```
 
 支持 Claude Code、Cursor、Cherry Studio、Codex、OpenCode、VS Code、Antigravity 和 Gemini。安装后即可在 Agent 中用自然语言提问：
@@ -174,7 +176,7 @@ zentao add-skill --output ./skills
 需求 xxx 有哪些风险？
 ```
 
-由 Agent 发起登录时，使用 `zentao login --web` 并保持进程运行，等用户在浏览器中完成验证后再继续。在 CI 或容器中，可以注入环境凭据或挂载配置文件；Agent 可先执行 `zentao profile --effective --format=json` 确认实际使用的账号，输出不包含 Token 或密码。详见 [Agent、CI 与容器中的凭据](docs/use-zentao-in-agents.md#agentci-与容器中的凭据)。
+由 Agent 发起登录时，使用 `zentao login --web` 并保持进程运行，等用户在浏览器中完成验证后再继续。在 CI 或容器中，可以注入环境凭据或挂载配置文件；Agent 可先执行 `zentao auth status --format=json` 确认实际使用的账号，输出不包含 Token 或密码。详见 [Agent、CI 与容器中的凭据](docs/use-zentao-in-agents.md#agentci-与容器中的凭据)。
 
 ### 通过本地 MCP 使用
 

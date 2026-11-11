@@ -24,16 +24,16 @@ test.each([
     ...['invalid', 'ftp://zentao.example.com', 'https://user:password@zentao.example.com',
         'https://zentao.example.com?token=secret', 'https://zentao.example.com#fragment']
         .map(url => ['mcp-server', url]),
-])('MCP CLI rejects invalid startup arguments %j', async (...args) => {
+].flatMap(args => args[0] === 'mcp' ? [args, ['mcp', 'serve', ...args.slice(1)]] : [args]))('MCP CLI rejects invalid startup arguments %j', async (...args) => {
     const result = await runCliWithoutAuth(args);
-    expect(result.exitCode).toBe(1);
+    expect(result.exitCode).toBe(2);
     expect(result.stderr).toContain('E2009');
     expect(result.stdout).toBe('');
 });
 
 test.each(['http', 'stdio'])('mcp-server rejects --transport %s', async transport => {
     const result = await runCliWithoutAuth(['mcp-server', '--transport', transport]);
-    expect(result.exitCode).toBe(1);
+    expect(result.exitCode).toBe(2);
     expect(result.stderr).toContain("unknown option '--transport'");
 });
 
@@ -54,6 +54,7 @@ test.each([['--help'], ['mcp-server', '--help'], ['help', 'mcp-server']].map(arg
 test.each([
     { command: 'mcp', source: 'env', signal: 'SIGINT', restricted: false },
     { command: 'mcp', source: 'option', signal: 'SIGTERM', restricted: false },
+    { command: 'mcp serve', source: 'option', signal: 'SIGTERM', restricted: true },
     { command: 'mcp-server', source: 'env', signal: 'SIGINT', restricted: false },
     { command: 'mcp-server', source: 'option', signal: 'SIGTERM', restricted: false },
     { command: 'mcp-server', source: 'positional', signal: 'SIGTERM', restricted: true },
@@ -78,7 +79,7 @@ test.each([
         : source === 'option' ? ['--url', upstream.url.origin] : [];
     const child = Bun.spawn({
         cmd: [process.execPath, '--no-env-file', resolve('src/index.ts'), '--config', configFile,
-            '--timeout', '1500', '--insecure', command, ...(command === 'mcp' ? ['--transport', 'http'] : []),
+            '--timeout', '1500', '--insecure', ...command.split(' '), ...(command !== 'mcp-server' ? ['--transport', 'http'] : []),
             ...siteArgs, '--port', String(port), '--modules', 'product',
             ...(restricted ? ['--host', '127.0.0.1', '--read-only', '--split-tools'] : [])],
         cwd: dir, stdin: 'ignore', stdout: 'pipe', stderr: 'pipe',

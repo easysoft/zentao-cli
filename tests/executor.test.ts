@@ -60,7 +60,7 @@ describe('module executor (zentao-api request pipeline)', () => {
         const result = await executeModuleCommand(client, getModule('execution')!, 'projectExecutions', [], {
             params: '{"projectID":5,"browseType":"all"}', page: '2', recPerPage: '10', pick: 'id,name',
         }, DEFAULT_CONFIG);
-        expect(requests[0]).toMatchObject({ path: '/projects/5/executions', options: { query: { browseType: 'all', pageID: '2' } } });
+        expect(requests[0]).toMatchObject({ path: '/projects/5/executions', options: { query: { browseType: 'all', pageID: 2 } } });
         expect(result.data).toEqual([{ id: 3, name: '迭代' }]);
         expect(result.pager).toEqual({ pageID: 2, recPerPage: 10, recTotal: 11 });
     });
@@ -170,7 +170,7 @@ describe('module executor (zentao-api request pipeline)', () => {
             { ...DEFAULT_CONFIG, defaultRecPerPage: 25, pagers: { product: 50 } },
         );
 
-        expect(requests[0].options.query).toMatchObject({ recPerPage: '50' });
+        expect(requests[0].options.query).toMatchObject({ recPerPage: 50 });
     });
 
     test('executes get commands with HTML conversion and pick', async () => {
@@ -214,7 +214,7 @@ describe('module executor (zentao-api request pipeline)', () => {
         expect(result.data).toEqual([{ id: 1, desc: '<p>Hello</p>' }]);
     });
 
-    test('rejects the reserved --all option instead of silently returning one page', async () => {
+    test('rejects incomplete all results when the server omits its pager', async () => {
         const { client, requests } = mockClient(() => ({
             status: 'success',
             products: [{ id: 1 }],
@@ -227,8 +227,8 @@ describe('module executor (zentao-api request pipeline)', () => {
             [],
             { all: true },
             DEFAULT_CONFIG,
-        )).rejects.toThrow('尚未支持自动翻页');
-        expect(requests).toHaveLength(0);
+        )).rejects.toThrow('服务端未返回分页信息');
+        expect(requests).toHaveLength(1);
     });
 
     test('returns the original API response in raw mode without local processing', async () => {
@@ -242,7 +242,7 @@ describe('module executor (zentao-api request pipeline)', () => {
             getModule('product')!,
             'list',
             [],
-            { format: 'raw', filter: ['status=closed'], pick: 'id' },
+            { format: 'raw' },
             DEFAULT_CONFIG,
         );
 

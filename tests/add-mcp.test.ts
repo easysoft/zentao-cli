@@ -44,7 +44,7 @@ describe('add-mcp credentials', () => {
         };
 
         const proc = Bun.spawn({
-            cmd: [process.execPath, '--no-env-file', 'src/index.ts', ...(silent ? ['--silent'] : []), 'add-mcp', agent],
+            cmd: [process.execPath, '--no-env-file', 'src/index.ts', '--format=json', ...(silent ? ['--quiet'] : []), 'mcp', 'install', agent],
             cwd: process.cwd(),
             env,
             stdin: 'ignore',
@@ -79,7 +79,7 @@ describe('add-mcp credentials', () => {
         expect(env.ZENTAO_TOKEN).toBe(SECRET_TOKEN);
         expect(env.ZENTAO_PASSWORD).toBeUndefined();
         expect(servers['zentao-cli'].command).toBe('zentao');
-        expect(servers['zentao-cli'].args).toEqual(['mcp']);
+        expect(servers['zentao-cli'].args).toEqual(['mcp', 'serve']);
         expect(statSync(cursorConfig).mode & 0o777).toBe(0o600);
         expect(result.stdout + result.stderr).not.toContain(SECRET_TOKEN);
         expect(result.stdout + result.stderr).not.toContain('legacy-password');
@@ -103,7 +103,7 @@ describe('add-mcp credentials', () => {
             mcpServers: {
                 existing: { command: 'keep' },
                 'zentao-cli': {
-                    command: 'zentao', args: ['mcp'],
+                    command: 'zentao', args: ['mcp', 'serve'],
                     env: { ZENTAO_URL: 'https://zentao.example.com', ZENTAO_ACCOUNT: 'admin', ZENTAO_TOKEN: SECRET_TOKEN },
                 },
             },
@@ -130,7 +130,7 @@ describe('add-mcp credentials', () => {
             mcp: {
                 existing: { type: 'local', command: ['keep'] },
                 'zentao-cli': {
-                    type: 'local', command: ['zentao', 'mcp'], enabled: true,
+                    type: 'local', command: ['zentao', 'mcp', 'serve'], enabled: true,
                     environment: { ZENTAO_URL: 'https://zentao.example.com', ZENTAO_ACCOUNT: 'admin', ZENTAO_TOKEN: SECRET_TOKEN },
                 },
             },
@@ -143,7 +143,7 @@ describe('add-mcp credentials', () => {
         const result = await runAddMcp('cherry-studio');
 
         expect(result).toMatchObject({ exitCode: 0 });
-        expect(result.stdout).toContain('zentao-cli');
+        expect(result.stdout).toContain('cherry-studio');
         expect(result.stdout + result.stderr).not.toContain(SECRET_TOKEN);
         expect(result.stdout + result.stderr).not.toContain('ZENTAO_PASSWORD');
         expect(result.stdout + result.stderr).not.toContain('ZENTAO_TOKEN');
@@ -169,7 +169,7 @@ describe('add-mcp credentials', () => {
 
         expect(result).toMatchObject({ exitCode: 0 });
         expect(written).toContain('command = "zentao"');
-        expect(written).toContain('args = ["mcp"]');
+        expect(written).toContain('args = ["mcp", "serve"]');
         expect(written).toContain(`ZENTAO_TOKEN = "${SECRET_TOKEN}"`);
         expect(written).not.toContain('ZENTAO_PASSWORD');
         expect(written).toContain('[projects."/tmp/existing"]');
@@ -277,7 +277,7 @@ describe('add-mcp credentials', () => {
             mcp_servers: {
                 'zentao-cli': {
                     command: 'zentao',
-                    args: ['mcp'],
+                    args: ['mcp', 'serve'],
                     env: { ZENTAO_TOKEN: SECRET_TOKEN },
                 },
                 'zentao-cli-extra': { command: 'keep' },
