@@ -40,7 +40,9 @@ assert.equal(cli.versionCheck.minVersion, pkg.version, 'versionCheck must match 
 const node = Bun.which('node');
 assert.ok(node, 'Node.js 22 is required to validate the WorkBuddy runtime');
 const runtime = execFileSync(node, ['--version'], { encoding: 'utf8' }).trim();
-assert.match(runtime, /^v22\./, 'Use Node.js 22 on PATH, matching cli.json runtime');
+assert.match(runtime, /^v22\./,
+    `WorkBuddy validation requires Node.js 22 to match cli.json; found ${runtime}.\n` +
+    `With fnm, run: fnm exec --using=22 bun run build:workbuddy${local ? ' --local' : ''}`);
 const temporary = mkdtempSync(join(tmpdir(), 'zentao-workbuddy-package-'));
 const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 const env = { ...process.env, npm_config_cache: join(temporary, 'cache') };

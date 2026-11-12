@@ -16,6 +16,14 @@ bun run build:workbuddy --local
 bun run build:workbuddy
 ```
 
+使用 fnm 且默认 Node.js 不是 22 时，可仅为构建命令选择 Node.js 22（尚未安装时先运行 `fnm install 22`）：
+
+```bash
+fnm exec --using=22 bun run build:workbuddy --local
+# CLI 发布后生成正式 ZIP
+fnm exec --using=22 bun run build:workbuddy
+```
+
 本地验证输出 `release/workbuddy-preview/zentao-cli-<version>.tgz`、资源预览目录 `zentao/` 和 `validation.json`，**不会生成提交 ZIP**。本地验证通过不代表该版本已发布。
 
 正式构建从 npm 安装指定版本，检查 `auth login --web --no-open --select`、`auth status --verify`、`auth logout --all --revoke` 的实际能力，并对安装后的 CLI 执行全流程验证；不兼容时直接失败。不要用仓库源码测试替代这一检查，也不要绕过失败手动压缩目录。
