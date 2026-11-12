@@ -6,7 +6,7 @@ import { createClient, withRequestSignal } from '../src/api/index.js';
 import { buildParams } from '../src/modules/args.js';
 import { getCliVersion } from '../src/utils/version.js';
 
-const defaultMarker = `ZenTao CLI <zentao-cli ${getCliVersion()}>`;
+const defaultMarker = `CLI <zentao-cli ${getCliVersion()}>`;
 const customMarker = 'AI <codex 0.164.0, model: gpt-6.1-sol>';
 let directory: string;
 let configFile: string;

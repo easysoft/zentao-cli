@@ -7,7 +7,7 @@ export type AssistantSource = 'cli' | 'stdio' | 'http';
 // Resolve build identity once, including when running directly from source.
 const identity = `${brand?.packageName ?? 'zentao-cli'} ${getCliVersion()}`;
 const defaults: Record<AssistantSource, string> = {
-    cli: `${brand ? `${brand.commandName} CLI` : 'ZenTao CLI'} <${identity}>`,
+    cli: `CLI <${identity}>`,
     stdio: `AI <${identity}, mcp: stdio>`,
     http: `AI <${identity}, mcp: http>`,
 };

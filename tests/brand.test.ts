@@ -39,7 +39,7 @@ test('branded operation headers use ASCII build identity even with a non-Latin d
         await unicode.createClient(api.url.origin).get('/products');
         await unicode.createClient(api.url.origin, undefined, { actionAssistant: unicode.resolveAssistant(undefined, true, 'http') }).get('/products');
         await unicode.createClient(api.url.origin, undefined, { actionAssistant: 'AI <custom>' }).get('/products');
-        expect(seen).toEqual(['example CLI <example-cli 0.0.0>', 'example CLI <example-cli 1.2.3>',
+        expect(seen).toEqual(['CLI <example-cli 0.0.0>', 'CLI <example-cli 1.2.3>',
             'AI <example-cli 1.2.3, mcp: http>', 'AI <custom>']);
         expect(brandDocument('ZenTao-Action-Assistant', { ...config, displayName: '示例' })).toBe('ZenTao-Action-Assistant');
     } finally { api.stop(true); }

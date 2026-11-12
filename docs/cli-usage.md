@@ -333,7 +333,7 @@ MCP 保留 structuredContent/outputSchema 与执行时策略检查。知识 POST
 
 ## 操作来源标记
 
-CLI 默认通过 `ZenTao-Action-Assistant` 请求头发送 `ZenTao CLI <zentao-cli VERSION>`，供支持该功能的禅道服务端记录操作来源；VERSION 为实际 CLI 版本。stdio MCP 和 HTTP MCP 分别使用 `AI <zentao-cli VERSION, mcp: stdio>` 和 `AI <zentao-cli VERSION, mcp: http>`。
+CLI 默认通过 `ZenTao-Action-Assistant` 请求头发送 `CLI <zentao-cli VERSION>`，供支持该功能的禅道服务端记录操作来源；VERSION 为实际 CLI 版本。stdio MCP 和 HTTP MCP 分别使用 `AI <zentao-cli VERSION, mcp: stdio>` 和 `AI <zentao-cli VERSION, mcp: http>`。
 
 ```bash
 # 自定义一次命令的标记，覆盖默认值
