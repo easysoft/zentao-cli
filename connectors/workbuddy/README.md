@@ -20,7 +20,7 @@ bun run build:workbuddy
 
 正式构建从 npm 安装指定版本，检查 `auth login --web --no-open --select`、`auth status --verify`、`auth logout --all --revoke` 的实际能力，并对安装后的 CLI 执行全流程验证；不兼容时直接失败。不要用仓库源码测试替代这一检查，也不要绕过失败手动压缩目录。
 
-当前分支的命令树不同于已发布的 0.4.0/0.4.3。提交前需发布包含所需能力的新 CLI 版本，并同步 CLI/Skill 版本、`cli.json` 安装版本和 `versionCheck.minVersion`。
+连接器使用 CLI 0.4.4，与 0.4.3 及更早版本的命令树不同。生成正式提交包前，须先将 0.4.4 发布到 npm；CLI/Skill 版本、`cli.json` 安装版本和 `versionCheck.minVersion` 已同步。
 
 正式输出为 `release/workbuddy/zentao-workbuddy-0.2.0.zip`，结构如下：
 

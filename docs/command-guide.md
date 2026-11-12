@@ -3,7 +3,7 @@
 <a id="usage"></a>
 ## 命令格式与传参
 
-当前源码使用显式命令契约，尚未发布；已安装的 0.4.3 请以本机 `--help` 为准。
+0.4.4 起使用显式资源与动作命令；0.4.3 及更早版本请以本机 `--help` 为准。
 
 ```bash
 zentao <resource> <action> [target] [options]

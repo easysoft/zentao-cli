@@ -254,7 +254,7 @@ zentao doc create-my-doc --help
 <a id="usage"></a>
 ## 命令格式与传参
 
-开发分支的新命令契约（2026-10-23）。这是不兼容调整，尚未发布；安装版本不同请以本机 `--help` 为准。
+0.4.4 起使用显式资源与动作命令，包含不兼容调整；0.4.3 及更早版本请以本机 `--help` 为准。
 
 ```bash
 zentao <resource> <action> [target] [options]

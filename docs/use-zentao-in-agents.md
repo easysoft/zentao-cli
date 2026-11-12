@@ -69,7 +69,7 @@ $ zentao skill export ./skills
 
 ## 账号登录
 
-本开发分支使用新命令契约，尚未发布。登录只保存凭据，随后用 `zentao profile list` 获取 key，再用 `zentao profile use <key>` 设置默认身份；也可在每次命令上显式加 `--profile <key>`。
+以下命令适用于 0.4.4 及以上版本。`auth login` 只保存凭据，随后用 `zentao profile list` 获取 key，再用 `zentao profile use <key>` 设置默认身份；也可在每次命令上显式加 `--profile <key>`。
 
 安装完成后，推荐让 Agent 发起浏览器登录：
 

@@ -4,9 +4,9 @@
     "version": "22"
   },
   "init": {
-    "darwin": "npm install -g zentao-cli@0.4.3 --no-audit --no-fund",
-    "linux": "npm install -g zentao-cli@0.4.3 --no-audit --no-fund",
-    "win32": "npm.cmd install -g zentao-cli@0.4.3 --no-audit --no-fund"
+    "darwin": "npm install -g zentao-cli@0.4.4 --no-audit --no-fund",
+    "linux": "npm install -g zentao-cli@0.4.4 --no-audit --no-fund",
+    "win32": "npm.cmd install -g zentao-cli@0.4.4 --no-audit --no-fund"
   },
   "auth": {
     "darwin": "zentao --config \"~/.config/zentao/workbuddy.json\" --timeout 5000 --deadline 290000 auth login --web --no-open --select",
@@ -32,7 +32,7 @@
       "linux": "zentao --version",
       "win32": "zentao.cmd --version"
     },
-    "minVersion": "0.4.3"
+    "minVersion": "0.4.4"
   },
   "env": {
     "ZENTAO_URL": "",

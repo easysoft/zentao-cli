@@ -3,7 +3,7 @@
 <a id="usage"></a>
 ## 命令格式与传参
 
-当前源码使用显式命令契约，尚未发布；已安装的 0.4.3 请以本机 `--help` 为准。
+0.4.4 起使用显式资源与动作命令；0.4.3 及更早版本请以本机 `--help` 为准。
 
 ```bash
 zentao <resource> <action> [target] [options]
@@ -92,7 +92,7 @@ MCP 保留 structuredContent/outputSchema 与执行时策略检查。知识 POST
 
 ## 覆盖范围
 
-开发版本 CLI **0.4.3** / SDK **0.8.5**，14 个内置一级命令、42 个模块、361 个业务动作。数量、参数和实际 Commander 命令来自同一注册表。
+开发版本 CLI **0.4.4** / SDK **0.8.5**，14 个内置一级命令、42 个模块、361 个业务动作。数量、参数和实际 Commander 命令来自同一注册表。
 
 <a id="global-options"></a>
 

@@ -25,7 +25,7 @@ Some operations require a newer ZenTao version. The CLI checks compatibility and
 
 ## Quick start
 
-The source includes command changes that have not been released. For installed 0.4.3 packages, follow the local `--help` output.
+The examples below apply to version 0.4.4 and later. For version 0.4.3 or earlier, follow the local `--help` output.
 
 ```bash
 # Install globally
