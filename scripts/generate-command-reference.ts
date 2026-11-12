@@ -17,6 +17,8 @@ const destination = option(process.argv.slice(2), '--outdir');
 const outputRoot = destination ? outputDirectory(destination, root) : root;
 if (selectedBrand && !destination) throw new Error('--brand requires --outdir');
 const program = createProgram();
+// Commander wraps help to the live terminal width and may color it. Pin both so --check matches CI.
+program.configureOutput({ getOutHelpWidth: () => 80, getErrHelpWidth: () => 80, getOutHasColors: () => false, getErrHasColors: () => false });
 const modules = getAllModules();
 const builtins = program.commands.filter(cmd => !modules.some(mod => mod.name === cmd.name()));
 const sdkVersion = JSON.parse(readFileSync(join(root, 'node_modules/zentao-api/package.json'), 'utf8')).version;
@@ -26,6 +28,15 @@ const metadata = new Map<string, { title: string; description: string; group: st
 const code = (text: string) => '`' + text + '`';
 const fence = (text: string) => '```text\n' + text.trim() + '\n```';
 const cell = (value: unknown) => String(value ?? '—').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('|', '\\|').replaceAll('\n', '<br>');
+function assertFresh(path: string, next: string) {
+    const current = readFileSync(join(outputRoot, path), 'utf8');
+    if (current === next) return;
+    const currentLines = current.split('\n');
+    const nextLines = next.split('\n');
+    let line = 0;
+    while (currentLines[line] === nextLines[line]) line++;
+    throw new Error(`Stale ${path}:${line + 1}; run bun run scripts/generate-command-reference.ts\n- ${currentLines[line] ?? ''}\n+ ${nextLines[line] ?? ''}`);
+}
 const table = (headers: string[], rows: unknown[][]) => [headers, headers.map(() => '---'), ...rows].map(row => '| ' + row.map(cell).join(' | ') + ' |').join('\n');
 function section(id: string, title: string, group: string, type: string, content: string, parameterCount?: number) {
     assert(!metadata.has(id));
@@ -82,7 +93,7 @@ const html = template.replace('__REFERENCE_DATA__', () => referenceData);
 for (const [, script] of html.matchAll(/<script>([\s\S]*?)<\/script>/g)) new Function(script);
 for (const [path, content] of [['docs/command-reference.md', output], ['docs/command-reference.html', html]]) {
     const branded = brandDocument(content, selectedBrand, path);
-    if (process.argv.includes('--check')) assert.equal(readFileSync(join(outputRoot, path), 'utf8'), branded, `Stale ${path}; run bun run scripts/generate-command-reference.ts`);
+    if (process.argv.includes('--check')) assertFresh(path, branded);
     else {
         mkdirSync(join(outputRoot, 'docs'), { recursive: true });
         writeFileSync(join(outputRoot, path), branded);
