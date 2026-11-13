@@ -1,95 +1,96 @@
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
+import { copyFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
-import cli from '../connectors/workbuddy/cli.json';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { createClient } from '../src/api/index.js';
+import { requestToken } from '../src/auth/token.js';
 import { verifySession, revokeSession } from '../src/auth/session.js';
 import type { Profile } from '../src/types/index.js';
+import { verifyWorkbuddyConfiguration, workbuddyArguments, workbuddyEnvironment } from './workbuddy-validation.js';
 
 // Explicitly run with a test account: bun --env-file=.env.test scripts/verify-workbuddy-live.ts
+// Keep disposable tokens outside MCP so every created session can be revoked, even after a failed check.
 const site = process.env.ZENTAO_URL, account = process.env.ZENTAO_ACCOUNT, password = process.env.ZENTAO_PASSWORD;
 assert(site && account && password, 'Provide the test site, account and password through environment variables.');
+verifyWorkbuddyConfiguration();
 const artifact = JSON.parse(readFileSync('release/workbuddy-preview/validation.json', 'utf8'));
+assert.equal(artifact.transport, 'stdio', 'Validate the stdio connector with build:workbuddy --local first.');
 rmSync('release/workbuddy-preview/live-validation.json', { force: true });
 assert.equal(createHash('sha256').update(readFileSync('dist/index.js')).digest('hex'), artifact.artifactSha256, 'Validate the current npm artifact with build:workbuddy --local first.');
 const node = Bun.which('node')!;
 assert.match(Bun.spawnSync([node, '--version']).stdout.toString(), /^v22\./);
 const directory = mkdtempSync(join(tmpdir(), 'zentao-workbuddy-live-'));
-const config = join(directory, 'workbuddy.json');
-const entry = resolve('bin/zentao.js');
-const platform = process.platform as 'darwin' | 'linux' | 'win32';
-const environment = { ...process.env, ...cli.env, CI: '1' };
-const sessions = new Map<string, Profile>();
-const records: Array<{ step: string; milliseconds: number }> = [];
-const quote = (text: string) => process.platform === 'win32' ? `"${text}"` : `'${text.replaceAll("'", "'\\''")}'`;
+const config = join(directory, 'empty-config.json');
+copyFileSync(new URL('../connectors/workbuddy/empty-config.json', import.meta.url), config);
+const originalConfig = readFileSync(config, 'utf8');
+const sessions: Profile[] = [];
+const records: string[] = [];
+const environment = Object.fromEntries(Object.entries(process.env).filter((entry): entry is [string, string] => entry[1] !== undefined));
+let client: Client | undefined;
+let stderr = '';
 
-async function run(action: 'auth' | 'status' | 'unAuth', expected: number) {
-    const command = cli[action][platform].replace(/^zentao(?:\.cmd)?\s+/, `${quote(node)} ${quote(entry)} `)
-        .replace('"~/.config/zentao/workbuddy.json"', quote(config));
-    const start = performance.now();
-    const child = Bun.spawn(process.platform === 'win32' ? ['cmd.exe', '/d', '/s', '/c', command] : ['/bin/sh', '-c', `exec ${command}`], {
-        cwd: directory, env: environment, stdin: 'ignore', stdout: 'pipe', stderr: 'pipe',
+async function token(): Promise<Profile> {
+    const value = await requestToken(site!, account!, password!, { timeout: 5000 });
+    const now = new Date().toISOString();
+    const profile = { server: site!, account: account!, token: value, loginTime: now, lastUsedTime: now };
+    sessions.push(profile);
+    return profile;
+}
+async function connect(profile: Profile) {
+    client = new Client({ name: 'workbuddy-live-validation', version: '1.0.0' });
+    const transport = new StdioClientTransport({
+        command: node, args: workbuddyArguments(resolve('bin/zentao.js'), directory), cwd: directory, stderr: 'pipe',
+        env: { ...environment, ...workbuddyEnvironment({ ZENTAO_URL: site!, ZENTAO_ACCOUNT: account!, ZENTAO_TOKEN: profile.token }) },
     });
-    const timer = setTimeout(() => child.kill(), 25_000);
-    let output = '', submitted = false;
-    try {
-        const readError = async () => {
-            for await (const chunk of child.stderr) {
-                output += new TextDecoder().decode(chunk);
-                const link = output.match(/http:\/\/127\.0\.0\.1:\d+\/#\w+/)?.[0];
-                if (action === 'auth' && link && !submitted) {
-                    submitted = true;
-                    const url = new URL(link);
-                    const response = await fetch(new URL('/login', url), {
-                        method: 'POST', keepalive: false,
-                        headers: { Origin: url.origin, 'X-Zentao-Login': url.hash.slice(1), 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ server: site, account, password }),
-                    });
-                    assert.equal(response.status, 200, 'Live browser login failed (credentials omitted).');
-                    await response.arrayBuffer();
-                }
-            }
-        };
-        const [stdout, , code] = await Promise.all([new Response(child.stdout).text(), readError(), child.exited]);
-        assert.equal(code, expected, `Unexpected exit code for ${action}; credential-bearing output is deliberately omitted.`);
-        assert.ok(!stdout.includes(password!) && !output.includes(password!));
-        if (action === 'auth') {
-            const profile = JSON.parse(readFileSync(config, 'utf8')).profiles[0];
-            sessions.set(profile.token, profile);
-        }
-        records.push({ step: `${action}:${expected}`, milliseconds: Math.round(performance.now() - start) });
-        return stdout;
-    } finally { clearTimeout(timer); child.kill(); }
+    transport.stderr?.on('data', chunk => { stderr += chunk.toString(); });
+    await client.connect(transport);
 }
+async function identity(expectedError?: string) {
+    const result = await client!.callTool({ name: 'zentao_profile', arguments: {} }, undefined, { timeout: 15_000 }) as CallToolResult;
+    const serialized = JSON.stringify(result);
+    assert.ok(!serialized.includes(password!) && sessions.every(profile => !serialized.includes(profile.token)), 'MCP response exposed credentials.');
+    if (expectedError) {
+        assert.equal(result.isError, true);
+        assert.equal((result.structuredContent?.error as { code: string }).code, expectedError);
+    } else {
+        assert.ok(result.isError !== true, 'Live identity query failed; credential-bearing output omitted.');
+        assert.ok((result.structuredContent?.data as { account?: string }).account === account, 'Unexpected account.');
+    }
+}
+
 try {
-    await run('status', 1);
-    await run('auth', 0);
-    const first = JSON.parse(readFileSync(config, 'utf8')).profiles[0];
-    const bytes = readFileSync(config);
-    for (let i = 0; i < 2; i++) assert.equal(JSON.parse(await run('status', 0)).data.verified, true);
-    assert.deepEqual(readFileSync(config), bytes);
-    // Invalidate only the disposable token created above to exercise expiry detection.
-    await createClient(site!, first.token).post('/users/logout', {});
-    await run('status', 1);
-    await run('auth', 0);
-    const fresh = JSON.parse(readFileSync(config, 'utf8')).profiles[0];
-    await run('status', 0);
-    await run('unAuth', 0);
-    await assert.rejects(() => verifySession(createClient(site!), fresh), (error: any) => error.code === '1004');
-    await run('unAuth', 0);
-    await run('status', 1);
+    const first = await token();
+    await connect(first);
+    await identity();
+    await identity();
+    records.push('token-login', 'stdio-identity', 'repeated-query');
+    await revokeSession(first, { timeout: 5000 });
+    await identity('E1004');
+    records.push('expired-token');
+    await client!.close();
+    client = undefined;
+    const fresh = await token();
+    await connect(fresh);
+    await identity();
+    await client!.close();
+    client = undefined;
+    await verifySession(createClient(site!, fresh.token, { timeout: 5000 }), fresh);
+    records.push('replacement-token-reconnect', 'disconnect-does-not-revoke');
+    assert.equal(readFileSync(config, 'utf8'), originalConfig, 'MCP must not persist environment credentials.');
+    assert.ok(!stderr.includes(password!) && sessions.every(profile => !stderr.includes(profile.token)), 'stderr exposed credentials.');
 } finally {
-    if (existsSync(config)) {
-        for (const profile of JSON.parse(readFileSync(config, 'utf8')).profiles ?? []) sessions.set(profile.token, profile);
-    }
-    try {
-        for (const profile of sessions.values()) await revokeSession(profile, { timeout: 5000 });
-    } finally {
-        rmSync(directory, { recursive: true, force: true });
+    try { await client?.close(); }
+    finally {
+        try {
+            const cleanup = await Promise.allSettled(sessions.map(profile => revokeSession(profile, { timeout: 5000 })));
+            assert.ok(cleanup.every(result => result.status === 'fulfilled'), 'Disposable session revocation failed; live validation is incomplete.');
+        } finally { rmSync(directory, { recursive: true, force: true }); }
     }
 }
-mkdirSync('release/workbuddy-preview', { recursive: true });
-writeFileSync('release/workbuddy-preview/live-validation.json', JSON.stringify({ validatedAt: new Date().toISOString(), cliVersion: artifact.cliVersion, artifactSha256: artifact.artifactSha256, platform, records, result: 'pass' }, null, 2) + '\n');
-console.log('Live authentication callbacks, status, CLI restart, expiry, reauthentication and remote revocation passed.');
+writeFileSync('release/workbuddy-preview/live-validation.json', JSON.stringify({ validatedAt: new Date().toISOString(), cliVersion: artifact.cliVersion,
+    artifactSha256: artifact.artifactSha256, transport: 'stdio', platform: process.platform, records, result: 'pass' }, null, 2) + '\n');
+console.log('Live stdio Token authentication, read-only identity queries, expiry and reconnect passed; disposable sessions revoked.');

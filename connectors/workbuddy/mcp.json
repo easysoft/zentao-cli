@@ -1,0 +1,30 @@
+{
+  "mcpServers": {
+    "zentao-mcp": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "--yes",
+        "zentao-cli@0.4.4",
+        "--config",
+        "${PLUGIN_ROOT}/empty-config.json",
+        "--no-input",
+        "mcp",
+        "--transport",
+        "stdio"
+      ],
+      "runtime": {
+        "type": "node",
+        "version": "22"
+      },
+      "env": {
+        "ZENTAO_URL": "${ZENTAO_URL}",
+        "ZENTAO_ACCOUNT": "${ZENTAO_ACCOUNT}",
+        "ZENTAO_PASSWORD": "${ZENTAO_PASSWORD}",
+        "ZENTAO_TOKEN": "${ZENTAO_TOKEN}"
+      },
+      "disabledTools": ["zentao_switch_profile"],
+      "timeout": 30000
+    }
+  }
+}

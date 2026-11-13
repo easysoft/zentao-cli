@@ -1,186 +1,215 @@
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import type cliConfig from '../connectors/workbuddy/cli.json';
+import { join, posix, win32 } from 'node:path';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import mcp from '../connectors/workbuddy/mcp.json';
+import meta from '../connectors/workbuddy/connector-meta.json';
+import schema from '../connectors/workbuddy/token-schema.json';
+import emptyConfig from '../connectors/workbuddy/empty-config.json';
+import pkg from '../package.json';
 
-/** Run the declared callbacks in separate processes, against a real HTTP fixture. */
-export async function verifyWorkbuddyLifecycle(cli: typeof cliConfig, executable: string, entry: string) {
+export function verifyWorkbuddyConfiguration(configuration = mcp): void {
+    assert.equal(meta.type, 'mcp');
+    assert.equal(meta.auth_mode, 'token');
+    assert.equal(meta.minWorkbuddyVersion, '5.0.0');
+    assert.deepEqual(Object.keys(configuration.mcpServers), [meta.source]);
+    const server = Object.values(configuration.mcpServers)[0];
+    assert.equal(server.type, 'stdio');
+    assert.equal(server.command, 'npx');
+    assert.deepEqual(server.args.slice(0, 2), ['--yes', `zentao-cli@${pkg.version}`]);
+    assert.deepEqual(server.runtime, { type: 'node', version: '22' });
+    assert.ok(server.args.includes('--no-input'));
+    assert.ok(server.args.includes('--config'));
+    for (const argument of server.args) {
+        const value = argument.startsWith('--') && argument.includes('=') ? argument.slice(argument.indexOf('=') + 1) : argument;
+        assert.ok(!posix.isAbsolute(value) && !win32.isAbsolute(value) && !/^~(?:[/\\]|$)/.test(value),
+            'stdio args must not contain host paths; use ${PLUGIN_ROOT} for bundled files');
+    }
+    assert.equal(server.args[server.args.indexOf('--config') + 1], '${PLUGIN_ROOT}/empty-config.json');
+    assert.deepEqual(emptyConfig, { profiles: [] }, 'The bundled fallback must not contain credentials');
+    assert.equal(server.args[server.args.indexOf('--transport') + 1], 'stdio');
+    assert.ok(server.disabledTools.includes('zentao_switch_profile'));
+    assert.equal(new Set(schema.fields.map(field => field.key)).size, schema.fields.length);
+    assert.deepEqual(schema.fields.map(field => field.key).sort(), Object.keys(server.env).sort());
+    for (const field of schema.fields) {
+        const credential = ['ZENTAO_PASSWORD', 'ZENTAO_TOKEN'].includes(field.key);
+        assert.equal(field.type, credential ? 'password' : 'text');
+        assert.equal(field.required, !credential);
+        if (credential) assert.equal(field.defaultValue, '');
+        assert.equal(server.env[field.key as keyof typeof server.env], '${' + field.key + '}');
+    }
+}
+
+/** Resolve the documented native form defaults and env placeholders. */
+export function workbuddyEnvironment(values: Record<string, string>): Record<string, string> {
+    return Object.fromEntries(schema.fields.map(field => [field.key, values[field.key] ?? field.defaultValue ?? '']));
+}
+
+/** Expand the plugin root as WorkBuddy does, replacing only the npm launcher with its installed entry. */
+export function workbuddyArguments(entry: string, pluginRoot: string): string[] {
+    return [entry, ...Object.values(mcp.mcpServers)[0].args.slice(2).map(argument => argument.replaceAll('${PLUGIN_ROOT}', pluginRoot))];
+}
+
+/** Exercise real stdio processes against a local API fixture; never use saved credentials. */
+export async function verifyWorkbuddyLifecycle(executable: string, entry: string) {
+    verifyWorkbuddyConfiguration();
     const directory = mkdtempSync(join(tmpdir(), 'zentao-workbuddy-validation-'));
-    const config = join(directory, 'workbuddy.json');
+    const pluginRoot = join(directory, 'plugin with spaces');
+    mkdirSync(pluginRoot);
+    const config = join(pluginRoot, 'empty-config.json');
+    copyFileSync(new URL('../connectors/workbuddy/empty-config.json', import.meta.url), config);
+    const originalConfig = readFileSync(config, 'utf8');
     const unrelated = join(directory, 'ordinary.json');
-    writeFileSync(unrelated, 'ordinary CLI credentials must survive');
+    const sentinel = 'Existing CLI configuration must not be read or changed';
+    writeFileSync(unrelated, sentinel);
     const password = 'fixture-password-never-print';
-    const tokens = new Set<string>();
-    let tokenNumber = 0, statusRequests = 0;
-    let rejectLogout = false, pretendLogout = false, slowStatus = false, emptyStatus = false;
-    let refreshOnLogout = false;
+    const tokens = new Set<string>(['fixture-direct-token']);
+    const counts = { login: 0, config: 0, products: 0 };
+    const checks: string[] = [];
     const durations: Record<string, number> = {};
+    const active = new Set<Awaited<ReturnType<typeof connect>>>();
     const server = Bun.serve({
         hostname: '127.0.0.1', port: 0,
         async fetch(request) {
             const url = new URL(request.url);
-            const token = request.headers.get('Token') ?? '';
-            if (url.searchParams.get('mode') === 'getconfig') return Response.json({ version: '22.5' });
-            if (url.pathname.endsWith('/users/login')) {
+            if (url.searchParams.get('mode') === 'getconfig') {
+                counts.config++;
+                return Response.json({ version: '22.5' });
+            }
+            if (url.pathname === '/api.php/v2/users/login') {
+                counts.login++;
                 const body = await request.json() as { account: string; password: string };
-                if (body.password !== password) return new Response('Unauthorized', { status: 401 });
-                const fresh = `fixture-token-${++tokenNumber}`;
-                tokens.add(fresh);
-                return Response.json({ status: 'success', token: fresh });
+                if (body.account !== 'review' || body.password !== password) return new Response('Unauthorized', { status: 401 });
+                // Make concurrent callers overlap so a duplicate login would be observable.
+                await Bun.sleep(25);
+                const token = `fixture-login-token-${counts.login}`;
+                tokens.add(token);
+                return Response.json({ status: 'success', token });
             }
-            if (url.pathname.endsWith('/users/logout')) {
-                if (rejectLogout) return new Response('Unavailable', { status: 503 });
-                if (!tokens.has(token)) return new Response('Access not allowed', { status: 403 });
-                assert.equal(request.method, 'POST');
-                if (!pretendLogout) tokens.delete(token);
-                if (refreshOnLogout) {
-                    refreshOnLogout = false;
-                    const data = JSON.parse(readFileSync(config, 'utf8'));
-                    const fresh = `fixture-token-${++tokenNumber}`;
-                    tokens.add(fresh);
-                    data.profiles[0].token = fresh;
-                    writeFileSync(config, JSON.stringify(data));
-                }
-                return Response.json({ status: 'success' });
+            if (!tokens.has(request.headers.get('Token') ?? '')) return new Response('Expired', { status: 401 });
+            if (url.pathname === '/api.php/v2/users') return Response.json({ users: [{ id: 1, account: 'review' }] });
+            if (url.pathname === '/api.php/v2/products') {
+                counts.products++;
+                return Response.json({ products: [{ id: 1, name: 'Fixture product' }] });
             }
-            if (url.pathname.endsWith('/v1/user')) {
-                statusRequests++;
-                if (slowStatus) await Bun.sleep(4000);
-                if (emptyStatus) return Response.json({});
-                return tokens.has(token) ? Response.json({ profile: { account: 'review' } }) : new Response('Expired', { status: 401 });
-            }
-            if (url.pathname.endsWith('/users')) return tokens.has(token)
-                ? Response.json({ users: [{ id: 1, account: 'review' }] }) : new Response('Expired', { status: 401 });
             return new Response('Not found', { status: 404 });
         },
     });
-    const platform = process.platform as 'darwin' | 'linux' | 'win32';
-    assert.ok(cli.auth[platform], `Unsupported platform: ${platform}`);
-    assert.equal(cli.authWaitForExit, true);
-    assert.equal(cli.authUrlDomain, '127.0.0.1');
-    const quote = (value: string) => process.platform === 'win32' ? `"${value.replaceAll('"', '""')}"` : `'${value.replaceAll("'", "'\\''")}'`;
 
-    async function run(action: 'auth' | 'status' | 'unAuth', onUrl?: (url: URL) => Promise<void>) {
-        const command = cli[action][platform]
-            .replace(/^zentao(?:\.cmd)?\s+/, `${quote(executable)} ${quote(entry)} `)
-            .replace('"~/.config/zentao/workbuddy.json"', quote(config));
-        assert.notEqual(command, cli[action][platform]);
+    async function connect(values: Record<string, string> = {}) {
         const start = performance.now();
-        const child = spawn(process.platform === 'win32' ? command : `exec ${command}`, {
-            cwd: directory, shell: process.platform === 'win32' ? 'cmd.exe' : '/bin/sh',
-            env: { ...process.env, ...cli.env, CI: '1', ZENTAO_CONFIG_FILE: unrelated },
-            stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true,
+        const client = new Client({ name: 'workbuddy-validation', version: '1.0.0' });
+        const transport = new StdioClientTransport({
+            command: executable, args: workbuddyArguments(entry, pluginRoot), cwd: directory, stderr: 'pipe',
+            env: { ...process.env, ...workbuddyEnvironment({ ZENTAO_URL: server.url.toString(), ZENTAO_ACCOUNT: 'review', ...values }),
+                ZENTAO_CONFIG_FILE: unrelated },
         });
-        let stdout = '', stderr = '';
-        let callback: Promise<void> | undefined, callbackError: unknown;
-        function scan() {
-            // WorkBuddy's documented extractor, with explicit loopback-domain filtering.
-            const urls = (stdout + stderr).match(/https?:\/\/[^\s\n\r"'<>]+/g) ?? [];
-            const url = urls.map(value => new URL(value)).find(value => value.hostname === cli.authUrlDomain);
-            if (onUrl && url && !callback) {
-                callback = Promise.resolve().then(async () => {
-                    assert.ok(performance.now() - start < 10_000, 'auth URL must be ready within 10 seconds');
-                    await onUrl(url);
-                }).catch(error => { callbackError = error; child.kill(); });
-            }
-        }
-        child.stdout!.on('data', chunk => { stdout += chunk.toString(); scan(); });
-        child.stderr!.on('data', chunk => { stderr += chunk.toString(); scan(); });
-        const timer = setTimeout(() => child.kill(), action === 'auth' ? 20_000 : 10_000);
-        try {
-            const code = await new Promise<number | null>((resolve, reject) => { child.once('error', reject); child.once('close', resolve); });
-            await callback;
-            if (callbackError) throw callbackError;
-            if (onUrl) assert.ok(callback, `auth did not emit a usable URL: ${stderr}`);
-            const ms = Math.round(performance.now() - start);
-            durations[action] = Math.max(durations[action] ?? 0, ms);
-            assert.ok(ms < (action === 'unAuth' ? 30_000 : action === 'auth' ? 300_000 : 10_000));
-            assert.ok(!(stdout + stderr).includes(password));
-            assert.ok(!/fixture-token-\d+/.test(stdout + stderr));
-            return { code, stdout, stderr, connected: code === 0 && new RegExp(cli.statusMatch).test(stdout + stderr) };
-        } finally { clearTimeout(timer); child.kill(); }
+        let stderr = '';
+        transport.stderr?.on('data', chunk => { stderr += chunk.toString(); });
+        const connection = {
+            client,
+            async call(name = 'zentao_product', args: Record<string, unknown> = { action: 'list' }) {
+                const result = await client.callTool({ name, arguments: args }, undefined, { timeout: 10_000 }) as CallToolResult;
+                assert.ok(!JSON.stringify(result).includes(password), 'Tool responses must not expose passwords');
+                assert.ok(!JSON.stringify(result).includes('fixture-login-token-'), 'Tool responses must not expose login tokens');
+                assert.ok(!JSON.stringify(result).includes('fixture-direct-token'), 'Tool responses must not expose supplied tokens');
+                return result;
+            },
+            async close() {
+                await client.close();
+                active.delete(connection);
+                assert.ok(!stderr.includes(password) && !stderr.includes('fixture-login-token-') && !stderr.includes('fixture-direct-token'), 'stderr must not expose credentials');
+            },
+        };
+        active.add(connection);
+        await client.connect(transport);
+        durations.connect = Math.max(durations.connect ?? 0, Math.round(performance.now() - start));
+        return connection;
     }
-    async function authenticate(cancel = false) {
-        return run('auth', async url => {
-            // The short-lived Node server closes each response; do not reuse Bun's pooled sockets.
-            assert.equal((await fetch(new URL('/', url), { keepalive: false })).status, 200);
-            const headers = { Origin: url.origin, 'X-Zentao-Login': url.hash.slice(1), 'Content-Type': 'application/json' };
-            if (cancel) {
-                assert.equal((await fetch(new URL('/cancel', url), { method: 'POST', headers, body: '{}', keepalive: false })).status, 200);
-                return;
-            }
-            const body = { server: `${server.url.origin}/zentao`, account: 'review', password };
-            const invalid = await fetch(new URL('/login', url), { method: 'POST', headers, body: JSON.stringify({ ...body, password: 'wrong' }), keepalive: false });
-            assert.equal(invalid.status, 400, 'Failed passwords leave the browser session retryable');
-            await invalid.arrayBuffer();
-            const result = await fetch(new URL('/login', url), { method: 'POST', headers, body: JSON.stringify(body), keepalive: false });
-            assert.equal(result.status, 200);
-            assert.equal((await result.json() as { ok: boolean }).ok, true);
-        });
+    function success(result: CallToolResult) {
+        assert.notEqual(result.isError, true, JSON.stringify(result));
+        assert.deepEqual(result.structuredContent?.data, [{ id: 1, name: 'Fixture product' }]);
     }
+    function failure(result: CallToolResult, code: string) {
+        assert.equal(result.isError, true);
+        assert.equal((result.structuredContent?.error as { code: string }).code, code);
+    }
+
     try {
-        assert.equal((await run('status')).connected, false);
-        assert.equal(existsSync(config), false);
-        assert.equal((await run('unAuth')).code, 0);
-        assert.equal((await authenticate(true)).code, 130);
-        assert.equal(existsSync(config), false, 'Cancellation must not persist credentials');
-        assert.equal((await authenticate()).code, 0);
-        const original = readFileSync(config);
-        const modifiedTime = statSync(config).mtimeMs;
-        for (let i = 0; i < 2; i++) {
-            const before = statusRequests;
-            const result = await run('status');
-            assert.equal(result.connected, true, result.stderr);
-            assert.equal(JSON.parse(result.stdout).data.verified, true);
-            assert.equal(statusRequests - before, 1, 'One lightweight request per poll');
-            assert.deepEqual(readFileSync(config), original);
-            assert.equal(statSync(config).mtimeMs, modifiedTime);
+        const empty = await connect();
+        const tools = (await empty.client.listTools()).tools.map(tool => tool.name);
+        assert.ok(tools.includes('zentao_product') && tools.includes('zentao_profile') && tools.includes('zentao_action_help'));
+        assert.notEqual((await empty.call('zentao_action_help', { module: 'product', action: 'list' })).isError, true);
+        assert.deepEqual(counts, { login: 0, config: 0, products: 0 });
+        failure(await empty.call(), 'E1001');
+        await empty.close();
+        checks.push('offline-discovery', 'missing-credentials');
+
+        const blank = await connect({ ZENTAO_URL: '', ZENTAO_ACCOUNT: '', ZENTAO_PASSWORD: '', ZENTAO_TOKEN: '' });
+        failure(await blank.call(), 'E1006');
+        await blank.close();
+        checks.push('portable-config-path', 'empty-form-no-profile-fallback');
+
+        const authenticated = await connect({ ZENTAO_PASSWORD: password });
+        const started = performance.now();
+        for (const result of await Promise.all([authenticated.call(), authenticated.call()])) success(result);
+        success(await authenticated.call());
+        durations.passwordQueries = Math.round(performance.now() - started);
+        assert.deepEqual(counts, { login: 1, config: 1, products: 3 }, 'Reuse one login and server configuration across requests');
+        checks.push('password-login', 'concurrent-login-sharing', 'cached-authentication');
+
+        tokens.delete('fixture-login-token-1');
+        failure(await authenticated.call(), 'E1004');
+        assert.equal(counts.login, 1, 'Expired cached sessions require reconnecting');
+        await authenticated.close();
+        const reconnected = await connect({ ZENTAO_PASSWORD: password });
+        success(await reconnected.call());
+        assert.equal(counts.login, 2);
+        await reconnected.close();
+        checks.push('expired-session', 'password-reconnect');
+
+        const direct = await connect({ ZENTAO_TOKEN: 'fixture-direct-token' });
+        success(await direct.call());
+        await direct.close();
+        const both = await connect({ ZENTAO_PASSWORD: 'wrong-password', ZENTAO_TOKEN: 'fixture-direct-token' });
+        success(await both.call());
+        assert.equal(counts.login, 2, 'Token authentication must not attempt password login');
+        tokens.delete('fixture-direct-token');
+        failure(await both.call(), 'E1004');
+        assert.equal(counts.login, 2, 'Expired Tokens must not silently fall back to a password');
+        await both.close();
+        checks.push('direct-token', 'token-precedence', 'expired-token-no-fallback');
+
+        tokens.add('fixture-replacement-token');
+        const replaced = await connect({ ZENTAO_TOKEN: 'fixture-replacement-token' });
+        success(await replaced.call());
+        await replaced.close();
+        checks.push('token-reconnect');
+
+        const wrong = await connect({ ZENTAO_PASSWORD: 'wrong-password' });
+        failure(await wrong.call(), 'E1004');
+        await wrong.close();
+        const corrected = await connect({ ZENTAO_PASSWORD: password });
+        success(await corrected.call());
+        await corrected.close();
+        checks.push('invalid-password', 'corrected-password');
+
+        const loginCount = counts.login;
+        for (const key of ['ZENTAO_URL', 'ZENTAO_ACCOUNT']) {
+            const incomplete = await connect({ ZENTAO_TOKEN: 'fixture-replacement-token', [key]: '' });
+            failure(await incomplete.call(), 'E1001');
+            await incomplete.close();
         }
-        slowStatus = true;
-        const timedOut = await run('status');
-        assert.equal(timedOut.connected, false);
-        assert.equal(JSON.parse(timedOut.stderr).error.code, '5001');
-        slowStatus = false;
-        tokens.clear();
-        assert.equal((await run('status')).connected, false, 'Expired tokens cannot remain connected');
-        assert.deepEqual(readFileSync(config), original);
-        assert.equal((await run('unAuth')).code, 0, 'An already-expired session can still be disconnected');
-        assert.deepEqual(JSON.parse(readFileSync(config, 'utf8')).profiles, []);
-        assert.equal((await authenticate()).code, 0);
-        const fresh = readFileSync(config);
-        rejectLogout = true;
-        assert.notEqual((await run('unAuth')).code, 0);
-        assert.deepEqual(readFileSync(config), fresh, 'Failed revocation preserves credentials for retry');
-        rejectLogout = false;
-        pretendLogout = true;
-        const mismatched = JSON.parse(fresh.toString());
-        mismatched.profiles[0].account = 'wrong-account';
-        writeFileSync(config, JSON.stringify(mismatched));
-        const falseSuccess = await run('unAuth');
-        assert.notEqual(falseSuccess.code, 0);
-        assert.equal(JSON.parse(falseSuccess.stderr).error.code, '1012');
-        assert.equal(JSON.parse(readFileSync(config, 'utf8')).profiles[0].token, mismatched.profiles[0].token);
-        writeFileSync(config, fresh);
-        emptyStatus = true;
-        const missingIdentity = await run('unAuth');
-        assert.notEqual(missingIdentity.code, 0, 'An empty response does not prove token revocation');
-        assert.equal(JSON.parse(missingIdentity.stderr).error.code, '1012');
-        assert.deepEqual(readFileSync(config), fresh);
-        emptyStatus = false;
-        pretendLogout = false;
-        refreshOnLogout = true;
-        const refreshed = await run('unAuth');
-        assert.notEqual(refreshed.code, 0, 'A concurrent login cannot be reported as disconnected');
-        assert.equal(JSON.parse(refreshed.stderr).error.code, '1012');
-        assert.equal((await run('status')).connected, true, 'Keep the concurrent login intact');
-        assert.equal((await run('unAuth')).code, 0);
-        assert.equal(tokens.size, 0);
-        assert.deepEqual(JSON.parse(readFileSync(config, 'utf8')).profiles, []);
-        assert.equal((await run('unAuth')).code, 0);
-        assert.equal((await run('status')).connected, false);
-        assert.equal(readFileSync(unrelated, 'utf8'), 'ordinary CLI credentials must survive');
-        return { platform, checks: ['cancel', 'login-retry', 'login', 'restart', 'read-only-status', 'single-request-poll', 'timeout', 'expiry', 'reauth', 'revoke-failure', 'revoke-confirmation', 'revoke-race', 'disconnect', 'idempotency', 'config-isolation'], maximumMilliseconds: durations };
-    } finally { server.stop(true); rmSync(directory, { recursive: true, force: true }); }
+        assert.equal(counts.login, loginCount);
+        assert.equal(readFileSync(config, 'utf8'), originalConfig);
+        assert.equal(readFileSync(unrelated, 'utf8'), sentinel);
+        checks.push('incomplete-environment', 'config-isolation', 'credential-redaction');
+        return { transport: 'stdio', platform: process.platform, checks, maximumMilliseconds: durations };
+    } finally {
+        try { await Promise.all([...active].map(connection => connection.close())); }
+        finally { server.stop(true); rmSync(directory, { recursive: true, force: true }); }
+    }
 }

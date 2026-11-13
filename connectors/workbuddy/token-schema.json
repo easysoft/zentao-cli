@@ -1,0 +1,48 @@
+{
+  "title": "连接禅道",
+  "title_en": "Connect to ZenTao",
+  "description": "密码与 Token 至少填写一项，同时填写时优先使用 Token。凭据由 WorkBuddy 保存在本机。",
+  "description_en": "Enter a password or Token. Token takes precedence when both are provided. WorkBuddy stores your credentials locally.",
+  "docUrl": "https://www.zentao.net/book/api/post-users-login-2142.html",
+  "docLabel": "如何获取 Token",
+  "docLabel_en": "How to obtain a Token",
+  "fields": [
+    {
+      "key": "ZENTAO_URL",
+      "label": "禅道地址",
+      "label_en": "ZenTao URL",
+      "type": "text",
+      "required": true,
+      "placeholder": "https://zentao.example.com",
+      "description": "填写站点根地址；部署在子目录时保留子目录。",
+      "description_en": "Enter the site URL, including its subdirectory when applicable."
+    },
+    {
+      "key": "ZENTAO_ACCOUNT",
+      "label": "账号",
+      "label_en": "Account",
+      "type": "text",
+      "required": true
+    },
+    {
+      "key": "ZENTAO_PASSWORD",
+      "label": "密码",
+      "label_en": "Password",
+      "type": "password",
+      "required": false,
+      "defaultValue": "",
+      "description": "自动换取 Token；已有 Token 时可留空。",
+      "description_en": "Automatically obtains a Token. Leave empty if you already have a Token."
+    },
+    {
+      "key": "ZENTAO_TOKEN",
+      "label": "Token",
+      "label_en": "Token",
+      "type": "password",
+      "required": false,
+      "defaultValue": "",
+      "description": "填写已有 Token 时可留空密码。",
+      "description_en": "Use an existing Token instead of a password."
+    }
+  ]
+}
