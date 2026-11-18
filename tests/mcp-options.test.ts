@@ -13,7 +13,7 @@ test('read-only mode restricts discovery and rejects writes and unselected modul
     }, ['--read-only', '--modules', 'product,task']);
     try {
         const { tools } = await mcp.client.listTools();
-        expect(tools.map(tool => tool.name).sort()).toEqual(['zentao_action_help', 'zentao_product', 'zentao_profile', 'zentao_task']);
+        expect(tools.map(tool => tool.name).sort()).toEqual(['zentao_action_help', 'zentao_link', 'zentao_product', 'zentao_profile', 'zentao_task']);
         expect(tools.every(tool => tool.annotations?.readOnlyHint && !tool.annotations.destructiveHint)).toBe(true);
         for (const name of ['zentao_product', 'zentao_task']) {
             expect((tools.find(tool => tool.name === name)!.inputSchema.properties!.action as { enum: string[] }).enum).not.toContain('update');

@@ -12,6 +12,7 @@ zentao bug get 123
 zentao bug resolve 123 --resolution fixed
 zentao db table zt_user
 zentao file read 42 --output ./attachment.pdf
+zentao link create bug view --var bugID=42
 zentao help bug create --format=json
 ```
 
@@ -93,7 +94,7 @@ MCP 保留 structuredContent/outputSchema 与执行时策略检查。知识 POST
 
 ## 覆盖范围
 
-开发版本 CLI **0.4.4** / SDK **0.9.0**，14 个内置一级命令、42 个模块、364 个业务动作。数量、参数和实际 Commander 命令来自同一注册表。
+开发版本 CLI **0.4.4** / SDK **0.9.0**，15 个内置一级命令、42 个模块、364 个业务动作。数量、参数和实际 Commander 命令来自同一注册表。
 
 <a id="global-options"></a>
 
@@ -427,6 +428,52 @@ Options:
 Usage: zentao config unset [options] <key>
 
 恢复默认值
+
+Options:
+  -h, --help  显示命令帮助
+```
+
+<a id="command-link"></a>
+
+## zentao link
+
+```text
+Usage: zentao link [options] [command]
+
+生成或解析站内页面链接
+
+Options:
+  --server <url>                      指定站点地址，可省略登录凭据
+  -h, --help                          显示命令帮助
+
+Commands:
+  create [options] <module> <method>  生成页面链接
+  parse <url>                         解析页面链接
+```
+
+<a id="command-link-create"></a>
+
+## zentao link create
+
+```text
+Usage: zentao link create [options] <module> <method>
+
+生成页面链接
+
+Options:
+  --var <name=value>  路由参数，可按页面参数顺序重复指定
+  --relative          输出站内路径
+  -h, --help          显示命令帮助
+```
+
+<a id="command-link-parse"></a>
+
+## zentao link parse
+
+```text
+Usage: zentao link parse [options] <url>
+
+解析页面链接
 
 Options:
   -h, --help  显示命令帮助

@@ -77,6 +77,9 @@ zentao bug list --product=1
 # View bug details
 zentao bug get 329
 
+# Get the ZenTao page URL for this bug
+zentao link create bug view --var bugID=329
+
 # Resolve a bug
 zentao bug resolve 329 --resolution=fixed
 ```

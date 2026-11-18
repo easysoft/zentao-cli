@@ -8,6 +8,7 @@ import { resolveAssistant } from '../api/assistant.js';
 import { DEFAULT_CONFIG } from '../config/defaults.js';
 import { ZentaoError } from '../errors.js';
 import { createMcpServer } from './server.js';
+import { bindPageLinks } from './link-tool.js';
 import type { McpToolOptions } from './tools.js';
 import { createMcpStartHandler, isStartRoute, START_BODY_LIMIT } from './start.js';
 
@@ -114,7 +115,9 @@ export async function startMcpHttpServer(options: McpHttpOptions): Promise<McpHt
     const site = createClient(url.toString()).siteUrl;
     const config = { ...DEFAULT_CONFIG, pagers: {}, timeout: options.timeout ?? DEFAULT_CONFIG.timeout, insecure: options.insecure ?? DEFAULT_CONFIG.insecure };
     const startPage = createMcpStartHandler({ ...options, url: site, timeout: config.timeout });
+    const pageLink = bindPageLinks(() => ({ server: site }), config);
     const authFor = (token?: string) => ({
+        pageLink,
         async getContext() {
             return { client: createClient(site, token, { ...config, actionAssistant }), config, identity: { server: site } };
         },

@@ -2,6 +2,7 @@ import type { Command } from 'commander';
 import { registerHelpCommand } from './help.js';
 import { registerAuthStatusCommand } from './auth-status.js';
 import { registerLoginCommand } from './login.js';
+import { registerLinkCommand } from './link.js';
 import { registerTokenCommand } from './token.js';
 import { registerLogoutCommand } from './logout.js';
 import { registerProfileCommand } from './profile.js';
@@ -27,6 +28,7 @@ export function registerAllCommands(program: Command): void {
     registerAuthStatusCommand(auth);
     registerProfileCommand(program);
     registerConfigCommand(program);
+    registerLinkCommand(program);
     registerVersionCommand(program);
     registerAutocompleteCommand(program);
     const skill = program.command('skill').description('安装或导出技能');

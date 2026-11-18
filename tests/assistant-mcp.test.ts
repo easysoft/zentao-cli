@@ -48,7 +48,7 @@ for (const transport of ['stdio', 'http'] as const) for (const assistant of [und
         const expectedDefault = assistant === '' ? null : assistant ?? `AI <zentao-cli ${getCliVersion()}, mcp: ${transport}>`;
         try {
             const { tools } = await client.listTools();
-            for (const tool of tools.filter(tool => tool.name !== 'zentao_action_help' && tool.name !== 'zentao_switch_profile')) {
+            for (const tool of tools.filter(tool => !['zentao_action_help', 'zentao_switch_profile', 'zentao_link'].includes(tool.name))) {
                 expect(tool.inputSchema.properties).toHaveProperty('assistant');
                 expect(tool.inputSchema.required ?? []).not.toContain('assistant');
             }

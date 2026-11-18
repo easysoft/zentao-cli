@@ -2,7 +2,8 @@ import { brandText } from '../brand.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { ensureAuth, type AuthContext } from '../auth/flow.js';
-import { findProfileByKey, getProfile, getProfileConfig } from '../config/store.js';
+import { findProfileByKey, getProfile, getProfileConfig, profileKey } from '../config/store.js';
+import { selectLinkSite } from '../config/link-site.js';
 import { getEnvCredentials } from '../auth/login.js';
 import { ZentaoError } from '../errors.js';
 import { registerModuleTools, type McpToolOptions } from './tools.js';
@@ -10,6 +11,7 @@ import { getCliVersion } from '../utils/version.js';
 import type { UserConfig } from '../types/index.js';
 import type { ZentaoClient } from '../api/index.js';
 import { resolveAssistant } from '../api/assistant.js';
+import { bindPageLinks, registerLinkTool, type PageLinkHandler } from './link-tool.js';
 
 export interface McpAuthContext {
     client: ZentaoClient;
@@ -20,6 +22,7 @@ export interface McpAuthContext {
 export interface AuthProvider {
     getContext(signal?: AbortSignal): Promise<McpAuthContext>;
     switchProfile?(key: string): Promise<McpAuthContext>;
+    pageLink?: PageLinkHandler;
 }
 
 function toMcpContext({ client, profile }: AuthContext): McpAuthContext {
@@ -37,8 +40,10 @@ export function createAuthProvider(options?: { insecure?: boolean; timeout?: num
     let flight: { promise: Promise<AuthContext>; controller: AbortController; pending: boolean; waiters: number } | undefined;
     const env = getEnvCredentials();
     let environmentPinned = Boolean(!options?.profile && env.url && env.account && (env.token || env.password));
+    let linkProfile = options?.profile;
 
     return {
+        pageLink: bindPageLinks(() => selectLinkSite({ profile: linkProfile }), options),
         async getContext(signal?: AbortSignal): Promise<McpAuthContext> {
             if (signal?.aborted) throw new ZentaoError('E5003');
             if (!context) {
@@ -74,6 +79,7 @@ export function createAuthProvider(options?: { insecure?: boolean; timeout?: num
 
             const current = getProfile(cached.profile.account, cached.profile.server);
             if (!current?.token) throw new ZentaoError('E1006');
+            if (context === selected) linkProfile = profileKey(current.account, current.server);
             const currentConfig = getProfileConfig(current);
             const cachedConfig = getProfileConfig(cached.profile);
             if (current.token === cached.profile.token
@@ -93,6 +99,7 @@ export function createAuthProvider(options?: { insecure?: boolean; timeout?: num
             const selected = await ensureAuth({ ...authOptions, profile });
             context = Promise.resolve(selected);
             environmentPinned = false;
+            linkProfile = profileKey(profile.account, profile.server);
             return toMcpContext(selected);
         },
     };
@@ -105,6 +112,7 @@ export function createMcpServer(auth: AuthProvider, options?: McpToolOptions): M
     );
 
     registerModuleTools(server, auth, options);
+    if (auth.pageLink) registerLinkTool(server, auth.pageLink);
     return server;
 }
 

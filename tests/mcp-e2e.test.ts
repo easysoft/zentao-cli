@@ -11,6 +11,42 @@ const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const MODULES = getAllModules();
 
 describe('MCP server (stdio e2e smoke)', () => {
+    test('stdio links reuse the anonymous config of a URL-only environment with a trailing slash', async () => {
+        const requests: string[] = [];
+        const api = Bun.serve({
+            hostname: '127.0.0.1', port: 0,
+            fetch(req) {
+                const url = new URL(req.url);
+                requests.push(url.pathname + url.search);
+                expect(req.headers.get('Token')).toBeNull();
+                expect(req.headers.get('ZenTao-Action-Assistant')).toBeNull();
+                return Response.json({ version: '23.0', requestType: 'PATH_INFO', requestFix: '-' });
+            },
+        });
+        const dir = mkdtempSync(join(tmpdir(), 'zentao-mcp-links-'));
+        const transport = new StdioClientTransport({
+            command: process.execPath,
+            args: ['--no-env-file', join(repoRoot, 'src/index.ts'), '--config', join(dir, 'config.json'), 'mcp', 'serve', '--read-only'],
+            cwd: dir,
+            env: { ...process.env, ZENTAO_URL: new URL('test/', api.url).href, ZENTAO_ACCOUNT: '', ZENTAO_TOKEN: '', ZENTAO_PASSWORD: '' },
+        });
+        const client = new Client({ name: 'anonymous-links-test', version: '0.0.0' });
+        try {
+            await client.connect(transport);
+            for (const id of ['1', '2']) {
+                const result = await client.callTool({ name: 'zentao_link', arguments: {
+                    action: 'create', module: 'task', method: 'view', vars: [`id=${id}`], relative: true,
+                } });
+                expect(result.structuredContent).toEqual({ data: `/test/task-view-${id}.html` });
+            }
+            expect(requests).toEqual(['/test/?mode=getconfig']);
+        } finally {
+            await client.close();
+            api.stop(true);
+            rmSync(dir, { recursive: true, force: true });
+        }
+    });
+
     test(
         'discovers all module actions and provides their parameters without authentication',
         async () => {
@@ -25,11 +61,12 @@ describe('MCP server (stdio e2e smoke)', () => {
                 await client.connect(transport);
                 const { tools } = await client.listTools();
 
-                expect(tools.length).toBe(MODULES.length + 3);
+                expect(tools.length).toBe(MODULES.length + 4);
                 const names = new Set(tools.map(t => t.name));
                 expect(names.has('zentao_profile')).toBe(true);
                 expect(names.has('zentao_switch_profile')).toBe(true);
                 expect(names.has('zentao_action_help')).toBe(true);
+                expect(names.has('zentao_link')).toBe(true);
                 const help = await client.callTool({ name: 'zentao_action_help', arguments: { module: 'doc', action: 'createMyDoc' } });
                 expect(help.isError).not.toBe(true);
                 const definition = JSON.parse((help.content as Array<{ text: string }>)[0].text);
@@ -99,6 +136,7 @@ describe('MCP server (stdio e2e smoke)', () => {
             server: new URL(id, server.url).toString(),
             account: `account-${id}`,
             token: `test-token-${id}`,
+            serverConfig: { version: 'biz13.5', requestType: 'PATH_INFO', requestFix: '-' },
             loginTime: '',
             lastUsedTime: '',
         }));
@@ -131,6 +169,8 @@ describe('MCP server (stdio e2e smoke)', () => {
             expect(switched).toMatchObject({
                 content: [{ type: 'text', text: JSON.stringify({ status: 'success', currentProfile: selectedKey }, null, 2) }],
             });
+            const page = await client.callTool({ name: 'zentao_link', arguments: { action: 'create', module: 'story', method: 'view', vars: ['id=7'] } });
+            expect(page.structuredContent).toEqual({ data: new URL('/b/story-view-7.html', server.url).href });
             expect((await getProduct()).isError).not.toBe(true);
             expect(await getGrades()).toMatchObject({ content: [{ type: 'text', text: expect.stringContaining('一级') }] });
 

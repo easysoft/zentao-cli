@@ -124,7 +124,7 @@ test.each([
         }));
         const { tools } = await client.listTools();
         const productTool = restricted ? 'zentao_product_read' : 'zentao_product';
-        expect(tools.map(tool => tool.name).sort()).toEqual(['zentao_action_help', productTool, 'zentao_profile']);
+        expect(tools.map(tool => tool.name).sort()).toEqual(['zentao_action_help', 'zentao_link', productTool, 'zentao_profile']);
         if (restricted) {
             expect((await client.callTool({ name: productTool, arguments: { action: 'update', id: 1 } })).isError).toBe(true);
         }

@@ -77,6 +77,9 @@ zentao bug list --product=1
 # 查看 Bug 详情
 zentao bug get 329
 
+# 生成此 Bug 的禅道页面链接
+zentao link create bug view --var bugID=329
+
 # 解决 Bug
 zentao bug resolve 329 --resolution=fixed
 ```

@@ -62,7 +62,7 @@ test('HTTP tool discovery is offline and profile resolves the caller Token on su
         const { client, transport } = await f.connect();
         expect(transport.sessionId).toBeUndefined();
         const { tools } = await client.listTools();
-        expect(tools.map(tool => tool.name)).toEqual(['zentao_action_help', 'zentao_profile', 'zentao_product']);
+        expect(tools.map(tool => tool.name)).toEqual(['zentao_action_help', 'zentao_profile', 'zentao_product', 'zentao_link']);
         const localTools = await stdio.client.listTools();
         expect(tools.find(tool => tool.name === 'zentao_product')).toEqual(localTools.tools.find(tool => tool.name === 'zentao_product'));
         expect(requests).toEqual([]);
@@ -100,6 +100,36 @@ test('concurrent requests with identical RPC IDs keep Token credentials and resp
         expect(results.map(result => toolData(result.result).name)).toEqual(['alice', 'bob']);
         expect(seen.sort()).toEqual(['alice', 'bob']);
     } finally { await f.close(); }
+});
+
+test('read-only HTTP links use one anonymous routing config across tokens and never fetch the input page', async () => {
+    const visits: string[] = [];
+    const external = Bun.serve({ hostname: '127.0.0.1', port: 0, fetch(req) { visits.push(req.url); return new Response(); } });
+    const calls: Array<{ path: string; token: string | null; marker: string | null }> = [];
+    const f = await fixture(async req => {
+        const url = new URL(req.url);
+        calls.push({ path: url.pathname + url.search, token: req.headers.get('token'), marker: req.headers.get('ZenTao-Action-Assistant') });
+        await Bun.sleep(15);
+        return Response.json({ version: '23.0', requestType: 'PATH_INFO', requestFix: '-', moduleVar: 'm', methodVar: 'f' });
+    }, { readOnly: true });
+    try {
+        const { client } = await f.connect({ token: 'user-a' });
+        const { client: other } = await f.connect({ token: 'user-b' });
+        const target = new URL('/release.html', external.url).href;
+        const input = { action: 'create', module: 'bug', method: 'view', vars: ['bugID=42'] };
+        const link = (args: Record<string, unknown>) => client.callTool({ name: 'zentao_link', arguments: args });
+        expect(toolData(await link({ action: 'parse', url: target }))).toEqual({ url: target, external: true });
+        for (const args of [{ ...input, server: target }, { action: 'parse', url: target, relative: true }, { action: 'create', url: target }]) {
+            expect((await link(args)).isError).toBe(true);
+        }
+        expect(calls).toEqual([]);
+        const [relative, full] = await Promise.all([link({ ...input, relative: true }), other.callTool({ name: 'zentao_link', arguments: input })]);
+        expect(toolData(relative)).toBe('/bug-view-42.html');
+        expect(toolData(full)).toBe(new URL('/bug-view-42.html', f.api.url).href);
+        expect(toolData(await link({ action: 'parse', url: toolData(full) }))).toMatchObject({ moduleName: 'bug', methodName: 'view', params: { $1: '42' } });
+        expect(calls).toEqual([{ path: '/?mode=getconfig', token: null, marker: null }]);
+        expect(visits).toEqual([]);
+    } finally { await f.close(); external.stop(true); }
 });
 
 test('accepts Bearer credentials and maps upstream invalid-token and permission errors without retries', async () => {
@@ -160,7 +190,7 @@ test('module filtering, read-only and split tools remain enforced remotely', asy
     const f = await fixture(() => { requests++; return Response.json({}); }, { readOnly: true, splitTools: true });
     try {
         const { client } = await f.connect();
-        expect((await client.listTools()).tools.map(tool => tool.name)).toEqual(['zentao_action_help', 'zentao_profile', 'zentao_product_read']);
+        expect((await client.listTools()).tools.map(tool => tool.name)).toEqual(['zentao_action_help', 'zentao_profile', 'zentao_product_read', 'zentao_link']);
         for (const [name, action] of [['zentao_product_read', 'delete'], ['zentao_product_write', 'delete'], ['zentao_bug_read', 'get']]) {
             expect((await client.callTool({ name, arguments: { action, id: 1 } })).isError).toBe(true);
         }

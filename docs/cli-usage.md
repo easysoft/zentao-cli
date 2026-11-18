@@ -202,6 +202,18 @@ SDK 能确定结果对象类型时，CLI 在 JSON 的 `meta.resultObjectType` �
 
 ## 禅道数据访问和操作
 
+### 页面链接
+
+`zentao link create` 根据站点配置生成 GET、PATH_INFO 或 PATH_INFO2 页面地址。`--var` 按页面方法的参数顺序重复传入，值使用原文。默认输出完整网址，`--relative` 返回站内路径。`zentao link parse` 可解析完整网址和站内路径。
+
+```bash
+zentao link create bug view --var bugID=329
+zentao link create task view --var taskID=42 --relative
+zentao link parse 'https://zentao.example.com/bug-view-329.html' --format=json
+```
+
+使用 `--server`、`--profile`、`ZENTAO_URL` 或当前 Profile 选择站点。已有路由配置时可离线处理，缺少配置时向选定站点匿名获取。MCP 工具 `zentao_link` 使用绑定的站点，支持 `create` 和 `parse` 两个动作。
+
 ### API 覆盖与版本兼容
 
 CLI 使用 `zentao-api 0.9.0` 的注册表，提供 42 个模块、364 个操作，覆盖问题（`issue`）、风险（`risk`）、会议（`meeting`）、工作流（`workflow`）、文档（`doc`）、待办（`todo`）、地盘（`my`）和代码库（`repo`）等模块，并支持项目集/项目/执行下的关联列表、需求层级、附件上传和 Markdown 文档正文。
