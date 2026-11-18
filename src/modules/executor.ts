@@ -16,6 +16,7 @@ import { getAction } from './helper.js';
 import { ZentaoError } from '../errors.js';
 import { actionContract, paginationFields } from './contract.js';
 import { validateValue } from './validation.js';
+import { localUploadsBlocked } from './file-policy.js';
 
 export interface ModuleExecutionResult {
     /** 解析到的动作定义 */
@@ -119,6 +120,7 @@ export async function executeModuleCommand(
         actionAssistant: options.assistant,
         autoFill: action.type === 'update',
         throwOnFail: true,
+        continueOnFileUploadError: localUploadsBlocked() ? false : undefined,
         recPerPage: pagination ? String(getParam(pagination.size.name)) : undefined,
         timeout: options.timeout,
         insecure: options.insecure,

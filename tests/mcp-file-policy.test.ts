@@ -85,3 +85,47 @@ test('remote MCP blocks server file uploads before authentication while stdio pr
         rmSync(dir, { recursive: true, force: true });
     }
 }, { timeout: 10_000 });
+
+test('HTTP MCP blocks local images in submitted and auto-filled HTML and preserves relative links', async () => {
+    const localImage = '<img src="file:///__zentao_cli_missing_fixture__/image.png">';
+    const relativeImage = '<p><img src="../images/preview.png" alt="预览"></p>';
+    const api = createClient('https://zentao.example.test', 'test-token');
+    const calls: Array<{ method?: string; path: string; body?: unknown }> = [];
+    api.fetch = async (url, options) => {
+        const { pathname, searchParams } = new URL(url);
+        if (searchParams.get('mode') === 'getconfig') return { version: '23.0' };
+        calls.push({ method: options.method, path: pathname, body: options.body });
+        const data = options.method === 'GET'
+            ? { product: { id: 1, name: '测试产品', desc: localImage } }
+            : { status: 'success', id: 1 };
+        return options.responseType === 'response' ? Response.json(data) : data;
+    };
+    const server = createMcpServer({
+        async getContext() { return { client: api, config: DEFAULT_CONFIG, identity: { server: api.siteUrl } }; },
+    }, { modules: ['product'], allowLocalFiles: false });
+    const client = new Client({ name: 'rich-text-policy-test', version: '0.0.0' });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    try {
+        await server.connect(serverTransport);
+        await client.connect(clientTransport);
+        const call = (action: string, params: Record<string, unknown>) =>
+            client.callTool({ name: 'zentao_product', arguments: { action, params } });
+        const blocked = {
+            isError: true,
+            structuredContent: { error: { code: 'E2009', message: expect.stringContaining('HTTP MCP') } },
+        };
+        expect(await call('create', { data: { name: '测试产品', desc: localImage } })).toMatchObject(blocked);
+        expect(calls).toEqual([]);
+        expect(await call('update', { productID: 1, name: '改名' })).toMatchObject(blocked);
+        expect(calls).toEqual([expect.objectContaining({ method: 'GET', path: '/api.php/v2/products/1' })]);
+
+        const created = await call('create', { name: '测试产品', desc: relativeImage });
+        expect(created.isError, JSON.stringify(created.content)).not.toBe(true);
+        expect(calls.slice(1)).toEqual([{
+            method: 'POST', path: '/api.php/v2/products', body: expect.objectContaining({ desc: relativeImage }),
+        }]);
+    } finally {
+        await client.close();
+        await server.close();
+    }
+});

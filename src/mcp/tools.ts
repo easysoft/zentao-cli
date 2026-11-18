@@ -2,7 +2,7 @@ import { brandText } from '../brand.js';
 import { findRemoteUser } from '../auth/user.js';
 import { actionContract, actionIsReadOnly } from '../modules/contract.js';
 import { z } from 'zod';
-import { request } from 'zentao-api';
+import { LOCAL_FILE_UPLOAD_UNAVAILABLE, withoutLocalUploads } from '../modules/file-policy.js';
 import { getModuleActionParams } from '../modules/helper.js';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
@@ -25,8 +25,6 @@ export interface McpToolOptions {
     /** Local transports may upload paths; remote callers must never read host files. */
     allowLocalFiles?: boolean;
 }
-
-const LOCAL_FILE_UPLOAD_UNAVAILABLE = 'HTTP MCP 不支持通过本地路径上传服务端文件，请使用本地 CLI 或 stdio MCP';
 
 function isReadAction(action: ModuleAction): boolean { return actionIsReadOnly(action); }
 
@@ -176,7 +174,8 @@ async function handleModuleTool(
         format: 'json',
     };
 
-    const execution = await executeModuleCommand(withRequestSignal(client, signal), mod, actionName, [], opts, config, params);
+    const execute = () => executeModuleCommand(withRequestSignal(client, signal), mod, actionName, [], opts, config, params);
+    const execution = await (options.allowLocalFiles === false ? withoutLocalUploads(execute) : execute());
 
     if (execution.action.type === 'list') {
         return toolResult(execution.data, {
