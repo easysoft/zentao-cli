@@ -1,6 +1,6 @@
 import { describe, test, expect } from 'bun:test';
 import { ZentaoError as SdkZentaoError } from 'zentao-api';
-import { ZentaoError, ERROR_CODES, formatError, mapSdkError } from '../src/errors';
+import { ZentaoError, ERROR_CODES, fileRecoveryDetails, formatError, mapSdkError } from '../src/errors';
 import { runCliWithoutAuth } from './helpers';
 
 describe('ZentaoError', () => {
@@ -59,7 +59,41 @@ describe('formatError', () => {
     });
 });
 
+describe('file recovery details', () => {
+    test('keeps only valid batch identifiers and documented warning fields', () => {
+        const warning = { stage: 'cleanup', code: 'E_HTTP_ERROR', message: '清理失败', field: 'desc',
+            path: 'image.png', name: '截图', fileID: 5, uid: 'batch_1', objectType: 'product', objectID: 1 } as const;
+        const data = { uid: 'batch_1', fileIDs: [5, 0, '6', null, -1, 1.5], cause: Error('private'),
+            fileWarnings: [{ ...warning, token: 'private' }, { ...warning, stage: 'invalid' }, null] };
+        expect(fileRecoveryDetails(data)).toEqual({ uid: 'batch_1', fileIDs: [5], fileWarnings: [warning] });
+        expect(fileRecoveryDetails({ uid: 'bad\nuid', fileIDs: [], fileWarnings: [false], token: 'private' })).toBeUndefined();
+    });
+
+    test.each([
+        ['E_HTTP_ERROR', '2008'], ['E_ABORTED', '5003'], ['E_TIMEOUT', '5001'], ['E_FILE_SAVE_UNCONFIRMED', '2016'],
+    ] as const)('keeps %s a failure and reports the identifiers for reconciliation', (code, cliCode) => {
+        const sdk = new SdkZentaoError(code, undefined, { status: 500, uid: 'batch-1', fileIDs: [7, 8] });
+        const error = mapSdkError(sdk) as ZentaoError;
+        expect(fileRecoveryDetails(error.details)).toEqual({ uid: 'batch-1', fileIDs: [7, 8] });
+        expect(JSON.parse(formatError(error, 'json'))).toMatchObject({ ok: false, error: { code: cliCode } });
+        const text = formatError(error, 'table');
+        expect(text).toContain('uid=batch-1');
+        expect(text).toContain('fileIDs=7,8');
+        expect(text).toContain('重试前请先核对');
+    });
+});
+
 describe('mapSdkError', () => {
+    test.each([
+        ['E_FILE_RESOLVE_FAILED', '2013', '无法解析富文本图片引用 image.png'],
+        ['E_FILE_UPLOAD_FAILED', '2014', '上传响应未提供有效的附件 ID'],
+        ['E_FILE_SESSION_CHANGED', '2015', '图片上传期间登录会话已改变'],
+        ['E_FILE_SAVE_UNCONFIRMED', '2016', '服务端未确认本次对象的保存结果'],
+    ] as const)('localizes %s with only file recovery details', (sdkCode, cliCode, text) => {
+        const sdk = new SdkZentaoError(sdkCode, { path: 'image.png' }, { uid: 'batch-1', cause: { token: 'secret' } });
+        expect(mapSdkError(sdk)).toMatchObject({ code: cliCode, message: expect.stringContaining(text) });
+        expect((mapSdkError(sdk) as ZentaoError).details).toEqual({ uid: 'batch-1' });
+    });
     test('maps HTTP 401 to E1004', () => {
         const sdk = new SdkZentaoError('E_HTTP_ERROR', { status: 401, statusText: 'Unauthorized' }, { status: 401, url: 'x' });
         const mapped = mapSdkError(sdk);

@@ -117,7 +117,10 @@ test('HTTP MCP blocks local images in submitted and auto-filled HTML and preserv
             isError: true,
             structuredContent: { error: { code: 'E2009', message: expect.stringContaining('HTTP MCP') } },
         };
-        expect(await call('create', { data: { name: '测试产品', desc: localImage } })).toMatchObject(blocked);
+        const blockedCreate = await call('create', { data: { name: '测试产品', desc: localImage } });
+        expect(blockedCreate).toMatchObject(blocked);
+        expect(blockedCreate).not.toHaveProperty('structuredContent.error.details');
+        expect(JSON.stringify(blockedCreate.content)).not.toContain('fileWarnings');
         expect(calls).toEqual([]);
         expect(await call('update', { productID: 1, name: '改名' })).toMatchObject(blocked);
         expect(calls).toEqual([expect.objectContaining({ method: 'GET', path: '/api.php/v2/products/1' })]);

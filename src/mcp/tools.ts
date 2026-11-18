@@ -14,7 +14,7 @@ import type { AuthProvider } from './server.js';
 import { withRequestSignal } from '../api/index.js';
 import { validateAssistant } from '../api/assistant.js';
 import { getScopeAliasTarget, normalizeToolParams } from './params.js';
-import { listOutputSchema, outputSchema, toolError, toolResult } from './results.js';
+import { moduleOutputSchema, outputSchema, toolError, toolResult } from './results.js';
 
 export interface McpToolOptions {
     /** Startup default; individual tool calls may override or disable it. */
@@ -42,10 +42,11 @@ function buildActionEnum(mod: ModuleDefinition): [string, ...string[]] {
     return [names[0], ...names.slice(1)];
 }
 
-function buildInputSchema(mod: ModuleDefinition) {
+function buildToolSchemas(mod: ModuleDefinition) {
     const actionEnum = buildActionEnum(mod);
     const parameters = mod.actions.flatMap(action => getModuleActionParams(mod.name, action.name));
     const names = new Set(parameters.map(param => param.name));
+    const hasList = mod.actions.some(action => action.type === 'list');
     const shape: Record<string, z.ZodType> = {
         assistant: z.string().optional().describe('本次操作来源标记；省略继承服务设置，空字符串关闭'),
         action: z.enum(actionEnum).describe(mod.actions.map(action => `${action.name}: ${action.display ?? action.name}`).join('; ')),
@@ -62,7 +63,7 @@ function buildInputSchema(mod: ModuleDefinition) {
     if (mod.actions.some(action => action.type === 'list' || action.type === 'get')) {
         shape.pick = z.string().optional().describe('返回字段，逗号分隔');
     }
-    if (mod.actions.some(action => action.type === 'list')) {
+    if (hasList) {
         shape.filter = z.array(z.string()).optional().describe('当前页过滤，组内逗号为 AND、多组为 OR；远端筛选见 params.filters');
         shape.sort = z.string().optional().describe('当前页排序，如 pri:asc');
         shape.search = z.array(z.string()).optional().describe('当前页搜索，组内逗号为 AND、多组为 OR');
@@ -70,7 +71,10 @@ function buildInputSchema(mod: ModuleDefinition) {
     }
     if (names.has('pageID')) shape.page = z.number().int().positive().optional().describe('页码，从 1 开始');
     if (names.has('recPerPage')) shape.recPerPage = z.number().int().min(1).max(1000).optional().describe('每页 1–1000 条');
-    return z.object(shape).strict();
+    return {
+        inputSchema: z.object(shape).strict(),
+        outputSchema: moduleOutputSchema(hasList, parameters.some(param => param.role === 'body' && param.textType === 'html')),
+    };
 }
 
 /** Examples use typed placeholders, not real object IDs or ready-to-submit business data. */
@@ -177,9 +181,11 @@ async function handleModuleTool(
 
     const execute = () => executeModuleCommand(withRequestSignal(client, signal), mod, actionName, [], opts, config, params);
     const execution = await (options.allowLocalFiles === false ? withoutLocalUploads(execute) : execute());
+    const warnings = execution.fileWarnings?.length ? { fileWarnings: execution.fileWarnings } : undefined;
 
     if (execution.action.type === 'list') {
         return toolResult(execution.data, {
+            ...warnings,
             ...(execution.pager ? { pager: execution.pager } : {}),
             meta: {
                 processingScope: 'page',
@@ -190,11 +196,11 @@ async function handleModuleTool(
     }
 
     if (execution.action.type === 'get') {
-        return toolResult(readingFileContent ? { encoding: 'base64', content: execution.data } : execution.data);
+        return toolResult(readingFileContent ? { encoding: 'base64', content: execution.data } : execution.data, warnings);
     }
 
     // create / update / delete / action
-    return toolResult(execution.data ?? execution.rawResponse);
+    return toolResult(execution.data ?? execution.rawResponse, warnings);
 }
 
 function toolAnnotations(actions: readonly ModuleAction[]) {
@@ -289,10 +295,10 @@ export function registerModuleTools(server: McpServer, auth: AuthProvider, optio
             const mod = { ...source, actions: group.actions };
             const name = brandText`zentao_${mod.name}${group.suffix}`;
             const description = buildToolDescription(mod);
-            const inputSchema = buildInputSchema(mod);
+            const schemas = buildToolSchemas(mod);
             const annotations = toolAnnotations(mod.actions);
 
-            server.registerTool(name, { description, inputSchema, outputSchema: mod.actions.some(action => action.type === 'list') ? listOutputSchema : outputSchema, annotations }, async (raw, extra) => {
+            server.registerTool(name, { description, ...schemas, annotations }, async (raw, extra) => {
                 const input = raw as unknown as ToolInput;
                 try {
                     // Keep full module metadata for autoFill, but enforce this tool's subset.

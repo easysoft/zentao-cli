@@ -1,4 +1,4 @@
-import { request, processData, type RequestOptions, type ResponseData } from 'zentao-api';
+import { request, processData, type FileWarning, type RequestOptions, type ResponseData } from 'zentao-api';
 import type { ZentaoClient } from '../api/index.js';
 import { mapSdkError } from '../errors.js';
 import type {
@@ -28,6 +28,7 @@ export interface ModuleExecutionResult {
     /** 分页信息（CLI 字段命名） */
     pager?: ListPagerInfo;
     meta?: Record<string, unknown>;
+    fileWarnings?: FileWarning[];
     /** 用户通过 --pick 指定的字段 */
     fields?: string[];
     /** 是否为列表结果 */
@@ -114,6 +115,7 @@ export async function executeModuleCommand(
     const shouldProcess = !rawOutput;
     const processList = shouldProcess && action.type === 'list';
     const processSingle = shouldProcess && action.type === 'get';
+    const rawFileWarnings: FileWarning[] = [];
 
     const requestOptions: RequestOptions = {
         client,
@@ -121,6 +123,7 @@ export async function executeModuleCommand(
         autoFill: action.type === 'update',
         throwOnFail: true,
         continueOnFileUploadError: localUploadsBlocked() ? false : undefined,
+        onFileError: rawOutput ? warning => { rawFileWarnings.push(warning); } : undefined,
         recPerPage: pagination ? String(getParam(pagination.size.name)) : undefined,
         timeout: options.timeout,
         insecure: options.insecure,
@@ -146,13 +149,15 @@ export async function executeModuleCommand(
         if (rawOutput) {
             const rawResponse = await request(requestName, params, { ...requestOptions, raw: true });
             // The SDK returns raw responses before applying throwOnFail.
-            if (rawResponse && typeof rawResponse === 'object' && 'status' in rawResponse && rawResponse.status === 'fail') {
-                const message = 'message' in rawResponse ? rawResponse.message : undefined;
+            const record = rawResponse && typeof rawResponse === 'object' ? rawResponse as Record<string, unknown> : undefined;
+            const writeFailed = action.requestBody && (record?.status === 'error' || record?.result === 'fail' || record?.result === 'error');
+            if (record && (record.status === 'fail' || writeFailed)) {
+                const message = record.message;
                 throw new ZentaoError('E2008', {
                     url: '',
                     status: '',
                     serverResponse: typeof message === 'string' ? message : JSON.stringify(message ?? rawResponse),
-                }, rawResponse);
+                }, rawFileWarnings.length ? { response: rawResponse, fileWarnings: rawFileWarnings } : rawResponse);
             }
             return {
                 action,
@@ -160,6 +165,7 @@ export async function executeModuleCommand(
                 rawResponse,
                 fields,
                 isList: action.type === 'list',
+                ...(rawFileWarnings.length ? { fileWarnings: rawFileWarnings } : {}),
             };
         }
         let previousPage: string | undefined;
@@ -215,5 +221,6 @@ export async function executeModuleCommand(
         return { action, data, rawResponse: response, fields, isList: false };
     }
 
-    return { action, data: response.data, rawResponse: response, fields, isList: false };
+    return { action, data: response.data, rawResponse: response, fields, isList: false,
+        ...(response.fileWarnings?.length ? { fileWarnings: response.fileWarnings } : {}) };
 }

@@ -1,4 +1,4 @@
-import { ERRORS as SDK_ERRORS } from 'zentao-api';
+import { ERRORS as SDK_ERRORS, type FileWarning } from 'zentao-api';
 import { brandText } from './brand.js';
 /**
  * 错误码与默认消息映射表。
@@ -32,6 +32,10 @@ export const ERROR_CODES = {
     E2010: brandText('操作 {action} 不支持当前禅道版本 {version}，最低版本要求：{minVersion}，请升级对应系列的禅道版本'),
     E2011: brandText('无法识别禅道版本 {version}，仅支持点分数字的正式版本（如 22.5、biz13.5、max8.5、ipd5.5）'),
     E2012: brandText('无法识别禅道服务端配置，请检查站点根地址的 ?mode=getconfig 是否返回包含 version 的 JSON 对象'),
+    E2013: '无法解析富文本图片引用 {path}',
+    E2014: '上传响应未提供有效的附件 ID',
+    E2015: '图片上传期间登录会话已改变，本次操作已中止',
+    E2016: '服务端未确认本次对象的保存结果',
 
     // 网络通信 (50xx)
     E5001: brandText('请求超时，请检查网络连接或禅道服务是否正常'),
@@ -84,6 +88,44 @@ function isSdkError(error: unknown): error is SdkErrorLike {
     return typeof code === 'string' && code.startsWith('E_');
 }
 
+function isFileID(value: unknown): value is number {
+    return typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
+}
+
+function isFileUid(value: unknown): value is string {
+    return typeof value === 'string' && value.length > 0 && !/[^A-Za-z0-9_-]/.test(value);
+}
+
+/** Extract only documented SDK fields for callers reconciling a file batch. */
+export function fileRecoveryDetails(details: unknown): { uid?: string; fileIDs?: number[]; fileWarnings?: FileWarning[] } | undefined {
+    if (!details || typeof details !== 'object' || Array.isArray(details)) return undefined;
+    const data = details as Record<string, unknown>;
+    const uid = isFileUid(data.uid) ? data.uid : undefined;
+    const fileIDs = Array.isArray(data.fileIDs) ? data.fileIDs.filter(isFileID) : [];
+    const fileWarnings: FileWarning[] = [];
+    if (Array.isArray(data.fileWarnings)) {
+        for (const item of data.fileWarnings) {
+            if (!item || typeof item !== 'object') continue;
+            const { stage, code, message } = item;
+            if ((stage !== 'resolve' && stage !== 'upload' && stage !== 'cleanup')
+                || typeof code !== 'string' || typeof message !== 'string') continue;
+            const warning: FileWarning = { stage, code, message };
+            for (const field of ['field', 'path', 'name', 'objectType'] as const) {
+                if (typeof item[field] === 'string') warning[field] = item[field];
+            }
+            if (isFileID(item.fileID)) warning.fileID = item.fileID;
+            if (isFileID(item.objectID)) warning.objectID = item.objectID;
+            if (isFileUid(item.uid)) warning.uid = item.uid;
+            fileWarnings.push(warning);
+        }
+    }
+    if (!uid && !fileIDs.length && !fileWarnings.length) return undefined;
+    return {
+        ...(uid && { uid }),
+        ...(fileIDs.length > 0 && { fileIDs }),
+        ...(fileWarnings.length > 0 && { fileWarnings }),
+    };
+}
 
 /**
  * 将 `zentao-api` SDK 抛出的 {@link import('zentao-api').ZentaoError}（字符串错误码）
@@ -144,6 +186,14 @@ export function mapSdkError(error: unknown): unknown {
             return new ZentaoError('E2011', { version: String(params.version ?? '') }, details);
         case 'E_INVALID_ZENTAO_CONFIG':
             return new ZentaoError('E2012', undefined, details);
+        case 'E_FILE_RESOLVE_FAILED':
+            return new ZentaoError('E2013', { path: String(params.path ?? '') }, fileRecoveryDetails(details));
+        case 'E_FILE_UPLOAD_FAILED':
+            return new ZentaoError('E2014', undefined, fileRecoveryDetails(details));
+        case 'E_FILE_SESSION_CHANGED':
+            return new ZentaoError('E2015', undefined, fileRecoveryDetails(details));
+        case 'E_FILE_SAVE_UNCONFIRMED':
+            return new ZentaoError('E2016', undefined, fileRecoveryDetails(details));
         case 'E_MISSING_PARAM':
             return new ZentaoError('E2003', { fields: String(params.param ?? ''), module: '' }, details);
         case 'E_INVALID_PARAM': {
@@ -191,5 +241,12 @@ export function formatError(error: ZentaoError, format: string): string {
         }
         return JSON.stringify(obj, null, 4);
     }
-    return `Error(E${error.code}): ${error.message}`;
+    const message = `Error(E${error.code}): ${error.message}`;
+    const recovery = fileRecoveryDetails(error.details);
+    if (!recovery?.uid && !recovery?.fileIDs?.length) return message;
+    const batch = [
+        recovery.uid && `uid=${recovery.uid}`,
+        recovery.fileIDs?.length && `fileIDs=${recovery.fileIDs.join(',')}`,
+    ].filter(Boolean).join('，');
+    return `${message}\n附件上传批次（${batch}）。重试前请先核对对象的保存结果和附件归属。`;
 }

@@ -289,6 +289,13 @@ describe('module executor (zentao-api request pipeline)', () => {
         expect(requests).toHaveLength(1);
     });
 
+    test('reports a rejected raw save when the server uses a result field', async () => {
+        const failure = { result: 'fail', message: 'Save refused' };
+        const { client } = mockClient(() => Response.json(failure));
+        await expect(executeModuleCommand(client, getModule('product')!, 'create', [], { format: 'raw' },
+            DEFAULT_CONFIG, { name: 'Test product' })).rejects.toMatchObject({ code: '2008', details: failure });
+    });
+
     test('executes create commands and retains the normalized response', async () => {
         const rawResponse = { status: 'success', id: 7, message: 'created' };
         const { client, requests } = mockClient(() => rawResponse);

@@ -3,7 +3,7 @@ import { brandText } from './brand.js';
 import { kebabCase } from './modules/contract.js';
 import { CommanderError } from 'commander';
 import { createProgram } from './cli.js';
-import { ZentaoError, formatError, mapSdkError } from './errors.js';
+import { ZentaoError, fileRecoveryDetails, formatError, mapSdkError } from './errors.js';
 import { setConfigPath } from './config/store.js';
 import { startCommandLifecycle, commandAbortReason } from './utils/lifecycle.js';
 
@@ -41,7 +41,8 @@ try {
         process.exitCode = 0;
     } else {
         const aborted = commandAbortReason();
-        const normalized = aborted ? new ZentaoError(aborted === 'deadline' ? 'E5001' : 'E5003')
+        const recovery = aborted && error && typeof error === 'object' && 'details' in error ? fileRecoveryDetails(error.details) : undefined;
+        const normalized = aborted ? new ZentaoError(aborted === 'deadline' ? 'E5001' : 'E5003', undefined, recovery)
             : error instanceof CommanderError ? new ZentaoError('E2009', { option: 'argv', reason: error.message.replace(/^error: /, '').trim() })
                 : error instanceof ZentaoError ? error : mapSdkError(error);
         const domain = normalized instanceof ZentaoError ? normalized : new ZentaoError('E2008', { url: '', status: '', serverResponse: normalized instanceof Error ? normalized.message : String(normalized) });

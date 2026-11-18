@@ -9,6 +9,8 @@ test('action help examples and processing schemas match every action contract wi
     try {
         const { tools } = await mcp.client.listTools();
         const modules = getAllModules();
+        expect(tools.find(tool => tool.name === 'zentao_product_write')?.outputSchema?.properties).toHaveProperty('fileWarnings');
+        expect(JSON.stringify(tools.find(tool => tool.name === 'zentao_file_write')?.outputSchema)).not.toContain('fileWarnings');
         for (const mod of modules) for (const action of mod.actions) {
             const result = await mcp.client.callTool({ name: 'zentao_action_help', arguments: { module: mod.name, action: action.name } });
             expect(result.isError).not.toBe(true);
@@ -39,6 +41,8 @@ test('help marks unavailable actions and rejects irrelevant data processing opti
     let requests = 0;
     const mcp = await createMcpTestClient(() => { requests++; return Response.json({}); }, ['--read-only', '--modules', 'product']);
     try {
+        const { tools } = await mcp.client.listTools();
+        for (const tool of tools) expect(JSON.stringify(tool.outputSchema)).not.toContain('fileWarnings');
         for (const [module, action, available] of [['product', 'get', true], ['product', 'create', false], ['task', 'list', false]] as const) {
             const result = await mcp.client.callTool({ name: 'zentao_action_help', arguments: { module, action } });
             expect(toolData(result).available).toBe(available);
