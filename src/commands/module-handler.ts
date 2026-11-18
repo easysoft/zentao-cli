@@ -39,6 +39,12 @@ function reportFileWarnings(warnings: FileWarning[], objectID?: number): void {
     }
 }
 
+function resultMeta(execution: ModuleExecutionResult): Record<string, unknown> | undefined {
+    const { meta, fileWarnings, resultObjectType } = execution;
+    if (!resultObjectType && !fileWarnings?.length) return meta;
+    return { ...meta, ...(resultObjectType && { resultObjectType }), ...(fileWarnings?.length && { fileWarnings }) };
+}
+
 function renderModuleExecution(
     execution: ModuleExecutionResult,
     options: ModuleActionOptions,
@@ -63,7 +69,7 @@ function renderModuleExecution(
             isList: execution.isList,
             fields: execution.fields,
             pager: execution.pager,
-            meta: execution.fileWarnings?.length ? { ...execution.meta, fileWarnings: execution.fileWarnings } : execution.meta,
+            meta: resultMeta(execution),
             jsonPretty: config.jsonPretty,
             rawResponse: execution.rawResponse,
         });
@@ -116,7 +122,7 @@ interface BatchResult {
     success: BatchId[];
     failed: BatchId[];
     skipped: BatchId[];
-    data?: Map<BatchId, { value: unknown; fileWarnings?: FileWarning[] }>;
+    data: Map<BatchId, { value: unknown; meta?: Record<string, unknown> }>;
     errors: BatchError[];
 }
 
@@ -133,15 +139,14 @@ function toBatchError(id: BatchId, error: unknown): BatchError {
     };
 }
 
-function renderBatchResult(result: BatchResult, format: string, pretty: boolean): string {
+function renderBatchResult(result: BatchResult, format: string, pretty: boolean, includeData: boolean): string {
     if (format === 'json' || format === 'raw') {
         return formatJson({
             ok: result.failed.length === 0,
             data: result.ids.map(objectID => {
-                if (result.success.includes(objectID)) {
-                    const item = result.data?.get(objectID);
-                    return { objectID, ok: true, data: item?.value ?? null,
-                        ...(item?.fileWarnings?.length ? { meta: { fileWarnings: item.fileWarnings } } : {}) };
+                const item = result.data.get(objectID);
+                if (item) {
+                    return { objectID, ok: true, data: item.value ?? null, ...(item.meta && { meta: item.meta }) };
                 }
                 return result.skipped.includes(objectID) ? { objectID, ok: false, skipped: true }
                     : { objectID, ok: false, error: result.errors.find(item => item.objectID === objectID)!.error };
@@ -151,7 +156,7 @@ function renderBatchResult(result: BatchResult, format: string, pretty: boolean)
     }
 
     const lines: string[] = [];
-    if (result.data?.size) {
+    if (includeData && result.data.size) {
         const rows = Array.from(result.data, ([objectID, { value }]) => (
             value && typeof value === 'object' && !Array.isArray(value)
                 ? { ...(value as Record<string, unknown>), objectID }
@@ -221,7 +226,7 @@ export async function handleModuleCommand(
             success: [],
             failed: [],
             skipped: [],
-            ...(action.type === 'delete' ? {} : { data: new Map() }),
+            data: new Map(),
             errors: [],
         };
         for (let index = 0; index < batchIds.length; index++) {
@@ -239,7 +244,7 @@ export async function handleModuleCommand(
                     { ...params, id: rawId },
                 );
                 result.success.push(id);
-                result.data?.set(id, { value: execution.data, fileWarnings: execution.fileWarnings });
+                result.data.set(id, { value: action.type === 'delete' ? null : execution.data, meta: resultMeta(execution) });
                 if (format !== 'json' && execution.fileWarnings?.length) reportFileWarnings(execution.fileWarnings, id);
             } catch (error) {
                 if (commandSignal()?.aborted && error instanceof ZentaoError && fileRecoveryDetails(error.details)) throw error;
@@ -253,7 +258,7 @@ export async function handleModuleCommand(
             }
         }
 
-        console.log(renderBatchResult(result, format, config.jsonPretty ?? false));
+        console.log(renderBatchResult(result, format, config.jsonPretty ?? false, action.type !== 'delete'));
         if (result.failed.length > 0) {
             process.exitCode = 1;
         }

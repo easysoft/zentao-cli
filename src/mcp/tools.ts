@@ -172,11 +172,14 @@ async function handleModuleTool(
 
     const execute = () => executeModuleCommand(withRequestSignal(client, signal), mod, actionName, [], opts, config, params);
     const execution = await (options.allowLocalFiles === false ? withoutLocalUploads(execute) : execute());
-    const warnings = execution.fileWarnings?.length ? { fileWarnings: execution.fileWarnings } : undefined;
+    const metadata = {
+        ...(execution.fileWarnings?.length ? { fileWarnings: execution.fileWarnings } : {}),
+        ...(execution.resultObjectType ? { resultObjectType: execution.resultObjectType } : {}),
+    };
 
     if (execution.action.type === 'list') {
         return toolResult(execution.data, {
-            ...warnings,
+            ...metadata,
             ...(execution.pager ? { pager: execution.pager } : {}),
             meta: {
                 processingScope: 'page',
@@ -187,11 +190,11 @@ async function handleModuleTool(
     }
 
     if (execution.action.type === 'get') {
-        return toolResult(readingFileContent ? { encoding: 'base64', content: execution.data } : execution.data, warnings);
+        return toolResult(readingFileContent ? { encoding: 'base64', content: execution.data } : execution.data, metadata);
     }
 
     // create / update / delete / action
-    return toolResult(execution.data ?? execution.rawResponse, warnings);
+    return toolResult(execution.data ?? execution.rawResponse, metadata);
 }
 
 function toolAnnotations(actions: readonly ModuleAction[]) {

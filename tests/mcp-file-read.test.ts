@@ -31,7 +31,7 @@ test('MCP file/get accepts a Base64 gid as one URL segment and keeps other file 
         ];
         for (const { input, segment } of cases) {
             const result = await mcp.client.callTool({ name: 'zentao_file', arguments: { action: 'get', ...input } });
-            expect(result.structuredContent).toEqual({ data: file });
+            expect(result.structuredContent).toEqual({ data: file, resultObjectType: 'file' });
             expect(paths.splice(0)).toEqual([`/api.php/v2/files/${segment}`]);
         }
     } finally {

@@ -19,12 +19,12 @@ test('MCP returns stable structured data, contextual errors and explicit page pr
         expect(tools.every(tool => tool.outputSchema?.type === 'object')).toBe(true);
         const single = await mcp.client.callTool({ name: 'zentao_product', arguments: { action: 'get', id: 1 } });
         expect(single.isError).not.toBe(true);
-        expect(single.structuredContent).toEqual({ data: { id: 1, name: 'Product' } });
+        expect(single.structuredContent).toEqual({ data: { id: 1, name: 'Product' }, resultObjectType: 'product' });
         expect(toolData(single)).toEqual({ id: 1, name: 'Product' });
         const list = await mcp.client.callTool({ name: 'zentao_product', arguments: { action: 'list', page: 2, recPerPage: 1, filter: ['status=active'] } });
         expect(list.isError).not.toBe(true);
         expect(list.structuredContent).toEqual({
-            data: [], pager: { pageID: 2, recPerPage: 1, recTotal: 10 },
+            data: [], resultObjectType: 'product', pager: { pageID: 2, recPerPage: 1, recTotal: 10 },
             meta: { processingScope: 'page', returnedCount: 0, totalScope: 'serverBeforeLocalProcessing' },
         });
         expect(toolData(list)).toEqual(list.structuredContent);
@@ -34,6 +34,7 @@ test('MCP returns stable structured data, contextual errors and explicit page pr
         expect(failed.structuredContent).toMatchObject({ error: {
             code: 'E1004', module: 'product', action: 'get', message: expect.any(String),
         } });
+        expect(failed.structuredContent).not.toHaveProperty('resultObjectType');
         const invalid = await mcp.client.callTool({ name: 'zentao_product', arguments: { action: 'list', params: { browseType: 'invalid' } } });
         expect(invalid.structuredContent).toMatchObject({ error: { code: 'E2009', module: 'product', action: 'list' } });
     } finally {

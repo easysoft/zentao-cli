@@ -64,8 +64,12 @@ for (const mod of modules) {
         const cmd = resource.commands.find(cmd => cmd.name() === kebabCase(action.name))!;
         assert(cmd, `Missing command ${mod.name}/${action.name}`);
         parameterCount += contract.parameters.length;
+        const resultType = action.resultObjectType;
+        let resultNote = '';
+        if (typeof resultType === 'string' && resultType !== mod.name) resultNote = `返回对象类型为 ${code(resultType)}。`;
+        else if (resultType && typeof resultType === 'object') resultNote = `返回对象类型由参数 ${code(resultType.param)} 决定。`;
         const body = [fence(cmd.helpInformation()), `最低版本：${action.minVersion.join(' / ')}。`,
-            contract.description ?? '',
+            contract.description ?? '', resultNote,
             `能力：${contract.readOnly ? '只读' : '写入或需服务端确认'}；批量：${contract.batch ? '--ids' : '不支持'}；分页：${contract.pagination ? '--page / --page-size / --all' : '不支持'}；本地文件：${contract.localFiles ? '是，HTTP MCP 不可用' : '否'}。`,
             contract.autoFill ? '未提供的请求体字段可由匹配的详情操作自动补全。' : '',
             table(['参数', 'JSON 字段', '位置', '类型', '必填', '默认值', '说明与约束'], contract.parameters.map(param => [

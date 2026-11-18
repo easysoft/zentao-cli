@@ -15,7 +15,7 @@ const errorSchema = z.object({
     code: z.string(), message: z.string(), module: z.string().optional(), action: z.string().optional(),
 });
 
-export const outputSchema = z.object({ data: z.unknown(), error: errorSchema.optional() });
+export const outputSchema = z.object({ data: z.unknown(), resultObjectType: z.string().optional(), error: errorSchema.optional() });
 const listOutputSchema = outputSchema.extend({
     pager: z.object({ pageID: z.number(), recPerPage: z.number(), recTotal: z.number() }).optional(),
     meta: z.object({
@@ -45,12 +45,13 @@ export function toolResult(data: unknown, extra?: {
     pager?: ListPagerInfo;
     meta?: { processingScope: 'page'; returnedCount: number; totalScope?: 'serverBeforeLocalProcessing' };
     fileWarnings?: FileWarning[];
+    resultObjectType?: string;
 }): CallToolResult {
     const structuredContent = { data: data ?? null, ...extra };
+    const textData = extra?.meta || extra?.fileWarnings?.length ? structuredContent : data ?? null;
     return {
         structuredContent,
-        // Simple results retain their existing text format.
-        content: [{ type: 'text', text: JSON.stringify(extra ? structuredContent : data ?? null, null, 2) }],
+        content: [{ type: 'text', text: JSON.stringify(textData, null, 2) }],
     };
 }
 

@@ -200,7 +200,7 @@ describe('handleModuleCommand batch ids', () => {
 
         expect(output).toHaveLength(1);
         expect(JSON.parse(output[0])).toEqual({ ok: true,
-            data: [1, 2].map(id => ({ objectID: id, ok: true, data: { id, name: `产品${id}` } })),
+            data: [1, 2].map(id => ({ objectID: id, ok: true, data: { id, name: `产品${id}` }, meta: { resultObjectType: 'product' } })),
             meta: { success: 2, failed: 0, skipped: 0 } });
     });
 

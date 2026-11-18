@@ -196,6 +196,8 @@ MCP 发送请求前按动作定义检查必填字段、JSON 类型、明确枚�
 
 所有工具都声明 `outputSchema`，成功时通过 `structuredContent.data` 返回数据；列表还包含 `pager` 和 `meta`。文本结果保留原有 JSON 形态（列表带 `data`，详情直接返回对象）。业务错误设置 `isError=true` 并返回 `structuredContent.error`，包含 `code`、`message` 及适用的 `module`、`action`；协议和顶层 schema 校验错误由 MCP SDK 返回。
 
+SDK 能确定结果对象类型时，CLI 在 JSON 的 `meta.resultObjectType` 中、MCP 在 `structuredContent.resultObjectType` 中返回类型。终端列表据此选择默认列，例如 `zentao my bugs` 显示 Bug 严重程度。可用 `--fields` 指定需要的列。
+
 `filter`、`search`、`sort` 仅处理当前页。列表的 `meta.processingScope="page"`、`meta.returnedCount` 表示实际返回条数；`pager.recTotal` 是远端总数，`meta.totalScope="serverBeforeLocalProcessing"` 表明总数未经过本地筛选。跨页筛选需使用操作支持的 `params.filters` 等服务端参数，并逐页请求。
 
 ## 禅道数据访问和操作

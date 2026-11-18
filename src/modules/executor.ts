@@ -14,7 +14,7 @@ import { resolveData } from '../utils/stdin.js';
 import { buildParams } from './args.js';
 import { getAction } from './helper.js';
 import { ZentaoError } from '../errors.js';
-import { actionContract, canAutoFill, paginationFields } from './contract.js';
+import { canAutoFill, defaultTableFields, paginationFields } from './contract.js';
 import { validateValue } from './validation.js';
 import { localUploadsBlocked } from './file-policy.js';
 
@@ -29,6 +29,7 @@ export interface ModuleExecutionResult {
     pager?: ListPagerInfo;
     meta?: Record<string, unknown>;
     fileWarnings?: FileWarning[];
+    resultObjectType?: string;
     /** 用户通过 --pick 指定的字段 */
     fields?: string[];
     /** 是否为列表结果 */
@@ -142,7 +143,8 @@ export async function executeModuleCommand(
     };
 
     let response: ResponseData;
-    let collected: Record<string, unknown>[] = [];
+    let collected: unknown[] = [];
+    let resultObjectType: string | undefined;
     let fetched = 0;
     let processedCount = 0;
     try {
@@ -172,8 +174,10 @@ export async function executeModuleCommand(
         for (;;) {
             response = await request(requestName, params, { ...requestOptions, raw: false,
                 convert: undefined, filter: undefined, search: undefined, sort: undefined, limit: undefined, pick: processList ? undefined : requestOptions.pick });
+            if (previousPage === undefined) resultObjectType = response.resultObjectType;
+            else if (response.resultObjectType !== resultObjectType) resultObjectType = undefined;
             if (!processList) break;
-            const rows = (Array.isArray(response.data) ? response.data : []) as Record<string, unknown>[];
+            const rows = Array.isArray(response.data) ? response.data : [];
             fetched += rows.length;
             collected.push(...rows);
             if (!options.all) break;
@@ -189,7 +193,12 @@ export async function executeModuleCommand(
             setParam(pagination!.page.name, pager.page + 1);
         }
         if (processList) {
-            collected = processData(collected, { ...requestOptions, limit: undefined });
+            // Object transforms would spread scalar entries into empty or numeric-keyed records.
+            if (collected.every((row): row is Record<string, unknown> => row !== null && typeof row === 'object' && !Array.isArray(row))) {
+                collected = processData(collected, { ...requestOptions, limit: undefined });
+            } else {
+                resultObjectType = undefined;
+            }
             processedCount = collected.length;
             if (options.maxItems) collected = collected.slice(0, Number(options.maxItems));
         }
@@ -211,16 +220,17 @@ export async function executeModuleCommand(
         const meta = { returned: data.length, fetched, page: pager?.pageID ?? null, pageSize: pager?.recPerPage ?? null,
             total: pager?.recTotal ?? null, hasMore, truncated: processedCount > data.length,
             processingScope: options.all ? 'all' : 'page', totalScope: 'serverBeforeLocalProcessing' };
-        const displayFields = outputFormat === 'table' && !fields && data.some(row => row && typeof row === 'object')
-            ? actionContract(module, action).defaultFields.filter(key => data.some(row => row && Object.hasOwn(row, key))) : fields;
-        return { action, data, rawResponse: response, pager, fields: displayFields?.length ? displayFields : undefined, isList: true, meta };
+        const displayFields = outputFormat === 'table' && !fields && resultObjectType
+            ? defaultTableFields(resultObjectType).filter(key => data.some(row => row != null && Object.hasOwn(row, key))) : fields;
+        return { action, data, rawResponse: response, resultObjectType, pager,
+            fields: displayFields?.length ? displayFields : undefined, isList: true, meta };
     }
 
     if (action.type === 'get') {
         const data = response.data instanceof ArrayBuffer ? Buffer.from(response.data).toString('base64') : response.data ?? {};
-        return { action, data, rawResponse: response, fields, isList: false };
+        return { action, data, rawResponse: response, resultObjectType: response.resultObjectType, fields, isList: false };
     }
 
-    return { action, data: response.data, rawResponse: response, fields, isList: false,
+    return { action, data: response.data, rawResponse: response, resultObjectType: response.resultObjectType, fields, isList: false,
         ...(response.fileWarnings?.length ? { fileWarnings: response.fileWarnings } : {}) };
 }

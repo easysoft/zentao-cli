@@ -17,6 +17,7 @@ test('action help examples and processing schemas match every action contract wi
             const help = toolData(result);
             expect(help.available).toBe(true);
             expect(help.minVersion).toEqual(action.minVersion);
+            expect(help.resultObjectType).toEqual(action.resultObjectType);
             expect(tools.some(tool => tool.name === help.example.name)).toBe(true);
             expect(help.example.arguments.action).toBe(action.name);
             expect(() => normalizeToolParams(mod, action, help.example.arguments)).not.toThrow();

@@ -42,6 +42,12 @@ export function canAutoFill(mod: ModuleDefinition, action: ModuleAction): boolea
         && mod.actions.some(detail => detail.type === 'get' && detail.path === action.path);
 }
 
+export function defaultTableFields(objectType?: string) {
+    if (!objectType) return [];
+    if (objectType === 'user') return ['id', 'account', 'realname', 'dept', 'role', 'status'];
+    return ['id', 'title', 'name', 'status', ...(objectType === 'bug' ? ['severity'] : []), 'assignedTo'];
+}
+
 export function actionContract(mod: ModuleDefinition, action: ModuleAction) {
     const parameters = actionParameters(mod, action);
     const pagination = paginationFields(mod, action);
@@ -60,7 +66,8 @@ export function actionContract(mod: ModuleDefinition, action: ModuleAction) {
         readOnly: actionIsReadOnly(action),
         destructive: !actionIsReadOnly(action) && ['update', 'delete', 'action'].includes(action.type),
         autoFill: canAutoFill(mod, action),
-        defaultFields: ['id', 'title', 'name', 'status', ...(mod.name === 'bug' ? ['severity'] : []), 'assignedTo'],
+        resultObjectType: action.resultObjectType,
+        defaultFields: defaultTableFields(typeof action.resultObjectType === 'string' ? action.resultObjectType : undefined),
         localFiles: action.requestBody?.mediaType === 'multipart/form-data',
     };
 }

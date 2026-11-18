@@ -208,7 +208,7 @@ test('read-only MCP preserves deliverable option maps, new filters and detail st
             expect(requests.at(-1)).toMatchObject({ path: '/projects/2/deliverables', query: { browseType, pageID: '2', recPerPage: '10' } });
         }
         const detail = await mcp.client.callTool({ name: 'zentao_deliverable', arguments: { action: 'get', id: 7 } });
-        expect(detail.structuredContent).toEqual({ data: deliverable });
+        expect(detail.structuredContent).toEqual({ data: deliverable, resultObjectType: 'deliverable' });
     } finally {
         await mcp.close();
     }
@@ -232,6 +232,7 @@ test('MCP keeps all personal search parameters and unfinished todo status after 
         }
         const todos = await mcp.client.callTool({ name: 'zentao_my', arguments: { action: 'todos', params: { browseType: 'undone', status: 'undone' } } });
         expect(todos.isError).not.toBe(true);
+        expect(todos.structuredContent).toMatchObject({ data: [], resultObjectType: 'todo' });
         expect(requests.at(-1)).toMatchObject({ path: '/my/todos', query: { browseType: 'undone', status: 'undone' } });
         expect(requests).toHaveLength(11);
     } finally {
