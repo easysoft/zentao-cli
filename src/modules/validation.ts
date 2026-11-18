@@ -1,6 +1,6 @@
 import { isDeepStrictEqual } from 'node:util';
 import { canAutoFill, paginationFields, pathIdType } from './contract.js';
-import { getModuleActionParams } from 'zentao-api';
+import { getModuleActionParams } from './helper.js';
 import type { ModuleAction, ModuleDefinition } from '../types/index.js';
 import { ZentaoError } from '../errors.js';
 
@@ -100,6 +100,9 @@ export function validateToolParams(mod: ModuleDefinition, action: ModuleAction, 
         const pathID = param.role === 'path' ? pathIdType(mod, action, param.name) : undefined;
         // Flattened SDK params convert integer to number; recover the original body type.
         validateValue(param.name, value, { ...param, type: param.type ?? pathID, ...(param.role === 'body' ? bodyProperties?.[param.name] : {}) });
+        if (param.name === 'uid' && (typeof value !== 'string' || !value || /[^A-Za-z0-9_-]/.test(value) || ['0', '1', 'used', 'apiv2'].includes(value))) {
+            invalid('uid', '批次标识仅接受英文字母、数字、下划线和连字符，不能为空或使用保留值 0、1、used、apiv2');
+        }
         if (typeof value === 'number') {
             if ((pathID || param.name.endsWith('ID') || ['pageID', 'recPerPage'].includes(param.name)) && (!Number.isSafeInteger(value) || value < 0)) {
                 invalid(param.name, '必须为非负安全整数');

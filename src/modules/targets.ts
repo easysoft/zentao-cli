@@ -26,5 +26,9 @@ export function batchTargets(action: ModuleAction, params: Record<string, unknow
     if (!values.length || values.some(value => !/^\d+$/.test(value) || !Number.isSafeInteger(Number(value)) || Number(value) < 1)) {
         invalid('每个 ID 必须为正安全整数');
     }
-    return [...new Set(values.map(Number))];
+    const targets = [...new Set(values.map(Number))];
+    if (targets.length > 1 && (params.uid !== undefined || (params.data && typeof params.data === 'object' && Object.hasOwn(params.data, 'uid')))) {
+        invalid('同一预上传 uid 只能绑定一个对象，请为每个对象分别上传和保存');
+    }
+    return targets;
 }

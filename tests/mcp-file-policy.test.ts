@@ -103,8 +103,12 @@ test('HTTP MCP blocks local images in submitted and auto-filled HTML and preserv
             : { status: 'success', id: 1 };
         return options.responseType === 'response' ? Response.json(data) : data;
     };
+    let authentications = 0;
     const server = createMcpServer({
-        async getContext() { return { client: api, config: DEFAULT_CONFIG, identity: { server: api.siteUrl } }; },
+        async getContext() {
+            authentications++;
+            return { client: api, config: DEFAULT_CONFIG, identity: { server: api.siteUrl } };
+        },
     }, { modules: ['product'], allowLocalFiles: false });
     const client = new Client({ name: 'rich-text-policy-test', version: '0.0.0' });
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
@@ -113,6 +117,16 @@ test('HTTP MCP blocks local images in submitted and auto-filled HTML and preserv
         await client.connect(clientTransport);
         const call = (action: string, params: Record<string, unknown>) =>
             client.callTool({ name: 'zentao_product', arguments: { action, params } });
+        for (const [action, params] of [
+            ['create', { name: '测试产品', uid: 'apiv2' }],
+            ['create', { name: '测试产品', uid: 'first', data: { uid: 'second' } }],
+            ['create', { name: '测试产品', data: { uid: 'valid_batch', unexpected: true } }],
+            ['list', { uid: 'valid_batch' }],
+        ] as const) {
+            expect(await call(action, params)).toMatchObject({ isError: true, structuredContent: { error: { code: 'E2009' } } });
+        }
+        expect(authentications).toBe(0);
+        expect(calls).toEqual([]);
         const blocked = {
             isError: true,
             structuredContent: { error: { code: 'E2009', message: expect.stringContaining('HTTP MCP') } },

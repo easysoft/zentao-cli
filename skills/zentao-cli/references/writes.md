@@ -18,6 +18,8 @@ story/requirement/epic 的 create/change：没有有效 reviewer 时跳过评审
 
 更新 autoFill 仅在存在匹配的详情操作时生效，只补动作声明的可写字段；显式空字符串不会被当成缺省。状态流转不自动补全。不要复制整份 GET 结果作为请求体。
 
+分步上传编辑器图片时，每个目标对象使用独立 UID。先用 `zentao file create --file ./screenshot.png --uid "$uid" --format=json` 上传，再用同一 Token 执行支持 `--uid` 的对象保存动作。正文用 `<img src="file:42">` 引用上传返回的实际文件 ID，并传入相同的 `--uid "$uid"`。服务端需支持客户端 UID（23.0 / biz14.0 / max9.0 / ipd6.0 起，并包含 `0a4de3a66f5` 或等效修复）。
+
 ```bash
 zentao bug resolve --ids 123,124 --resolution fixed --format=json
 zentao bug delete --ids 123,124 --yes --no-input --format=json

@@ -271,6 +271,22 @@ zentao doc create-my-doc --help
 
 首个位置参数是首个路径目标的简写，其他路径参数使用各自的 kebab-case 选项。`doc`、`my` 等没有默认 `list` 的模块，在省略操作时会显示帮助。命名的列表、详情、创建、更新和删除操作遵循各自的类型，删除操作仍需确认或显式 `--yes`。
 
+### 将预上传的图片绑定到对象
+
+需要分步上传和编辑时，为每个要保存的对象生成一个 UID。上传和保存使用同一个禅道 Token，例如在两个命令中使用同一个已登录的 Profile。服务端会将该 UID 下的全部图片绑定到这次保存的对象。
+
+```bash
+uid=$(node -p "require('node:crypto').randomUUID()")
+zentao file create --file ./screenshot.png --uid "$uid" --format=json
+
+# 假设上传返回的文件 ID 为 42，把它引用在 Bug 329 的重现步骤里
+zentao bug update 329 --uid "$uid" --steps '<img src="file:42" alt="复现截图">'
+```
+
+上传时 UID 属于查询参数。保存时，带富文本正文的动作支持 `--uid` 或 `--data` 中的 `uid`。MCP 对应使用 `params.uid`，保存时也可使用 `params.data.uid`。HTTP MCP 可绑定已上传的图片，本地图片上传使用 CLI 或 stdio MCP。
+
+UID 支持字母、数字、下划线和连字符，保留值为 `0`、`1`、`apiv2` 和 `used`。此功能要求禅道 23.0、biz14.0、max9.0、ipd6.0 或更新版本，并包含服务端提交 `0a4de3a66f5` 或等效修复。
+
 <a id="usage"></a>
 ## 命令格式与传参
 

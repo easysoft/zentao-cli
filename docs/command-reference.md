@@ -1001,6 +1001,8 @@ Options:
   --end <value>           计划完成日期（必填）
   --pm <value>            计划完成日期
   --desc <value>          项目集描述 (HTML)
+  --uid <value>           预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 /
+                          biz14.0 / max9.0 / ipd6.0 或更新版本。
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   -h, --help              显示命令帮助
 ```
@@ -1016,6 +1018,7 @@ Options:
 | --end | end | body | string | 是 | — | 计划完成日期<br>{} |
 | --pm | PM | body | string | 否 | — | 计划完成日期<br>{} |
 | --desc | desc | body | string | 否 | — | 项目集描述 (HTML)<br>{} |
+| --uid | uid | body | string | 否 | — | 预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。<br>{} |
 
 <a id="action-program-get"></a>
 
@@ -1065,6 +1068,8 @@ Options:
   --end <value>           计划完成日期（必填）
   --pm <value>            计划完成日期
   --desc <value>          项目集描述 (HTML)
+  --uid <value>           预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 /
+                          biz14.0 / max9.0 / ipd6.0 或更新版本。
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   --ids <ids>             批量目标 ID，逗号分隔并去重
   --batch-fail-fast       失败后跳过剩余目标
@@ -1085,6 +1090,7 @@ Options:
 | --end | end | body | string | 是 | — | 计划完成日期<br>{} |
 | --pm | PM | body | string | 否 | — | 计划完成日期<br>{} |
 | --desc | desc | body | string | 否 | — | 项目集描述 (HTML)<br>{} |
+| --uid | uid | body | string | 否 | — | 预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。<br>{} |
 
 <a id="action-program-delete"></a>
 
@@ -1238,6 +1244,8 @@ Options:
   --qd <value>            测试负责人
   --rd <value>            发布负责人
   --acl <value>           访问控制(open 公开 | private 私有)
+  --uid <value>           预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 /
+                          biz14.0 / max9.0 / ipd6.0 或更新版本。
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   -h, --help              显示命令帮助
 ```
@@ -1258,6 +1266,7 @@ Options:
 | --qd | QD | body | string | 否 | — | 测试负责人<br>{} |
 | --rd | RD | body | string | 否 | — | 发布负责人<br>{} |
 | --acl | acl | body | string | 否 | "open" | 访问控制(open 公开 \| private 私有)<br>{} |
+| --uid | uid | body | string | 否 | — | 预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。<br>{} |
 
 <a id="action-product-close"></a>
 
@@ -1443,6 +1452,8 @@ Options:
   --qd <value>            测试负责人
   --rd <value>            发布负责人
   --acl <value>           访问控制(open 公开 | private 私有)
+  --uid <value>           预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 /
+                          biz14.0 / max9.0 / ipd6.0 或更新版本。
   --product <id>          productID 或 scope/scopeID 别名
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   --ids <ids>             批量目标 ID，逗号分隔并去重
@@ -1469,6 +1480,7 @@ Options:
 | --qd | QD | body | string | 否 | — | 测试负责人<br>{} |
 | --rd | RD | body | string | 否 | — | 发布负责人<br>{} |
 | --acl | acl | body | string | 否 | "open" | 访问控制(open 公开 \| private 私有)<br>{} |
+| --uid | uid | body | string | 否 | — | 预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。<br>{} |
 
 <a id="action-product-delete"></a>
 
@@ -1826,6 +1838,8 @@ Options:
   --pri <value>           优先级
   --category <value>      类别
   --reviewer <value>      评审人
+  --uid <value>           预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 /
+                          biz14.0 / max9.0 / ipd6.0 或更新版本。
   --product <id>          productID 或 scope/scopeID 别名
   --project <id>          projectID 或 scope/scopeID 别名
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
@@ -1847,6 +1861,7 @@ Options:
 | --pri | pri | body | integer | 否 | — | 优先级<br>{"format":"int32"} |
 | --category | category | body | string | 否 | — | 类别<br>{} |
 | --reviewer | reviewer | body | array | 否 | — | 评审人<br>{"items":{"type":"string"}} |
+| --uid | uid | body | string | 否 | — | 预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。<br>{} |
 
 <a id="action-project-create-bug"></a>
 
@@ -1869,6 +1884,8 @@ Options:
   --pri <value>           优先级
   --type <value>          Bug类型
   --steps <value>         重现步骤 (HTML)
+  --uid <value>           预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 /
+                          biz14.0 / max9.0 / ipd6.0 或更新版本。
   --product <id>          productID 或 scope/scopeID 别名
   --project <id>          projectID 或 scope/scopeID 别名
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
@@ -1891,6 +1908,7 @@ Options:
 | --pri | pri | body | integer | 否 | — | 优先级<br>{"format":"int32"} |
 | --type | type | body | string | 否 | — | Bug类型<br>{} |
 | --steps | steps | body | string | 否 | — | 重现步骤 (HTML)<br>{} |
+| --uid | uid | body | string | 否 | — | 预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。<br>{} |
 
 <a id="action-project-create-task"></a>
 
@@ -1917,6 +1935,8 @@ Options:
   --module <value>         所属模块
   --story <value>          相关需求
   --desc <value>           任务描述 (HTML)
+  --uid <value>            预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 /
+                           biz14.0 / max9.0 / ipd6.0 或更新版本。
   --project <id>           projectID 或 scope/scopeID 别名
   --execution <id>         executionID 或 scope/scopeID 别名
   --data <json|@file|@->   JSON 对象、文件或显式标准输入
@@ -1943,6 +1963,7 @@ Options:
 | --module | module | body | integer | 否 | — | 所属模块<br>{"format":"int32"} |
 | --story | story | body | integer | 否 | — | 相关需求<br>{"format":"int32"} |
 | --desc | desc | body | string | 否 | — | 任务描述 (HTML)<br>{} |
+| --uid | uid | body | string | 否 | — | 预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。<br>{} |
 
 <a id="action-project-create-risk"></a>
 
@@ -1972,6 +1993,8 @@ Options:
   --assigned-to <value>          指派人账号。
   --prevention <value>           应对措施。 (HTML)
   --remedy <value>               响应措施。 (HTML)
+  --uid <value>                  预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需
+                                 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。
   --project <id>                 projectID 或 scope/scopeID 别名
   --data <json|@file|@->         JSON 对象、文件或显式标准输入
   -h, --help                     显示命令帮助
@@ -2000,6 +2023,7 @@ Options:
 | --assigned-to | assignedTo | body | string | 否 | — | 指派人账号。<br>{} |
 | --prevention | prevention | body | string | 否 | — | 应对措施。 (HTML)<br>{} |
 | --remedy | remedy | body | string | 否 | — | 响应措施。 (HTML)<br>{} |
+| --uid | uid | body | string | 否 | — | 预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。<br>{} |
 
 <a id="action-project-link-stories"></a>
 
@@ -2730,6 +2754,8 @@ Options:
   --end <value>           结束日期
   --branch-id <value>     分支ID
   --desc <value>          计划描述 (HTML)
+  --uid <value>           预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 /
+                          biz14.0 / max9.0 / ipd6.0 或更新版本。
   --product <id>          productID 或 scope/scopeID 别名
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   -h, --help              显示命令帮助
@@ -2748,6 +2774,7 @@ Options:
 | --end | end | body | string | 否 | — | 结束日期<br>{} |
 | --branch-id | branchID | body | integer | 否 | — | 分支ID<br>{"format":"int32"} |
 | --desc | desc | body | string | 否 | — | 计划描述 (HTML)<br>{} |
+| --uid | uid | body | string | 否 | — | 预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。<br>{} |
 
 <a id="action-productplan-get"></a>
 
@@ -2798,6 +2825,8 @@ Options:
   --end <value>           结束日期
   --branch-id <value>     分支ID
   --desc <value>          计划描述 (HTML)
+  --uid <value>           预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 /
+                          biz14.0 / max9.0 / ipd6.0 或更新版本。
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   --ids <ids>             批量目标 ID，逗号分隔并去重
   --batch-fail-fast       失败后跳过剩余目标
@@ -2819,6 +2848,7 @@ Options:
 | --end | end | body | string | 否 | — | 结束日期<br>{} |
 | --branch-id | branchID | body | integer | 否 | — | 分支ID<br>{"format":"int32"} |
 | --desc | desc | body | string | 否 | — | 计划描述 (HTML)<br>{} |
+| --uid | uid | body | string | 否 | — | 预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。<br>{} |
 
 <a id="action-productplan-delete"></a>
 
@@ -3018,6 +3048,8 @@ Options:
   --project <value>       所属项目
   --execution <value>     所属执行
   --grade <value>         需求层级，可用的需求层级可以通过 story-getGrades 操作获取
+  --uid <value>           预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 /
+                          biz14.0 / max9.0 / ipd6.0 或更新版本。
   --product <id>          productID 或 scope/scopeID 别名
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   -h, --help              显示命令帮助
@@ -3045,6 +3077,7 @@ Options:
 | --project | project | body | integer | 否 | — | 所属项目<br>{"format":"int32"} |
 | --execution | execution | body | integer | 否 | — | 所属执行<br>{"format":"int32"} |
 | --grade | grade | body | integer | 否 | — | 需求层级，可用的需求层级可以通过 story-getGrades 操作获取<br>{} |
+| --uid | uid | body | string | 否 | — | 预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。<br>{} |
 
 <a id="action-story-get"></a>
 
@@ -3265,6 +3298,8 @@ Options:
   --reviewer <value>      评审人员，如果无需评审则不传
   --spec <value>          需求描述 (HTML)
   --verify <value>        验收标准 (HTML)
+  --uid <value>           预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 /
+                          biz14.0 / max9.0 / ipd6.0 或更新版本。
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   --ids <ids>             批量目标 ID，逗号分隔并去重
   --batch-fail-fast       失败后跳过剩余目标
@@ -3283,6 +3318,7 @@ Options:
 | --reviewer | reviewer | body | array | 否 | — | 评审人员，如果无需评审则不传<br>{"items":{"type":"string"}} |
 | --spec | spec | body | string | 否 | — | 需求描述 (HTML)<br>{} |
 | --verify | verify | body | string | 否 | — | 验收标准 (HTML)<br>{} |
+| --uid | uid | body | string | 否 | — | 预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。<br>{} |
 
 <a id="action-story-close"></a>
 
@@ -3469,6 +3505,8 @@ Options:
   --assigned-to <value>   指派给
   --status <value>        无有效评审人时默认 active，可显式指定状态；有有效评审人时固定为 reviewing。
   --reviewer <value>      评审人员，如果无需评审则不传
+  --uid <value>           预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 /
+                          biz14.0 / max9.0 / ipd6.0 或更新版本。
   --product <id>          productID 或 scope/scopeID 别名
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   -h, --help              显示命令帮助
@@ -3493,6 +3531,7 @@ Options:
 | --assigned-to | assignedTo | body | string | 否 | — | 指派给<br>{} |
 | --status | status | body | string | 否 | — | 无有效评审人时默认 active，可显式指定状态；有有效评审人时固定为 reviewing。<br>{} |
 | --reviewer | reviewer | body | array | 否 | — | 评审人员，如果无需评审则不传<br>{"items":{"type":"string"}} |
+| --uid | uid | body | string | 否 | — | 预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。<br>{} |
 
 <a id="action-epic-get"></a>
 
@@ -3652,6 +3691,8 @@ Options:
   --reviewer <value>      评审人员，如果无需评审则不传
   --spec <value>          需求描述 (HTML)
   --verify <value>        验收标准 (HTML)
+  --uid <value>           预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 /
+                          biz14.0 / max9.0 / ipd6.0 或更新版本。
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   --ids <ids>             批量目标 ID，逗号分隔并去重
   --batch-fail-fast       失败后跳过剩余目标
@@ -3670,6 +3711,7 @@ Options:
 | --reviewer | reviewer | body | array | 否 | — | 评审人员，如果无需评审则不传<br>{"items":{"type":"string"}} |
 | --spec | spec | body | string | 否 | — | 需求描述 (HTML)<br>{} |
 | --verify | verify | body | string | 否 | — | 验收标准 (HTML)<br>{} |
+| --uid | uid | body | string | 否 | — | 预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。<br>{} |
 
 <a id="action-epic-close"></a>
 
@@ -3827,6 +3869,8 @@ Options:
   --assigned-to <value>   指派给
   --status <value>        无有效评审人时默认 active，可显式指定状态；有有效评审人时固定为 reviewing。
   --reviewer <value>      评审人员，如果无需评审则不传
+  --uid <value>           预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 /
+                          biz14.0 / max9.0 / ipd6.0 或更新版本。
   --product <id>          productID 或 scope/scopeID 别名
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   -h, --help              显示命令帮助
@@ -3851,6 +3895,7 @@ Options:
 | --assigned-to | assignedTo | body | string | 否 | — | 指派给<br>{} |
 | --status | status | body | string | 否 | — | 无有效评审人时默认 active，可显式指定状态；有有效评审人时固定为 reviewing。<br>{} |
 | --reviewer | reviewer | body | array | 否 | — | 评审人员，如果无需评审则不传<br>{"items":{"type":"string"}} |
+| --uid | uid | body | string | 否 | — | 预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。<br>{} |
 
 <a id="action-requirement-get"></a>
 
@@ -4010,6 +4055,8 @@ Options:
   --verify <value>        验收标准 (HTML)
   --status <value>        无有效评审人时默认 active，可显式指定状态；有有效评审人时固定为 reviewing。
   --reviewer <value>      评审人员，如果无需评审则不传
+  --uid <value>           预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 /
+                          biz14.0 / max9.0 / ipd6.0 或更新版本。
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   --ids <ids>             批量目标 ID，逗号分隔并去重
   --batch-fail-fast       失败后跳过剩余目标
@@ -4028,6 +4075,7 @@ Options:
 | --verify | verify | body | string | 否 | — | 验收标准 (HTML)<br>{} |
 | --status | status | body | string | 否 | — | 无有效评审人时默认 active，可显式指定状态；有有效评审人时固定为 reviewing。<br>{} |
 | --reviewer | reviewer | body | array | 否 | — | 评审人员，如果无需评审则不传<br>{"items":{"type":"string"}} |
+| --uid | uid | body | string | 否 | — | 预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。<br>{} |
 
 <a id="action-requirement-close"></a>
 
@@ -4224,6 +4272,8 @@ Options:
   --steps <value>         重现步骤 (HTML)
   --story <value>         相关需求
   --assigned-to <value>   指派给
+  --uid <value>           预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 /
+                          biz14.0 / max9.0 / ipd6.0 或更新版本。
   --product <id>          productID 或 scope/scopeID 别名
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   -h, --help              显示命令帮助
@@ -4246,6 +4296,7 @@ Options:
 | --steps | steps | body | string | 否 | — | 重现步骤 (HTML)<br>{} |
 | --story | story | body | integer | 否 | — | 相关需求<br>{"format":"int32"} |
 | --assigned-to | assignedTo | body | string | 否 | — | 指派给<br>{} |
+| --uid | uid | body | string | 否 | — | 预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。<br>{} |
 
 <a id="action-bug-get"></a>
 
@@ -4302,6 +4353,8 @@ Options:
   --execution <value>     所属执行
   --story <value>         相关需求
   --assigned-to <value>   指派给
+  --uid <value>           预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 /
+                          biz14.0 / max9.0 / ipd6.0 或更新版本。
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   --ids <ids>             批量目标 ID，逗号分隔并去重
   --batch-fail-fast       失败后跳过剩余目标
@@ -4327,6 +4380,7 @@ Options:
 | --execution | execution | body | integer | 否 | — | 所属执行<br>{"format":"int32"} |
 | --story | story | body | integer | 否 | — | 相关需求<br>{"format":"int32"} |
 | --assigned-to | assignedTo | body | string | 否 | — | 指派给<br>{} |
+| --uid | uid | body | string | 否 | — | 预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。<br>{} |
 
 <a id="action-bug-update-module"></a>
 
@@ -5045,6 +5099,8 @@ Options:
   --story <value>          相关需求
   --desc <value>           任务描述 (HTML)
   --parent <value>         父任务
+  --uid <value>            预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 /
+                           biz14.0 / max9.0 / ipd6.0 或更新版本。
   --execution <id>         executionID 或 scope/scopeID 别名
   --data <json|@file|@->   JSON 对象、文件或显式标准输入
   -h, --help               显示命令帮助
@@ -5068,6 +5124,7 @@ Options:
 | --story | story | body | integer | 否 | — | 相关需求<br>{"format":"int32"} |
 | --desc | desc | body | string | 否 | — | 任务描述 (HTML)<br>{} |
 | --parent | parent | body | integer | 否 | — | 父任务<br>{"format":"int32"} |
+| --uid | uid | body | string | 否 | — | 预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。<br>{} |
 
 <a id="action-task-get"></a>
 
@@ -5123,6 +5180,8 @@ Options:
   --story <value>          相关需求
   --desc <value>           任务描述 (HTML)
   --parent <value>         父任务
+  --uid <value>            预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 /
+                           biz14.0 / max9.0 / ipd6.0 或更新版本。
   --data <json|@file|@->   JSON 对象、文件或显式标准输入
   --ids <ids>              批量目标 ID，逗号分隔并去重
   --batch-fail-fast        失败后跳过剩余目标
@@ -5149,6 +5208,7 @@ Options:
 | --story | story | body | integer | 否 | — | 相关需求<br>{"format":"int32"} |
 | --desc | desc | body | string | 否 | — | 任务描述 (HTML)<br>{} |
 | --parent | parent | body | integer | 否 | — | 父任务<br>{"format":"int32"} |
+| --uid | uid | body | string | 否 | — | 预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。<br>{} |
 
 <a id="action-task-update-module"></a>
 
@@ -5567,6 +5627,8 @@ Options:
   --owner <value>          提出人
   --data-deadline <value>  计划解决日期
   --desc <value>           描述 (HTML)
+  --uid <value>            预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 /
+                           biz14.0 / max9.0 / ipd6.0 或更新版本。
   --data <json|@file|@->   JSON 对象、文件或显式标准输入
   -h, --help               显示命令帮助
 ```
@@ -5588,6 +5650,7 @@ Options:
 | --owner | owner | body | string | 否 | — | 提出人<br>{} |
 | --data-deadline | deadline | body | string | 否 | — | 计划解决日期<br>{} |
 | --desc | desc | body | string | 否 | — | 描述 (HTML)<br>{} |
+| --uid | uid | body | string | 否 | — | 预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。<br>{} |
 
 <a id="action-issue-get"></a>
 
@@ -5813,6 +5876,8 @@ Options:
   --assigned-to <value>          指派给
   --prevention <value>           应对措施 (HTML)
   --remedy <value>               响应措施 (HTML)
+  --uid <value>                  预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需
+                                 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。
   --data <json|@file|@->         JSON 对象、文件或显式标准输入
   -h, --help                     显示命令帮助
 ```
@@ -5838,6 +5903,7 @@ Options:
 | --assigned-to | assignedTo | body | string | 否 | — | 指派给<br>{} |
 | --prevention | prevention | body | string | 否 | — | 应对措施 (HTML)<br>{} |
 | --remedy | remedy | body | string | 否 | — | 响应措施 (HTML)<br>{} |
+| --uid | uid | body | string | 否 | — | 预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。<br>{} |
 
 <a id="action-risk-get"></a>
 
@@ -5900,6 +5966,8 @@ Options:
   --prevention <value>           应对措施 (HTML)
   --remedy <value>               响应措施 (HTML)
   --resolution <value>           解决措施 (HTML)
+  --uid <value>                  预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需
+                                 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。
   --data <json|@file|@->         JSON 对象、文件或显式标准输入
   --ids <ids>                    批量目标 ID，逗号分隔并去重
   --batch-fail-fast              失败后跳过剩余目标
@@ -5929,6 +5997,7 @@ Options:
 | --prevention | prevention | body | string | 否 | — | 应对措施 (HTML)<br>{} |
 | --remedy | remedy | body | string | 否 | — | 响应措施 (HTML)<br>{} |
 | --resolution | resolution | body | string | 否 | — | 解决措施 (HTML)<br>{} |
+| --uid | uid | body | string | 否 | — | 预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。<br>{} |
 
 <a id="module-meeting"></a>
 
@@ -6259,6 +6328,8 @@ Arguments:
 Options:
   --meeting-id <value>    会议ID（必填）
   --minutes <value>       会议纪要 (HTML)
+  --uid <value>           预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 /
+                          biz14.0 / max9.0 / ipd6.0 或更新版本。
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   --ids <ids>             批量目标 ID，逗号分隔并去重
   --batch-fail-fast       失败后跳过剩余目标
@@ -6273,6 +6344,7 @@ Options:
 | --- | --- | --- | --- | --- | --- | --- |
 | --meeting-id | meetingID | path | integer | 是 | — | 会议ID<br>{} |
 | --minutes | minutes | body | string | 否 | — | 会议纪要 (HTML)<br>{} |
+| --uid | uid | body | string | 否 | — | 预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。<br>{} |
 
 <a id="module-feedback"></a>
 
@@ -6371,6 +6443,8 @@ Options:
   --desc <value>          描述 (HTML)
   --feedback-by <value>   反馈者
   --source <value>        来源
+  --uid <value>           预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 /
+                          biz14.0 / max9.0 / ipd6.0 或更新版本。
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   -h, --help              显示命令帮助
 ```
@@ -6388,6 +6462,7 @@ Options:
 | --desc | desc | body | string | 否 | — | 描述 (HTML)<br>{} |
 | --feedback-by | feedbackBy | body | string | 否 | — | 反馈者<br>{} |
 | --source | source | body | string | 否 | — | 来源<br>{} |
+| --uid | uid | body | string | 否 | — | 预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。<br>{} |
 
 <a id="action-feedback-create-bug"></a>
 
@@ -6454,6 +6529,8 @@ Options:
   --type <value>          类型(code 程序报错 | data 数据错误 | stuck 流程卡断 | security 安全问题
                           | affair 事务)
   --desc <value>          工单描述 (HTML)
+  --uid <value>           预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 /
+                          biz14.0 / max9.0 / ipd6.0 或更新版本。
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   -h, --help              显示命令帮助
 ```
@@ -6472,6 +6549,7 @@ Options:
 | --title | title | body | string | 是 | — | 工单标题<br>{} |
 | --type | type | body | string | 否 | — | 类型(code 程序报错 \| data 数据错误 \| stuck 流程卡断 \| security 安全问题 \| affair 事务)<br>{} |
 | --desc | desc | body | string | 否 | — | 工单描述 (HTML)<br>{} |
+| --uid | uid | body | string | 否 | — | 预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。<br>{} |
 
 <a id="action-feedback-create-todo"></a>
 
@@ -6563,6 +6641,8 @@ Options:
   --est-started <value>    预计开始
   --data-deadline <value>  截止日期
   --desc <value>           任务描述 (HTML)
+  --uid <value>            预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 /
+                           biz14.0 / max9.0 / ipd6.0 或更新版本。
   --execution <id>         executionID 或 scope/scopeID 别名
   --data <json|@file|@->   JSON 对象、文件或显式标准输入
   -h, --help               显示命令帮助
@@ -6584,6 +6664,7 @@ Options:
 | --est-started | estStarted | body | string | 否 | — | 预计开始<br>{} |
 | --data-deadline | deadline | body | string | 否 | — | 截止日期<br>{} |
 | --desc | desc | body | string | 否 | — | 任务描述 (HTML)<br>{} |
+| --uid | uid | body | string | 否 | — | 预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。<br>{} |
 
 <a id="action-feedback-get"></a>
 
@@ -6636,6 +6717,8 @@ Options:
   --desc <value>          描述 (HTML)
   --feedback-by <value>   反馈者
   --source <value>        来源
+  --uid <value>           预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 /
+                          biz14.0 / max9.0 / ipd6.0 或更新版本。
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   --ids <ids>             批量目标 ID，逗号分隔并去重
   --batch-fail-fast       失败后跳过剩余目标
@@ -6658,6 +6741,7 @@ Options:
 | --desc | desc | body | string | 否 | — | 描述 (HTML)<br>{} |
 | --feedback-by | feedbackBy | body | string | 否 | — | 反馈者<br>{} |
 | --source | source | body | string | 否 | — | 来源<br>{} |
+| --uid | uid | body | string | 否 | — | 预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。<br>{} |
 
 <a id="action-feedback-delete"></a>
 
@@ -6846,6 +6930,8 @@ Options:
   --assigned-to <value>    指派给
   --data-deadline <value>  截止日期
   --opened-build <value>   影响版本
+  --uid <value>            预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 /
+                           biz14.0 / max9.0 / ipd6.0 或更新版本。
   --data <json|@file|@->   JSON 对象、文件或显式标准输入
   -h, --help               显示命令帮助
 ```
@@ -6864,6 +6950,7 @@ Options:
 | --assigned-to | assignedTo | body | string | 否 | — | 指派给<br>{} |
 | --data-deadline | deadline | body | string | 否 | — | 截止日期<br>{} |
 | --opened-build | openedBuild | body | array | 否 | — | 影响版本<br>{"items":{"type":"string"}} |
+| --uid | uid | body | string | 否 | — | 预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。<br>{} |
 
 <a id="action-ticket-create-story"></a>
 
@@ -7001,6 +7088,8 @@ Options:
   --assigned-to <value>    指派给
   --data-deadline <value>  截止日期
   --opened-build <value>   影响版本
+  --uid <value>            预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 /
+                           biz14.0 / max9.0 / ipd6.0 或更新版本。
   --data <json|@file|@->   JSON 对象、文件或显式标准输入
   --ids <ids>              批量目标 ID，逗号分隔并去重
   --batch-fail-fast        失败后跳过剩余目标
@@ -7024,6 +7113,7 @@ Options:
 | --assigned-to | assignedTo | body | string | 否 | — | 指派给<br>{} |
 | --data-deadline | deadline | body | string | 否 | — | 截止日期<br>{} |
 | --opened-build | openedBuild | body | array | 否 | — | 影响版本<br>{"items":{"type":"string"}} |
+| --uid | uid | body | string | 否 | — | 预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。<br>{} |
 
 <a id="action-ticket-delete"></a>
 
@@ -7331,6 +7421,8 @@ Options:
   --scm-path <value>      源代码地址
   --file-path <value>     下载地址
   --desc <value>          描述 (HTML)
+  --uid <value>           预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 /
+                          biz14.0 / max9.0 / ipd6.0 或更新版本。
   --execution <id>        executionID 或 scope/scopeID 别名
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   -h, --help              显示命令帮助
@@ -7351,6 +7443,7 @@ Options:
 | --scm-path | scmPath | body | string | 否 | — | 源代码地址<br>{} |
 | --file-path | filePath | body | string | 否 | — | 下载地址<br>{} |
 | --desc | desc | body | string | 否 | — | 描述 (HTML)<br>{} |
+| --uid | uid | body | string | 否 | — | 预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。<br>{} |
 
 <a id="action-build-update"></a>
 
@@ -7375,6 +7468,8 @@ Options:
   --scm-path <value>      源代码地址
   --file-path <value>     下载地址
   --desc <value>          描述 (HTML)
+  --uid <value>           预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 /
+                          biz14.0 / max9.0 / ipd6.0 或更新版本。
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   --ids <ids>             批量目标 ID，逗号分隔并去重
   --batch-fail-fast       失败后跳过剩余目标
@@ -7397,6 +7492,7 @@ Options:
 | --scm-path | scmPath | body | string | 否 | — | 源代码地址<br>{} |
 | --file-path | filePath | body | string | 否 | — | 下载地址<br>{} |
 | --desc | desc | body | string | 否 | — | 描述 (HTML)<br>{} |
+| --uid | uid | body | string | 否 | — | 预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。<br>{} |
 
 <a id="action-build-delete"></a>
 
@@ -7511,6 +7607,8 @@ Options:
   --begin <value>         开始日期（必填）
   --end <value>           结束日期（必填）
   --desc <value>          描述 (HTML)
+  --uid <value>           预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 /
+                          biz14.0 / max9.0 / ipd6.0 或更新版本。
   --product <id>          productID 或 scope/scopeID 别名
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   -h, --help              显示命令帮助
@@ -7532,6 +7630,7 @@ Options:
 | --begin | begin | body | string | 是 | — | 开始日期<br>{} |
 | --end | end | body | string | 是 | — | 结束日期<br>{} |
 | --desc | desc | body | string | 否 | — | 描述 (HTML)<br>{} |
+| --uid | uid | body | string | 否 | — | 预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。<br>{} |
 
 <a id="action-testtask-update"></a>
 
@@ -7557,6 +7656,8 @@ Options:
   --begin <value>         开始日期（必填）
   --end <value>           结束日期（必填）
   --desc <value>          描述 (HTML)
+  --uid <value>           预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 /
+                          biz14.0 / max9.0 / ipd6.0 或更新版本。
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   --ids <ids>             批量目标 ID，逗号分隔并去重
   --batch-fail-fast       失败后跳过剩余目标
@@ -7579,6 +7680,7 @@ Options:
 | --begin | begin | body | string | 是 | — | 开始日期<br>{} |
 | --end | end | body | string | 是 | — | 结束日期<br>{} |
 | --desc | desc | body | string | 否 | — | 描述 (HTML)<br>{} |
+| --uid | uid | body | string | 否 | — | 预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。<br>{} |
 
 <a id="action-testtask-delete"></a>
 
@@ -7697,6 +7799,8 @@ Options:
   --status <value>        状态(wait 未开始 | normal 已发布 | fail 发布失败 | terminate 停止维护)
   --date <value>          计划发布日期（必填）
   --desc <value>          描述 (HTML)
+  --uid <value>           预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 /
+                          biz14.0 / max9.0 / ipd6.0 或更新版本。
   --product <id>          productID 或 scope/scopeID 别名
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   -h, --help              显示命令帮助
@@ -7715,6 +7819,7 @@ Options:
 | --status | status | body | string | 否 | — | 状态(wait 未开始 \| normal 已发布 \| fail 发布失败 \| terminate 停止维护)<br>{} |
 | --date | date | body | string | 是 | — | 计划发布日期<br>{} |
 | --desc | desc | body | string | 否 | — | 描述 (HTML)<br>{} |
+| --uid | uid | body | string | 否 | — | 预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。<br>{} |
 
 <a id="action-release-update"></a>
 
@@ -7736,6 +7841,8 @@ Options:
   --status <value>        状态(wait 未开始 | normal 已发布 | fail 发布失败 | terminate 停止维护)
   --date <value>          计划发布日期（必填）
   --desc <value>          描述 (HTML)
+  --uid <value>           预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 /
+                          biz14.0 / max9.0 / ipd6.0 或更新版本。
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   --ids <ids>             批量目标 ID，逗号分隔并去重
   --batch-fail-fast       失败后跳过剩余目标
@@ -7755,6 +7862,7 @@ Options:
 | --status | status | body | string | 否 | — | 状态(wait 未开始 \| normal 已发布 \| fail 发布失败 \| terminate 停止维护)<br>{} |
 | --date | date | body | string | 是 | — | 计划发布日期<br>{} |
 | --desc | desc | body | string | 否 | — | 描述 (HTML)<br>{} |
+| --uid | uid | body | string | 否 | — | 预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。<br>{} |
 
 <a id="action-release-delete"></a>
 
@@ -10599,6 +10707,8 @@ Options:
   --content <value>       文档正文，使用Markdown格式；系统会转换为块编辑器内容并生成HTML快照 (HTML)（必填）
   --content-type <value>  文档格式(doc 按Markdown处理，支持团队协同编辑 | html
                           旧格式，直接保存HTML，不支持团队协同编辑)
+  --uid <value>           预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 /
+                          biz14.0 / max9.0 / ipd6.0 或更新版本。
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   -h, --help              显示命令帮助
 ```
@@ -10615,6 +10725,7 @@ Options:
 | --title | title | body | string | 是 | — | 文档标题<br>{} |
 | --content | content | body | string | 是 | — | 文档正文，使用Markdown格式；系统会转换为块编辑器内容并生成HTML快照 (HTML)<br>{} |
 | --content-type | contentType | body | string | 否 | — | 文档格式(doc 按Markdown处理，支持团队协同编辑 \| html 旧格式，直接保存HTML，不支持团队协同编辑)<br>{} |
+| --uid | uid | body | string | 否 | — | 预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。<br>{} |
 
 <a id="action-doc-create-team-doc"></a>
 
@@ -10636,6 +10747,8 @@ Options:
   --content <value>       文档正文，使用Markdown格式；系统会转换为块编辑器内容并生成HTML快照 (HTML)（必填）
   --content-type <value>  文档格式(doc 按Markdown处理，支持团队协同编辑 | html
                           旧格式，直接保存HTML，不支持团队协同编辑)
+  --uid <value>           预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 /
+                          biz14.0 / max9.0 / ipd6.0 或更新版本。
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   -h, --help              显示命令帮助
 ```
@@ -10652,6 +10765,7 @@ Options:
 | --title | title | body | string | 是 | — | 文档标题<br>{} |
 | --content | content | body | string | 是 | — | 文档正文，使用Markdown格式；系统会转换为块编辑器内容并生成HTML快照 (HTML)<br>{} |
 | --content-type | contentType | body | string | 否 | — | 文档格式(doc 按Markdown处理，支持团队协同编辑 \| html 旧格式，直接保存HTML，不支持团队协同编辑)<br>{} |
+| --uid | uid | body | string | 否 | — | 预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。<br>{} |
 
 <a id="action-doc-create-product-doc"></a>
 
@@ -10673,6 +10787,8 @@ Options:
   --content <value>       文档正文，使用Markdown格式；系统会转换为块编辑器内容并生成HTML快照 (HTML)（必填）
   --content-type <value>  文档格式(doc 按Markdown处理，支持团队协同编辑 | html
                           旧格式，直接保存HTML，不支持团队协同编辑)
+  --uid <value>           预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 /
+                          biz14.0 / max9.0 / ipd6.0 或更新版本。
   --product <id>          productID 或 scope/scopeID 别名
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   -h, --help              显示命令帮助
@@ -10690,6 +10806,7 @@ Options:
 | --title | title | body | string | 是 | — | 文档标题<br>{} |
 | --content | content | body | string | 是 | — | 文档正文，使用Markdown格式；系统会转换为块编辑器内容并生成HTML快照 (HTML)<br>{} |
 | --content-type | contentType | body | string | 否 | — | 文档格式(doc 按Markdown处理，支持团队协同编辑 \| html 旧格式，直接保存HTML，不支持团队协同编辑)<br>{} |
+| --uid | uid | body | string | 否 | — | 预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。<br>{} |
 
 <a id="action-doc-create-project-doc"></a>
 
@@ -10711,6 +10828,8 @@ Options:
   --content <value>       文档正文，使用Markdown格式；系统会转换为块编辑器内容并生成HTML快照 (HTML)（必填）
   --content-type <value>  文档格式(doc 按Markdown处理，支持团队协同编辑 | html
                           旧格式，直接保存HTML，不支持团队协同编辑)
+  --uid <value>           预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 /
+                          biz14.0 / max9.0 / ipd6.0 或更新版本。
   --project <id>          projectID 或 scope/scopeID 别名
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   -h, --help              显示命令帮助
@@ -10728,6 +10847,7 @@ Options:
 | --title | title | body | string | 是 | — | 文档标题<br>{} |
 | --content | content | body | string | 是 | — | 文档正文，使用Markdown格式；系统会转换为块编辑器内容并生成HTML快照 (HTML)<br>{} |
 | --content-type | contentType | body | string | 否 | — | 文档格式(doc 按Markdown处理，支持团队协同编辑 \| html 旧格式，直接保存HTML，不支持团队协同编辑)<br>{} |
+| --uid | uid | body | string | 否 | — | 预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。<br>{} |
 
 <a id="action-doc-create-my-module"></a>
 
@@ -11048,6 +11168,8 @@ Options:
   --content <value>       文档正文，使用Markdown格式；系统会转换为块编辑器内容并生成HTML快照 (HTML)（必填）
   --content-type <value>  文档格式(doc 按Markdown处理，支持团队协同编辑 | html
                           旧格式，直接保存HTML，不支持团队协同编辑)
+  --uid <value>           预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 /
+                          biz14.0 / max9.0 / ipd6.0 或更新版本。
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   --ids <ids>             批量目标 ID，逗号分隔并去重
   --batch-fail-fast       失败后跳过剩余目标
@@ -11067,6 +11189,7 @@ Options:
 | --title | title | body | string | 是 | — | 文档标题<br>{} |
 | --content | content | body | string | 是 | — | 文档正文，使用Markdown格式；系统会转换为块编辑器内容并生成HTML快照 (HTML)<br>{} |
 | --content-type | contentType | body | string | 否 | — | 文档格式(doc 按Markdown处理，支持团队协同编辑 \| html 旧格式，直接保存HTML，不支持团队协同编辑)<br>{} |
+| --uid | uid | body | string | 否 | — | 预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。<br>{} |
 
 <a id="action-doc-update-module"></a>
 
@@ -11249,6 +11372,8 @@ Options:
   --end <value>           结束时间，使用小时+分钟拼接
   --assigned-to <value>   指派给
   --desc <value>          待办详情 (HTML)
+  --uid <value>           预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 /
+                          biz14.0 / max9.0 / ipd6.0 或更新版本。
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   -h, --help              显示命令帮助
 ```
@@ -11267,6 +11392,7 @@ Options:
 | --end | end | body | string | 否 | — | 结束时间，使用小时+分钟拼接<br>{} |
 | --assigned-to | assignedTo | body | string | 否 | — | 指派给<br>{} |
 | --desc | desc | body | string | 否 | — | 待办详情 (HTML)<br>{} |
+| --uid | uid | body | string | 否 | — | 预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。<br>{} |
 
 <a id="action-todo-get"></a>
 
@@ -11320,6 +11446,8 @@ Options:
   --end <value>           结束时间，使用小时+分钟拼接
   --assigned-to <value>   指派给
   --desc <value>          待办详情 (HTML)
+  --uid <value>           预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 /
+                          biz14.0 / max9.0 / ipd6.0 或更新版本。
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   --ids <ids>             批量目标 ID，逗号分隔并去重
   --batch-fail-fast       失败后跳过剩余目标
@@ -11343,6 +11471,7 @@ Options:
 | --end | end | body | string | 否 | — | 结束时间，使用小时+分钟拼接<br>{} |
 | --assigned-to | assignedTo | body | string | 否 | — | 指派给<br>{} |
 | --desc | desc | body | string | 否 | — | 待办详情 (HTML)<br>{} |
+| --uid | uid | body | string | 否 | — | 预上传图片的批次标识。使用上传时的 Token 和 uid 保存单个对象以绑定图片。需 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本。<br>{} |
 
 <a id="action-todo-delete"></a>
 

@@ -32,18 +32,22 @@ export function createClient(serverUrl: string, token?: string, options?: Client
 /** Bind cancellation to one SDK call without changing a shared client's state. */
 export function withRequestSignal(client: ZentaoClient, signal?: AbortSignal): ZentaoClient {
     if (!signal) return client;
-    const scoped = new ZentaoClient(client.siteUrl);
     const optionsWithSignal = <T extends object>(options: T): T & { signal: AbortSignal } => {
         const selected = ('signal' in options ? options.signal as AbortSignal | undefined : undefined) ?? signal;
         if (selected.aborted) throw new ZentaoError('E5003');
         return { ...options, signal: selected };
     };
-    // SDK 0.7 high-level requests omit signal; its public transport accepts it.
-    // Forwarding preserves credentials, transport options and the config cache.
-    scoped.request = ((path: string, options = {}) => client.request(path, optionsWithSignal(options))) as ZentaoClient['request'];
-    scoped.fetch = (url, options, token, fetchOptions) => client.fetch(url, optionsWithSignal(options), token, fetchOptions);
-    scoped.getZentaoConfig = (options = {}) => client.getZentaoConfig(optionsWithSignal(options));
-    return scoped;
+    const transport = {
+        request: ((path: string, options = {}) => client.request(path, optionsWithSignal(options))) as ZentaoClient['request'],
+        fetch: (url, options, token, fetchOptions) => client.fetch(url, optionsWithSignal(options), token, fetchOptions),
+        getZentaoConfig: (options = {}) => client.getZentaoConfig(optionsWithSignal(options)),
+    } satisfies Pick<ZentaoClient, 'request' | 'fetch' | 'getZentaoConfig'>;
+    // SDK file batches and login must read and update the same session used by the transport.
+    return new Proxy(client, {
+        get(target, key, receiver) {
+            return Object.hasOwn(transport, key) ? Reflect.get(transport, key) : Reflect.get(target, key, receiver);
+        },
+    });
 }
 
 /**

@@ -32,7 +32,7 @@ export async function createMcpTestClient(handler: (req: Request) => Response | 
     };
     try {
         await client.connect(transport);
-        return { client, transport, close };
+        return { client, transport, siteUrl: server.url.href, close };
     } catch (error) {
         await close();
         throw error;
