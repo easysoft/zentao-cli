@@ -35,6 +35,8 @@ export interface ModuleActionOptions extends GlobalOptions {
     ids?: string;
     maxItems?: string;
     htmlToMarkdown?: boolean;
+    /** Bare flag converts supplied HTML fields; a comma-separated list selects specific fields. */
+    markdown?: true | string;
     /** 摘取指定字段（逗号分隔），适用于 resultType 为 object 或 list 的模块操作 */
     pick?: string;
 

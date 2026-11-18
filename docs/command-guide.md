@@ -22,6 +22,7 @@ zentao help bug create --format=json
 - 数字、布尔和数组按当前动作的 schema 校验；`--count` / `--no-count` 或 `--count=false` 明确设置布尔值。
 - 简单数组可重复选项（`--lib-ids 12 --lib-ids 18`），复杂数组使用 JSON。JSON 内保留 SDK 字段名和类型。
 - 请求体使用 `--data '{"title":"示例"}'`、`--data @body.json` 或显式 `--data @-`。没有 `@-` 就不读取 stdin；POST 查询也遵守同一规则。
+- 写入富文本时，`--markdown` 将本次提供的 HTML 字段从 Markdown 转为 HTML，`--markdown spec,verify` 只转换指定字段。可选字段见动作帮助或 JSON 帮助中的 `markdownFields`。
 - 与全局或输出选项重名的业务字段加 `data-` 前缀，例如 `task update 123 --data-deadline 2026-10-30` 和工作流的 `--data-fields`；JSON 字段名保持原样。
 - 未知字段、非法值、重复来源冲突和多个范围会在认证之前失败。省略、空字符串与 null 不混同；null 仅在 schema 允许时有效。
 - `--ids 123,124` 仅用于支持批量的对象操作，与单个目标互斥，先校验全部 ID 再去重。创建多条记录请显式逐条调用 create，不将对象 ID 当成批量创建输入。

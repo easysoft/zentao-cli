@@ -3,7 +3,7 @@ import { ZentaoError } from '../errors.js';
 import { Command, Option } from 'commander';
 import { getModuleNames, getModule } from '../modules/index.js';
 import { getScopeAliasTarget } from '../mcp/params.js';
-import { actionContract, actionParameters, kebabCase, parameterFlag, paginationFields } from '../modules/contract.js';
+import { actionContract, kebabCase, paginationFields } from '../modules/contract.js';
 import { parseCliValue, prepareCliParams } from '../modules/cli-input.js';
 import { ensureAuth } from '../auth/flow.js';
 import { getProfileConfig } from '../config/store.js';
@@ -35,9 +35,9 @@ export function registerModuleCommands(program: Command): void {
             const mappings: Array<{ name: string; attribute: string }> = [];
             const pagination = paginationFields(mod, action);
             const reserved = new Set(pagination ? [pagination.page.name, pagination.size.name] : []);
-            for (const param of actionParameters(mod, action)) {
+            for (const param of contract.parameters) {
                 if (reserved.has(param.name) || mappings.some(item => item.name === param.name)) continue;
-                const flag = parameterFlag(param.name).slice(2);
+                const flag = param.flag.slice(2);
                 const option = new Option(`--${flag} ${param.type === 'boolean' ? '[boolean]' : '<value>'}`,
                     `${param.description ?? param.name}${param.required ? '（必填）' : ''}`);
                 if (param.type === 'array') option.argParser((value: string, previous: string[] = []) => previous.concat(value));
@@ -65,6 +65,11 @@ export function registerModuleCommands(program: Command): void {
                 mappings.push({ name: scope, attribute: option.attributeName() });
             }
             if (action.requestBody) cmd.option('--data <json|@file|@->', 'JSON 对象、文件或显式标准输入');
+            if (contract.markdownFields.length) {
+                const fields = contract.markdownFields.join(', ');
+                const condition = name === 'doc' ? '（content 需显式指定 --content-type html）' : '';
+                cmd.option('--markdown [fields]', `将 Markdown 转为 HTML。可选 ${fields}${condition}，多个字段用逗号分隔，省略时转换本次提供的全部 HTML 字段`);
+            }
             if (fileRead) cmd.option('--output <path>', '流式保存附件，下载完成后替换目标文件');
             if (contract.batch) cmd.option('--ids <ids>', '批量目标 ID，逗号分隔并去重').option('--batch-fail-fast', '失败后跳过剩余目标');
             if (action.type === 'delete') cmd.option('--yes', '确认删除');

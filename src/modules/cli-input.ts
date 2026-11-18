@@ -2,8 +2,9 @@ import { isDeepStrictEqual } from 'node:util';
 import type { ModuleAction, ModuleActionOptions, ModuleDefinition } from '../types/index.js';
 import { ZentaoError } from '../errors.js';
 import { resolveData } from '../utils/stdin.js';
+import { getMarkdownRenderer } from '../utils/markdown.js';
 import { normalizeToolParams } from '../mcp/params.js';
-import { actionContract, actionParameters, paginationFields } from './contract.js';
+import { actionContract, paginationFields } from './contract.js';
 import { batchTargets, targetId } from './targets.js';
 import type { ValueSchema } from './validation.js';
 
@@ -41,12 +42,38 @@ export function parseCliValue(value: string | string[] | boolean, schema: ValueS
     return value;
 }
 
+/** Only transform user inputs, before the SDK can fill missing fields from the server. */
+async function convertMarkdownInput(moduleName: string, candidates: string[], selection: true | string, params: Record<string, unknown>) {
+    const body = (params.data ?? {}) as Record<string, unknown>;
+    const nativeDoc = moduleName === 'doc' && (body.contentType ?? params.contentType) !== 'html';
+    const names = selection === true ? candidates : selection.split(',').map(name => name.trim());
+    const inputs = new Map<string, string>();
+    for (const name of names) {
+        if (!candidates.includes(name)) invalid('markdown', `无效的字段名「${name}」，可选 HTML 字段为 ${candidates.join(', ')}`);
+        if (nativeDoc && name === 'content') {
+            if (selection === true) continue;
+            invalid('markdown', '文档正文可直接传入 Markdown，转换为 HTML 需显式指定 --content-type html');
+        }
+        const value = body[name] ?? params[name];
+        if (typeof value === 'string') inputs.set(name, value);
+        else if (selection !== true) invalid('markdown', `本次请求未提供字段 ${name}`);
+    }
+    if (!inputs.size) return;
+    const render = await getMarkdownRenderer();
+    for (const [name, value] of inputs) {
+        const html = render(value);
+        if (Object.hasOwn(params, name)) params[name] = html;
+        if (Object.hasOwn(body, name)) body[name] = html;
+    }
+}
+
 /** Prepare and validate every input before authentication, including all batch targets. */
 export async function prepareCliParams(mod: ModuleDefinition, action: ModuleAction, target: string | undefined,
     options: ModuleActionOptions, values: Record<string, unknown>): Promise<Record<string, unknown>> {
     if (options.format === 'raw' && (options.ids || options.all || options.maxItems || options.pick || options.filter?.length || options.search?.length || options.sort || options.searchFields || options.htmlToMarkdown)) invalid('raw', '原始响应不能与本地处理或自动翻页组合');
     const params: Record<string, unknown> = {};
-    const definitions = actionParameters(mod, action);
+    const contract = actionContract(mod, action);
+    const definitions = contract.parameters;
     const assign = (name: string, value: unknown) => {
         if (value === undefined) return;
         if (Object.hasOwn(params, name) && !isDeepStrictEqual(params[name], value)) invalid(name, '同一字段的输入值冲突');
@@ -63,7 +90,7 @@ export async function prepareCliParams(mod: ModuleDefinition, action: ModuleActi
             invalid('output', '写入单个附件的原始字节时不能同时指定 --ids、--batch-fail-fast、--format=raw 或 --stream=1');
         }
     }
-    const primary = actionContract(mod, action).target;
+    const primary = contract.target;
     if (target !== undefined) {
         if (!primary) invalid('target', '此操作没有位置参数');
         assign(primary!, parseCliValue(target, definitions.find(param => param.name === primary)!));
@@ -85,6 +112,7 @@ export async function prepareCliParams(mod: ModuleDefinition, action: ModuleActi
         }
     }
     const normalized = normalizeToolParams(mod, action, { ...aliases, params: ids ? { ...params, [targetId(action)!]: ids[0] } : params });
+    if (options.markdown !== undefined) await convertMarkdownInput(mod.name, contract.markdownFields, options.markdown, normalized);
     if (ids) delete normalized[targetId(action)!];
     return normalized;
 }

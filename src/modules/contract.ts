@@ -10,7 +10,7 @@ export function kebabCase(name: string): string {
 // Reserve global and processing flags so business fields cannot be consumed by Commander.
 export function parameterFlag(name: string): string {
     const flag = kebabCase(name);
-    return `--${['deadline', 'timeout', 'profile', 'config', 'format', 'color', 'input', 'yes', 'quiet', 'insecure', 'assistant', 'data', 'ids', 'fields', 'all', 'max-items', 'filter', 'sort', 'search'].includes(flag) ? 'data-' : ''}${flag}`;
+    return `--${['deadline', 'timeout', 'profile', 'config', 'format', 'color', 'input', 'yes', 'quiet', 'insecure', 'assistant', 'data', 'ids', 'fields', 'markdown', 'all', 'max-items', 'filter', 'sort', 'search'].includes(flag) ? 'data-' : ''}${flag}`;
 }
 
 export function pathIdType(mod: ModuleDefinition, action: ModuleAction, name: string) {
@@ -52,6 +52,10 @@ export function actionContract(mod: ModuleDefinition, action: ModuleAction) {
     const parameters = actionParameters(mod, action);
     const pagination = paginationFields(mod, action);
     const target = parameters.find(param => param.role === 'path' && !['scope', 'scopeID'].includes(param.name));
+    // SDK 0.9 documents weekly/update.content as HTML but omits its textType.
+    const markdownFields = parameters.filter(param => param.role === 'body' && param.type === 'string'
+        && (param.textType === 'html' || (mod.name === 'weekly' && action.name === 'update' && param.name === 'content')))
+        .map(param => param.name);
     return {
         module: mod.name, action: action.name, command: `${mod.name} ${kebabCase(action.name)}`,
         display: action.display, type: action.type,
@@ -60,6 +64,7 @@ export function actionContract(mod: ModuleDefinition, action: ModuleAction) {
             : action.description,
         path: action.path, method: action.method, minVersion: action.minVersion,
         parameters: parameters.map(param => ({ ...param, flag: parameterFlag(param.name) })),
+        markdownFields,
         target: target?.name, batch: supportsBatch(action),
         pagination: pagination ? { page: pagination.page.name, pageSize: pagination.size.name } : null,
         requestBody: action.requestBody,

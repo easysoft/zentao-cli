@@ -313,6 +313,25 @@ zentao help bug create --format=json
 - 删除需要确认；非交互调用必须 `--yes`。批量部分失败会保留逐项结果并返回非零退出码；`--batch-fail-fast` 跳过后续项，不回滚。
 - 更新只自动补全动作声明的可写字段，存在匹配详情操作时才生效。
 
+### 用 Markdown 写入 HTML 字段
+
+CLI 默认按原值提交正文。加上 `--markdown` 后，CLI 会把本次提供的所有 HTML 字段从 Markdown 转为 HTML。下面这条命令提交的 `steps` 是 `这是<strong>重现步骤</strong>`。
+
+```bash
+zentao bug update 329 --steps '这是**重现步骤**' --markdown
+```
+
+同一次请求可以混用 Markdown 和已有 HTML。下面的 `--markdown spec` 只转换需求描述，`verify` 中的验收标准按原有 HTML 提交。
+
+```bash
+zentao story change 11 --data '{"spec":"支持**扫码登录**","verify":"<p>扫码后进入首页</p>"}' --markdown spec
+```
+
+- 多个字段用逗号分隔，例如 `--markdown spec,verify`。字段名可查动作的 `--help` 或 JSON 帮助的 `markdownFields`。有位置目标时，将目标 ID 放在 `--markdown` 前。
+- 命名参数、`--data` 内联 JSON、`@file` 和 `@-` 均可提供字段值。显式列出的字段须在本次输入中提供且属于该动作的 HTML 字段。更新时，自动补全的字段保留原值。
+- 列表、代码块和多段文字保留各自的 HTML 结构。Markdown 中的原始 HTML 标签按文本转义。空字符串仍可清空字段。
+- 禅道协同文档原生接受 Markdown 正文，直接传入 `content` 即可。写入旧式 HTML 文档时，显式指定 `--content-type html`（或请求体中的 `"contentType":"html"`）后即可转换 `content`。
+
 <a id="examples"></a>
 ## 常用示例
 

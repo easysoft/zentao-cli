@@ -8,11 +8,15 @@ zentao story update 11 --plan 1
 zentao story change 11 --data '{"title":"调整后的需求","reviewer":["reviewer1"]}'
 zentao doc create-my-doc --space-id 1 --lib-id 2 --data '{"title":"说明","content":"# 正文","contentType":"doc"}'
 zentao bug create --product 1 --title 'Bug 标题' --opened-build trunk
+zentao bug update 329 --steps '这是**重现步骤**' --markdown
+zentao story change 11 --data '{"spec":"支持**扫码登录**","verify":"<p>进入首页</p>"}' --markdown spec
 zentao story create --product-id 1 --data @body.json
 zentao story create --product-id 1 --data @- < body.json
 ```
 
 空格与等号赋值等价，多行文本和额外等号保持原文。类型由 schema 决定，不猜测字符串类型。请求体 JSON 必须是对象，同名字段来自多个入口且值不同时报错。只有显式 @- 才读取标准输入。API 数组需要数值时，用重复数值选项或 JSON 数字数组，不能把字符串数字混入。
+
+用户提供 Markdown 正文时，查看动作 JSON 帮助的 `markdownFields`。`--markdown` 转换本次输入的所有 HTML 字段，`--markdown spec,verify` 只转换列出的字段。混用 Markdown 与已有 HTML 时指定字段名。目标 ID 放在选项前。协同文档的 `content` 直接传原生 Markdown，写入旧式 HTML 文档时显式指定 `--content-type html`。
 
 story/requirement/epic 的 create/change：没有有效 reviewer 时跳过评审，状态默认 active；显式 status=draft 保留草稿。有有效 reviewer 时状态固定 reviewing。change 不自动保存原草稿状态，先核对业务意图。
 
