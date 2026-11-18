@@ -202,7 +202,9 @@ MCP 发送请求前按动作定义检查必填字段、JSON 类型、明确枚�
 
 ### API 覆盖与版本兼容
 
-CLI 使用 `zentao-api 0.8.4` 的注册表，提供 42 个模块、361 个操作，覆盖问题（`issue`）、风险（`risk`）、会议（`meeting`）、工作流（`workflow`）、文档（`doc`）、待办（`todo`）、地盘（`my`）和代码库（`repo`）等模块，并支持项目集/项目/执行下的关联列表、需求层级、附件上传和 Markdown 文档正文。
+CLI 使用 `zentao-api 0.9.0` 的注册表，提供 42 个模块、364 个操作，覆盖问题（`issue`）、风险（`risk`）、会议（`meeting`）、工作流（`workflow`）、文档（`doc`）、待办（`todo`）、地盘（`my`）和代码库（`repo`）等模块，并支持项目集/项目/执行下的关联列表、需求层级、附件上传和 Markdown 文档正文。
+
+SDK 0.9.0 新增 `my info` 查询当前用户、`file get` 查询附件元数据、`file read` 读取附件内容。各操作支持的禅道版本可通过 `--help` 查看。
 
 SDK 0.8.2 修正了 `story`、`requirement`、`epic` 的 `create` / `change`：未提供有效评审人时发送 `needNotReview: "1"`，状态默认 `active`；显式传入的非空状态会保留，空字符串仍回落为 `active`。提供有效评审人时状态为 `reviewing`，优先于显式状态。CLI 支持 `--status=draft` 或 `--data '{"status":"draft"}'`；MCP 使用 `params.status` 或 `params.data.status`。`change` 不会自动读取并保留原状态，需要保留草稿时应明确传入 `draft`。
 

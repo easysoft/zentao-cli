@@ -92,7 +92,7 @@ MCP 保留 structuredContent/outputSchema 与执行时策略检查。知识 POST
 
 ## 覆盖范围
 
-开发版本 CLI **0.4.4** / SDK **0.8.5**，14 个内置一级命令、42 个模块、361 个业务动作。数量、参数和实际 Commander 命令来自同一注册表。
+开发版本 CLI **0.4.4** / SDK **0.9.0**，14 个内置一级命令、42 个模块、364 个业务动作。数量、参数和实际 Commander 命令来自同一注册表。
 
 <a id="global-options"></a>
 
@@ -952,7 +952,7 @@ Options:
   --begin <value>         计划开始日期（必填）
   --end <value>           计划完成日期（必填）
   --pm <value>            计划完成日期
-  --desc <value>          项目集描述
+  --desc <value>          项目集描述 (HTML)
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   -h, --help              显示命令帮助
 ```
@@ -967,7 +967,7 @@ Options:
 | --begin | begin | body | string | 是 | — | 计划开始日期<br>{} |
 | --end | end | body | string | 是 | — | 计划完成日期<br>{} |
 | --pm | PM | body | string | 否 | — | 计划完成日期<br>{} |
-| --desc | desc | body | string | 否 | — | 项目集描述<br>{} |
+| --desc | desc | body | string | 否 | — | 项目集描述 (HTML)<br>{} |
 
 <a id="action-program-get"></a>
 
@@ -1016,7 +1016,7 @@ Options:
   --begin <value>         计划开始日期（必填）
   --end <value>           计划完成日期（必填）
   --pm <value>            计划完成日期
-  --desc <value>          项目集描述
+  --desc <value>          项目集描述 (HTML)
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   --ids <ids>             批量目标 ID，逗号分隔并去重
   --batch-fail-fast       失败后跳过剩余目标
@@ -1036,7 +1036,7 @@ Options:
 | --begin | begin | body | string | 是 | — | 计划开始日期<br>{} |
 | --end | end | body | string | 是 | — | 计划完成日期<br>{} |
 | --pm | PM | body | string | 否 | — | 计划完成日期<br>{} |
-| --desc | desc | body | string | 否 | — | 项目集描述<br>{} |
+| --desc | desc | body | string | 否 | — | 项目集描述 (HTML)<br>{} |
 
 <a id="action-program-delete"></a>
 
@@ -1186,7 +1186,7 @@ Options:
   --type <value>          类型(normal 正常 | branch 多分支 | platform 多平台)
   --po <value>            产品负责人
   --reviewer <value>      评审人
-  --desc <value>          产品描述
+  --desc <value>          产品描述 (HTML)
   --qd <value>            测试负责人
   --rd <value>            发布负责人
   --acl <value>           访问控制(open 公开 | private 私有)
@@ -1206,7 +1206,7 @@ Options:
 | --type | type | body | string | 否 | — | 类型(normal 正常 \| branch 多分支 \| platform 多平台)<br>{} |
 | --po | PO | body | string | 否 | — | 产品负责人<br>{} |
 | --reviewer | reviewer | body | array | 否 | — | 评审人<br>{"items":{"type":"string"}} |
-| --desc | desc | body | string | 否 | — | 产品描述<br>{} |
+| --desc | desc | body | string | 否 | — | 产品描述 (HTML)<br>{} |
 | --qd | QD | body | string | 否 | — | 测试负责人<br>{} |
 | --rd | RD | body | string | 否 | — | 发布负责人<br>{} |
 | --acl | acl | body | string | 否 | "open" | 访问控制(open 公开 \| private 私有)<br>{} |
@@ -1385,7 +1385,7 @@ Options:
   --type <value>          类型(normal 正常 | branch 多分支 | platform 多平台)
   --po <value>            产品负责人
   --reviewer <value>      评审人
-  --desc <value>          产品描述
+  --desc <value>          产品描述 (HTML)
   --qd <value>            测试负责人
   --rd <value>            发布负责人
   --acl <value>           访问控制(open 公开 | private 私有)
@@ -1411,7 +1411,7 @@ Options:
 | --type | type | body | string | 否 | — | 类型(normal 正常 \| branch 多分支 \| platform 多平台)<br>{} |
 | --po | PO | body | string | 否 | — | 产品负责人<br>{} |
 | --reviewer | reviewer | body | array | 否 | — | 评审人<br>{"items":{"type":"string"}} |
-| --desc | desc | body | string | 否 | — | 产品描述<br>{} |
+| --desc | desc | body | string | 否 | — | 产品描述 (HTML)<br>{} |
 | --qd | QD | body | string | 否 | — | 测试负责人<br>{} |
 | --rd | RD | body | string | 否 | — | 发布负责人<br>{} |
 | --acl | acl | body | string | 否 | "open" | 访问控制(open 公开 \| private 私有)<br>{} |
@@ -1762,7 +1762,7 @@ Options:
   --project-id <value>    项目ID（必填）
   --product-id <value>    所属产品；项目型项目可不传，产品型项目必须传
   --title <value>         需求标题（必填）
-  --spec <value>          需求描述
+  --spec <value>          需求描述 (HTML)
   --pri <value>           优先级
   --category <value>      类别
   --reviewer <value>      评审人
@@ -1781,7 +1781,7 @@ Options:
 | --project-id | projectID | path | integer | 是 | — | 项目ID<br>{} |
 | --product-id | productID | body | integer | 否 | — | 所属产品；项目型项目可不传，产品型项目必须传<br>{"format":"int32"} |
 | --title | title | body | string | 是 | — | 需求标题<br>{} |
-| --spec | spec | body | string | 否 | — | 需求描述<br>{} |
+| --spec | spec | body | string | 否 | — | 需求描述 (HTML)<br>{} |
 | --pri | pri | body | integer | 否 | — | 优先级<br>{"format":"int32"} |
 | --category | category | body | string | 否 | — | 类别<br>{} |
 | --reviewer | reviewer | body | array | 否 | — | 评审人<br>{"items":{"type":"string"}} |
@@ -1806,7 +1806,7 @@ Options:
   --severity <value>      严重程度
   --pri <value>           优先级
   --type <value>          Bug类型
-  --steps <value>         重现步骤
+  --steps <value>         重现步骤 (HTML)
   --product <id>          productID 或 scope/scopeID 别名
   --project <id>          projectID 或 scope/scopeID 别名
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
@@ -1826,7 +1826,7 @@ Options:
 | --severity | severity | body | integer | 否 | — | 严重程度<br>{"format":"int32"} |
 | --pri | pri | body | integer | 否 | — | 优先级<br>{"format":"int32"} |
 | --type | type | body | string | 否 | — | Bug类型<br>{} |
-| --steps | steps | body | string | 否 | — | 重现步骤<br>{} |
+| --steps | steps | body | string | 否 | — | 重现步骤 (HTML)<br>{} |
 
 <a id="action-project-create-task"></a>
 
@@ -1852,7 +1852,7 @@ Options:
   --estimate <value>       预计工时
   --module <value>         所属模块
   --story <value>          相关需求
-  --desc <value>           任务描述
+  --desc <value>           任务描述 (HTML)
   --project <id>           projectID 或 scope/scopeID 别名
   --execution <id>         executionID 或 scope/scopeID 别名
   --data <json|@file|@->   JSON 对象、文件或显式标准输入
@@ -1876,7 +1876,7 @@ Options:
 | --estimate | estimate | body | number | 否 | — | 预计工时<br>{"format":"float"} |
 | --module | module | body | integer | 否 | — | 所属模块<br>{"format":"int32"} |
 | --story | story | body | integer | 否 | — | 相关需求<br>{"format":"int32"} |
-| --desc | desc | body | string | 否 | — | 任务描述<br>{} |
+| --desc | desc | body | string | 否 | — | 任务描述 (HTML)<br>{} |
 
 <a id="action-project-create-risk"></a>
 
@@ -1904,8 +1904,8 @@ Options:
   --identified-date <value>      识别日期。
   --planned-closed-date <value>  计划关闭日期。
   --assigned-to <value>          指派人账号。
-  --prevention <value>           应对措施。
-  --remedy <value>               响应措施。
+  --prevention <value>           应对措施。 (HTML)
+  --remedy <value>               响应措施。 (HTML)
   --project <id>                 projectID 或 scope/scopeID 别名
   --data <json|@file|@->         JSON 对象、文件或显式标准输入
   -h, --help                     显示命令帮助
@@ -1930,8 +1930,8 @@ Options:
 | --identified-date | identifiedDate | body | string | 否 | — | 识别日期。<br>{} |
 | --planned-closed-date | plannedClosedDate | body | string | 否 | — | 计划关闭日期。<br>{} |
 | --assigned-to | assignedTo | body | string | 否 | — | 指派人账号。<br>{} |
-| --prevention | prevention | body | string | 否 | — | 应对措施。<br>{} |
-| --remedy | remedy | body | string | 否 | — | 响应措施。<br>{} |
+| --prevention | prevention | body | string | 否 | — | 应对措施。 (HTML)<br>{} |
+| --remedy | remedy | body | string | 否 | — | 响应措施。 (HTML)<br>{} |
 
 <a id="action-project-link-stories"></a>
 
@@ -2655,7 +2655,7 @@ Options:
   --begin <value>         开始日期
   --end <value>           结束日期
   --branch-id <value>     分支ID
-  --desc <value>          计划描述
+  --desc <value>          计划描述 (HTML)
   --product <id>          productID 或 scope/scopeID 别名
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   -h, --help              显示命令帮助
@@ -2673,7 +2673,7 @@ Options:
 | --begin | begin | body | string | 否 | — | 开始日期<br>{} |
 | --end | end | body | string | 否 | — | 结束日期<br>{} |
 | --branch-id | branchID | body | integer | 否 | — | 分支ID<br>{"format":"int32"} |
-| --desc | desc | body | string | 否 | — | 计划描述<br>{} |
+| --desc | desc | body | string | 否 | — | 计划描述 (HTML)<br>{} |
 
 <a id="action-productplan-get"></a>
 
@@ -2723,7 +2723,7 @@ Options:
   --begin <value>         开始日期
   --end <value>           结束日期
   --branch-id <value>     分支ID
-  --desc <value>          计划描述
+  --desc <value>          计划描述 (HTML)
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   --ids <ids>             批量目标 ID，逗号分隔并去重
   --batch-fail-fast       失败后跳过剩余目标
@@ -2744,7 +2744,7 @@ Options:
 | --begin | begin | body | string | 否 | — | 开始日期<br>{} |
 | --end | end | body | string | 否 | — | 结束日期<br>{} |
 | --branch-id | branchID | body | integer | 否 | — | 分支ID<br>{"format":"int32"} |
-| --desc | desc | body | string | 否 | — | 计划描述<br>{} |
+| --desc | desc | body | string | 否 | — | 计划描述 (HTML)<br>{} |
 
 <a id="action-productplan-delete"></a>
 
@@ -2928,14 +2928,14 @@ Options:
   --module <value>        所属模块
   --parent <value>        父需求
   --estimate <value>      预计工时
-  --spec <value>          需求描述
+  --spec <value>          需求描述 (HTML)
   --category <value>      类别(feature 功能 | interface 接口 | performance 性能 | safe
                           安全 | experience 体验 | improve 改进 | other 其他)
   --source <value>        来源(customer 客户 | user 用户 | po 产品经理 | market 市场 |
                           service 客服 | operation 运营 | support 技术支持 | competitor
                           竞争对手 | partner 合作伙伴 | dev 开发人员 | tester 测试人员 | bug Bug
                           | forum 论坛 | other 其他)
-  --verify <value>        验收标准
+  --verify <value>        验收标准 (HTML)
   --assigned-to <value>   指派给
   --status <value>        无有效评审人时默认 active，可显式指定状态；有有效评审人时固定为 reviewing。
   --reviewer <value>      评审人员，如果无需评审则不传
@@ -2959,10 +2959,10 @@ Options:
 | --module | module | body | integer | 否 | — | 所属模块<br>{"format":"int32"} |
 | --parent | parent | body | integer | 否 | — | 父需求<br>{"format":"int32"} |
 | --estimate | estimate | body | number | 否 | — | 预计工时<br>{"format":"float"} |
-| --spec | spec | body | string | 否 | — | 需求描述<br>{} |
+| --spec | spec | body | string | 否 | — | 需求描述 (HTML)<br>{} |
 | --category | category | body | integer | 否 | — | 类别(feature 功能 \| interface 接口 \| performance 性能 \| safe 安全 \| experience 体验 \| improve 改进 \| other 其他)<br>{"format":"int32"} |
 | --source | source | body | string | 否 | — | 来源(customer 客户 \| user 用户 \| po 产品经理 \| market 市场 \| service 客服 \| operation 运营 \| support 技术支持 \| competitor 竞争对手 \| partner 合作伙伴 \| dev 开发人员 \| tester 测试人员 \| bug Bug \| forum 论坛 \| other 其他)<br>{} |
-| --verify | verify | body | string | 否 | — | 验收标准<br>{} |
+| --verify | verify | body | string | 否 | — | 验收标准 (HTML)<br>{} |
 | --assigned-to | assignedTo | body | string | 否 | — | 指派给<br>{} |
 | --status | status | body | string | 否 | — | 无有效评审人时默认 active，可显式指定状态；有有效评审人时固定为 reviewing。<br>{} |
 | --reviewer | reviewer | body | array | 否 | — | 评审人员，如果无需评审则不传<br>{"items":{"type":"string"}} |
@@ -3187,8 +3187,8 @@ Options:
   --title <value>         需求名称
   --status <value>        无有效评审人时默认 active，可显式指定状态；有有效评审人时固定为 reviewing。
   --reviewer <value>      评审人员，如果无需评审则不传
-  --spec <value>          需求描述
-  --verify <value>        验收标准
+  --spec <value>          需求描述 (HTML)
+  --verify <value>        验收标准 (HTML)
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   --ids <ids>             批量目标 ID，逗号分隔并去重
   --batch-fail-fast       失败后跳过剩余目标
@@ -3205,8 +3205,8 @@ Options:
 | --title | title | body | string | 否 | — | 需求名称<br>{} |
 | --status | status | body | string | 否 | — | 无有效评审人时默认 active，可显式指定状态；有有效评审人时固定为 reviewing。<br>{} |
 | --reviewer | reviewer | body | array | 否 | — | 评审人员，如果无需评审则不传<br>{"items":{"type":"string"}} |
-| --spec | spec | body | string | 否 | — | 需求描述<br>{} |
-| --verify | verify | body | string | 否 | — | 验收标准<br>{} |
+| --spec | spec | body | string | 否 | — | 需求描述 (HTML)<br>{} |
+| --verify | verify | body | string | 否 | — | 验收标准 (HTML)<br>{} |
 
 <a id="action-story-close"></a>
 
@@ -3380,14 +3380,14 @@ Options:
   --module <value>        所属模块
   --parent <value>        父业务需求
   --estimate <value>      预计工时
-  --spec <value>          业务需求描述
+  --spec <value>          业务需求描述 (HTML)
   --category <value>      类别(feature 功能 | interface 接口 | performance 性能 | safe
                           安全 | experience 体验 | improve 改进 | other 其他)
   --source <value>        来源(customer 客户 | user 用户 | po 产品经理 | market 市场 |
                           service 客服 | operation 运营 | support 技术支持 | competitor
                           竞争对手 | partner 合作伙伴 | dev 开发人员 | tester 测试人员 | bug Bug
                           | forum 论坛 | other 其他)
-  --verify <value>        验收标准
+  --verify <value>        验收标准 (HTML)
   --assigned-to <value>   指派给
   --status <value>        无有效评审人时默认 active，可显式指定状态；有有效评审人时固定为 reviewing。
   --reviewer <value>      评审人员，如果无需评审则不传
@@ -3408,10 +3408,10 @@ Options:
 | --module | module | body | integer | 否 | — | 所属模块<br>{"format":"int32"} |
 | --parent | parent | body | integer | 否 | — | 父业务需求<br>{"format":"int32"} |
 | --estimate | estimate | body | number | 否 | — | 预计工时<br>{"format":"float"} |
-| --spec | spec | body | string | 否 | — | 业务需求描述<br>{} |
+| --spec | spec | body | string | 否 | — | 业务需求描述 (HTML)<br>{} |
 | --category | category | body | integer | 否 | — | 类别(feature 功能 \| interface 接口 \| performance 性能 \| safe 安全 \| experience 体验 \| improve 改进 \| other 其他)<br>{"format":"int32"} |
 | --source | source | body | string | 否 | — | 来源(customer 客户 \| user 用户 \| po 产品经理 \| market 市场 \| service 客服 \| operation 运营 \| support 技术支持 \| competitor 竞争对手 \| partner 合作伙伴 \| dev 开发人员 \| tester 测试人员 \| bug Bug \| forum 论坛 \| other 其他)<br>{} |
-| --verify | verify | body | string | 否 | — | 验收标准<br>{} |
+| --verify | verify | body | string | 否 | — | 验收标准 (HTML)<br>{} |
 | --assigned-to | assignedTo | body | string | 否 | — | 指派给<br>{} |
 | --status | status | body | string | 否 | — | 无有效评审人时默认 active，可显式指定状态；有有效评审人时固定为 reviewing。<br>{} |
 | --reviewer | reviewer | body | array | 否 | — | 评审人员，如果无需评审则不传<br>{"items":{"type":"string"}} |
@@ -3572,8 +3572,8 @@ Options:
   --title <value>         需求名称
   --status <value>        无有效评审人时默认 active，可显式指定状态；有有效评审人时固定为 reviewing。
   --reviewer <value>      评审人员，如果无需评审则不传
-  --spec <value>          需求描述
-  --verify <value>        验收标准
+  --spec <value>          需求描述 (HTML)
+  --verify <value>        验收标准 (HTML)
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   --ids <ids>             批量目标 ID，逗号分隔并去重
   --batch-fail-fast       失败后跳过剩余目标
@@ -3590,8 +3590,8 @@ Options:
 | --title | title | body | string | 否 | — | 需求名称<br>{} |
 | --status | status | body | string | 否 | — | 无有效评审人时默认 active，可显式指定状态；有有效评审人时固定为 reviewing。<br>{} |
 | --reviewer | reviewer | body | array | 否 | — | 评审人员，如果无需评审则不传<br>{"items":{"type":"string"}} |
-| --spec | spec | body | string | 否 | — | 需求描述<br>{} |
-| --verify | verify | body | string | 否 | — | 验收标准<br>{} |
+| --spec | spec | body | string | 否 | — | 需求描述 (HTML)<br>{} |
+| --verify | verify | body | string | 否 | — | 验收标准 (HTML)<br>{} |
 
 <a id="action-epic-close"></a>
 
@@ -3738,14 +3738,14 @@ Options:
   --module <value>        所属模块
   --parent <value>        父用户需求
   --estimate <value>      预计工时
-  --spec <value>          用户需求描述
+  --spec <value>          用户需求描述 (HTML)
   --category <value>      类别(feature 功能 | interface 接口 | performance 性能 | safe
                           安全 | experience 体验 | improve 改进 | other 其他)
   --source <value>        来源(customer 客户 | user 用户 | po 产品经理 | market 市场 |
                           service 客服 | operation 运营 | support 技术支持 | competitor
                           竞争对手 | partner 合作伙伴 | dev 开发人员 | tester 测试人员 | bug Bug
                           | forum 论坛 | other 其他)
-  --verify <value>        验收标准
+  --verify <value>        验收标准 (HTML)
   --assigned-to <value>   指派给
   --status <value>        无有效评审人时默认 active，可显式指定状态；有有效评审人时固定为 reviewing。
   --reviewer <value>      评审人员，如果无需评审则不传
@@ -3766,10 +3766,10 @@ Options:
 | --module | module | body | integer | 否 | — | 所属模块<br>{"format":"int32"} |
 | --parent | parent | body | integer | 否 | — | 父用户需求<br>{"format":"int32"} |
 | --estimate | estimate | body | number | 否 | — | 预计工时<br>{"format":"float"} |
-| --spec | spec | body | string | 否 | — | 用户需求描述<br>{} |
+| --spec | spec | body | string | 否 | — | 用户需求描述 (HTML)<br>{} |
 | --category | category | body | integer | 否 | — | 类别(feature 功能 \| interface 接口 \| performance 性能 \| safe 安全 \| experience 体验 \| improve 改进 \| other 其他)<br>{"format":"int32"} |
 | --source | source | body | string | 否 | — | 来源(customer 客户 \| user 用户 \| po 产品经理 \| market 市场 \| service 客服 \| operation 运营 \| support 技术支持 \| competitor 竞争对手 \| partner 合作伙伴 \| dev 开发人员 \| tester 测试人员 \| bug Bug \| forum 论坛 \| other 其他)<br>{} |
-| --verify | verify | body | string | 否 | — | 验收标准<br>{} |
+| --verify | verify | body | string | 否 | — | 验收标准 (HTML)<br>{} |
 | --assigned-to | assignedTo | body | string | 否 | — | 指派给<br>{} |
 | --status | status | body | string | 否 | — | 无有效评审人时默认 active，可显式指定状态；有有效评审人时固定为 reviewing。<br>{} |
 | --reviewer | reviewer | body | array | 否 | — | 评审人员，如果无需评审则不传<br>{"items":{"type":"string"}} |
@@ -3928,8 +3928,8 @@ Arguments:
 Options:
   --story-id <value>      需求ID（必填）
   --title <value>         需求名称
-  --spec <value>          需求描述
-  --verify <value>        验收标准
+  --spec <value>          需求描述 (HTML)
+  --verify <value>        验收标准 (HTML)
   --status <value>        无有效评审人时默认 active，可显式指定状态；有有效评审人时固定为 reviewing。
   --reviewer <value>      评审人员，如果无需评审则不传
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
@@ -3946,8 +3946,8 @@ Options:
 | --- | --- | --- | --- | --- | --- | --- |
 | --story-id | storyID | path | integer | 是 | — | 需求ID<br>{} |
 | --title | title | body | string | 否 | — | 需求名称<br>{} |
-| --spec | spec | body | string | 否 | — | 需求描述<br>{} |
-| --verify | verify | body | string | 否 | — | 验收标准<br>{} |
+| --spec | spec | body | string | 否 | — | 需求描述 (HTML)<br>{} |
+| --verify | verify | body | string | 否 | — | 验收标准 (HTML)<br>{} |
 | --status | status | body | string | 否 | — | 无有效评审人时默认 active，可显式指定状态；有有效评审人时固定为 reviewing。<br>{} |
 | --reviewer | reviewer | body | array | 否 | — | 评审人员，如果无需评审则不传<br>{"items":{"type":"string"}} |
 
@@ -4141,7 +4141,7 @@ Options:
   --type <value>          Bug类型(codeerror 代码错误 | config 配置相关 | install 安装部署 |
                           security 安全相关 | performance 性能问题 | standard 标准规范 |
                           automation 测试脚本 | designdefect 设计缺陷 | others 其他)
-  --steps <value>         重现步骤
+  --steps <value>         重现步骤 (HTML)
   --story <value>         相关需求
   --assigned-to <value>   指派给
   --product <id>          productID 或 scope/scopeID 别名
@@ -4163,7 +4163,7 @@ Options:
 | --severity | severity | body | integer | 否 | — | 严重程度，默认是3<br>{"format":"int32"} |
 | --pri | pri | body | integer | 否 | — | 优先级，默认是3<br>{"format":"int32"} |
 | --type | type | body | string | 否 | — | Bug类型(codeerror 代码错误 \| config 配置相关 \| install 安装部署 \| security 安全相关 \| performance 性能问题 \| standard 标准规范 \| automation 测试脚本 \| designdefect 设计缺陷 \| others 其他)<br>{} |
-| --steps | steps | body | string | 否 | — | 重现步骤<br>{} |
+| --steps | steps | body | string | 否 | — | 重现步骤 (HTML)<br>{} |
 | --story | story | body | integer | 否 | — | 相关需求<br>{"format":"int32"} |
 | --assigned-to | assignedTo | body | string | 否 | — | 指派给<br>{} |
 
@@ -4217,7 +4217,7 @@ Options:
                           security 安全相关 | performance 性能问题 | standard 标准规范 |
                           automation 测试脚本 | designdefect 设计缺陷 | others 其他)
   --opened-build <value>  影响版本,主干是trunk，其他版本使用版本ID
-  --steps <value>         重现步骤
+  --steps <value>         重现步骤 (HTML)
   --project <value>       所属项目
   --execution <value>     所属执行
   --story <value>         相关需求
@@ -4242,7 +4242,7 @@ Options:
 | --pri | pri | body | integer | 否 | — | 优先级，默认是3<br>{"format":"int32"} |
 | --type | type | body | string | 否 | — | Bug类型(codeerror 代码错误 \| config 配置相关 \| install 安装部署 \| security 安全相关 \| performance 性能问题 \| standard 标准规范 \| automation 测试脚本 \| designdefect 设计缺陷 \| others 其他)<br>{} |
 | --opened-build | openedBuild | body | array | 否 | — | 影响版本,主干是trunk，其他版本使用版本ID<br>{"items":{"type":"string"}} |
-| --steps | steps | body | string | 否 | — | 重现步骤<br>{} |
+| --steps | steps | body | string | 否 | — | 重现步骤 (HTML)<br>{} |
 | --project | project | body | integer | 否 | — | 所属项目<br>{"format":"int32"} |
 | --execution | execution | body | integer | 否 | — | 所属执行<br>{"format":"int32"} |
 | --story | story | body | integer | 否 | — | 相关需求<br>{"format":"int32"} |
@@ -4959,7 +4959,7 @@ Options:
   --estimate <value>       预计工时
   --module <value>         所属模块
   --story <value>          相关需求
-  --desc <value>           任务描述
+  --desc <value>           任务描述 (HTML)
   --parent <value>         父任务
   --execution <id>         executionID 或 scope/scopeID 别名
   --data <json|@file|@->   JSON 对象、文件或显式标准输入
@@ -4982,7 +4982,7 @@ Options:
 | --estimate | estimate | body | number | 否 | — | 预计工时<br>{"format":"float"} |
 | --module | module | body | integer | 否 | — | 所属模块<br>{"format":"int32"} |
 | --story | story | body | integer | 否 | — | 相关需求<br>{"format":"int32"} |
-| --desc | desc | body | string | 否 | — | 任务描述<br>{} |
+| --desc | desc | body | string | 否 | — | 任务描述 (HTML)<br>{} |
 | --parent | parent | body | integer | 否 | — | 父任务<br>{"format":"int32"} |
 
 <a id="action-task-get"></a>
@@ -5037,7 +5037,7 @@ Options:
   --estimate <value>       预计工时
   --module <value>         所属模块
   --story <value>          相关需求
-  --desc <value>           任务描述
+  --desc <value>           任务描述 (HTML)
   --parent <value>         父任务
   --data <json|@file|@->   JSON 对象、文件或显式标准输入
   --ids <ids>              批量目标 ID，逗号分隔并去重
@@ -5063,7 +5063,7 @@ Options:
 | --estimate | estimate | body | number | 否 | — | 预计工时<br>{"format":"float"} |
 | --module | module | body | integer | 否 | — | 所属模块<br>{"format":"int32"} |
 | --story | story | body | integer | 否 | — | 相关需求<br>{"format":"int32"} |
-| --desc | desc | body | string | 否 | — | 任务描述<br>{} |
+| --desc | desc | body | string | 否 | — | 任务描述 (HTML)<br>{} |
 | --parent | parent | body | integer | 否 | — | 父任务<br>{"format":"int32"} |
 
 <a id="action-task-update-module"></a>
@@ -5482,7 +5482,7 @@ Options:
   --assigned-to <value>    指派给
   --owner <value>          提出人
   --data-deadline <value>  计划解决日期
-  --desc <value>           描述
+  --desc <value>           描述 (HTML)
   --data <json|@file|@->   JSON 对象、文件或显式标准输入
   -h, --help               显示命令帮助
 ```
@@ -5503,7 +5503,7 @@ Options:
 | --assigned-to | assignedTo | body | string | 否 | — | 指派给<br>{} |
 | --owner | owner | body | string | 否 | — | 提出人<br>{} |
 | --data-deadline | deadline | body | string | 否 | — | 计划解决日期<br>{} |
-| --desc | desc | body | string | 否 | — | 描述<br>{} |
+| --desc | desc | body | string | 否 | — | 描述 (HTML)<br>{} |
 
 <a id="action-issue-get"></a>
 
@@ -5727,8 +5727,8 @@ Options:
   --identified-date <value>      识别日期
   --planned-closed-date <value>  计划关闭日期
   --assigned-to <value>          指派给
-  --prevention <value>           应对措施
-  --remedy <value>               响应措施
+  --prevention <value>           应对措施 (HTML)
+  --remedy <value>               响应措施 (HTML)
   --data <json|@file|@->         JSON 对象、文件或显式标准输入
   -h, --help                     显示命令帮助
 ```
@@ -5752,8 +5752,8 @@ Options:
 | --identified-date | identifiedDate | body | string | 否 | — | 识别日期<br>{} |
 | --planned-closed-date | plannedClosedDate | body | string | 否 | — | 计划关闭日期<br>{} |
 | --assigned-to | assignedTo | body | string | 否 | — | 指派给<br>{} |
-| --prevention | prevention | body | string | 否 | — | 应对措施<br>{} |
-| --remedy | remedy | body | string | 否 | — | 响应措施<br>{} |
+| --prevention | prevention | body | string | 否 | — | 应对措施 (HTML)<br>{} |
+| --remedy | remedy | body | string | 否 | — | 响应措施 (HTML)<br>{} |
 
 <a id="action-risk-get"></a>
 
@@ -5813,9 +5813,9 @@ Options:
   --identified-date <value>      识别日期
   --planned-closed-date <value>  计划关闭日期
   --assigned-to <value>          指派给
-  --prevention <value>           应对措施
-  --remedy <value>               响应措施
-  --resolution <value>           解决措施
+  --prevention <value>           应对措施 (HTML)
+  --remedy <value>               响应措施 (HTML)
+  --resolution <value>           解决措施 (HTML)
   --data <json|@file|@->         JSON 对象、文件或显式标准输入
   --ids <ids>                    批量目标 ID，逗号分隔并去重
   --batch-fail-fast              失败后跳过剩余目标
@@ -5842,9 +5842,9 @@ Options:
 | --identified-date | identifiedDate | body | string | 否 | — | 识别日期<br>{} |
 | --planned-closed-date | plannedClosedDate | body | string | 否 | — | 计划关闭日期<br>{} |
 | --assigned-to | assignedTo | body | string | 否 | — | 指派给<br>{} |
-| --prevention | prevention | body | string | 否 | — | 应对措施<br>{} |
-| --remedy | remedy | body | string | 否 | — | 响应措施<br>{} |
-| --resolution | resolution | body | string | 否 | — | 解决措施<br>{} |
+| --prevention | prevention | body | string | 否 | — | 应对措施 (HTML)<br>{} |
+| --remedy | remedy | body | string | 否 | — | 响应措施 (HTML)<br>{} |
+| --resolution | resolution | body | string | 否 | — | 解决措施 (HTML)<br>{} |
 
 <a id="module-meeting"></a>
 
@@ -6174,7 +6174,7 @@ Arguments:
 
 Options:
   --meeting-id <value>    会议ID（必填）
-  --minutes <value>       会议纪要
+  --minutes <value>       会议纪要 (HTML)
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   --ids <ids>             批量目标 ID，逗号分隔并去重
   --batch-fail-fast       失败后跳过剩余目标
@@ -6188,7 +6188,7 @@ Options:
 | 参数 | JSON 字段 | 位置 | 类型 | 必填 | 默认值 | 说明与约束 |
 | --- | --- | --- | --- | --- | --- | --- |
 | --meeting-id | meetingID | path | integer | 是 | — | 会议ID<br>{} |
-| --minutes | minutes | body | string | 否 | — | 会议纪要<br>{} |
+| --minutes | minutes | body | string | 否 | — | 会议纪要 (HTML)<br>{} |
 
 <a id="module-feedback"></a>
 
@@ -6284,7 +6284,7 @@ Options:
   --module <value>        所属模块
   --type <value>          类型(story 需求 | task 任务 | bug Bug | todo 待办 | advice 建议
                           | issue 问题 | risk 风险 | opportunity 机会)
-  --desc <value>          描述
+  --desc <value>          描述 (HTML)
   --feedback-by <value>   反馈者
   --source <value>        来源
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
@@ -6301,7 +6301,7 @@ Options:
 | --title | title | body | string | 是 | — | 标题<br>{} |
 | --module | module | body | integer | 否 | — | 所属模块<br>{"format":"int32"} |
 | --type | type | body | string | 否 | — | 类型(story 需求 \| task 任务 \| bug Bug \| todo 待办 \| advice 建议 \| issue 问题 \| risk 风险 \| opportunity 机会)<br>{} |
-| --desc | desc | body | string | 否 | — | 描述<br>{} |
+| --desc | desc | body | string | 否 | — | 描述 (HTML)<br>{} |
 | --feedback-by | feedbackBy | body | string | 否 | — | 反馈者<br>{} |
 | --source | source | body | string | 否 | — | 来源<br>{} |
 
@@ -6367,7 +6367,7 @@ Options:
   --title <value>         工单标题（必填）
   --type <value>          类型(code 程序报错 | data 数据错误 | stuck 流程卡断 | security 安全问题
                           | affair 事务)
-  --desc <value>          工单描述
+  --desc <value>          工单描述 (HTML)
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   -h, --help              显示命令帮助
 ```
@@ -6383,7 +6383,7 @@ Options:
 | --module | module | body | integer | 是 | — | 所属模块<br>{"format":"int32"} |
 | --title | title | body | string | 是 | — | 工单标题<br>{} |
 | --type | type | body | string | 否 | — | 类型(code 程序报错 \| data 数据错误 \| stuck 流程卡断 \| security 安全问题 \| affair 事务)<br>{} |
-| --desc | desc | body | string | 否 | — | 工单描述<br>{} |
+| --desc | desc | body | string | 否 | — | 工单描述 (HTML)<br>{} |
 
 <a id="action-feedback-create-todo"></a>
 
@@ -6472,7 +6472,7 @@ Options:
   --assigned-to <value>    指派给
   --est-started <value>    预计开始
   --data-deadline <value>  截止日期
-  --desc <value>           任务描述
+  --desc <value>           任务描述 (HTML)
   --execution <id>         executionID 或 scope/scopeID 别名
   --data <json|@file|@->   JSON 对象、文件或显式标准输入
   -h, --help               显示命令帮助
@@ -6491,7 +6491,7 @@ Options:
 | --assigned-to | assignedTo | body | string | 否 | — | 指派给<br>{} |
 | --est-started | estStarted | body | string | 否 | — | 预计开始<br>{} |
 | --data-deadline | deadline | body | string | 否 | — | 截止日期<br>{} |
-| --desc | desc | body | string | 否 | — | 任务描述<br>{} |
+| --desc | desc | body | string | 否 | — | 任务描述 (HTML)<br>{} |
 
 <a id="action-feedback-get"></a>
 
@@ -6541,7 +6541,7 @@ Options:
   --title <value>         标题（必填）
   --type <value>          类型(story 需求 | task 任务 | bug Bug | todo 待办 | advice 建议
                           | issue 问题 | risk 风险 | opportunity 机会)
-  --desc <value>          描述
+  --desc <value>          描述 (HTML)
   --feedback-by <value>   反馈者
   --source <value>        来源
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
@@ -6563,7 +6563,7 @@ Options:
 | --module | module | body | integer | 否 | — | 所属模块<br>{"format":"int32"} |
 | --title | title | body | string | 是 | — | 标题<br>{} |
 | --type | type | body | string | 否 | — | 类型(story 需求 \| task 任务 \| bug Bug \| todo 待办 \| advice 建议 \| issue 问题 \| risk 风险 \| opportunity 机会)<br>{} |
-| --desc | desc | body | string | 否 | — | 描述<br>{} |
+| --desc | desc | body | string | 否 | — | 描述 (HTML)<br>{} |
 | --feedback-by | feedbackBy | body | string | 否 | — | 反馈者<br>{} |
 | --source | source | body | string | 否 | — | 来源<br>{} |
 
@@ -6750,7 +6750,7 @@ Options:
   --title <value>          标题（必填）
   --type <value>           类型(code 程序报错 | data 数据错误 | stuck 流程卡断 | security 安全问题
                            | affair 事务)
-  --desc <value>           描述
+  --desc <value>           描述 (HTML)
   --assigned-to <value>    指派给
   --data-deadline <value>  截止日期
   --opened-build <value>   影响版本
@@ -6768,7 +6768,7 @@ Options:
 | --module | module | body | integer | 否 | — | 所属模块<br>{"format":"int32"} |
 | --title | title | body | string | 是 | — | 标题<br>{} |
 | --type | type | body | string | 否 | — | 类型(code 程序报错 \| data 数据错误 \| stuck 流程卡断 \| security 安全问题 \| affair 事务)<br>{} |
-| --desc | desc | body | string | 否 | — | 描述<br>{} |
+| --desc | desc | body | string | 否 | — | 描述 (HTML)<br>{} |
 | --assigned-to | assignedTo | body | string | 否 | — | 指派给<br>{} |
 | --data-deadline | deadline | body | string | 否 | — | 截止日期<br>{} |
 | --opened-build | openedBuild | body | array | 否 | — | 影响版本<br>{"items":{"type":"string"}} |
@@ -6901,7 +6901,7 @@ Options:
   --title <value>          标题
   --type <value>           类型(code 程序报错 | data 数据错误 | stuck 流程卡断 | security 安全问题
                            | affair 事务)
-  --desc <value>           描述
+  --desc <value>           描述 (HTML)
   --assigned-to <value>    指派给
   --data-deadline <value>  截止日期
   --opened-build <value>   影响版本
@@ -6924,7 +6924,7 @@ Options:
 | --module | module | body | integer | 否 | — | 所属模块<br>{"format":"int32"} |
 | --title | title | body | string | 否 | — | 标题<br>{} |
 | --type | type | body | string | 否 | — | 类型(code 程序报错 \| data 数据错误 \| stuck 流程卡断 \| security 安全问题 \| affair 事务)<br>{} |
-| --desc | desc | body | string | 否 | — | 描述<br>{} |
+| --desc | desc | body | string | 否 | — | 描述 (HTML)<br>{} |
 | --assigned-to | assignedTo | body | string | 否 | — | 指派给<br>{} |
 | --data-deadline | deadline | body | string | 否 | — | 截止日期<br>{} |
 | --opened-build | openedBuild | body | array | 否 | — | 影响版本<br>{"items":{"type":"string"}} |
@@ -7234,7 +7234,7 @@ Options:
   --date <value>          打包日期（必填）
   --scm-path <value>      源代码地址
   --file-path <value>     下载地址
-  --desc <value>          描述
+  --desc <value>          描述 (HTML)
   --execution <id>        executionID 或 scope/scopeID 别名
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   -h, --help              显示命令帮助
@@ -7254,7 +7254,7 @@ Options:
 | --date | date | body | string | 是 | — | 打包日期<br>{} |
 | --scm-path | scmPath | body | string | 否 | — | 源代码地址<br>{} |
 | --file-path | filePath | body | string | 否 | — | 下载地址<br>{} |
-| --desc | desc | body | string | 否 | — | 描述<br>{} |
+| --desc | desc | body | string | 否 | — | 描述 (HTML)<br>{} |
 
 <a id="action-build-update"></a>
 
@@ -7278,7 +7278,7 @@ Options:
   --date <value>          打包日期（必填）
   --scm-path <value>      源代码地址
   --file-path <value>     下载地址
-  --desc <value>          描述
+  --desc <value>          描述 (HTML)
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   --ids <ids>             批量目标 ID，逗号分隔并去重
   --batch-fail-fast       失败后跳过剩余目标
@@ -7300,7 +7300,7 @@ Options:
 | --date | date | body | string | 是 | — | 打包日期<br>{} |
 | --scm-path | scmPath | body | string | 否 | — | 源代码地址<br>{} |
 | --file-path | filePath | body | string | 否 | — | 下载地址<br>{} |
-| --desc | desc | body | string | 否 | — | 描述<br>{} |
+| --desc | desc | body | string | 否 | — | 描述 (HTML)<br>{} |
 
 <a id="action-build-delete"></a>
 
@@ -7414,7 +7414,7 @@ Options:
   --status <value>        状态(wait 未开始 | doing 进行中 | done 已关闭 | blocked 被阻塞)
   --begin <value>         开始日期（必填）
   --end <value>           结束日期（必填）
-  --desc <value>          描述
+  --desc <value>          描述 (HTML)
   --product <id>          productID 或 scope/scopeID 别名
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   -h, --help              显示命令帮助
@@ -7435,7 +7435,7 @@ Options:
 | --status | status | body | string | 否 | — | 状态(wait 未开始 \| doing 进行中 \| done 已关闭 \| blocked 被阻塞)<br>{} |
 | --begin | begin | body | string | 是 | — | 开始日期<br>{} |
 | --end | end | body | string | 是 | — | 结束日期<br>{} |
-| --desc | desc | body | string | 否 | — | 描述<br>{} |
+| --desc | desc | body | string | 否 | — | 描述 (HTML)<br>{} |
 
 <a id="action-testtask-update"></a>
 
@@ -7460,7 +7460,7 @@ Options:
   --status <value>        状态(wait 未开始 | doing 进行中 | done 已关闭 | blocked 被阻塞)
   --begin <value>         开始日期（必填）
   --end <value>           结束日期（必填）
-  --desc <value>          描述
+  --desc <value>          描述 (HTML)
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   --ids <ids>             批量目标 ID，逗号分隔并去重
   --batch-fail-fast       失败后跳过剩余目标
@@ -7482,7 +7482,7 @@ Options:
 | --status | status | body | string | 否 | — | 状态(wait 未开始 \| doing 进行中 \| done 已关闭 \| blocked 被阻塞)<br>{} |
 | --begin | begin | body | string | 是 | — | 开始日期<br>{} |
 | --end | end | body | string | 是 | — | 结束日期<br>{} |
-| --desc | desc | body | string | 否 | — | 描述<br>{} |
+| --desc | desc | body | string | 否 | — | 描述 (HTML)<br>{} |
 
 <a id="action-testtask-delete"></a>
 
@@ -7600,7 +7600,7 @@ Options:
   --build <value>         包含构建（必填）
   --status <value>        状态(wait 未开始 | normal 已发布 | fail 发布失败 | terminate 停止维护)
   --date <value>          计划发布日期（必填）
-  --desc <value>          描述
+  --desc <value>          描述 (HTML)
   --product <id>          productID 或 scope/scopeID 别名
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   -h, --help              显示命令帮助
@@ -7618,7 +7618,7 @@ Options:
 | --build | build | body | array | 是 | — | 包含构建<br>{"items":{"type":"string"}} |
 | --status | status | body | string | 否 | — | 状态(wait 未开始 \| normal 已发布 \| fail 发布失败 \| terminate 停止维护)<br>{} |
 | --date | date | body | string | 是 | — | 计划发布日期<br>{} |
-| --desc | desc | body | string | 否 | — | 描述<br>{} |
+| --desc | desc | body | string | 否 | — | 描述 (HTML)<br>{} |
 
 <a id="action-release-update"></a>
 
@@ -7639,7 +7639,7 @@ Options:
   --build <value>         包含构建（必填）
   --status <value>        状态(wait 未开始 | normal 已发布 | fail 发布失败 | terminate 停止维护)
   --date <value>          计划发布日期（必填）
-  --desc <value>          描述
+  --desc <value>          描述 (HTML)
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   --ids <ids>             批量目标 ID，逗号分隔并去重
   --batch-fail-fast       失败后跳过剩余目标
@@ -7658,7 +7658,7 @@ Options:
 | --build | build | body | array | 是 | — | 包含构建<br>{"items":{"type":"string"}} |
 | --status | status | body | string | 否 | — | 状态(wait 未开始 \| normal 已发布 \| fail 发布失败 \| terminate 停止维护)<br>{} |
 | --date | date | body | string | 是 | — | 计划发布日期<br>{} |
-| --desc | desc | body | string | 否 | — | 描述<br>{} |
+| --desc | desc | body | string | 否 | — | 描述 (HTML)<br>{} |
 
 <a id="action-release-delete"></a>
 
@@ -7706,6 +7706,8 @@ Commands:
                              / max8.0 / ipd5.0）
   update [options] [target]  编辑附件，修改附件的名称（最低版本：22.5 / biz13.5 / max8.5 / ipd5.5）
   delete [options] [target]  删除附件（最低版本：22.0 / biz13.0 / max8.0 / ipd5.0）
+  get [options] [target]     获取附件信息（最低版本：22.5 / biz13.5 / max8.5 / ipd5.5）
+  read [options] [target]    读取附件内容（最低版本：23.0 / biz14.0 / max9.0 / ipd6.0）
 ```
 
 <a id="action-file-create"></a>
@@ -7718,9 +7720,13 @@ Usage: zentao file create [options]
 上传附件，使用【表单formdata】方式提交，不支持json（最低版本：22.0 / biz13.0 / max8.0 / ipd5.0）
 
 Options:
+  --uid <value>           本次对象保存的唯一上传批次，以同一 Token 和 uid 保存对象时绑定图片。需 23.0 /
+                          biz14.0 / max9.0 / ipd6.0 或更新版本并支持客户端 uid。
   --file <value>          本地文件路径，将按 multipart/form-data 上传（必填）
-  --object-type <value>   关联对象类型(bug 缺陷 | story 需求 | task 任务 | testcase 用例)（必填）
-  --object-id <value>     关联对象ID（必填）
+  --object-type <value>   关联对象类型(bug 缺陷 | story 需求 | task 任务 | testcase 用例)
+  --object-id <value>     关联对象ID
+  --extra <value>         附件标记，默认 editor（文档编辑器图片），23.0 / biz14.0 / max9.0 /
+                          ipd6.0 起支持；显式空字符串用于普通附件，其他值由服务端按空字符串处理
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   -h, --help              显示命令帮助
 ```
@@ -7731,9 +7737,11 @@ Options:
 
 | 参数 | JSON 字段 | 位置 | 类型 | 必填 | 默认值 | 说明与约束 |
 | --- | --- | --- | --- | --- | --- | --- |
+| --uid | uid | query | string | 否 | — | 本次对象保存的唯一上传批次，以同一 Token 和 uid 保存对象时绑定图片。需 23.0 / biz14.0 / max9.0 / ipd6.0 或更新版本并支持客户端 uid。<br>{} |
 | --file | file | body | string | 是 | — | 本地文件路径，将按 multipart/form-data 上传<br>{"format":"binary"} |
-| --object-type | objectType | body | string | 是 | — | 关联对象类型(bug 缺陷 \| story 需求 \| task 任务 \| testcase 用例)<br>{} |
-| --object-id | objectID | body | integer | 是 | — | 关联对象ID<br>{"format":"int32"} |
+| --object-type | objectType | body | string | 否 | — | 关联对象类型(bug 缺陷 \| story 需求 \| task 任务 \| testcase 用例)<br>{} |
+| --object-id | objectID | body | integer | 否 | — | 关联对象ID<br>{"format":"int32"} |
+| --extra | extra | body | string | 否 | "editor" | 附件标记，默认 editor（文档编辑器图片），23.0 / biz14.0 / max9.0 / ipd6.0 起支持；显式空字符串用于普通附件，其他值由服务端按空字符串处理<br>{"options":[{"value":"","label":"普通附件"},{"value":"editor","label":"文档编辑器图片"}]} |
 
 <a id="action-file-update"></a>
 
@@ -7759,6 +7767,8 @@ Options:
 最低版本：22.5 / biz13.5 / max8.5 / ipd5.5。
 
 能力：写入或需服务端确认；批量：--ids；分页：不支持；本地文件：否。
+
+未提供的请求体字段可由匹配的详情操作自动补全。
 
 | 参数 | JSON 字段 | 位置 | 类型 | 必填 | 默认值 | 说明与约束 |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -7792,6 +7802,70 @@ Options:
 | 参数 | JSON 字段 | 位置 | 类型 | 必填 | 默认值 | 说明与约束 |
 | --- | --- | --- | --- | --- | --- | --- |
 | --file-id | fileID | path | integer | 是 | — | 附件ID<br>{} |
+
+<a id="action-file-get"></a>
+
+## zentao file get
+
+```text
+Usage: zentao file get [options] [target]
+
+获取附件信息（最低版本：22.5 / biz13.5 / max8.5 / ipd5.5）
+
+Arguments:
+  target              单个 fileID；也可使用命名参数
+
+Options:
+  --file-id <value>   附件 ID 或 Base64 编码 gid（必填）
+  --ids <ids>         批量目标 ID，逗号分隔并去重
+  --batch-fail-fast   失败后跳过剩余目标
+  --fields <fields>   返回字段，逗号分隔
+  --html-to-markdown  显式将富文本字段转换为 Markdown
+  -h, --help          显示命令帮助
+```
+
+最低版本：22.5 / biz13.5 / max8.5 / ipd5.5。
+
+查询附件元数据；fileID 支持数字 ID 或既有 Base64 编码 gid。读取文件内容请使用 file/read。
+
+能力：只读；批量：--ids；分页：不支持；本地文件：否。
+
+| 参数 | JSON 字段 | 位置 | 类型 | 必填 | 默认值 | 说明与约束 |
+| --- | --- | --- | --- | --- | --- | --- |
+| --file-id | fileID | path | integer | 是 | — | 附件 ID 或 Base64 编码 gid<br>{} |
+
+<a id="action-file-read"></a>
+
+## zentao file read
+
+```text
+Usage: zentao file read [options] [target]
+
+读取附件内容（最低版本：23.0 / biz14.0 / max9.0 / ipd6.0）
+
+Arguments:
+  target              单个 fileID；也可使用命名参数
+
+Options:
+  --file-id <value>   附件数字 ID（必填）
+  --stream <value>    返回格式
+  --ids <ids>         批量目标 ID，逗号分隔并去重
+  --batch-fail-fast   失败后跳过剩余目标
+  --fields <fields>   返回字段，逗号分隔
+  --html-to-markdown  显式将富文本字段转换为 Markdown
+  -h, --help          显示命令帮助
+```
+
+最低版本：23.0 / biz14.0 / max9.0 / ipd6.0。
+
+默认返回 ArrayBuffer；stream=1 返回 Base64 字符串。两种模式均完整载入内存，大文件流式读取可使用底层客户端的 responseType: response。
+
+能力：只读；批量：--ids；分页：不支持；本地文件：否。
+
+| 参数 | JSON 字段 | 位置 | 类型 | 必填 | 默认值 | 说明与约束 |
+| --- | --- | --- | --- | --- | --- | --- |
+| --file-id | fileID | path | integer | 是 | — | 附件数字 ID<br>{} |
+| --stream | stream | query | number | 否 | 0 | 返回格式<br>{"options":[{"value":0,"label":"原始文件内容"},{"value":1,"label":"Base64 文本"}]} |
 
 <a id="module-workflow"></a>
 
@@ -10327,7 +10401,7 @@ Options:
   --lib-id <value>        文档库ID（必填）
   --module-id <value>     所属目录
   --title <value>         文档标题（必填）
-  --content <value>       文档正文，使用Markdown格式；系统会转换为块编辑器内容并生成HTML快照（必填）
+  --content <value>       文档正文，使用Markdown格式；系统会转换为块编辑器内容并生成HTML快照 (HTML)（必填）
   --content-type <value>  文档格式(doc 按Markdown处理，支持团队协同编辑 | html
                           旧格式，直接保存HTML，不支持团队协同编辑)
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
@@ -10344,7 +10418,7 @@ Options:
 | --lib-id | libID | path | integer | 是 | — | 文档库ID<br>{} |
 | --module-id | moduleID | body | integer | 否 | — | 所属目录<br>{"format":"int32"} |
 | --title | title | body | string | 是 | — | 文档标题<br>{} |
-| --content | content | body | string | 是 | — | 文档正文，使用Markdown格式；系统会转换为块编辑器内容并生成HTML快照<br>{} |
+| --content | content | body | string | 是 | — | 文档正文，使用Markdown格式；系统会转换为块编辑器内容并生成HTML快照 (HTML)<br>{} |
 | --content-type | contentType | body | string | 否 | — | 文档格式(doc 按Markdown处理，支持团队协同编辑 \| html 旧格式，直接保存HTML，不支持团队协同编辑)<br>{} |
 
 <a id="action-doc-create-team-doc"></a>
@@ -10364,7 +10438,7 @@ Options:
   --lib-id <value>        文档库ID（必填）
   --module-id <value>     所属目录
   --title <value>         文档标题（必填）
-  --content <value>       文档正文，使用Markdown格式；系统会转换为块编辑器内容并生成HTML快照（必填）
+  --content <value>       文档正文，使用Markdown格式；系统会转换为块编辑器内容并生成HTML快照 (HTML)（必填）
   --content-type <value>  文档格式(doc 按Markdown处理，支持团队协同编辑 | html
                           旧格式，直接保存HTML，不支持团队协同编辑)
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
@@ -10381,7 +10455,7 @@ Options:
 | --lib-id | libID | path | integer | 是 | — | 文档库ID<br>{} |
 | --module-id | moduleID | body | integer | 否 | — | 所属目录<br>{"format":"int32"} |
 | --title | title | body | string | 是 | — | 文档标题<br>{} |
-| --content | content | body | string | 是 | — | 文档正文，使用Markdown格式；系统会转换为块编辑器内容并生成HTML快照<br>{} |
+| --content | content | body | string | 是 | — | 文档正文，使用Markdown格式；系统会转换为块编辑器内容并生成HTML快照 (HTML)<br>{} |
 | --content-type | contentType | body | string | 否 | — | 文档格式(doc 按Markdown处理，支持团队协同编辑 \| html 旧格式，直接保存HTML，不支持团队协同编辑)<br>{} |
 
 <a id="action-doc-create-product-doc"></a>
@@ -10401,7 +10475,7 @@ Options:
   --lib-id <value>        文档库ID（必填）
   --module-id <value>     所属目录
   --title <value>         文档标题（必填）
-  --content <value>       文档正文，使用Markdown格式；系统会转换为块编辑器内容并生成HTML快照（必填）
+  --content <value>       文档正文，使用Markdown格式；系统会转换为块编辑器内容并生成HTML快照 (HTML)（必填）
   --content-type <value>  文档格式(doc 按Markdown处理，支持团队协同编辑 | html
                           旧格式，直接保存HTML，不支持团队协同编辑)
   --product <id>          productID 或 scope/scopeID 别名
@@ -10419,7 +10493,7 @@ Options:
 | --lib-id | libID | path | integer | 是 | — | 文档库ID<br>{} |
 | --module-id | moduleID | body | integer | 否 | — | 所属目录<br>{"format":"int32"} |
 | --title | title | body | string | 是 | — | 文档标题<br>{} |
-| --content | content | body | string | 是 | — | 文档正文，使用Markdown格式；系统会转换为块编辑器内容并生成HTML快照<br>{} |
+| --content | content | body | string | 是 | — | 文档正文，使用Markdown格式；系统会转换为块编辑器内容并生成HTML快照 (HTML)<br>{} |
 | --content-type | contentType | body | string | 否 | — | 文档格式(doc 按Markdown处理，支持团队协同编辑 \| html 旧格式，直接保存HTML，不支持团队协同编辑)<br>{} |
 
 <a id="action-doc-create-project-doc"></a>
@@ -10439,7 +10513,7 @@ Options:
   --lib-id <value>        文档库ID（必填）
   --module-id <value>     所属目录
   --title <value>         文档标题（必填）
-  --content <value>       文档正文，使用Markdown格式；系统会转换为块编辑器内容并生成HTML快照（必填）
+  --content <value>       文档正文，使用Markdown格式；系统会转换为块编辑器内容并生成HTML快照 (HTML)（必填）
   --content-type <value>  文档格式(doc 按Markdown处理，支持团队协同编辑 | html
                           旧格式，直接保存HTML，不支持团队协同编辑)
   --project <id>          projectID 或 scope/scopeID 别名
@@ -10457,7 +10531,7 @@ Options:
 | --lib-id | libID | path | integer | 是 | — | 文档库ID<br>{} |
 | --module-id | moduleID | body | integer | 否 | — | 所属目录<br>{"format":"int32"} |
 | --title | title | body | string | 是 | — | 文档标题<br>{} |
-| --content | content | body | string | 是 | — | 文档正文，使用Markdown格式；系统会转换为块编辑器内容并生成HTML快照<br>{} |
+| --content | content | body | string | 是 | — | 文档正文，使用Markdown格式；系统会转换为块编辑器内容并生成HTML快照 (HTML)<br>{} |
 | --content-type | contentType | body | string | 否 | — | 文档格式(doc 按Markdown处理，支持团队协同编辑 \| html 旧格式，直接保存HTML，不支持团队协同编辑)<br>{} |
 
 <a id="action-doc-create-my-module"></a>
@@ -10764,7 +10838,7 @@ Options:
   --doc-id <value>        文档ID（必填）
   --module-id <value>     所属目录
   --title <value>         文档标题（必填）
-  --content <value>       文档正文，使用Markdown格式；系统会转换为块编辑器内容并生成HTML快照（必填）
+  --content <value>       文档正文，使用Markdown格式；系统会转换为块编辑器内容并生成HTML快照 (HTML)（必填）
   --content-type <value>  文档格式(doc 按Markdown处理，支持团队协同编辑 | html
                           旧格式，直接保存HTML，不支持团队协同编辑)
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
@@ -10784,7 +10858,7 @@ Options:
 | --doc-id | docID | path | integer | 是 | — | 文档ID<br>{} |
 | --module-id | moduleID | body | integer | 否 | — | 所属目录<br>{"format":"int32"} |
 | --title | title | body | string | 是 | — | 文档标题<br>{} |
-| --content | content | body | string | 是 | — | 文档正文，使用Markdown格式；系统会转换为块编辑器内容并生成HTML快照<br>{} |
+| --content | content | body | string | 是 | — | 文档正文，使用Markdown格式；系统会转换为块编辑器内容并生成HTML快照 (HTML)<br>{} |
 | --content-type | contentType | body | string | 否 | — | 文档格式(doc 按Markdown处理，支持团队协同编辑 \| html 旧格式，直接保存HTML，不支持团队协同编辑)<br>{} |
 
 <a id="action-doc-update-module"></a>
@@ -10967,7 +11041,7 @@ Options:
   --begin <value>         开始时间，使用小时+分钟拼接
   --end <value>           结束时间，使用小时+分钟拼接
   --assigned-to <value>   指派给
-  --desc <value>          待办详情
+  --desc <value>          待办详情 (HTML)
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   -h, --help              显示命令帮助
 ```
@@ -10985,7 +11059,7 @@ Options:
 | --begin | begin | body | string | 否 | — | 开始时间，使用小时+分钟拼接<br>{} |
 | --end | end | body | string | 否 | — | 结束时间，使用小时+分钟拼接<br>{} |
 | --assigned-to | assignedTo | body | string | 否 | — | 指派给<br>{} |
-| --desc | desc | body | string | 否 | — | 待办详情<br>{} |
+| --desc | desc | body | string | 否 | — | 待办详情 (HTML)<br>{} |
 
 <a id="action-todo-get"></a>
 
@@ -11038,7 +11112,7 @@ Options:
   --begin <value>         开始时间，使用小时+分钟拼接
   --end <value>           结束时间，使用小时+分钟拼接
   --assigned-to <value>   指派给
-  --desc <value>          待办详情
+  --desc <value>          待办详情 (HTML)
   --data <json|@file|@->  JSON 对象、文件或显式标准输入
   --ids <ids>             批量目标 ID，逗号分隔并去重
   --batch-fail-fast       失败后跳过剩余目标
@@ -11061,7 +11135,7 @@ Options:
 | --begin | begin | body | string | 否 | — | 开始时间，使用小时+分钟拼接<br>{} |
 | --end | end | body | string | 否 | — | 结束时间，使用小时+分钟拼接<br>{} |
 | --assigned-to | assignedTo | body | string | 否 | — | 指派给<br>{} |
-| --desc | desc | body | string | 否 | — | 待办详情<br>{} |
+| --desc | desc | body | string | 否 | — | 待办详情 (HTML)<br>{} |
 
 <a id="action-todo-delete"></a>
 
@@ -11167,6 +11241,8 @@ Commands:
                                     ipd5.7）
   create-ssh [options]              添加我的 SSH 公钥（最低版本：22.7 / biz13.7 / max8.7 /
                                     ipd5.7）
+  info [options]                    获取当前用户基础资料（最低版本：23.0 / biz14.0 / max9.0 /
+                                    ipd6.0）
 ```
 
 <a id="action-my-todos"></a>
@@ -12671,6 +12747,30 @@ Options:
 | --- | --- | --- | --- | --- | --- | --- |
 | --name | name | body | string | 是 | — | 密钥名称，去除首尾空白后仅允许英文字母、数字、连字符、下划线、点和 $<br>{"minLength":1} |
 | --public-key | publicKey | body | string | 是 | — | 完整单行 SSH 公钥文本，去除首尾空白；支持 ssh-rsa、ecdsa-sha2-nistp256/384/521、ssh-ed25519、sk-ecdsa-sha2-nistp256@openssh.com、sk-ssh-ed25519@openssh.com 前缀，完整性及重复检查由 GitFox 处理<br>{"minLength":1} |
+
+<a id="action-my-info"></a>
+
+## zentao my info
+
+```text
+Usage: zentao my info [options]
+
+获取当前用户基础资料（最低版本：23.0 / biz14.0 / max9.0 / ipd6.0）
+
+Options:
+  --fields <fields>   返回字段，逗号分隔
+  --html-to-markdown  显式将富文本字段转换为 Markdown
+  -h, --help          显示命令帮助
+```
+
+最低版本：23.0 / biz14.0 / max9.0 / ipd6.0。
+
+返回当前 Token 用户的 id、dept、account、realname、nickname、avatar、role、type；avatar 可为空字符串或 null。
+
+能力：只读；批量：不支持；分页：不支持；本地文件：否。
+
+| 参数 | JSON 字段 | 位置 | 类型 | 必填 | 默认值 | 说明与约束 |
+| --- | --- | --- | --- | --- | --- | --- |
 
 <a id="module-process"></a>
 
