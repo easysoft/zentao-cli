@@ -1,5 +1,5 @@
 import { isDeepStrictEqual } from 'node:util';
-import { paginationFields, pathIdType } from './contract.js';
+import { canAutoFill, paginationFields, pathIdType } from './contract.js';
 import { getModuleActionParams } from 'zentao-api';
 import type { ModuleAction, ModuleDefinition } from '../types/index.js';
 import { ZentaoError } from '../errors.js';
@@ -86,7 +86,7 @@ export function validateToolParams(mod: ModuleDefinition, action: ModuleAction, 
             if (value !== undefined) validateValue(field.name, value, { ...field, type: 'integer', minimum: 1, maximum });
         }
     }
-    const autoFill = action.type === 'update' && mod.actions.some(candidate => candidate.type === 'get' && candidate.path === action.path);
+    const autoFill = canAutoFill(mod, action);
     const bodyProperties = action.requestBody?.schema.properties as Record<string, ValueSchema> | undefined;
     for (const param of definitions) {
         const fromBody = param.role === 'body' && Object.hasOwn(body, param.name);

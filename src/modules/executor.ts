@@ -14,7 +14,7 @@ import { resolveData } from '../utils/stdin.js';
 import { buildParams } from './args.js';
 import { getAction } from './helper.js';
 import { ZentaoError } from '../errors.js';
-import { actionContract, paginationFields } from './contract.js';
+import { actionContract, canAutoFill, paginationFields } from './contract.js';
 import { validateValue } from './validation.js';
 import { localUploadsBlocked } from './file-policy.js';
 
@@ -120,7 +120,7 @@ export async function executeModuleCommand(
     const requestOptions: RequestOptions = {
         client,
         actionAssistant: options.assistant,
-        autoFill: action.type === 'update',
+        autoFill: canAutoFill(module, action),
         throwOnFail: true,
         continueOnFileUploadError: localUploadsBlocked() ? false : undefined,
         onFileError: rawOutput ? warning => { rawFileWarnings.push(warning); } : undefined,

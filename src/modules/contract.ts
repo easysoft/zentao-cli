@@ -36,6 +36,12 @@ export function paginationFields(mod: ModuleDefinition, action: ModuleAction) {
     return page && size ? { page, size } : undefined;
 }
 
+export function canAutoFill(mod: ModuleDefinition, action: ModuleAction): boolean {
+    // The file detail exposes title, while renaming requires a new fileName.
+    return action.type === 'update' && !(mod.name === 'file' && action.name === 'update')
+        && mod.actions.some(detail => detail.type === 'get' && detail.path === action.path);
+}
+
 export function actionContract(mod: ModuleDefinition, action: ModuleAction) {
     const parameters = actionParameters(mod, action);
     const pagination = paginationFields(mod, action);
@@ -53,7 +59,7 @@ export function actionContract(mod: ModuleDefinition, action: ModuleAction) {
         requestBody: action.requestBody,
         readOnly: actionIsReadOnly(action),
         destructive: !actionIsReadOnly(action) && ['update', 'delete', 'action'].includes(action.type),
-        autoFill: action.type === 'update' && mod.actions.some(item => item.type === 'get' && item.path === action.path),
+        autoFill: canAutoFill(mod, action),
         defaultFields: ['id', 'title', 'name', 'status', ...(mod.name === 'bug' ? ['severity'] : []), 'assignedTo'],
         localFiles: action.requestBody?.mediaType === 'multipart/form-data',
     };

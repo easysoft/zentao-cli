@@ -1,4 +1,9 @@
 import { expect, test } from 'bun:test';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
+import { createClient } from '../src/api/index.js';
+import { DEFAULT_CONFIG } from '../src/config/defaults.js';
+import { createMcpServer } from '../src/mcp/server.js';
 import { createMcpTestClient, toolData } from './mcp-helpers.js';
 
 test('MCP file/get accepts a Base64 gid as one URL segment and keeps other file IDs numeric', async () => {
@@ -31,6 +36,55 @@ test('MCP file/get accepts a Base64 gid as one URL segment and keeps other file 
         }
     } finally {
         await mcp.close();
+    }
+});
+
+test('MCP validates file renames before authentication and sends only the requested PUT', async () => {
+    const requests: Array<{ method: string; path: string; body: unknown }> = [];
+    let authCalls = 0;
+    let configCalls = 0;
+    const upstream = Bun.serve({
+        hostname: '127.0.0.1', port: 0,
+        async fetch(req) {
+            const url = new URL(req.url);
+            if (url.searchParams.get('mode') === 'getconfig') {
+                configCalls++;
+                return Response.json({ version: '22.5' });
+            }
+            requests.push({ method: req.method, path: url.pathname, body: req.method === 'PUT' ? await req.json() : null });
+            return Response.json({ status: 'success' });
+        },
+    });
+    const api = createClient(upstream.url.href, 'test-token');
+    const server = createMcpServer({
+        async getContext() {
+            authCalls++;
+            return { client: api, config: DEFAULT_CONFIG, identity: { server: api.siteUrl } };
+        },
+    }, { modules: ['file'] });
+    const client = new Client({ name: 'file-rename-test', version: '0.0.0' });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    try {
+        await server.connect(serverTransport);
+        await client.connect(clientTransport);
+        const help = toolData(await client.callTool({ name: 'zentao_action_help', arguments: { module: 'file', action: 'update' } }));
+        expect(help.autoFill).toBe(false);
+        expect(help.parameters).toContainEqual(expect.objectContaining({ name: 'fileName', required: true }));
+        const rename = (params: Record<string, unknown>) => client.callTool({ name: 'zentao_file', arguments: { action: 'update', id: 42, params } });
+        const missing = await rename({});
+        expect(missing).toMatchObject({ isError: true, structuredContent: { error: { code: 'E2003', message: expect.stringContaining('fileName') } } });
+        expect(authCalls).toBe(0);
+        expect(configCalls).toBe(0);
+        expect(requests).toEqual([]);
+
+        const renamed = await rename({ fileName: 'new.png' });
+        expect(renamed.isError, JSON.stringify(renamed.content)).not.toBe(true);
+        expect(authCalls).toBe(1);
+        expect(requests).toEqual([{ method: 'PUT', path: '/api.php/v2/files/42', body: { fileName: 'new.png' } }]);
+    } finally {
+        await client.close();
+        await server.close();
+        upstream.stop(true);
     }
 });
 
