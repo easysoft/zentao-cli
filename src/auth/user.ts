@@ -1,8 +1,25 @@
-import { request } from 'zentao-api';
-import type { ZentaoClient } from '../api/index.js';
+import { getModuleAction, request } from 'zentao-api';
+import { getServerConfig, type ZentaoClient } from '../api/index.js';
 import { ZentaoError } from '../errors.js';
 
-export async function findRemoteUser(client: ZentaoClient, account: string, assistant?: string) {
+export function supportsCurrentUserInfo(version: string): boolean {
+    return Boolean(getModuleAction('my', 'info', { version }));
+}
+
+export async function findCurrentUser(client: ZentaoClient, account?: string, assistant?: string): Promise<{ user?: Record<string, unknown>; hadUsers: boolean }> {
+    const { version } = await getServerConfig(client);
+    if (supportsCurrentUserInfo(version)) {
+        const { data: user } = await request<Record<string, unknown>>('my/info', {}, { client, throwOnFail: true, actionAssistant: assistant });
+        if (typeof user?.account !== 'string' || !user.account.trim()) {
+            throw new ZentaoError('E2008', { url: client.siteUrl, status: '', serverResponse: 'my/info 未返回当前用户的有效账号' });
+        }
+        if (account !== undefined && account !== user.account) {
+            throw new ZentaoError('E1013', { account, actual: user.account });
+        }
+        return { user, hadUsers: true };
+    }
+    if (account === undefined) return { hadUsers: false };
+
     let user: Record<string, unknown> | undefined;
     let hadUsers = false;
     let previousPage: string | undefined;

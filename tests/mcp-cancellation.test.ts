@@ -1,6 +1,41 @@
 import { expect, test } from 'bun:test';
 import { createMcpTestClient, toolData } from './mcp-helpers.js';
 
+test('cancelling a profile lookup aborts my/info while other tool calls remain usable', async () => {
+    let started!: () => void;
+    let aborted!: () => void;
+    const ready = new Promise<void>(resolve => { started = resolve; });
+    const cancelled = new Promise<void>(resolve => { aborted = resolve; });
+    const paths: string[] = [];
+    const mcp = await createMcpTestClient(async req => {
+        const url = new URL(req.url);
+        if (url.searchParams.has('mode')) return Response.json({ version: '23.0' });
+        paths.push(url.pathname);
+        if (url.pathname.endsWith('/my/info')) {
+            req.signal.addEventListener('abort', aborted, { once: true });
+            started();
+            await cancelled;
+            return Response.json({ user: { account: 'audit' } });
+        }
+        return Response.json({ product: { id: 2 } });
+    }, ['--modules', 'product']);
+    const controller = new AbortController();
+    try {
+        const profile = mcp.client.callTool({ name: 'zentao_profile', arguments: {} }, undefined, { signal: controller.signal }).catch(error => error);
+        await ready;
+        const other = mcp.client.callTool({ name: 'zentao_product', arguments: { action: 'get', id: 2 } });
+        controller.abort();
+        expect(await profile).toBeInstanceOf(Error);
+        await Promise.race([cancelled, Bun.sleep(1000).then(() => { throw new Error('Profile request was not cancelled'); })]);
+        expect(toolData(await other)).toEqual({ id: 2 });
+        expect(paths).toEqual(['/api.php/v2/my/info', '/api.php/v2/products/2']);
+    } finally {
+        controller.abort();
+        aborted();
+        await mcp.close();
+    }
+}, { timeout: 10_000 });
+
 test('cancelling an update aborts prefetch and prevents PUT without cancelling another request', async () => {
     const writes: string[] = [];
     let notifyPrefetch!: () => void;

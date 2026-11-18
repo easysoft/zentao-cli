@@ -28,13 +28,13 @@ CLI JSON 成功为 `{ok,data,meta}`，失败为 `{ok:false,error}`。JSON 默认
 
 一个 CLI 命令对应一个 AbortController，整次 deadline 和 SIGINT 覆盖 stdin、认证、更新预取、文件上传及业务请求；timeout 单独限制每次 HTTP 请求。批量取消后不继续请求。已完成写入不回滚。
 
-MCP 保留逐请求上下文与 structuredContent/outputSchema。并发认证使用引用计数：取消一个调用只退出该等待者，全部等待者取消才终止共享认证。用户查找统一分页；HTTP 模式过滤本地文件操作，知识 POST 搜索显式标注只读，SQL 保守保留在写工具组。
+MCP 保留逐请求上下文与 structuredContent/outputSchema。并发认证使用引用计数：取消一个调用只退出该等待者，全部等待者取消才终止共享认证。按账号查询旧版用户列表时按需翻页。HTTP 模式过滤本地文件操作，知识 POST 搜索显式标注只读，SQL 保守保留在写工具组。
 
 ## HTTP MCP 的请求隔离
 
 `zentao mcp --transport http` 使用 MCP SDK 的无状态 Streamable HTTP 传输。Node 运行时使用 `node:http` 和 `StreamableHTTPServerTransport`；Bun 运行时使用原生 `Bun.serve` 和 Web Standard 传输，以正确处理客户端断开。两种运行时共用工具、认证和请求处理逻辑。一个进程在启动时固定一个禅道站点，每个 `POST /mcp` 独立创建 MCP server、transport 和 SDK client，业务工具注册与 stdio 共用。请求结束后关闭该请求的 MCP 资源。
 
-凭证仅取自当前请求的 `token` 或 `Authorization: Bearer` 请求头；缺失、重复或格式错误的凭证被拒绝。远程模式不进入 CLI 的环境凭证和本地 Profile 选择流程，不保存 Token，不开放 `zentao_switch_profile`。MCP 上下文单独提供 client、业务配置和站点信息；HTTP 的账号为空，因此 `zentao_profile` 不查询用户列表，也不验证 Token。
+凭证仅取自当前请求的 `token` 或 `Authorization: Bearer` 请求头；缺失、重复或格式错误的凭证被拒绝。远程模式不进入 CLI 的环境凭证和本地 Profile 选择流程，不保存 Token，不开放 `zentao_switch_profile`。MCP 上下文单独提供 client、业务配置和站点信息。HTTP 的 `zentao_profile` 通过 `my/info` 查询当前请求的 Token 所属账号。低于 23.0、biz14.0、max9.0、ipd6.0 的对应系列版本缺少该接口，工具返回 `account=null`、`user=null`、`userFound=false`。
 
 HTTP 模式强制关闭本地文件上传能力。现有 `file/create` 的文件参数是服务端本地路径，SDK 会读取该路径，因此 multipart/本地路径上传操作在获取业务认证上下文和调用 SDK 前被拒绝，动作帮助的 `available` 同步为 `false`。CLI 和 stdio 仍可上传本地文件；附件更新、删除等操作不受此限制。
 

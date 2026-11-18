@@ -6,11 +6,14 @@ import { DEFAULT_CONFIG } from '../src/config/defaults.js';
 import { createMcpServer } from '../src/mcp/server.js';
 import { createMcpTestClient, toolData } from './mcp-helpers.js';
 
-test('token-only context reports unknown identity without looking up users or exposing account switching', async () => {
-    let requests = 0;
+test('an older server with only a Token reports unknown identity after checking its version', async () => {
+    const requests: string[] = [];
     const api = Bun.serve({
         hostname: '127.0.0.1', port: 0,
-        fetch() { requests++; return Response.json({ users: [{ account: 'unrelated' }] }); },
+        fetch(req) {
+            requests.push(new URL(req.url).searchParams.get('mode') ?? req.url);
+            return Response.json({ version: '22.5' });
+        },
     });
     const serverUrl = api.url.toString();
     const server = createMcpServer({
@@ -27,10 +30,10 @@ test('token-only context reports unknown identity without looking up users or ex
         expect(tools.map(tool => tool.name).sort()).toEqual(['zentao_action_help', 'zentao_product', 'zentao_profile']);
         expect(toolData(await client.callTool({ name: 'zentao_profile', arguments: {} }))).toEqual({
             account: null, server: serverUrl, userFound: false, user: null,
-            note: '无法仅凭禅道 Token 确定账号，未查询用户详情。',
+            note: '当前禅道版本不支持通过 Token 查询当前用户资料。',
         });
         expect((await client.callTool({ name: 'zentao_switch_profile', arguments: { profileKey: 'local-user' } })).isError).toBe(true);
-        expect(requests).toBe(0);
+        expect(requests).toEqual(['getconfig']);
     } finally {
         await client.close();
         await server.close();

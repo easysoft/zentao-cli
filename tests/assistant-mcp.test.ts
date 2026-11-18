@@ -18,7 +18,7 @@ for (const transport of ['stdio', 'http'] as const) for (const assistant of [und
             const marker = req.headers.get('ZenTao-Action-Assistant');
             if (url.searchParams.has('mode')) {
                 expect(marker).toBeNull();
-                return Response.json({ version: '22.7' });
+                return Response.json({ version: '23.0' });
             }
             calls.push({ path: url.pathname, method: req.method, marker });
             expect(url.searchParams.has('assistant')).toBe(false);
@@ -29,7 +29,7 @@ for (const transport of ['stdio', 'http'] as const) for (const assistant of [und
             }
             await Bun.sleep(url.pathname.endsWith('/2') ? 15 : 1);
             return Response.json({ product: { id: Number(url.pathname.split('/').at(-1)), name: 'Original' },
-                users: [{ account: 'audit' }], status: 'success' });
+                user: { account: 'audit' }, status: 'success' });
         };
         let client: Client;
         let close: () => Promise<void>;
@@ -72,12 +72,10 @@ for (const transport of ['stdio', 'http'] as const) for (const assistant of [und
             expect(calls).toHaveLength(8);
             await client.callTool({ name: 'zentao_product_read', arguments: { action: 'get', id: 1 } });
             expect(calls.at(-1)?.marker).toBe(expectedDefault);
-            if (transport === 'stdio') {
-                for (const override of ['AI <profile>', '', undefined]) {
-                    const result = await client.callTool({ name: 'zentao_profile', arguments: override === undefined ? {} : { assistant: override } });
-                    expect(result.isError).not.toBe(true);
-                    expect(calls.at(-1)?.marker).toBe(override === '' ? null : override ?? expectedDefault);
-                }
+            for (const override of ['AI <profile>', '', undefined]) {
+                const result = await client.callTool({ name: 'zentao_profile', arguments: override === undefined ? {} : { assistant: override } });
+                expect(result.isError).not.toBe(true);
+                expect(calls.at(-1)).toEqual({ path: '/api.php/v2/my/info', method: 'GET', marker: override === '' ? null : override ?? expectedDefault });
             }
         } finally { await close(); }
     });

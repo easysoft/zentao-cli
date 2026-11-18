@@ -94,7 +94,7 @@ $ zentao product list --format=json
 | 看不到工具，或不能执行某个操作 | 检查服务是否已在当前 Agent 中启用，以及启动时的 `--read-only`、`--modules` 限制 |
 | 无法上传本地附件 | HTTP 模式禁用读取本地路径的上传操作，请使用本地 CLI 或 stdio MCP |
 | `/healthz` 正常，业务调用失败 | 健康检查只检查服务进程；继续检查禅道地址、Token、账号权限和版本要求 |
-| `zentao_profile` 返回 `account=null` | HTTP Token 模式的预期行为，不表示匿名业务调用；该工具不解析 Token，也不验证其有效性 |
+| `zentao_profile` 返回 `account=null` | HTTP 模式通过 `my/info` 查询当前 Token 所属账号。请检查站点是否达到对应系列的最低版本（23.0、biz14.0、max9.0、ipd6.0）。较早版本返回空账号，可调用有权限的只读业务工具验证连接 |
 
 用户接入页面（`/start`）的常见提示：
 

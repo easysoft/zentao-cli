@@ -1,5 +1,5 @@
 import { brandText } from '../brand.js';
-import { findRemoteUser } from '../auth/user.js';
+import { findCurrentUser } from '../auth/user.js';
 import { actionContract, actionIsReadOnly } from '../modules/contract.js';
 import { z } from 'zod';
 import { LOCAL_FILE_UPLOAD_UNAVAILABLE, withoutLocalUploads } from '../modules/file-policy.js';
@@ -112,26 +112,17 @@ interface ToolInput {
 async function handleProfileTool(auth: AuthProvider, signal?: AbortSignal, assistant?: string): Promise<CallToolResult> {
     if (assistant !== undefined) validateAssistant(assistant);
     const { client, identity: profile } = await auth.getContext(signal);
-    if (profile.account === undefined) {
-        return toolResult({
-            server: profile.server,
-            account: null,
-            user: null,
-            userFound: false,
-            note: brandText('无法仅凭禅道 Token 确定账号，未查询用户详情。'),
-        });
-    }
     const scopedClient = withRequestSignal(client, signal);
-    const { user } = await findRemoteUser(scopedClient, profile.account, assistant);
-    const identity = {
-        account: profile.account,
+    const { user } = await findCurrentUser(scopedClient, profile.account, assistant);
+    const account = user?.account ?? profile.account ?? null;
+    return toolResult({
+        account,
         server: profile.server,
         userFound: Boolean(user),
         user: user ? Object.fromEntries(['id', 'account', 'realname', 'dept', 'role']
-            .filter(key => user![key] !== undefined).map(key => [key, user![key]])) : null,
-    };
-
-    return toolResult(identity);
+            .filter(key => user[key] !== undefined).map(key => [key, user[key]])) : null,
+        ...(account === null ? { note: brandText('当前禅道版本不支持通过 Token 查询当前用户资料。') } : {}),
+    });
 }
 
 interface SwitchProfileInput {
@@ -254,7 +245,7 @@ export function registerModuleTools(server: McpServer, auth: AuthProvider, optio
     server.registerTool(
         brandText('zentao_profile'),
         {
-            description: '获取当前 MCP 绑定的账号和站点；已知账号时查询远端用户详情，仅 Token 认证时账号未知。userFound=false 表示无用户详情，服务端失败会报错',
+            description: '查询当前 Token 对应的账号、站点和用户资料。旧版禅道按已绑定的账号查询，未绑定时返回空账号。',
             inputSchema: z.object({ assistant: z.string().optional().describe('本次操作来源标记；省略继承服务设置，空字符串关闭') }).strict(),
             outputSchema,
             annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
@@ -263,7 +254,7 @@ export function registerModuleTools(server: McpServer, auth: AuthProvider, optio
             try {
                 return await handleProfileTool(auth, extra.signal, input.assistant ?? options.assistant);
             } catch (error) {
-                return toolError(error, { module: 'user', action: 'list' });
+                return toolError(error);
             }
         },
     );

@@ -46,9 +46,17 @@ function rawRequest(url: URL, rawHeaders: string[], body: string | string[] = '{
     });
 }
 
-test('HTTP client initializes, discovers shared tools and reports unknown Token identity without upstream requests', async () => {
-    let requests = 0;
-    const f = await fixture(() => { requests++; return Response.json({}); });
+test('HTTP tool discovery is offline and profile resolves the caller Token on supported servers', async () => {
+    const requests: string[] = [];
+    let status = 200;
+    const f = await fixture(req => {
+        const url = new URL(req.url);
+        requests.push(url.pathname + url.search);
+        if (url.searchParams.get('mode') === 'getconfig') return Response.json({ version: '23.0' });
+        expect(req.headers.get('token')).toBe('test-token');
+        if (status !== 200) return Response.json({ error: 'identity unavailable' }, { status });
+        return Response.json({ user: { id: 17, account: 'remote', realname: 'Remote', role: 'dev', dept: 3, phone: 'private-phone' } });
+    });
     const stdio = await createMcpTestClient(() => Response.json({}), ['--modules', 'product']);
     try {
         const { client, transport } = await f.connect();
@@ -57,11 +65,22 @@ test('HTTP client initializes, discovers shared tools and reports unknown Token 
         expect(tools.map(tool => tool.name)).toEqual(['zentao_action_help', 'zentao_profile', 'zentao_product']);
         const localTools = await stdio.client.listTools();
         expect(tools.find(tool => tool.name === 'zentao_product')).toEqual(localTools.tools.find(tool => tool.name === 'zentao_product'));
-        expect(toolData(await client.callTool({ name: 'zentao_profile', arguments: {} }))).toMatchObject({
-            server: f.api.url.toString().replace(/\/$/, ''), account: null, user: null, userFound: false,
+        expect(requests).toEqual([]);
+        const profile = await client.callTool({ name: 'zentao_profile', arguments: {} });
+        expect(toolData(profile)).toEqual({
+            server: f.api.url.origin, account: 'remote', userFound: true,
+            user: { id: 17, account: 'remote', realname: 'Remote', role: 'dev', dept: 3 },
         });
+        expect(JSON.stringify(profile)).not.toContain('private-phone');
         expect((await client.callTool({ name: 'zentao_switch_profile', arguments: { profileKey: 'local-user' } })).isError).toBe(true);
-        expect(requests).toBe(0);
+        expect(requests).toEqual(['/?mode=getconfig', '/api.php/v2/my/info']);
+        for (const [failure, code] of [[401, 'E1004'], [403, 'E2006'], [404, 'E2002']] as const) {
+            status = failure;
+            requests.length = 0;
+            const denied = await client.callTool({ name: 'zentao_profile', arguments: {} });
+            expect(denied).toMatchObject({ isError: true, structuredContent: { error: { code } } });
+            expect(requests.filter(path => !path.includes('getconfig'))).toEqual(['/api.php/v2/my/info']);
+        }
     } finally { await stdio.close(); await f.close(); }
 });
 

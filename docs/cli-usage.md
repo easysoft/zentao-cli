@@ -168,7 +168,7 @@ stdio 是默认模式，由 MCP 客户端启动并管理进程。通过 `zentao 
 
 stdio 在首次业务调用时绑定账号和站点，环境凭证不会写入本地 Profile。`zentao_switch_profile` 只切换当前 stdio MCP 实例，不改变 CLI 或其他实例的当前账号；在 CLI 中切换账号也不会改变已运行的实例。显式选择的本地 Profile 会读取同一账号的 Token 和配置更新，删除该 Profile 后后续调用会报错。
 
-stdio 的 `zentao_profile` 返回绑定的 `account`、`server`、远端详情 `user` 和 `userFound`。详情按账号过滤并按需翻页，仅返回 ID、账号、姓名、部门、角色；未找到时 `user=null`、`userFound=false`。远端权限、Token 或业务错误会明确报错。
+`zentao_profile` 返回 `account`、`server`、`user` 和 `userFound`。禅道 23.0、biz14.0、max9.0、ipd6.0 及各系列更新版本通过 `my/info` 查询当前 Token 对应的用户。连接较早版本时，stdio 按绑定账号查询用户列表，必要时翻页。HTTP 仅持有 Token，在这些旧版本上返回 `account=null`。用户详情仅含 ID、账号、姓名、部门和角色。未找到详情时返回 `user=null`、`userFound=false`，远端权限和凭据错误会报错。
 
 ### 远程 HTTP 模式
 

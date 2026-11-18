@@ -1,7 +1,7 @@
 import { brandText } from '../brand.js';
-import { findRemoteUser } from './user.js';
+import { findCurrentUser, supportsCurrentUserInfo } from './user.js';
 import { ZentaoClient, createClient, getServerConfig, type ClientOptions } from '../api/index.js';
-import type { ApiResponse, ServerConfig } from '../types/index.js';
+import type { ServerConfig } from '../types/index.js';
 import { ZentaoError, mapSdkError } from '../errors.js';
 
 /** 密码登录成功后的结果 */
@@ -20,10 +20,7 @@ export interface EnvCredentials {
     token?: string;
 }
 
-/**
- * 使用账号密码登录获取 Token，并尽力拉取当前账号的用户详情与服务端配置。
- * 用户列表拉取失败不视为致命错误（Token 仍然有效）。
- */
+/** Authenticate with a password and retrieve the current user's profile. */
 export async function login(
     serverUrl: string,
     account: string,
@@ -51,9 +48,10 @@ export async function login(
         let user: Record<string, unknown> | undefined;
         const serverConfig = await getServerConfig(client);
         try {
-            ({ user } = await verifyToken(client, account));
-        } catch {
-            // Token valid but couldn't fetch user details - not fatal
+            ({ user } = await findCurrentUser(client, account));
+        } catch (error) {
+            // Legacy deployments may restrict directory access even after a successful login.
+            if (supportsCurrentUserInfo(serverConfig.version)) throw mapSdkError(error);
         }
 
         if (options?.signal?.aborted) throw new ZentaoError('E5003');
@@ -63,19 +61,14 @@ export async function login(
     }
 }
 
-/**
- * 拉取服务器配置与用户列表，用于验证 Token 是否可用。
- * - 服务端 HTTP 错误由 SDK 统一映射为 CLI 错误
- * - /users 401 由 SDK 映射为 E1004（Token 失效）
- * - /users 返回空列表也按 E1004 处理
- */
+/** Verify the token owner's identity, or look up the provided account on legacy servers. */
 export async function verifyToken(
     client: ZentaoClient,
     account: string,
 ): Promise<{ serverConfig: ServerConfig; user?: Record<string, unknown> }> {
     try {
         const serverConfig = await getServerConfig(client);
-        const { user, hadUsers } = await findRemoteUser(client, account);
+        const { user, hadUsers } = await findCurrentUser(client, account);
         if (!hadUsers) throw new ZentaoError('E1004');
         return { serverConfig, user };
     } catch (error) {

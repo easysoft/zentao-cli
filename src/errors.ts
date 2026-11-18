@@ -18,6 +18,7 @@ export const ERROR_CODES = {
     E1010: brandText('无法启动本地登录服务，请检查本机网络权限，或使用 `zentao login --no-browser`'),
     E1011: '配置文件写入失败，请检查 {path} 的目录权限和磁盘空间',
     E1012: brandText('未能确认远端会话已撤销，已保留本地登录记录，请重试或联系禅道管理员'),
+    E1013: 'Token 所属账号为 {actual}，与指定账号 {account} 不一致',
 
     // API 调用 (20xx)
     E2001: brandText('未找到指定的模块 {module}，请通过 `zentao help` 查看支持的模块'),
