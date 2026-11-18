@@ -56,6 +56,12 @@ export async function prepareCliParams(mod: ModuleDefinition, action: ModuleActi
         const schema = definitions.find(param => param.name === name);
         assign(name, schema ? parseCliValue(value as string, schema) : Number(value));
     }
+    if (mod.name === 'file' && action.name === 'read' && options.output !== undefined) {
+        if (!options.output.trim()) invalid('output', '请输入目标文件路径');
+        if (options.ids !== undefined || options.batchFailFast || options.format === 'raw' || params.stream === 1) {
+            invalid('output', '写入单个附件的原始字节时不能同时指定 --ids、--batch-fail-fast、--format=raw 或 --stream=1');
+        }
+    }
     const primary = actionContract(mod, action).target;
     if (target !== undefined) {
         if (!primary) invalid('target', '此操作没有位置参数');

@@ -38,6 +38,7 @@ export const ERROR_CODES = {
     E5002: brandText('SSL/TLS 证书验证失败，请检查禅道服务地址是否正确'),
     E5003: '请求已取消',
     E5004: '无法启动 MCP HTTP 服务：{reason}',
+    E5005: '无法写入附件 {path}：{reason}',
 } as const;
 
 /** 错误码类型，限定为 ERROR_CODES 中定义的 key */

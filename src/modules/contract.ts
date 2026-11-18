@@ -37,7 +37,10 @@ export function actionContract(mod: ModuleDefinition, action: ModuleAction) {
     const target = parameters.find(param => param.role === 'path' && !['scope', 'scopeID'].includes(param.name));
     return {
         module: mod.name, action: action.name, command: `${mod.name} ${kebabCase(action.name)}`,
-        display: action.display, description: action.description, type: action.type,
+        display: action.display, type: action.type,
+        description: mod.name === 'file' && action.name === 'read'
+            ? '读取附件内容。CLI 默认输出 Base64，--format=raw 保留服务端字节或文本。使用 --output <path> 将原始附件流式保存到文件。'
+            : action.description,
         path: action.path, method: action.method, minVersion: action.minVersion,
         parameters: parameters.map(param => ({ ...param, flag: parameterFlag(param.name) })),
         target: target?.name, batch: supportsBatch(action),

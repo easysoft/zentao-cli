@@ -11,6 +11,7 @@ zentao bug list --product 12
 zentao bug get 123
 zentao bug resolve 123 --resolution fixed
 zentao db table zt_user
+zentao file read 42 --output ./attachment.pdf
 zentao help bug create --format=json
 ```
 
@@ -7844,21 +7845,20 @@ Usage: zentao file read [options] [target]
 读取附件内容（最低版本：23.0 / biz14.0 / max9.0 / ipd6.0）
 
 Arguments:
-  target              单个 fileID；也可使用命名参数
+  target             单个 fileID；也可使用命名参数
 
 Options:
-  --file-id <value>   附件数字 ID（必填）
-  --stream <value>    返回格式
-  --ids <ids>         批量目标 ID，逗号分隔并去重
-  --batch-fail-fast   失败后跳过剩余目标
-  --fields <fields>   返回字段，逗号分隔
-  --html-to-markdown  显式将富文本字段转换为 Markdown
-  -h, --help          显示命令帮助
+  --file-id <value>  附件数字 ID（必填）
+  --stream <value>   返回格式
+  --output <path>    流式保存附件，下载完成后替换目标文件
+  --ids <ids>        批量目标 ID，逗号分隔并去重
+  --batch-fail-fast  失败后跳过剩余目标
+  -h, --help         显示命令帮助
 ```
 
 最低版本：23.0 / biz14.0 / max9.0 / ipd6.0。
 
-默认返回 ArrayBuffer；stream=1 返回 Base64 字符串。两种模式均完整载入内存，大文件流式读取可使用底层客户端的 responseType: response。
+读取附件内容。CLI 默认输出 Base64，--format=raw 保留服务端字节或文本。使用 --output <path> 将原始附件流式保存到文件。
 
 能力：只读；批量：--ids；分页：不支持；本地文件：否。
 

@@ -65,7 +65,7 @@ for (const mod of modules) {
         assert(cmd, `Missing command ${mod.name}/${action.name}`);
         parameterCount += contract.parameters.length;
         const body = [fence(cmd.helpInformation()), `最低版本：${action.minVersion.join(' / ')}。`,
-            action.description ?? '',
+            contract.description ?? '',
             `能力：${contract.readOnly ? '只读' : '写入或需服务端确认'}；批量：${contract.batch ? '--ids' : '不支持'}；分页：${contract.pagination ? '--page / --page-size / --all' : '不支持'}；本地文件：${contract.localFiles ? '是，HTTP MCP 不可用' : '否'}。`,
             contract.autoFill ? '未提供的请求体字段可由匹配的详情操作自动补全。' : '',
             table(['参数', 'JSON 字段', '位置', '类型', '必填', '默认值', '说明与约束'], contract.parameters.map(param => [

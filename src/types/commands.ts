@@ -29,6 +29,8 @@ export interface GlobalOptions {
 
 /** 模块操作选项 */
 export interface ModuleActionOptions extends GlobalOptions {
+    /** Destination for a streamed file/read download. */
+    output?: string;
     /** Explicit, validated and deduplicated batch targets. */
     ids?: string;
     maxItems?: string;

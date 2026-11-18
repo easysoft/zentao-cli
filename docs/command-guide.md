@@ -11,6 +11,7 @@ zentao bug list --product 12
 zentao bug get 123
 zentao bug resolve 123 --resolution fixed
 zentao db table zt_user
+zentao file read 42 --output ./attachment.pdf
 zentao help bug create --format=json
 ```
 

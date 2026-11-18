@@ -211,7 +211,7 @@ export async function executeModuleCommand(
     }
 
     if (action.type === 'get') {
-        const data = (response.data ?? {}) as Record<string, unknown>;
+        const data = response.data instanceof ArrayBuffer ? Buffer.from(response.data).toString('base64') : response.data ?? {};
         return { action, data, rawResponse: response, fields, isList: false };
     }
 

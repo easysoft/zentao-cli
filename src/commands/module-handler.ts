@@ -39,6 +39,16 @@ function renderModuleExecution(
 ): void {
     const format = options.format ?? config.defaultOutputFormat ?? 'markdown';
 
+    if (execution.action.path === '/files/{fileID}/read' && format !== 'json') {
+        if (format === 'raw') {
+            const content = execution.rawResponse;
+            process.stdout.write(content instanceof ArrayBuffer ? Buffer.from(content) : String(content));
+        } else {
+            console.log(execution.data);
+        }
+        return;
+    }
+
     if (format === 'raw') {
         const output = formatOutput(execution.data, {
             format,

@@ -206,6 +206,8 @@ CLI 使用 `zentao-api 0.9.0` 的注册表，提供 42 个模块、364 个操作
 
 SDK 0.9.0 新增 `my info` 查询当前用户、`file get` 查询附件元数据、`file read` 读取附件内容。各操作支持的禅道版本可通过 `--help` 查看。
 
+`zentao file read 42 --output ./attachment.pdf` 将附件流式写入文件，下载成功后替换目标文件。普通终端和 JSON 输出使用 Base64。`--format=raw` 可将原始字节重定向到管道，显式指定 `--stream=1` 时输出服务端返回的 Base64 文本。MCP 的 `file/read` 在 `data` 中返回 `{encoding:"base64",content:"…"}`。大附件优先使用 CLI 的 `--output`。
+
 SDK 0.8.2 修正了 `story`、`requirement`、`epic` 的 `create` / `change`：未提供有效评审人时发送 `needNotReview: "1"`，状态默认 `active`；显式传入的非空状态会保留，空字符串仍回落为 `active`。提供有效评审人时状态为 `reviewing`，优先于显式状态。CLI 支持 `--status=draft` 或 `--data '{"status":"draft"}'`；MCP 使用 `params.status` 或 `params.data.status`。`change` 不会自动读取并保留原状态，需要保留草稿时应明确传入 `draft`。
 
 SDK 0.8.0 按禅道 22.7 调整了地盘（`my`）列表的 `browseType` 默认值和可选值，例如任务与 Bug 默认 `assignedTo`（区分大小写），项目默认 `doing`。依赖旧筛选范围的脚本应查看对应操作的 `--help`，显式传入受支持的值。

@@ -71,6 +71,28 @@ describe('module executor (zentao-api request pipeline)', () => {
         expect(result.data).toEqual(raw);
     });
 
+    test.each([
+        ['binary', new Uint8Array([0, 255, 128, 13, 10]).buffer, 'AP+ADQo='],
+        ['empty binary', new ArrayBuffer(0), ''],
+        ['numeric Base64 text', '1234', '1234'],
+        ['empty Base64 text', '', ''],
+    ] as const)('file/read preserves %s in JSON and raw modes', async (_label, payload, expectedText) => {
+        const { client, requests } = mockClient(() => payload, '23.0');
+        const isText = typeof payload === 'string';
+        const args = isText ? ['42', '--stream=1'] : ['42'];
+        for (const format of ['json', 'raw'] as const) {
+            const result = await executeModuleCommand(client, getModule('file')!, 'read', args, { format }, DEFAULT_CONFIG);
+            expect(result.data).toBe(format === 'raw' ? payload : expectedText);
+        }
+        expect(requests).toHaveLength(2);
+        for (const req of requests) {
+            expect(req).toMatchObject({
+                path: '/files/42/read',
+                options: { query: { stream: isText ? 1 : 0 }, responseType: isText ? 'text' : 'arrayBuffer' },
+            });
+        }
+    });
+
     test('uploads explicit local file paths through the SDK multipart pipeline', async () => {
         const dir = mkdtempSync(join(tmpdir(), 'zentao-cli-upload-'));
         const file = join(dir, 'attachment.txt');

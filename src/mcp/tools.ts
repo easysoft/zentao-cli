@@ -154,8 +154,9 @@ async function handleModuleTool(
     if (!isActionAvailable(action, options)) {
         throw new ZentaoError('E2009', { option: `${mod.name}/${action.name}`, reason: LOCAL_FILE_UPLOAD_UNAVAILABLE });
     }
+    const readingFileContent = mod.name === 'file' && action.name === 'read';
     for (const option of ['filter', 'sort', 'search', 'searchFields', 'pick'] as const) {
-        if (input[option] !== undefined && action.type !== 'list' && !(option === 'pick' && action.type === 'get')) {
+        if (input[option] !== undefined && action.type !== 'list' && !(option === 'pick' && action.type === 'get' && !readingFileContent)) {
             throw new ZentaoError('E2009', { option, reason: `不适用于 ${mod.name}/${action.name}` });
         }
     }
@@ -189,7 +190,7 @@ async function handleModuleTool(
     }
 
     if (execution.action.type === 'get') {
-        return toolResult(execution.data);
+        return toolResult(readingFileContent ? { encoding: 'base64', content: execution.data } : execution.data);
     }
 
     // create / update / delete / action
@@ -230,6 +231,9 @@ export function registerModuleTools(server: McpServer, auth: AuthProvider, optio
                 if (!definition) throw new ZentaoError('E2005', { module: mod.name });
                 return toolResult({
                     ...actionContract(mod, definition),
+                    ...(module === 'file' && action === 'read' ? {
+                        description: '读取附件内容。MCP 对两种 stream 取值均返回 { encoding: "base64", content: "…" }，content 包含完整附件的 Base64 文本。',
+                    } : {}),
                     available: selectedModules.some(selected => selected.name === mod.name) && isActionAvailable(definition, options),
                     ...(options.allowLocalFiles === false && definition.requestBody?.mediaType === 'multipart/form-data'
                         ? { unavailableReason: LOCAL_FILE_UPLOAD_UNAVAILABLE } : {}),

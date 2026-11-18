@@ -6,8 +6,11 @@ import { getScopeAliasTarget } from '../mcp/params.js';
 import { actionContract, actionParameters, kebabCase, parameterFlag, paginationFields } from '../modules/contract.js';
 import { parseCliValue, prepareCliParams } from '../modules/cli-input.js';
 import { ensureAuth } from '../auth/flow.js';
+import { getProfileConfig } from '../config/store.js';
+import { downloadFile } from './file-download.js';
 import { handleModuleCommand, showModuleProps } from './module-handler.js';
-import type { GlobalOptions, ModuleActionName, ModuleActionOptions } from '../types/index.js';
+import type { ModuleActionOptions } from '../types/index.js';
+import { emitResult } from '../utils/output.js';
 
 /** Commander 的 `collect` 回调：将多次出现的选项累积为数组 */
 function collect(value: string, previous: string[] = []): string[] {
@@ -25,6 +28,7 @@ export function registerModuleCommands(program: Command): void {
         });
         for (const action of mod.actions) {
             const contract = actionContract(mod, action);
+            const fileRead = name === 'file' && action.name === 'read';
             const cmd = resource.command(kebabCase(action.name))
                 .description(`${action.display ?? action.name}（最低版本：${action.minVersion.join(' / ')}）`);
             if (contract.target) cmd.argument('[target]', `单个 ${contract.target}；也可使用命名参数`);
@@ -61,9 +65,10 @@ export function registerModuleCommands(program: Command): void {
                 mappings.push({ name: scope, attribute: option.attributeName() });
             }
             if (action.requestBody) cmd.option('--data <json|@file|@->', 'JSON 对象、文件或显式标准输入');
+            if (fileRead) cmd.option('--output <path>', '流式保存附件，下载完成后替换目标文件');
             if (contract.batch) cmd.option('--ids <ids>', '批量目标 ID，逗号分隔并去重').option('--batch-fail-fast', '失败后跳过剩余目标');
             if (action.type === 'delete') cmd.option('--yes', '确认删除');
-            if (action.type === 'list' || action.type === 'get') cmd.option('--fields <fields>', '返回字段，逗号分隔').option('--html-to-markdown', '显式将富文本字段转换为 Markdown');
+            if (action.type === 'list' || (action.type === 'get' && !fileRead)) cmd.option('--fields <fields>', '返回字段，逗号分隔').option('--html-to-markdown', '显式将富文本字段转换为 Markdown');
             if (action.type === 'list') {
                 cmd.option('--max-items <number>', '整次命令最多返回条数');
                 cmd.option('--filter <expr>', '当前获取范围内过滤；组内 AND，多次指定为 OR', collect);
@@ -80,6 +85,13 @@ export function registerModuleCommands(program: Command): void {
                 const values = Object.fromEntries(mappings.map(item => [item.name, parsed[item.attribute]]));
                 const params = await prepareCliParams(mod, action, contract.target ? args[0] as string | undefined : undefined, options, values);
                 const { client, profile } = await ensureAuth(options);
+                if (fileRead && options.output !== undefined) {
+                    const format = options.format ?? getProfileConfig(profile).defaultOutputFormat;
+                    if (format === 'raw') throw new ZentaoError('E2009', { option: 'output', reason: '写入文件时请使用 table、markdown 或 json 输出下载结果' });
+                    const result = await downloadFile(client, action, String(params.fileID), options.output, options);
+                    emitResult(result, { format });
+                    return;
+                }
                 await handleModuleCommand(client, mod, action.name, [], profile, options, params);
             });
         }

@@ -48,17 +48,37 @@ describe('CLI command entry points', () => {
         rmSync(directory, { recursive: true, force: true });
     });
 
-    async function run(args: string[]) {
+    async function run(args: string[], format = 'json') {
         const child = Bun.spawn({
-            cmd: [process.execPath, '--no-env-file', 'src/index.ts', '--config', configFile, '--format=json', ...args],
+            cmd: [process.execPath, '--no-env-file', 'src/index.ts', '--config', configFile, `--format=${format}`, ...args],
             env: { ...process.env, ZENTAO_URL: '', ZENTAO_ACCOUNT: '', ZENTAO_PASSWORD: '', ZENTAO_TOKEN: '' },
             stdin: 'ignore', stdout: 'pipe', stderr: 'pipe',
         });
-        const [stdout, stderr, exitCode] = await Promise.all([
-            new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited,
+        const [bytes, stderr, exitCode] = await Promise.all([
+            new Response(child.stdout).arrayBuffer(), new Response(child.stderr).text(), child.exited,
         ]);
-        return { stdout, stderr, exitCode };
+        const stdoutBytes = Buffer.from(bytes);
+        return { stdout: stdoutBytes.toString(), stdoutBytes, stderr, exitCode };
     }
+
+    test.each([
+        ['binary', false, Buffer.from([0, 255, 128, 10, 13, 0])],
+        ['empty binary', false, Buffer.alloc(0)],
+        ['Base64 text', true, Buffer.from('1234')],
+    ] as const)('file read writes %s to raw stdout byte for byte', async (_label, stream, bytes) => {
+        server.reload({ fetch(request) {
+            const url = new URL(request.url);
+            if (url.searchParams.get('mode') === 'getconfig') return Response.json({ version: '23.0' });
+            requests.push({ method: request.method, path: url.pathname, query: Object.fromEntries(url.searchParams) });
+            return new Response(bytes);
+        } });
+        const args = ['file', 'read', '42'];
+        if (stream) args.push('--stream=1');
+        const result = await run(args, 'raw');
+        expect(result.exitCode, result.stderr).toBe(0);
+        expect(result.stdoutBytes).toEqual(bytes);
+        expect(requests).toEqual([{ method: 'GET', path: '/api.php/v2/files/42/read', query: { stream: stream ? '1' : '0' } }]);
+    });
 
     test('explicit batch IDs are deduplicated and routed in order', async () => {
         const result = await run(['product', 'delete', '--ids=1,2,1', '--yes']);
