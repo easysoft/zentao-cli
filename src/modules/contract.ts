@@ -13,13 +13,18 @@ export function parameterFlag(name: string): string {
     return `--${['deadline', 'timeout', 'profile', 'config', 'format', 'color', 'input', 'yes', 'quiet', 'insecure', 'assistant', 'data', 'ids', 'fields', 'all', 'max-items', 'filter', 'sort', 'search'].includes(flag) ? 'data-' : ''}${flag}`;
 }
 
+export function pathIdType(mod: ModuleDefinition, action: ModuleAction, name: string) {
+    if (!name.endsWith('ID')) return undefined;
+    return mod.name === 'file' && action.name === 'get' && name === 'fileID' ? ['integer', 'string'] as const : 'integer';
+}
+
 export function actionParameters(mod: ModuleDefinition, action: ModuleAction) {
     const body = action.requestBody?.schema.properties as Record<string, ValueSchema> | undefined;
     return getModuleActionParams(mod.name, action.name).map(param => ({
         ...param,
         ...(param.role === 'body' ? body?.[param.name] : {}),
         type: (param.role === 'body' ? body?.[param.name]?.type : undefined) ?? param.type
-            ?? (param.role === 'path' && param.name.endsWith('ID') ? 'integer' : 'string'),
+            ?? (param.role === 'path' ? pathIdType(mod, action, param.name) : undefined) ?? 'string',
     }));
 }
 

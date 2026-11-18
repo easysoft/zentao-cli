@@ -50,7 +50,7 @@ zentao bug create --product-id=<产品ID> --title="<Bug 标题>" --severity=<1-4
 用户有本地截图并明确要上传时，可关联到刚创建或指定的 Bug：
 
 ```bash
-zentao file create --file=<本地截图路径> --object-type=bug --object-id=<BugID>
+zentao file create --file=<本地截图路径> --object-type=bug --object-id=<BugID> --extra=''
 ```
 
 上传前核对文件与目标，成功后引用实际返回的附件信息，不把附件上传当作 Bug 已解决。

@@ -192,7 +192,7 @@ zentao mcp --transport http --url https://zentao.example.com
 
 业务参数使用 `params` 中的正式名称，例如任务列表 `{"action":"list","params":{"executionID":3}}`。`id`、`product`、`project`、`execution` 是按动作定义映射的数字 ID 简写，与正式参数冲突时会报错。数组字段不使用数字简写，例如创建代码库用 `{"action":"create","params":{"space":10,"product":[12,13],"name":"demo_repo"}}`。请求体直接使用 JSON 对象；MCP 不读取 CLI 管道或 `@-` 输入。
 
-MCP 发送请求前按动作定义检查必填字段、JSON 类型、明确枚举和未知参数，以及已声明的整数、数值范围、字符串长度/格式、数组长度和元素类型。路径 ID 使用非负整数，`page` 从 1 开始，`recPerPage` 范围为 1–1000；业务字段仍按自身定义处理，例如预计工时允许小数、根模块允许 0。更新时可由详情自动补齐的请求体字段允许省略。权限和字段间业务规则由服务端校验。
+MCP 发送请求前按动作定义检查必填字段、JSON 类型、明确枚举和未知参数，以及已声明的整数、数值范围、字符串长度/格式、数组长度和元素类型。路径 ID 使用非负整数，附件元数据查询 `file/get` 的 `params.fileID` 还接受服务端提供的 Base64 gid。`page` 从 1 开始，`recPerPage` 范围为 1–1000；业务字段仍按自身定义处理，例如预计工时允许小数、根模块允许 0。更新时可由详情自动补齐的请求体字段允许省略。权限和字段间业务规则由服务端校验。
 
 所有工具都声明 `outputSchema`，成功时通过 `structuredContent.data` 返回数据；列表还包含 `pager` 和 `meta`。文本结果保留原有 JSON 形态（列表带 `data`，详情直接返回对象）。业务错误设置 `isError=true` 并返回 `structuredContent.error`，包含 `code`、`message` 及适用的 `module`、`action`；协议和顶层 schema 校验错误由 MCP SDK 返回。
 
@@ -246,8 +246,8 @@ zentao doc create-my-doc --space-id=1 --lib-id=2 --data '{"title":"开发说明"
 # 修改文档库，自动从同一路径的详情接口补全已有字段
 zentao doc update-lib --lib-id=2 --name=开发文档
 
-# SDK 自动按 multipart/form-data 上传本地文件（默认上限 50 MiB）
-zentao file create --file=/path/to/screenshot.png --object-type=bug --object-id=1
+# 上传普通 Bug 附件（默认上限 50 MiB）。省略 --extra 时 SDK 发送编辑器图片标记 editor
+zentao file create --file=/path/to/screenshot.png --object-type=bug --object-id=1 --extra=''
 
 # 查看路径、查询、请求体参数和最低版本
 zentao doc create-my-doc --help

@@ -1,12 +1,12 @@
 import { isDeepStrictEqual } from 'node:util';
-import { paginationFields } from './contract.js';
+import { paginationFields, pathIdType } from './contract.js';
 import { getModuleActionParams } from 'zentao-api';
 import type { ModuleAction, ModuleDefinition } from '../types/index.js';
 import { ZentaoError } from '../errors.js';
 
 // The SDK retains these schema constraints at runtime, beyond its public param type.
 export interface ValueSchema {
-    type?: string;
+    type?: string | readonly ['integer', 'string'];
     minimum?: number;
     maximum?: number;
     minLength?: number;
@@ -21,6 +21,16 @@ export interface ValueSchema {
 export function validateValue(name: string, value: unknown, schema: ValueSchema): void {
     const invalid = (reason: string): never => { throw new ZentaoError('E2009', { option: name, reason }); };
     const { type } = schema;
+    if (type && typeof type !== 'string') {
+        // file/get accepts a decimal ID or an opaque Base64 gid, including unpadded Base64.
+        if (typeof value === 'string' && !/^\d+$/.test(value)) {
+            if (!value || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}(?:==)?|[A-Za-z0-9+/]{3}=?)?$/.test(value)) {
+                invalid('必须为数字 ID 或 Base64 编码的 gid');
+            }
+            return;
+        }
+        return validateValue(name, typeof value === 'string' ? Number(value) : value, { type: 'integer', minimum: 0 });
+    }
     if (type === 'number' || type === 'integer') {
         if (typeof value !== 'number' || !Number.isFinite(value)) invalid('必须为有限数字');
         if (type === 'integer' && !Number.isSafeInteger(value)) invalid('必须为安全整数');
@@ -87,9 +97,9 @@ export function validateToolParams(mod: ModuleDefinition, action: ModuleAction, 
             }
             continue;
         }
-        const pathID = param.role === 'path' && param.name.endsWith('ID');
+        const pathID = param.role === 'path' ? pathIdType(mod, action, param.name) : undefined;
         // Flattened SDK params convert integer to number; recover the original body type.
-        validateValue(param.name, value, { ...param, type: param.type ?? (pathID ? 'number' : undefined), ...(param.role === 'body' ? bodyProperties?.[param.name] : {}) });
+        validateValue(param.name, value, { ...param, type: param.type ?? pathID, ...(param.role === 'body' ? bodyProperties?.[param.name] : {}) });
         if (typeof value === 'number') {
             if ((pathID || param.name.endsWith('ID') || ['pageID', 'recPerPage'].includes(param.name)) && (!Number.isSafeInteger(value) || value < 0)) {
                 invalid(param.name, '必须为非负安全整数');

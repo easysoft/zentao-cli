@@ -70,7 +70,7 @@ for (const mod of modules) {
             contract.autoFill ? '未提供的请求体字段可由匹配的详情操作自动补全。' : '',
             table(['参数', 'JSON 字段', '位置', '类型', '必填', '默认值', '说明与约束'], contract.parameters.map(param => [
                 param.name === contract.pagination?.page ? '--page' : param.name === contract.pagination?.pageSize ? '--page-size' : param.flag,
-                param.name, param.role, param.type, param.required ? '是' : '否', JSON.stringify(param.defaultValue),
+                param.name, param.role, Array.isArray(param.type) ? param.type.join(' 或 ') : param.type, param.required ? '是' : '否', JSON.stringify(param.defaultValue),
                 [param.description, JSON.stringify(Object.fromEntries(Object.entries(param).filter(([key]) => ['minimum', 'maximum', 'minLength', 'maxLength', 'minItems', 'maxItems', 'items', 'options', 'format'].includes(key))))].filter(Boolean).join('\n'),
             ])),
         ].filter(Boolean).join('\n\n');

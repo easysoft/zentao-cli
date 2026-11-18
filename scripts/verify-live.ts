@@ -204,7 +204,7 @@ try {
     }, ['product']);
     await check('Multipart file upload uses only the explicit local fixture', async () => {
         const path = join(directory, 'acceptance.txt'); writeFileSync(path, `${tag}\n007\ntrue\n`);
-        const result = await cli(['file', 'create', '--file', path, '--object-type=bug', '--object-id', String(fixtures.bug)]);
+        const result = await cli(['file', 'create', '--file', path, '--object-type=bug', '--object-id', String(fixtures.bug), '--extra=']);
         return { uploaded: result.data != null, responseKeys: Object.keys(result.data ?? {}) };
     }, ['bug']);
     await check('Discover an accessible published AI knowledge library', async () => {

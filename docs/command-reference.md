@@ -7833,7 +7833,7 @@ Options:
 
 | 参数 | JSON 字段 | 位置 | 类型 | 必填 | 默认值 | 说明与约束 |
 | --- | --- | --- | --- | --- | --- | --- |
-| --file-id | fileID | path | integer | 是 | — | 附件 ID 或 Base64 编码 gid<br>{} |
+| --file-id | fileID | path | integer 或 string | 是 | — | 附件 ID 或 Base64 编码 gid<br>{} |
 
 <a id="action-file-read"></a>
 

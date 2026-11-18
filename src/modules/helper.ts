@@ -1,5 +1,6 @@
 import { brandText, brandMetadata } from '../brand.js';
 import {
+    extendModuleAction,
     getModule as sdkGetModule,
     getModuleAction as sdkGetModuleAction,
     getModuleNames as sdkGetModuleNames,
@@ -7,6 +8,18 @@ import {
     getModuleActionParams as sdkGetModuleActionParams,
 } from 'zentao-api';
 import type { ModuleDefinition, ModuleAction, ModuleActionType } from '../types/index.js';
+
+// SDK 0.9 converts number-like gids (e.g. "1e03") to numbers before encoding the path.
+extendModuleAction('file', 'get', action => {
+    const encodePath = action.beforeRequest!;
+    return { ...action, beforeRequest(request) {
+        const id = request.params.fileID;
+        if (request.params.id === undefined && typeof id === 'string' && !/^\d+$/.test(id)) {
+            request.path = action.path.replace('{fileID}', id);
+        }
+        return encodePath(request);
+    } };
+});
 
 /** 按名称（大小写不敏感）查找模块定义；未注册时返回 undefined */
 export function getModule(name: string): ModuleDefinition | undefined {

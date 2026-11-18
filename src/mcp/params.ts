@@ -31,7 +31,10 @@ export function normalizeToolParams(mod: ModuleDefinition, action: ModuleAction,
     const invalid = (option: string, reason: string): never => { throw new ZentaoError('E2009', { option, reason }); };
     const assign = (name: string, value: unknown) => {
         if (value === undefined) return;
-        if (params[name] !== undefined && String(params[name]) !== String(value)) {
+        const existing = params[name];
+        const sameNumericInput = (typeof existing === 'string' && typeof value === 'number' && existing === String(value))
+            || (typeof existing === 'number' && typeof value === 'string' && String(existing) === value);
+        if (existing !== undefined && existing !== value && !sameNumericInput) {
             invalid(name, '简写与 params 中的参数值冲突');
         }
         params[name] = value;

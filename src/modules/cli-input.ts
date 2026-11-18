@@ -25,6 +25,7 @@ export function parseCliValue(value: string | string[] | boolean, schema: ValueS
     }
     if (typeof value === 'boolean') return value;
     if (Array.isArray(value)) invalid('data', '此字段不能重复');
+    if (Array.isArray(schema.type)) return /^\d+$/.test(value) ? Number(value) : value;
     if (schema.type === 'number' || schema.type === 'integer') {
         if (!value.trim() || !/^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/i.test(value)) invalid('data', '需要有效数字');
         return Number(value);
