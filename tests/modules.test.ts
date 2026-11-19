@@ -48,7 +48,7 @@ describe('module registry (zentao-api)', () => {
         const missing = getModuleNames().filter(name => Object.keys(getObjectProps(name)).length === 0);
         expect(missing.sort()).toEqual([
             'auditplan', 'baseline', 'change', 'db', 'deliverable', 'knowledge', 'knowledgelib', 'nc',
-            'opportunity', 'process', 'relation', 'repo', 'resourcecalendar', 'space', 'weekly', 'workflowgroup',
+            'opportunity', 'process', 'relation', 'repo', 'resourcecalendar', 'setting', 'space', 'weekly', 'workflowgroup',
         ]);
     });
 

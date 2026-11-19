@@ -100,7 +100,7 @@ MCP 保留 structuredContent/outputSchema 与执行时策略检查。知识 POST
 
 ## 覆盖范围
 
-开发版本 CLI **0.4.4** / SDK **0.9.2**，15 个内置一级命令、42 个模块、364 个业务动作。数量、参数和实际 Commander 命令来自同一注册表。
+开发版本 CLI **0.4.4** / SDK **0.9.3**，15 个内置一级命令、43 个模块、365 个业务动作。数量、参数和实际 Commander 命令来自同一注册表。
 
 <a id="global-options"></a>
 
@@ -15643,6 +15643,47 @@ Options:
 | 参数 | JSON 字段 | 位置 | 类型 | 必填 | 默认值 | 说明与约束 |
 | --- | --- | --- | --- | --- | --- | --- |
 | --knowledge-id | knowledgeID | path | integer | 是 | — | 本地知识条目 ID，正整数；不可使用 chunkID 或来源对象 objectID<br>{} |
+
+<a id="module-setting"></a>
+
+## 系统设置 · setting
+
+```text
+Usage: zentao setting [options] [command]
+
+系统设置
+
+Options:
+  -h, --help            显示命令帮助
+
+Commands:
+  props                 返回对象字段定义（离线）
+  work-hours [options]  获取工时设置（最低版本：23.0 / biz14.0 / max9.0 / ipd6.0）
+```
+
+<a id="action-setting-work-hours"></a>
+
+## zentao setting work-hours
+
+```text
+Usage: zentao setting work-hours [options]
+
+获取工时设置（最低版本：23.0 / biz14.0 / max9.0 / ipd6.0）
+
+Options:
+  --fields <fields>   返回字段，逗号分隔
+  --html-to-markdown  显式将富文本字段转换为 Markdown
+  -h, --help          显示命令帮助
+```
+
+最低版本：23.0 / biz14.0 / max9.0 / ipd6.0。
+
+dailyWorkHours 是每日可用工时，单位为小时。effortUnit 是工时展示单位，day 表示日，hour 表示小时。
+
+能力：只读；批量：不支持；分页：不支持；本地文件：否。
+
+| 参数 | JSON 字段 | 位置 | 类型 | 必填 | 默认值 | 说明与约束 |
+| --- | --- | --- | --- | --- | --- | --- |
 
 <a id="module-space"></a>
 

@@ -216,7 +216,7 @@ zentao link parse 'https://zentao.example.com/bug-view-329.html' --format=json
 
 ### API 覆盖与版本兼容
 
-CLI 使用 `zentao-api 0.9.2` 的注册表，提供 42 个模块、364 个操作，覆盖问题（`issue`）、风险（`risk`）、会议（`meeting`）、工作流（`workflow`）、文档（`doc`）、待办（`todo`）、地盘（`my`）和代码库（`repo`）等模块，并支持项目集/项目/执行下的关联列表、需求层级、附件上传和 Markdown 文档正文。
+CLI 使用 `zentao-api 0.9.3` 的注册表，提供 43 个模块、365 个操作，覆盖问题（`issue`）、风险（`risk`）、会议（`meeting`）、工作流（`workflow`）、文档（`doc`）、待办（`todo`）、地盘（`my`）和代码库（`repo`）等模块，并支持项目集/项目/执行下的关联列表、需求层级、附件上传和 Markdown 文档正文。使用 `zentao setting work-hours` 可查询每日可用工时和工时展示单位。
 
 从 SDK 0.9.0 升级后，脚本中的 `zentao my info` 改为 `zentao my profile`，MCP 工具 `zentao_my` 的 `action` 改为 `profile`。`zentao file get` 查询附件元数据，`zentao file read` 读取附件内容。各操作支持的禅道版本可通过 `--help` 查看。
 
