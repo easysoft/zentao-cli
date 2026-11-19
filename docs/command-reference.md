@@ -98,7 +98,7 @@ MCP 保留 structuredContent/outputSchema 与执行时策略检查。知识 POST
 
 ## 覆盖范围
 
-开发版本 CLI **0.4.4** / SDK **0.9.0**，15 个内置一级命令、42 个模块、364 个业务动作。数量、参数和实际 Commander 命令来自同一注册表。
+开发版本 CLI **0.4.4** / SDK **0.9.1**，15 个内置一级命令、42 个模块、364 个业务动作。数量、参数和实际 Commander 命令来自同一注册表。
 
 <a id="global-options"></a>
 
@@ -11667,7 +11667,7 @@ Commands:
                                     ipd5.7）
   create-ssh [options]              添加我的 SSH 公钥（最低版本：22.7 / biz13.7 / max8.7 /
                                     ipd5.7）
-  info [options]                    获取当前用户基础资料（最低版本：23.0 / biz14.0 / max9.0 /
+  profile [options]                 获取当前用户基础资料（最低版本：23.0 / biz14.0 / max9.0 /
                                     ipd6.0）
 ```
 
@@ -13236,12 +13236,12 @@ Options:
 | --name | name | body | string | 是 | — | 密钥名称，去除首尾空白后仅允许英文字母、数字、连字符、下划线、点和 $<br>{"minLength":1} |
 | --public-key | publicKey | body | string | 是 | — | 完整单行 SSH 公钥文本，去除首尾空白；支持 ssh-rsa、ecdsa-sha2-nistp256/384/521、ssh-ed25519、sk-ecdsa-sha2-nistp256@openssh.com、sk-ssh-ed25519@openssh.com 前缀，完整性及重复检查由 GitFox 处理<br>{"minLength":1} |
 
-<a id="action-my-info"></a>
+<a id="action-my-profile"></a>
 
-## zentao my info
+## zentao my profile
 
 ```text
-Usage: zentao my info [options]
+Usage: zentao my profile [options]
 
 获取当前用户基础资料（最低版本：23.0 / biz14.0 / max9.0 / ipd6.0）
 

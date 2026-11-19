@@ -75,7 +75,7 @@ for (const transport of ['stdio', 'http'] as const) for (const assistant of [und
             for (const override of ['AI <profile>', '', undefined]) {
                 const result = await client.callTool({ name: 'zentao_profile', arguments: override === undefined ? {} : { assistant: override } });
                 expect(result.isError).not.toBe(true);
-                expect(calls.at(-1)).toEqual({ path: '/api.php/v2/my/info', method: 'GET', marker: override === '' ? null : override ?? expectedDefault });
+                expect(calls.at(-1)).toEqual({ path: '/api.php/v2/my/profile', method: 'GET', marker: override === '' ? null : override ?? expectedDefault });
             }
         } finally { await close(); }
     });

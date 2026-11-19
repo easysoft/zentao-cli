@@ -26,11 +26,14 @@ metadata:
 ```bash
 zentao auth status --format=json
 zentao auth status --verify --format=json
+zentao my profile --format=json
 zentao profile list --format=json
 zentao profile use 'admin@https://zentao.example.com'
 ```
 
-`auth status` 离线返回来源、站点、账号、凭据类型及 verified=false；`--verify` 才在线验证。认证优先级为显式 `--profile` → 完整环境凭据 → 默认 Profile；环境凭据缺一部分会直接报错，不会静默访问其他站点。简写账号有歧义时使用返回的完整 key。
+`auth status` 离线返回凭据来源、站点、配置的账号、凭据类型及 `verified=false`。加上 `--verify` 会在线核验该账号。认证优先级为显式 `--profile` → 完整环境凭据 → 默认 Profile。环境凭据缺一部分会直接报错，不会静默访问其他站点。简写账号有歧义时使用返回的完整 key。
+
+`zentao my --help` 列出 `profile` 时，可用 `my profile` 查询当前 Token 所属用户的姓名、部门和角色。CLI 缺少该动作或站点报 E2010 时，若只需确认账号，用 `auth status --verify`。通过 MCP 查询账号和站点用 `zentao_profile`。若 `zentao_my` 提供 `profile` 动作，可用它读取昵称、头像等基础资料。
 
 缺少凭据时，Agent 可发起 `zentao auth login --web` 并保持进程运行，让用户在本机浏览器完成验证；不要在对话中收集密码。`--no-input` 明确禁止所有交互，包括浏览器。终端交互使用 `zentao auth login --no-browser`。远程运行时链接属于 CLI 执行端。
 
@@ -74,6 +77,7 @@ Agent 发起 API 操作时，通过全局 `--assistant` 标注自身，例如 `z
 
 - E1001：完整环境凭据不足，不回退其他站点；E1006：没有可用默认凭据。
 - E1003/E1004：登录失败或 Token 失效；按用户选定的来源重新认证。
+- 登录报 E1013 时，核对指定账号与 Token 所属账号，使用匹配的凭据。
 - E1005/E1011：配置读取或写入失败；保留错误 details，不覆盖损坏文件，不重复登录。
 - E2003/E2004/E2007/E2009：修正必填、类型、JSON 或冲突输入；先查离线动作帮助。
 - E2002/E2006/E2008：核对具体 URL、权限及服务器响应，不直接认定记录已删除。

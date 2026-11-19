@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { createMcpTestClient, toolData } from './mcp-helpers.js';
 
-test('cancelling a profile lookup aborts my/info while other tool calls remain usable', async () => {
+test('cancelling a profile lookup aborts my/profile while other tool calls remain usable', async () => {
     let started!: () => void;
     let aborted!: () => void;
     const ready = new Promise<void>(resolve => { started = resolve; });
@@ -11,7 +11,7 @@ test('cancelling a profile lookup aborts my/info while other tool calls remain u
         const url = new URL(req.url);
         if (url.searchParams.has('mode')) return Response.json({ version: '23.0' });
         paths.push(url.pathname);
-        if (url.pathname.endsWith('/my/info')) {
+        if (url.pathname.endsWith('/my/profile')) {
             req.signal.addEventListener('abort', aborted, { once: true });
             started();
             await cancelled;
@@ -28,7 +28,7 @@ test('cancelling a profile lookup aborts my/info while other tool calls remain u
         expect(await profile).toBeInstanceOf(Error);
         await Promise.race([cancelled, Bun.sleep(1000).then(() => { throw new Error('Profile request was not cancelled'); })]);
         expect(toolData(await other)).toEqual({ id: 2 });
-        expect(paths).toEqual(['/api.php/v2/my/info', '/api.php/v2/products/2']);
+        expect(paths).toEqual(['/api.php/v2/my/profile', '/api.php/v2/products/2']);
     } finally {
         controller.abort();
         aborted();

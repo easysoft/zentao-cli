@@ -59,11 +59,11 @@ describe('verifyToken', () => {
                 expect(await findCurrentUser(client, account, 'AI <identity>')).toEqual({ user, hadUsers: true });
             }
             expect(configRequests).toBe(1);
-            expect(paths).toEqual(['/api.php/v2/my/info', '/api.php/v2/my/info']);
+            expect(paths).toEqual(['/api.php/v2/my/profile', '/api.php/v2/my/profile']);
         } finally { server.stop(true); }
     });
 
-    test('reports my/info failures without falling back to the user directory', async () => {
+    test('reports my/profile failures without falling back to the user directory', async () => {
         let response: Response;
         let directoryReads = 0;
         const server = createMockServer({
@@ -117,7 +117,7 @@ describe('verifyToken', () => {
                 expect(output).toBe('');
                 expect(JSON.parse(error).error).toMatchObject({ code: '1013', message: expect.stringContaining('other') });
                 expect(readFileSync(config, 'utf8')).toBe('{}');
-                const requests = [...(credential.startsWith('--password') ? ['/api.php/v2/users/login'] : []), 'config', '/api.php/v2/my/info'];
+                const requests = [...(credential.startsWith('--password') ? ['/api.php/v2/users/login'] : []), 'config', '/api.php/v2/my/profile'];
                 expect(paths.splice(0)).toEqual(requests);
                 actual = 'dev';
                 const [ok, , stderr] = await run(credential);

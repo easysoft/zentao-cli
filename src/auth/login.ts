@@ -1,5 +1,5 @@
 import { brandText } from '../brand.js';
-import { findCurrentUser, supportsCurrentUserInfo } from './user.js';
+import { findCurrentUser, supportsCurrentUserProfile } from './user.js';
 import { ZentaoClient, createClient, getServerConfig, type ClientOptions } from '../api/index.js';
 import type { ServerConfig } from '../types/index.js';
 import { ZentaoError, mapSdkError } from '../errors.js';
@@ -51,7 +51,7 @@ export async function login(
             ({ user } = await findCurrentUser(client, account));
         } catch (error) {
             // Legacy deployments may restrict directory access even after a successful login.
-            if (supportsCurrentUserInfo(serverConfig.version)) throw mapSdkError(error);
+            if (supportsCurrentUserProfile(serverConfig.version)) throw mapSdkError(error);
         }
 
         if (options?.signal?.aborted) throw new ZentaoError('E5003');

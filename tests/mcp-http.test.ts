@@ -73,13 +73,13 @@ test('HTTP tool discovery is offline and profile resolves the caller Token on su
         });
         expect(JSON.stringify(profile)).not.toContain('private-phone');
         expect((await client.callTool({ name: 'zentao_switch_profile', arguments: { profileKey: 'local-user' } })).isError).toBe(true);
-        expect(requests).toEqual(['/?mode=getconfig', '/api.php/v2/my/info']);
+        expect(requests).toEqual(['/?mode=getconfig', '/api.php/v2/my/profile']);
         for (const [failure, code] of [[401, 'E1004'], [403, 'E2006'], [404, 'E2002']] as const) {
             status = failure;
             requests.length = 0;
             const denied = await client.callTool({ name: 'zentao_profile', arguments: {} });
             expect(denied).toMatchObject({ isError: true, structuredContent: { error: { code } } });
-            expect(requests.filter(path => !path.includes('getconfig'))).toEqual(['/api.php/v2/my/info']);
+            expect(requests.filter(path => !path.includes('getconfig'))).toEqual(['/api.php/v2/my/profile']);
         }
     } finally { await stdio.close(); await f.close(); }
 });

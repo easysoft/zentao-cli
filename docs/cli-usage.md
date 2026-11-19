@@ -168,7 +168,7 @@ stdio 是默认模式，由 MCP 客户端启动并管理进程。通过 `zentao 
 
 stdio 在首次业务调用时绑定账号和站点，环境凭证不会写入本地 Profile。`zentao_switch_profile` 只切换当前 stdio MCP 实例，不改变 CLI 或其他实例的当前账号；在 CLI 中切换账号也不会改变已运行的实例。显式选择的本地 Profile 会读取同一账号的 Token 和配置更新，删除该 Profile 后后续调用会报错。
 
-`zentao_profile` 返回 `account`、`server`、`user` 和 `userFound`。禅道 23.0、biz14.0、max9.0、ipd6.0 及各系列更新版本通过 `my/info` 查询当前 Token 对应的用户。连接较早版本时，stdio 按绑定账号查询用户列表，必要时翻页。HTTP 仅持有 Token，在这些旧版本上返回 `account=null`。用户详情仅含 ID、账号、姓名、部门和角色。未找到详情时返回 `user=null`、`userFound=false`，远端权限和凭据错误会报错。
+`zentao_profile` 返回 `account`、`server`、`user` 和 `userFound`。禅道 23.0、biz14.0、max9.0、ipd6.0 及各系列更新版本通过 `my/profile` 查询当前 Token 对应的用户。连接较早版本时，stdio 按绑定账号查询用户列表，必要时翻页。HTTP 仅持有 Token，在这些旧版本上返回 `account=null`。用户详情仅含 ID、账号、姓名、部门和角色。未找到详情时返回 `user=null`、`userFound=false`，远端权限和凭据错误会报错。
 
 ### 远程 HTTP 模式
 
@@ -216,9 +216,9 @@ zentao link parse 'https://zentao.example.com/bug-view-329.html' --format=json
 
 ### API 覆盖与版本兼容
 
-CLI 使用 `zentao-api 0.9.0` 的注册表，提供 42 个模块、364 个操作，覆盖问题（`issue`）、风险（`risk`）、会议（`meeting`）、工作流（`workflow`）、文档（`doc`）、待办（`todo`）、地盘（`my`）和代码库（`repo`）等模块，并支持项目集/项目/执行下的关联列表、需求层级、附件上传和 Markdown 文档正文。
+CLI 使用 `zentao-api 0.9.1` 的注册表，提供 42 个模块、364 个操作，覆盖问题（`issue`）、风险（`risk`）、会议（`meeting`）、工作流（`workflow`）、文档（`doc`）、待办（`todo`）、地盘（`my`）和代码库（`repo`）等模块，并支持项目集/项目/执行下的关联列表、需求层级、附件上传和 Markdown 文档正文。
 
-SDK 0.9.0 新增 `my info` 查询当前用户、`file get` 查询附件元数据、`file read` 读取附件内容。各操作支持的禅道版本可通过 `--help` 查看。
+从 SDK 0.9.0 升级后，脚本中的 `zentao my info` 改为 `zentao my profile`，MCP 工具 `zentao_my` 的 `action` 改为 `profile`。`zentao file get` 查询附件元数据，`zentao file read` 读取附件内容。各操作支持的禅道版本可通过 `--help` 查看。
 
 CLI 和 stdio MCP 保存富文本时可以上传本机图片。图片上传失败但正文保存成功时，CLI 的 JSON 结果在 `meta.fileWarnings` 中返回警告，批量结果将警告列在对应对象下。终端和 raw 模式将警告写入 stderr。MCP 返回 `structuredContent.fileWarnings`。如果服务端未确认保存结果，请先按错误中的 `uid` 和 `fileIDs` 核对附件归属，再决定是否重试。
 
