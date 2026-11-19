@@ -5,7 +5,7 @@
       "command": "npx",
       "args": [
         "--yes",
-        "zentao-cli@0.4.4",
+        "zentao-cli@0.5.0",
         "--config",
         "${PLUGIN_ROOT}/empty-config.json",
         "--no-input",

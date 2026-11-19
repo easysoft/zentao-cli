@@ -1,6 +1,6 @@
 # 禅道MCP 连接器（WorkBuddy）
 
-接入方式为 **stdio MCP + 原生凭证表单**，连接器版本 `0.4.4`，最低 WorkBuddy 版本 `5.0.0`。WorkBuddy 托管 Node.js 22，通过 `npx --yes zentao-cli@0.4.4` 启动本地 MCP；用户无需自行安装 CLI。
+接入方式为 **stdio MCP + 原生凭证表单**，连接器版本 `0.4.4`，最低 WorkBuddy 版本 `5.0.0`。WorkBuddy 托管 Node.js 22，通过 `npx --yes zentao-cli@0.5.0` 启动本地 MCP；用户无需自行安装 CLI。
 
 规范依据：[WorkBuddy 连接器文档](https://open.workbuddy.cn/docs/connector)。
 
@@ -37,7 +37,7 @@ fnm exec --using=22 bun run build:workbuddy --local
 fnm exec --using=22 bun run build:workbuddy
 ```
 
-`--local` 输出 `release/workbuddy-preview/zentao-cli-0.4.4.tgz`、资源预览目录 `zentao-mcp/` 和 `validation.json`，不生成提交 ZIP。正式构建必须从 npm 安装 `mcp.json` 声明的精确版本，验证实际入口的 MCP 能力和认证行为后才打包；本地预览通过不能替代发布包验证。
+`--local` 输出 `release/workbuddy-preview/zentao-cli-0.5.0.tgz`、资源预览目录 `zentao-mcp/` 和 `validation.json`，不生成提交 ZIP。正式构建必须从 npm 安装 `mcp.json` 声明的精确版本，验证实际入口的 MCP 能力和认证行为后才打包；本地预览通过不能替代发布包验证。
 
 连接器 `source` 和 MCP Server 标识均为 `zentao-mcp`。正式输出路径为 `release/workbuddy/zentao-mcp-workbuddy-0.4.4.zip`：
 
