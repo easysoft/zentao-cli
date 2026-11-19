@@ -1,5 +1,38 @@
 # Changes
 
+## 0.5.0
+
+### ✨ 新特性 (Feat)
+
+- CLI 写入富文本字段时可用 `--markdown` 将 Markdown 转为 HTML，也可指定只转换哪些字段。CLI 和 stdio MCP 支持上传正文引用的本地图片，同一对象中的重复引用只上传一次。分步上传时可用同一 Token 和 UID 将图片绑定到目标对象。
+- `zentao file get` 查询附件信息，`zentao file read` 读取内容，两者都接受当前站点的附件链接。CLI 可用 `--output` 流式下载到文件，下载完整后才替换目标文件。MCP 返回带编码说明的 Base64 内容。
+- `zentao link create`、`zentao link parse` 和 MCP 工具 `zentao_link` 可按站点路由配置生成或解析页面链接，支持 GET、PATH_INFO 和 PATH_INFO2。
+- 升级至 `zentao-api 0.9.3`，覆盖 43 个模块、365 个业务动作。新增 `zentao my profile` 查询当前 Token 所属用户，`zentao setting work-hours` 查询每日可用工时和展示单位。
+- WorkBuddy 连接器改用 stdio MCP。升级旧连接器后，需在 WorkBuddy 原生表单中填写站点、账号及密码或 Token。
+
+### 🐛 修复 (Fix)
+
+- 支持 `my/profile` 的站点按 Token 核验身份，实际账号与配置账号不符时返回 `E1013`。HTTP MCP 的 `zentao_profile` 也可返回该 Token 的用户资料。
+- HTTP MCP 拦截富文本中对服务机本地文件的引用，支持绑定已预上传的图片。图片上传失败而正文保存成功时，CLI 和 MCP 会返回逐图警告。保存结果不确定时，错误中提供 UID 和已上传的文件 ID，方便重试前核对归属。
+- 查询附件信息时保留服务端返回的 Base64 gid，避免形似数字的标识被误转。重命名附件只发送一次更新请求。
+
+### 🚀 优化与重构 (Refactor)
+
+- 终端列表按实际返回的对象类型选择默认列，例如 `zentao my bugs` 会展示 Bug 严重程度。CLI JSON 和 MCP 结构化结果也提供 `resultObjectType`。
+
+### ✅ 测试 (Test)
+
+- 新增页面路由、附件下载与取消、富文本图片绑定和 Token 身份核验的回归测试，覆盖 WorkBuddy 原生表单的两种认证方式、并发登录复用和重连。
+
+### 📝 文档 (Docs)
+
+- 新增独立 MCP 服务部署指南，包含常驻运行、HTTPS 反向代理和接入验证步骤。命令参考和用户指南补充附件链接、Markdown 和本地图片的用法。
+
+### 🤸 技能更新（Skill）
+
+- **zentao-cli** 补充当前用户查询、Markdown 写入、图片预上传与警告处理示例，移除 OpenAI Agent 专属展示配置。
+- **zentao-tour** 修正测试角色上传 Bug 截图的示例，通过 `--extra=''` 将截图保存为普通附件。
+
 ## 0.4.4
 
 ### ✨ 新特性 (Feat)
