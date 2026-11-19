@@ -12,6 +12,8 @@ zentao bug get 123
 zentao bug resolve 123 --resolution fixed
 zentao db table zt_user
 zentao file read 42 --output ./attachment.pdf
+zentao file get '/file-read-298.png'
+zentao file read '/file-download-298-left.html' --output ./需求说明.pdf
 zentao link create bug view --var bugID=42
 zentao help bug create --format=json
 ```
@@ -98,7 +100,7 @@ MCP 保留 structuredContent/outputSchema 与执行时策略检查。知识 POST
 
 ## 覆盖范围
 
-开发版本 CLI **0.4.4** / SDK **0.9.1**，15 个内置一级命令、42 个模块、364 个业务动作。数量、参数和实际 Commander 命令来自同一注册表。
+开发版本 CLI **0.4.4** / SDK **0.9.2**，15 个内置一级命令、42 个模块、364 个业务动作。数量、参数和实际 Commander 命令来自同一注册表。
 
 <a id="global-options"></a>
 
@@ -8091,10 +8093,10 @@ Usage: zentao file get [options] [target]
 获取附件信息（最低版本：22.5 / biz13.5 / max8.5 / ipd5.5）
 
 Arguments:
-  target              单个 fileID；也可使用命名参数
+  target              单个附件标识或当前站点的附件 URL，--file-id 可单独指定标识
 
 Options:
-  --file-id <value>   附件 ID 或 Base64 编码 gid（必填）
+  --file-id <value>   附件 ID 或 Base64 编码 gid
   --ids <ids>         批量目标 ID，逗号分隔并去重
   --batch-fail-fast   失败后跳过剩余目标
   --fields <fields>   返回字段，逗号分隔
@@ -8104,7 +8106,7 @@ Options:
 
 最低版本：22.5 / biz13.5 / max8.5 / ipd5.5。
 
-查询附件元数据；fileID 支持数字 ID 或既有 Base64 编码 gid。读取文件内容请使用 file/read。
+查询附件元数据。位置参数接受数字 ID、Base64 gid 或当前站点的附件 URL。
 
 能力：只读；批量：--ids；分页：不支持；本地文件：否。
 
@@ -8122,10 +8124,10 @@ Usage: zentao file read [options] [target]
 读取附件内容（最低版本：23.0 / biz14.0 / max9.0 / ipd6.0）
 
 Arguments:
-  target             单个 fileID；也可使用命名参数
+  target             单个附件标识或当前站点的附件 URL，--file-id 可单独指定标识
 
 Options:
-  --file-id <value>  附件数字 ID（必填）
+  --file-id <value>  附件数字 ID
   --stream <value>   返回格式
   --output <path>    流式保存附件，下载完成后替换目标文件
   --ids <ids>        批量目标 ID，逗号分隔并去重
@@ -8135,7 +8137,7 @@ Options:
 
 最低版本：23.0 / biz14.0 / max9.0 / ipd6.0。
 
-读取附件内容。CLI 默认输出 Base64，--format=raw 保留服务端字节或文本。使用 --output <path> 将原始附件流式保存到文件。
+读取附件内容。位置参数接受数字 ID 或当前站点的附件 URL。CLI 默认输出 Base64，--format=raw 保留服务端字节或文本。使用 --output <path> 将原始附件流式保存到文件。
 
 能力：只读；批量：--ids；分页：不支持；本地文件：否。
 

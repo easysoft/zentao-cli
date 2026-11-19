@@ -1,6 +1,7 @@
 import { getModuleActionParams } from './helper.js';
 import type { ModuleAction, ModuleActionParam, ModuleDefinition } from '../types/index.js';
 import { supportsBatch } from './targets.js';
+import { supportsFileUrl } from './file-url.js';
 import type { ValueSchema } from './validation.js';
 
 export function kebabCase(name: string): string {
@@ -62,12 +63,16 @@ export function actionContract(mod: ModuleDefinition, action: ModuleAction) {
     const parameters = actionParameters(mod, action);
     const pagination = paginationFields(mod, action);
     const target = parameters.find(param => param.role === 'path' && !['scope', 'scopeID'].includes(param.name));
+    let description = action.description;
+    if (supportsFileUrl(mod.name, action.name)) {
+        description = action.name === 'get'
+            ? '查询附件元数据。位置参数接受数字 ID、Base64 gid 或当前站点的附件 URL。'
+            : '读取附件内容。位置参数接受数字 ID 或当前站点的附件 URL。CLI 默认输出 Base64，--format=raw 保留服务端字节或文本。使用 --output <path> 将原始附件流式保存到文件。';
+    }
     return {
         module: mod.name, action: action.name, command: `${mod.name} ${kebabCase(action.name)}`,
         display: action.display, type: action.type,
-        description: mod.name === 'file' && action.name === 'read'
-            ? '读取附件内容。CLI 默认输出 Base64，--format=raw 保留服务端字节或文本。使用 --output <path> 将原始附件流式保存到文件。'
-            : action.description,
+        description,
         path: action.path, method: action.method, minVersion: action.minVersion,
         parameters: parameters.map(param => ({ ...param, flag: parameterFlag(param.name) })),
         markdownFields: htmlInputFields(mod.name, action.name, parameters),

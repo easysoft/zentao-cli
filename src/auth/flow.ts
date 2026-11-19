@@ -49,10 +49,11 @@ export function resolveAuthSource(profile?: Profile | string) {
 }
 
 /** Resolve credentials first; only environment password authentication requires a login request. */
-export async function ensureAuth(options?: { insecure?: boolean; timeout?: number; profile?: Profile | string; signal?: AbortSignal; assistant?: string; assistantSource?: AssistantSource }): Promise<AuthContext> {
+export async function ensureAuth(options?: { insecure?: boolean; timeout?: number; profile?: Profile | string; signal?: AbortSignal; assistant?: string; assistantSource?: AssistantSource },
+    source?: ReturnType<typeof resolveAuthSource>): Promise<AuthContext> {
     const signal = options?.signal ?? commandSignal();
     if (signal?.aborted) throw new ZentaoError('E5003');
-    const auth = resolveAuthSource(options?.profile);
+    const auth = source ?? resolveAuthSource(options?.profile);
     const config = auth.source === 'profile' ? getProfileConfig(auth.profile) : undefined;
     const clientOpts = {
         insecure: options?.insecure ?? config?.insecure,

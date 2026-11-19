@@ -14,6 +14,7 @@ import type { AuthProvider } from './server.js';
 import { withRequestSignal } from '../api/index.js';
 import { validateAssistant } from '../api/assistant.js';
 import { getScopeAliasTarget, normalizeToolParams } from './params.js';
+import { fileIdAtSite, supportsFileUrl } from '../modules/file-url.js';
 import { moduleOutputSchema, outputSchema, toolError, toolResult } from './results.js';
 
 export interface McpToolOptions {
@@ -55,6 +56,9 @@ function buildToolSchemas(mod: ModuleDefinition) {
     if (parameters.some(param => param.role === 'path' && param.name.endsWith('ID') && param.name !== 'scopeID')) {
         shape.id = z.number().int().nonnegative().optional().describe('首个路径 ID 简写；多 ID 用 params');
     }
+    if (mod.actions.some(action => supportsFileUrl(mod.name, action.name))) {
+        shape.url = z.string().optional().describe('get 或 read 的附件 URL，可代替文件 ID');
+    }
     for (const name of ['product', 'project', 'execution']) {
         if (mod.actions.some(action => getScopeAliasTarget(mod, action, name))) {
             shape[name] = z.number().int().nonnegative().optional().describe(`${name}ID 或 scope/scopeID 简写，冲突时报错`);
@@ -87,7 +91,9 @@ function actionExample(mod: ModuleDefinition, action: ModuleAction, splitTools?:
                 : param.type === 'boolean' ? false : param.type === 'object' ? {} : `<${param.name}>`))]));
     return {
         name: brandText`zentao_${mod.name}${splitTools ? isReadAction(action) ? '_read' : '_write' : ''}`,
-        arguments: { action: action.name, ...(Object.keys(params).length ? { params } : {}) },
+        arguments: supportsFileUrl(mod.name, action.name)
+            ? { action: action.name, url: '/file-read-298.png' }
+            : { action: action.name, ...(Object.keys(params).length ? { params } : {}) },
         note: 'ID、文本等均为格式示例，请替换为实际值后调用。',
     };
 }
@@ -96,6 +102,7 @@ interface ToolInput {
     assistant?: string;
     action: string;
     id?: number;
+    url?: string;
     product?: number;
     project?: number;
     execution?: number;
@@ -155,8 +162,18 @@ async function handleModuleTool(
             throw new ZentaoError('E2009', { option, reason: `不适用于 ${mod.name}/${action.name}` });
         }
     }
-    const params = normalizeToolParams(mod, action, input);
+    let absoluteUrl: string | undefined;
+    let checkedSite: string | undefined;
+    const params = normalizeToolParams(mod, action, input, url => {
+        absoluteUrl = url;
+        checkedSite = auth.getSiteUrl?.();
+        if (checkedSite !== undefined) fileIdAtSite(url, checkedSite);
+    });
     const { client, config } = await auth.getContext(signal);
+    // Bind to the actual client even when the provider switched sites or exposes no offline site.
+    if (absoluteUrl !== undefined && checkedSite !== client.siteUrl) {
+        fileIdAtSite(absoluteUrl, client.siteUrl);
+    }
     const actionName = input.action;
 
     const opts: ModuleActionOptions = {
@@ -231,8 +248,11 @@ export function registerModuleTools(server: McpServer, auth: AuthProvider, optio
                 if (!definition) throw new ZentaoError('E2005', { module: mod.name });
                 return toolResult({
                     ...actionContract(mod, definition),
-                    ...(module === 'file' && action === 'read' ? {
-                        description: '读取附件内容。MCP 对两种 stream 取值均返回 { encoding: "base64", content: "…" }，content 包含完整附件的 Base64 文本。',
+                    ...(supportsFileUrl(mod.name, definition.name) ? {
+                        description: (definition.name === 'read'
+                            ? '读取附件内容。MCP 对两种 stream 取值均返回 { encoding: "base64", content: "…" }。'
+                            : '获取附件元数据，params.fileID 接受数字 ID 或 Base64 gid。')
+                            + '顶层 url 可代替文件 ID，接受当前站点的附件读取或下载链接。',
                     } : {}),
                     available: selectedModules.some(selected => selected.name === mod.name) && isActionAvailable(definition, options),
                     ...(options.allowLocalFiles === false && definition.requestBody?.mediaType === 'multipart/form-data'

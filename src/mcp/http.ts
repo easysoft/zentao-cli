@@ -118,6 +118,7 @@ export async function startMcpHttpServer(options: McpHttpOptions): Promise<McpHt
     const pageLink = bindPageLinks(() => ({ server: site }), config);
     const authFor = (token?: string) => ({
         pageLink,
+        getSiteUrl: () => site,
         async getContext() {
             return { client: createClient(site, token, { ...config, actionAssistant }), config, identity: { server: site } };
         },

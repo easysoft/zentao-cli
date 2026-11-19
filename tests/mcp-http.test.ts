@@ -25,6 +25,29 @@ async function fixture(handler: (req: Request) => Response | Promise<Response> =
 }
 
 const headers = { token: 'test-token', 'content-type': 'application/json', accept: 'application/json, text/event-stream' };
+
+test('HTTP file URLs use the fixed ZenTao site and the calling user’s token', async () => {
+    const requests: Array<[string, string | null]> = [];
+    const f = await fixture(req => {
+        const url = new URL(req.url);
+        requests.push([url.pathname + url.search, req.headers.get('token')]);
+        if (url.searchParams.has('mode')) return Response.json({ version: '23.0' });
+        return new Response(Uint8Array.from([0, 255, 128]));
+    }, { modules: ['file'], readOnly: true });
+    try {
+        const { client } = await f.connect({ token: 'reader-token' });
+        const read = (target: { url: string } | { id: number }) => client.callTool({ name: 'zentao_file', arguments: { action: 'read', ...target } });
+        const wrongSite = await read({ url: new URL('/file-download-298.html', f.url).href });
+        expect(wrongSite.structuredContent).toMatchObject({ error: { code: 'E2009' } });
+        expect(requests).toEqual([]);
+        for (const target of [{ id: 298 }, { url: new URL('/file-download-298.html?session=private-query', f.api.url).href }]) {
+            const result = await read(target);
+            expect(result.structuredContent).toEqual({ data: { encoding: 'base64', content: 'AP+A' } });
+            expect(requests.splice(0)).toEqual([['/?mode=getconfig', null], ['/api.php/v2/files/298/read?stream=0', 'reader-token']]);
+        }
+    } finally { await f.close(); }
+});
+
 const call = (id = 7, action = 'get') => ({ jsonrpc: '2.0', id, method: 'tools/call', params: { name: 'zentao_product', arguments: { action, id: 1 } } });
 function sseResult(text: string): any {
     return JSON.parse(text.split('\n').find(line => line.startsWith('data: '))!.slice(6));

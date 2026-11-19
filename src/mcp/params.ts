@@ -2,9 +2,11 @@ import { getModuleActionParams } from '../modules/helper.js';
 import type { ModuleAction, ModuleDefinition } from '../types/index.js';
 import { ZentaoError } from '../errors.js';
 import { validateToolParams } from '../modules/validation.js';
+import { resolveFileUrl, supportsFileUrl } from '../modules/file-url.js';
 
 export interface ToolParamsInput {
     id?: number;
+    url?: string;
     product?: number;
     project?: number;
     execution?: number;
@@ -24,11 +26,16 @@ export function getScopeAliasTarget(mod: ModuleDefinition, action: ModuleAction,
 }
 
 /** Resolve MCP aliases against the selected action, keeping JSON values intact. */
-export function normalizeToolParams(mod: ModuleDefinition, action: ModuleAction, input: ToolParamsInput): Record<string, unknown> {
+export function normalizeToolParams(mod: ModuleDefinition, action: ModuleAction, input: ToolParamsInput, checkFileUrlSite?: (url: string) => void): Record<string, unknown> {
     const params = { ...input.params };
     const pathNames = Object.keys(action.pathParams ?? {});
     const scoped = pathNames.includes('scope');
     const invalid = (option: string, reason: string): never => { throw new ZentaoError('E2009', { option, reason }); };
+    if (input.url !== undefined) {
+        if (!supportsFileUrl(mod.name, action.name)) invalid('url', '附件链接仅适用于 file get 和 file read');
+        if (input.id !== undefined || params.id !== undefined || params.fileID !== undefined) invalid('url', '附件链接与文件 ID 只能指定一个');
+        params.fileID = resolveFileUrl(input.url, checkFileUrlSite);
+    }
     const assign = (name: string, value: unknown) => {
         if (value === undefined) return;
         const existing = params[name];

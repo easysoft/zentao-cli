@@ -127,6 +127,7 @@ describe('MCP server (stdio e2e smoke)', () => {
                 if (url.pathname.endsWith('/storygrades')) {
                     return Response.json({ grades: [{ grade: 1, name: '一级' }] });
                 }
+                if (url.pathname.endsWith('/files/7')) return Response.json({ file: { id: 7 } });
                 return Response.json({ status: 'success', product: { id: 1, name: 'Test product' } });
             },
         });
@@ -171,6 +172,9 @@ describe('MCP server (stdio e2e smoke)', () => {
             });
             const page = await client.callTool({ name: 'zentao_link', arguments: { action: 'create', module: 'story', method: 'view', vars: ['id=7'] } });
             expect(page.structuredContent).toEqual({ data: new URL('/b/story-view-7.html', server.url).href });
+            const getFile = (site: string) => client.callTool({ name: 'zentao_file', arguments: { action: 'get', url: site + '/file-read-7.png' } });
+            expect((await getFile(profiles[0].server)).structuredContent).toMatchObject({ error: { code: 'E2009' } });
+            expect((await getFile(profiles[1].server)).structuredContent).toMatchObject({ data: { id: 7 } });
             expect((await getProduct()).isError).not.toBe(true);
             expect(await getGrades()).toMatchObject({ content: [{ type: 'text', text: expect.stringContaining('一级') }] });
 
@@ -183,6 +187,7 @@ describe('MCP server (stdio e2e smoke)', () => {
                 { path: '/a/', token: null },
                 { path: '/a/api.php/v2/products/1', token: 'test-token-a' },
                 { path: '/b/', token: null },
+                { path: '/b/api.php/v2/files/7', token: 'test-token-b' },
                 { path: '/b/api.php/v2/products/1', token: 'test-token-b' },
                 { path: '/b/api.php/v2/storygrades', token: 'test-token-b' },
                 { path: '/b/api.php/v2/products/1', token: 'test-token-b' },

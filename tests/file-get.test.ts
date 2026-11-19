@@ -28,7 +28,7 @@ test('CLI sends literal gids from both input forms, including number-like Base64
     } });
     try {
         for (const [identifier, flags] of [
-            [gid, [gid, '--file-id', gid]], ['1e03', ['--file-id=1e03']], ['+123', ['+123']], ['7', ['007', '--file-id=7']],
+            [gid, [gid, '--file-id', gid]], ['//8=', ['//8=']], ['1e03', ['--file-id=1e03']], ['+123', ['+123']], ['7', ['007', '--file-id=7']],
         ] as const) {
             const { stdout, stderr, code } = await runFile(server.url, ['get', ...flags]);
             expect(code, stderr).toBe(0);
@@ -37,6 +37,40 @@ test('CLI sends literal gids from both input forms, including number-like Base64
         }
     } finally { server.stop(true); }
 });
+
+test('CLI file URLs resolve inside the selected installation and make the same requests as an ID', async () => {
+    const paths: string[] = [];
+    const metadata = { id: 298, title: 'image.png', size: 3 };
+    const server = Bun.serve({ hostname: '127.0.0.1', port: 0, fetch(req) {
+        const url = new URL(req.url);
+        paths.push(url.pathname + url.search);
+        if (url.searchParams.has('mode')) return Response.json({ version: '23.0' });
+        return url.pathname.endsWith('/read') ? new Response(Uint8Array.from([0, 255, 65])) : Response.json({ file: metadata });
+    } });
+    const site = new URL('zentao/', server.url);
+    const link = site.href + 'file-download-298-left.html?session=private-query';
+    try {
+        for (const action of ['get', 'read']) {
+            for (const target of ['298', link, '/sub-path/?module=file&amp;method=read&amp;fileID=298']) {
+                const result = await runFile(site, [action, target]);
+                expect(result.code, result.stderr).toBe(0);
+                expect(JSON.parse(result.stdout).data).toEqual(action === 'get' ? metadata : 'AP9B');
+                expect(paths.splice(0)).toEqual(['/zentao/?mode=getconfig', '/zentao/api.php/v2/files/298' + (action === 'read' ? '/read?stream=0' : '')]);
+            }
+            for (const flags of [
+                [link, '--file-id=298'], [link, '--ids=298'], ['https://other.example/file-read-298.png?session=private-query'],
+                [new URL('/zentao-old/file-read-298.png', site).href], ['/file-download-0.html'], ['/file-delete-298.html'],
+            ]) {
+                // With only a password, even an authentication attempt would hit the mock.
+                const result = await runFile(site, [action, ...flags], '');
+                expect(result.code).toBe(2);
+                expect(JSON.parse(result.stderr).error.code).toBe('2009');
+                expect(result.stderr).not.toContain('private-query');
+                expect(paths).toEqual([]);
+            }
+        }
+    } finally { server.stop(true); }
+}, { timeout: 20_000 });
 
 test('CLI requires the new attachment name before login and renames with one PUT', async () => {
     const requests: Array<{ method: string; path: string; body?: unknown }> = [];
@@ -86,6 +120,10 @@ test('MCP exposes both file/get identifier types and preserves gids for SDK rout
 });
 
 test('invalid identifiers and conflicting sources stop before transport', async () => {
+    for (const url of ['https://[', 'https://example.com/bug-view-42.html', 'https://example.com/file-download-0.html']) {
+        const result = prepareCliParams(file, get, url, {}, {}, () => { throw new Error('Unexpected credential lookup'); });
+        await expect(result).rejects.toMatchObject({ code: '2009' });
+    }
     for (const fileID of ['', ' ', 'abc?', 'a', 'a===', 'abc==', 'NaN%', -1, 7.5, 2 ** 54, null, [], {}]) {
         expect(() => normalizeToolParams(file, get, { params: { fileID } })).toThrow();
     }

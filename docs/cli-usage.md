@@ -216,13 +216,21 @@ zentao link parse 'https://zentao.example.com/bug-view-329.html' --format=json
 
 ### API 覆盖与版本兼容
 
-CLI 使用 `zentao-api 0.9.1` 的注册表，提供 42 个模块、364 个操作，覆盖问题（`issue`）、风险（`risk`）、会议（`meeting`）、工作流（`workflow`）、文档（`doc`）、待办（`todo`）、地盘（`my`）和代码库（`repo`）等模块，并支持项目集/项目/执行下的关联列表、需求层级、附件上传和 Markdown 文档正文。
+CLI 使用 `zentao-api 0.9.2` 的注册表，提供 42 个模块、364 个操作，覆盖问题（`issue`）、风险（`risk`）、会议（`meeting`）、工作流（`workflow`）、文档（`doc`）、待办（`todo`）、地盘（`my`）和代码库（`repo`）等模块，并支持项目集/项目/执行下的关联列表、需求层级、附件上传和 Markdown 文档正文。
 
 从 SDK 0.9.0 升级后，脚本中的 `zentao my info` 改为 `zentao my profile`，MCP 工具 `zentao_my` 的 `action` 改为 `profile`。`zentao file get` 查询附件元数据，`zentao file read` 读取附件内容。各操作支持的禅道版本可通过 `--help` 查看。
 
 CLI 和 stdio MCP 保存富文本时可以上传本机图片。图片上传失败但正文保存成功时，CLI 的 JSON 结果在 `meta.fileWarnings` 中返回警告，批量结果将警告列在对应对象下。终端和 raw 模式将警告写入 stderr。MCP 返回 `structuredContent.fileWarnings`。如果服务端未确认保存结果，请先按错误中的 `uid` 和 `fileIDs` 核对附件归属，再决定是否重试。
 
 `zentao file read 42 --output ./attachment.pdf` 将附件流式写入文件，下载成功后替换目标文件。普通终端和 JSON 输出使用 Base64。`--format=raw` 可将原始字节重定向到管道，显式指定 `--stream=1` 时输出服务端返回的 Base64 文本。MCP 的 `file/read` 在 `data` 中返回 `{encoding:"base64",content:"…"}`。大附件优先使用 CLI 的 `--output`。
+
+可以把图片地址或附件下载链接直接作为位置参数。相对链接使用当前站点，带域名的链接需要匹配所选站点的协议、主机、端口和安装目录。链接在本地解析为单个文件 ID，与 `--file-id`、`--ids` 互斥。带有 `&` 的链接请用引号包起来。
+
+```bash
+zentao file get '/file-read-298.png' --fields id,title,extension,size
+zentao file read 'https://pm.example.com/zentao/file-download-298.html' --output ./需求说明.pdf
+zentao file read '/index.php?module=file&method=read&fileID=298' --output ./截图.png
+```
 
 SDK 0.8.2 修正了 `story`、`requirement`、`epic` 的 `create` / `change`：未提供有效评审人时发送 `needNotReview: "1"`，状态默认 `active`；显式传入的非空状态会保留，空字符串仍回落为 `active`。提供有效评审人时状态为 `reviewing`，优先于显式状态。CLI 支持 `--status=draft` 或 `--data '{"status":"draft"}'`；MCP 使用 `params.status` 或 `params.data.status`。`change` 不会自动读取并保留原状态，需要保留草稿时应明确传入 `draft`。
 

@@ -18,13 +18,17 @@ export interface ValueSchema {
     options?: readonly { value: unknown }[];
 }
 
+export function isFileGid(value: string): boolean {
+    return value.length > 0 && /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}(?:==)?|[A-Za-z0-9+/]{3}=?)?$/.test(value);
+}
+
 export function validateValue(name: string, value: unknown, schema: ValueSchema): void {
     const invalid = (reason: string): never => { throw new ZentaoError('E2009', { option: name, reason }); };
     const { type } = schema;
     if (type && typeof type !== 'string') {
         // file/get accepts a decimal ID or an opaque Base64 gid, including unpadded Base64.
         if (typeof value === 'string' && !/^\d+$/.test(value)) {
-            if (!value || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}(?:==)?|[A-Za-z0-9+/]{3}=?)?$/.test(value)) {
+            if (!isFileGid(value)) {
                 invalid('必须为数字 ID 或 Base64 编码的 gid');
             }
             return;

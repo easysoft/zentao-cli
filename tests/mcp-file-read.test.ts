@@ -23,11 +23,25 @@ test('MCP file/get accepts a Base64 gid as one URL segment and keeps other file 
             expect(result).toMatchObject({ isError: true, structuredContent: { error: { code: 'E2009', action } } });
         }
         expect(paths).toEqual([]);
+        for (const input of [
+            { action: 'get', url: '/file-read-42.png', id: 42 },
+            { action: 'get', url: '/file-read-42.png', params: { id: 42 } },
+            { action: 'read', url: '/file-read-42.png', params: { fileID: 42 } },
+            { action: 'get', url: '/file-download-0.html' },
+            { action: 'read', url: 'https://other.example/file-read-42.png' },
+            { action: 'delete', url: '/file-read-42.png' },
+        ]) {
+            const result = await mcp.client.callTool({ name: 'zentao_file', arguments: input });
+            expect(result.structuredContent).toMatchObject({ error: { code: 'E2009' } });
+        }
+        expect(paths).toEqual([]);
         const cases = [
             { input: { params: { fileID: gid } }, segment: '%2B%2F8%3D' },
             { input: { params: { fileID: '1e03' } }, segment: '1e03' },
             { input: { params: { fileID: 42 } }, segment: '42' },
             { input: { id: 42 }, segment: '42' },
+            { input: { url: '/file-download-42.html' }, segment: '42' },
+            { input: { url: mcp.siteUrl + '?m=file&f=read&fileID=42' }, segment: '42' },
         ];
         for (const { input, segment } of cases) {
             const result = await mcp.client.callTool({ name: 'zentao_file', arguments: { action: 'get', ...input } });
@@ -101,6 +115,7 @@ test('MCP file/read returns labelled Base64 for binary and empty files in either
     try {
         const help = await mcp.client.callTool({ name: 'zentao_action_help', arguments: { module: 'file', action: 'read' } });
         expect(toolData(help).description).toContain('encoding: "base64"');
+        expect(toolData(help).example.arguments).toEqual({ action: 'read', url: '/file-read-298.png' });
         const name = 'zentao_file_read';
         const invalid = await mcp.client.callTool({ name, arguments: { action: 'read', id: 7, pick: 'content' } });
         expect(invalid.structuredContent).toMatchObject({ error: { code: 'E2009', action: 'read' } });
@@ -108,7 +123,8 @@ test('MCP file/read returns labelled Base64 for binary and empty files in either
 
         for (const id of [7, 8]) {
             for (const stream of [undefined, 0, 1]) {
-                const result = await mcp.client.callTool({ name, arguments: { action: 'read', id, params: { stream } } });
+                const target = stream === 0 ? { url: mcp.siteUrl + `file-download-${id}-left.html?session=private-query` } : { id };
+                const result = await mcp.client.callTool({ name, arguments: { action: 'read', ...target, params: { stream } } });
                 const expected = { encoding: 'base64', content: id === 7 ? 'AP+AQQ==' : '' };
                 expect(result.isError).not.toBe(true);
                 expect(result.structuredContent).toEqual({ data: expected });
@@ -118,5 +134,32 @@ test('MCP file/read returns labelled Base64 for binary and empty files in either
         }
     } finally {
         await mcp.close();
+    }
+});
+
+test('MCP binds a qualified URL to the client selected after a profile switch', async () => {
+    const paths: string[] = [];
+    const upstream = Bun.serve({ hostname: '127.0.0.1', port: 0, fetch(req) {
+        paths.push(new URL(req.url).pathname);
+        return Response.json({ version: '23.0', file: { id: 42 } });
+    } });
+    const beforeSwitch = new URL('first', upstream.url).href;
+    const afterSwitch = new URL('second', upstream.url).href;
+    const server = createMcpServer({
+        getSiteUrl: () => beforeSwitch,
+        async getContext() { return { client: createClient(afterSwitch, 'test-token'), config: DEFAULT_CONFIG, identity: { server: afterSwitch } }; },
+    }, { modules: ['file'] });
+    const client = new Client({ name: 'file-url-test', version: '0.0.0' });
+    const [caller, service] = InMemoryTransport.createLinkedPair();
+    try {
+        await server.connect(service);
+        await client.connect(caller);
+        const result = await client.callTool({ name: 'zentao_file', arguments: { action: 'get', url: beforeSwitch + '/file-read-42.png' } });
+        expect(result.structuredContent).toMatchObject({ error: { code: 'E2009' } });
+        expect(paths).toEqual([]);
+    } finally {
+        await client.close();
+        await server.close();
+        upstream.stop(true);
     }
 });

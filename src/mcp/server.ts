@@ -1,7 +1,7 @@
 import { brandText } from '../brand.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { ensureAuth, type AuthContext } from '../auth/flow.js';
+import { ensureAuth, resolveAuthSource, type AuthContext } from '../auth/flow.js';
 import { findProfileByKey, getProfile, getProfileConfig, profileKey } from '../config/store.js';
 import { selectLinkSite } from '../config/link-site.js';
 import { getEnvCredentials } from '../auth/login.js';
@@ -21,6 +21,8 @@ export interface McpAuthContext {
 
 export interface AuthProvider {
     getContext(signal?: AbortSignal): Promise<McpAuthContext>;
+    /** Inspect the selected site before making a login request. */
+    getSiteUrl?(): string;
     switchProfile?(key: string): Promise<McpAuthContext>;
     pageLink?: PageLinkHandler;
 }
@@ -43,6 +45,7 @@ export function createAuthProvider(options?: { insecure?: boolean; timeout?: num
     let linkProfile = options?.profile;
 
     return {
+        getSiteUrl: () => resolveAuthSource(linkProfile).server,
         pageLink: bindPageLinks(() => selectLinkSite({ profile: linkProfile }), options),
         async getContext(signal?: AbortSignal): Promise<McpAuthContext> {
             if (signal?.aborted) throw new ZentaoError('E5003');

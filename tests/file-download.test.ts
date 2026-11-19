@@ -24,9 +24,9 @@ beforeEach(() => {
 });
 afterEach(() => { server.stop(true); rmSync(directory, { recursive: true, force: true }); });
 
-async function run(...flags: string[]) {
+async function download(identifier = '7', ...flags: string[]) {
     const child = Bun.spawn([process.execPath, '--no-env-file', 'src/index.ts', '--format=json',
-        'file', 'read', '7', '--output', target, ...flags], {
+        'file', 'read', identifier, '--output', target, ...flags], {
         env: { ...process.env, ZENTAO_URL: server.url.href, ZENTAO_TOKEN: 'download-token', ZENTAO_ACCOUNT: 'tester', ZENTAO_PASSWORD: '' },
         stdin: 'ignore', stdout: 'pipe', stderr: 'pipe',
     });
@@ -43,7 +43,7 @@ test('streams chunks before EOF and atomically replaces the target', async () =>
         headers = request.headers;
         return new Response(new ReadableStream<Uint8Array>({ start(controller) { stream = controller; controller.enqueue(first); } }));
     };
-    const pending = run('--assistant=test-downloader');
+    const pending = download(server.url.href + 'file-download-7.html?session=private-query', '--assistant=test-downloader');
     let stagedBytes = 0;
     for (let attempt = 0; attempt < 300 && stagedBytes < first.length; attempt++) {
         const staged = readdirSync(directory).find(name => name.startsWith('.zentao-download-'));
@@ -66,17 +66,17 @@ test('streams chunks before EOF and atomically replaces the target', async () =>
 });
 
 test('saves an empty attachment and preserves the target on HTTP and version errors', async () => {
-    const empty = await run('--stream=0');
+    const empty = await download('7', '--stream=0');
     expect(empty.code, empty.stderr).toBe(0);
     expect(statSync(target).size).toBe(0);
     writeFileSync(target, 'old');
     upstream = () => Response.json({ status: 'fail' }, { status: 403 });
-    const denied = await run();
+    const denied = await download();
     expect(JSON.parse(denied.stderr).error.code).toBe('2006');
     expect(denied.stdout).toBe('');
     version = '22.7';
     calls = [];
-    const unsupported = await run();
+    const unsupported = await download();
     expect(JSON.parse(unsupported.stderr).error.code).toBe('2010');
     expect(calls).toEqual(['/?mode=getconfig']);
     expect(readFileSync(target, 'utf8')).toBe('old');
@@ -86,7 +86,7 @@ test('saves an empty attachment and preserves the target on HTTP and version err
 test.each(['--deadline=500', '--timeout=500'])('cleans a stalled download on %s', async limit => {
     writeFileSync(target, 'old');
     upstream = () => new Response(new ReadableStream({ start(controller) { controller.enqueue(new Uint8Array(32768)); } }));
-    const result = await run(limit);
+    const result = await download('7', limit);
     expect(result.code).toBe(1);
     expect(JSON.parse(result.stderr).error.code).toBe('5001');
     expect(result.stdout).toBe('');
@@ -101,16 +101,17 @@ test('removes partial data after a broken connection', async () => {
         controller.enqueue(new Uint8Array(32768));
         setTimeout(() => server.stop(true), 40);
     } }));
-    const broken = await run();
+    const broken = await download('/file-read-7.png');
     expect(broken.code, broken.stdout).toBe(1);
     expect(JSON.parse(broken.stderr).error.code).toBe('1002');
     expect(readFileSync(target, 'utf8')).toBe('old');
     expect(readdirSync(directory)).toEqual(['attachment.bin']);
+    expect(calls).toEqual(['/?mode=getconfig', '/api.php/v2/files/7/read?stream=0']);
 });
 
 test('reports the destination path when the parent directory is missing', async () => {
     target = join(directory, 'missing', 'attachment.bin');
-    const result = await run();
+    const result = await download();
     expect(result.code).toBe(1);
     expect(JSON.parse(result.stderr).error).toMatchObject({ code: '5005', message: expect.stringContaining(target) });
     expect(readdirSync(directory)).toEqual([]);
@@ -118,7 +119,7 @@ test('reports the destination path when the parent directory is missing', async 
 
 test('rejects incompatible output options before authentication', async () => {
     for (const flag of ['--stream=1', '--ids=7,8', '--format=raw', '--fields=id', '--html-to-markdown', '--batch-fail-fast']) {
-        const result = await run(flag);
+        const result = await download('7', flag);
         expect(result.code, flag).toBe(2);
         expect(JSON.parse(result.stderr).error.code).toBe('2009');
     }

@@ -100,6 +100,8 @@ Agent 必须实际调用禅道工具并返回业务数据，才说明配置成�
 
 要打开某个对象的页面，可以让 Agent 用 `zentao_link` 生成当前站点的链接。例如，`{"action":"create","module":"bug","method":"view","vars":["bugID=329"]}` 返回 Bug 329 的页面地址。传入 `{"action":"parse","url":"/bug-view-329.html"}` 可以查看该链接对应的模块、方法和参数。
 
+读取图片或附件时，把当前禅道站点的链接作为 `zentao_file` 的顶层 `url` 参数。例如，`{"action":"get","url":"/file-download-298.html"}` 查询文件信息，`{"action":"read","url":"/file-read-298.png"}` 返回包含 `encoding` 和 `content` 的 Base64 结果。每次调用在 URL 和文件 ID 中选择一个。
+
 使用时请注意：
 
 - **写入操作**：创建、修改或删除前，先让 Agent 展示拟操作的内容，确认后再执行。写入超时或中断后可能已经生效，先查询结果再决定是否重试。

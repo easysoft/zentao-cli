@@ -6,7 +6,8 @@ import { getMarkdownRenderer } from '../utils/markdown.js';
 import { normalizeToolParams } from '../mcp/params.js';
 import { actionContract, paginationFields } from './contract.js';
 import { batchTargets, targetId } from './targets.js';
-import type { ValueSchema } from './validation.js';
+import { isFileGid, type ValueSchema } from './validation.js';
+import { supportsFileUrl } from './file-url.js';
 
 function invalid(option: string, reason: string): never { throw new ZentaoError('E2009', { option, reason }); }
 
@@ -69,7 +70,7 @@ async function convertMarkdownInput(moduleName: string, candidates: string[], se
 
 /** Prepare and validate every input before authentication, including all batch targets. */
 export async function prepareCliParams(mod: ModuleDefinition, action: ModuleAction, target: string | undefined,
-    options: ModuleActionOptions, values: Record<string, unknown>): Promise<Record<string, unknown>> {
+    options: ModuleActionOptions, values: Record<string, unknown>, checkFileUrlSite?: (url: string) => void): Promise<Record<string, unknown>> {
     if (options.format === 'raw' && (options.ids || options.all || options.maxItems || options.pick || options.filter?.length || options.search?.length || options.sort || options.searchFields || options.htmlToMarkdown)) invalid('raw', '原始响应不能与本地处理或自动翻页组合');
     const params: Record<string, unknown> = {};
     const contract = actionContract(mod, action);
@@ -91,9 +92,16 @@ export async function prepareCliParams(mod: ModuleDefinition, action: ModuleActi
         }
     }
     const primary = contract.target;
+    let url: string | undefined;
     if (target !== undefined) {
         if (!primary) invalid('target', '此操作没有位置参数');
-        assign(primary!, parseCliValue(target, definitions.find(param => param.name === primary)!));
+        if (supportsFileUrl(mod.name, action.name) && !Number.isFinite(Number(target))
+            && !(action.name === 'get' && isFileGid(target))) {
+            if (options.ids !== undefined) invalid('ids', '--ids 与单个附件链接只能指定一个');
+            url = target;
+        } else {
+            assign(primary!, parseCliValue(target, definitions.find(param => param.name === primary)!));
+        }
     }
     if (options.data !== undefined) params.data = await resolveData(options.data);
     const pagination = paginationFields(mod, action);
@@ -111,7 +119,7 @@ export async function prepareCliParams(mod: ModuleDefinition, action: ModuleActi
             delete params[name];
         }
     }
-    const normalized = normalizeToolParams(mod, action, { ...aliases, params: ids ? { ...params, [targetId(action)!]: ids[0] } : params });
+    const normalized = normalizeToolParams(mod, action, { ...aliases, url, params: ids ? { ...params, [targetId(action)!]: ids[0] } : params }, checkFileUrlSite);
     if (options.markdown !== undefined) await convertMarkdownInput(mod.name, contract.markdownFields, options.markdown, normalized);
     if (ids) delete normalized[targetId(action)!];
     return normalized;

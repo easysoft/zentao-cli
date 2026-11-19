@@ -5,7 +5,8 @@ import { getModuleNames, getModule } from '../modules/index.js';
 import { getScopeAliasTarget } from '../mcp/params.js';
 import { actionContract, kebabCase, paginationFields } from '../modules/contract.js';
 import { parseCliValue, prepareCliParams } from '../modules/cli-input.js';
-import { ensureAuth } from '../auth/flow.js';
+import { ensureAuth, resolveAuthSource } from '../auth/flow.js';
+import { fileIdAtSite, supportsFileUrl } from '../modules/file-url.js';
 import { getProfileConfig } from '../config/store.js';
 import { downloadFile } from './file-download.js';
 import { handleModuleCommand, showModuleProps } from './module-handler.js';
@@ -29,9 +30,12 @@ export function registerModuleCommands(program: Command): void {
         for (const action of mod.actions) {
             const contract = actionContract(mod, action);
             const fileRead = name === 'file' && action.name === 'read';
+            const acceptsFileUrl = supportsFileUrl(name, action.name);
             const cmd = resource.command(kebabCase(action.name))
                 .description(`${action.display ?? action.name}（最低版本：${action.minVersion.join(' / ')}）`);
-            if (contract.target) cmd.argument('[target]', `单个 ${contract.target}；也可使用命名参数`);
+            if (contract.target) cmd.argument('[target]', acceptsFileUrl
+                ? '单个附件标识或当前站点的附件 URL，--file-id 可单独指定标识'
+                : `单个 ${contract.target}；也可使用命名参数`);
             const mappings: Array<{ name: string; attribute: string }> = [];
             const pagination = paginationFields(mod, action);
             const reserved = new Set(pagination ? [pagination.page.name, pagination.size.name] : []);
@@ -39,7 +43,7 @@ export function registerModuleCommands(program: Command): void {
                 if (reserved.has(param.name) || mappings.some(item => item.name === param.name)) continue;
                 const flag = param.flag.slice(2);
                 const option = new Option(`--${flag} ${param.type === 'boolean' ? '[boolean]' : '<value>'}`,
-                    `${param.description ?? param.name}${param.required ? '（必填）' : ''}`);
+                    `${param.description ?? param.name}${param.required && !(acceptsFileUrl && param.name === 'fileID') ? '（必填）' : ''}`);
                 if (param.type === 'array') option.argParser((value: string, previous: string[] = []) => previous.concat(value));
                 if (param.type === 'boolean') option.preset(true);
                 cmd.addOption(option);
@@ -88,8 +92,12 @@ export function registerModuleCommands(program: Command): void {
                 const parsed = command.optsWithGlobals();
                 const options: ModuleActionOptions = { ...parsed, pick: parsed.fields, recPerPage: parsed.pageSize };
                 const values = Object.fromEntries(mappings.map(item => [item.name, parsed[item.attribute]]));
-                const params = await prepareCliParams(mod, action, contract.target ? args[0] as string | undefined : undefined, options, values);
-                const { client, profile } = await ensureAuth(options);
+                let source: ReturnType<typeof resolveAuthSource> | undefined;
+                const params = await prepareCliParams(mod, action, contract.target ? args[0] as string | undefined : undefined, options, values, url => {
+                    source = resolveAuthSource(options.profile);
+                    fileIdAtSite(url, source.server);
+                });
+                const { client, profile } = await ensureAuth(options, source);
                 if (fileRead && options.output !== undefined) {
                     const format = options.format ?? getProfileConfig(profile).defaultOutputFormat;
                     if (format === 'raw') throw new ZentaoError('E2009', { option: 'output', reason: '写入文件时请使用 table、markdown 或 json 输出下载结果' });
