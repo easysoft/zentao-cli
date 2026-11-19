@@ -135,6 +135,10 @@ test('HTTP MCP blocks local images in submitted and auto-filled HTML and preserv
         expect(blockedCreate).toMatchObject(blocked);
         expect(blockedCreate).not.toHaveProperty('structuredContent.error.details');
         expect(JSON.stringify(blockedCreate.content)).not.toContain('fileWarnings');
+        for (const src of ['file:./image.png', 'file:../image.png', 'file:~/imgs/image.png']) {
+            const result = await call('create', { name: '测试产品', desc: '<img src="' + src + '">' });
+            expect(result).toMatchObject(blocked);
+        }
         expect(calls).toEqual([]);
         expect(await call('update', { productID: 1, name: '改名' })).toMatchObject(blocked);
         expect(calls).toEqual([expect.objectContaining({ method: 'GET', path: '/api.php/v2/products/1' })]);

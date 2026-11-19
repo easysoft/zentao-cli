@@ -9,6 +9,8 @@ zentao story change 11 --data '{"title":"调整后的需求","reviewer":["review
 zentao doc create-my-doc --space-id 1 --lib-id 2 --data '{"title":"说明","content":"# 正文","contentType":"doc"}'
 zentao bug create --product 1 --title 'Bug 标题' --opened-build trunk
 zentao bug update 329 --steps '这是**重现步骤**' --markdown
+zentao bug create --product 12 --opened-build trunk --title '登录失败' --steps '<img src="file:./screenshot.png" alt="登录截图">'
+zentao bug update 329 --markdown --steps '![复现截图](file:~/imgs/screenshot.png)'
 zentao story change 11 --data '{"spec":"支持**扫码登录**","verify":"<p>进入首页</p>"}' --markdown spec
 zentao story create --product-id 1 --data @body.json
 zentao story create --product-id 1 --data @- < body.json
@@ -21,6 +23,8 @@ zentao story create --product-id 1 --data @- < body.json
 story/requirement/epic 的 create/change：没有有效 reviewer 时跳过评审，状态默认 active；显式 status=draft 保留草稿。有有效 reviewer 时状态固定 reviewing。change 不自动保存原草稿状态，先核对业务意图。
 
 更新 autoFill 仅在存在匹配的详情操作时生效，只补动作声明的可写字段；显式空字符串不会被当成缺省。状态流转不自动补全。不要复制整份 GET 结果作为请求体。
+
+用户指定本地截图时，在对应 HTML 字段的图片位置写 `file:./`、`file:../`、`file:~/` 或绝对文件 URL。相对路径以命令执行目录为准。CLI 和本地 stdio MCP 会自动上传并绑定图片。保存成功后检查 `meta.fileWarnings`，向用户指出以说明文字占位的图片。
 
 分步上传编辑器图片时，每个目标对象使用独立 UID。先用 `zentao file create --file ./screenshot.png --uid "$uid" --format=json` 上传，再用同一 Token 执行支持 `--uid` 的对象保存动作。正文用 `<img src="file:42">` 引用上传返回的实际文件 ID，并传入相同的 `--uid "$uid"`。服务端需支持客户端 UID（23.0 / biz14.0 / max9.0 / ipd6.0 起，并包含 `0a4de3a66f5` 或等效修复）。
 

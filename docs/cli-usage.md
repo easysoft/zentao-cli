@@ -271,6 +271,23 @@ zentao doc create-my-doc --help
 
 首个位置参数是首个路径目标的简写，其他路径参数使用各自的 kebab-case 选项。`doc`、`my` 等没有默认 `list` 的模块，在省略操作时会显示帮助。命名的列表、详情、创建、更新和删除操作遵循各自的类型，删除操作仍需确认或显式 `--yes`。
 
+### 在富文本中插入本地图片
+
+把本地图片写在需要显示的位置。CLI 会先上传图片，再用同一 Token 和自动生成的 UID 保存对象。下面的命令将两张截图插入产品 12 的 Bug 重现步骤。
+
+```bash
+zentao bug create --product 12 --opened-build trunk --title '登录失败' \
+  --steps '<img src="file:./screenshot-1.png" alt="复现截图1"><img src="file:~/imgs/screenshot-2.png" alt="复现截图2">'
+
+zentao bug update 329 --markdown --steps '![复现截图1](file:./screenshot-1.png)'
+```
+
+- `file:./` 和 `file:../` 从命令执行目录查找，`file:~/` 从当前用户主目录查找，`file:///` 用于绝对路径。`--data @body.json` 和 `--data @-` 同样以命令执行目录解析相对路径。Markdown 路径中有空格时可写 `![截图](<file:./登录 页面.png>)`。
+- 图片保留磁盘文件名，`alt` 用作正文说明。同一文件在一次对象保存中只上传一次。`--ids` 批量更新时，每个对象使用独立 UID。本地 stdio MCP 可在 HTML 字段中使用相同路径。
+- 某张图片读取或上传失败时，其位置显示“图片未上传：说明”，省略说明时显示文件名。其他内容继续保存。JSON 输出在 `meta.fileWarnings` 中列出路径和原因，表格和 `raw` 输出将告警写入 stderr。
+
+自动关联与分步预上传使用相同的服务端 UID 机制，适用版本见下节。
+
 ### 将预上传的图片绑定到对象
 
 需要分步上传和编辑时，为每个要保存的对象生成一个 UID。上传和保存使用同一个禅道 Token，例如在两个命令中使用同一个已登录的 Profile。服务端会将该 UID 下的全部图片绑定到这次保存的对象。
@@ -315,7 +332,7 @@ zentao help bug create --format=json
 
 ### 用 Markdown 写入 HTML 字段
 
-CLI 默认按原值提交正文。加上 `--markdown` 后，CLI 会把本次提供的所有 HTML 字段从 Markdown 转为 HTML。下面这条命令提交的 `steps` 是 `这是<strong>重现步骤</strong>`。
+CLI 默认把 HTML 字段作为 HTML 输入。加上 `--markdown` 后，CLI 会把本次提供的所有 HTML 字段从 Markdown 转为 HTML。下面这条命令提交的 `steps` 是 `这是<strong>重现步骤</strong>`。
 
 ```bash
 zentao bug update 329 --steps '这是**重现步骤**' --markdown

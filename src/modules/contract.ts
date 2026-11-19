@@ -1,5 +1,5 @@
 import { getModuleActionParams } from './helper.js';
-import type { ModuleAction, ModuleDefinition } from '../types/index.js';
+import type { ModuleAction, ModuleActionParam, ModuleDefinition } from '../types/index.js';
 import { supportsBatch } from './targets.js';
 import type { ValueSchema } from './validation.js';
 
@@ -48,14 +48,20 @@ export function defaultTableFields(objectType?: string) {
     return ['id', 'title', 'name', 'status', ...(objectType === 'bug' ? ['severity'] : []), 'assignedTo'];
 }
 
+type InputParam = Pick<ModuleActionParam, 'name' | 'role' | 'textType'> & Pick<ValueSchema, 'type'>;
+
+export function htmlInputFields(moduleName: string, actionName: string,
+    parameters: readonly InputParam[] = getModuleActionParams(moduleName, actionName)): string[] {
+    // SDK 0.9 documents weekly/update.content as HTML but omits its textType.
+    return parameters.filter(param => param.role === 'body' && param.type === 'string'
+        && (param.textType === 'html' || (moduleName === 'weekly' && actionName === 'update' && param.name === 'content')))
+        .map(param => param.name);
+}
+
 export function actionContract(mod: ModuleDefinition, action: ModuleAction) {
     const parameters = actionParameters(mod, action);
     const pagination = paginationFields(mod, action);
     const target = parameters.find(param => param.role === 'path' && !['scope', 'scopeID'].includes(param.name));
-    // SDK 0.9 documents weekly/update.content as HTML but omits its textType.
-    const markdownFields = parameters.filter(param => param.role === 'body' && param.type === 'string'
-        && (param.textType === 'html' || (mod.name === 'weekly' && action.name === 'update' && param.name === 'content')))
-        .map(param => param.name);
     return {
         module: mod.name, action: action.name, command: `${mod.name} ${kebabCase(action.name)}`,
         display: action.display, type: action.type,
@@ -64,7 +70,7 @@ export function actionContract(mod: ModuleDefinition, action: ModuleAction) {
             : action.description,
         path: action.path, method: action.method, minVersion: action.minVersion,
         parameters: parameters.map(param => ({ ...param, flag: parameterFlag(param.name) })),
-        markdownFields,
+        markdownFields: htmlInputFields(mod.name, action.name, parameters),
         target: target?.name, batch: supportsBatch(action),
         pagination: pagination ? { page: pagination.page.name, pageSize: pagination.size.name } : null,
         requestBody: action.requestBody,

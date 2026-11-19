@@ -23,6 +23,7 @@ zentao help bug create --format=json
 - 简单数组可重复选项（`--lib-ids 12 --lib-ids 18`），复杂数组使用 JSON。JSON 内保留 SDK 字段名和类型。
 - 请求体使用 `--data '{"title":"示例"}'`、`--data @body.json` 或显式 `--data @-`。没有 `@-` 就不读取 stdin；POST 查询也遵守同一规则。
 - 写入富文本时，`--markdown` 将本次提供的 HTML 字段从 Markdown 转为 HTML，`--markdown spec,verify` 只转换指定字段。可选字段见动作帮助或 JSON 帮助中的 `markdownFields`。
+- 本地图片用 `<img src="file:./截图.png" alt="复现截图">` 或 Markdown 内联图片指定位置。`file:./` 和 `file:../` 相对执行目录，`file:~/` 相对用户主目录。保存时自动上传并按对象关联，缺图位置显示说明，JSON 告警见 `meta.fileWarnings`。
 - 与全局或输出选项重名的业务字段加 `data-` 前缀，例如 `task update 123 --data-deadline 2026-10-30` 和工作流的 `--data-fields`；JSON 字段名保持原样。
 - 未知字段、非法值、重复来源冲突和多个范围会在认证之前失败。省略、空字符串与 null 不混同；null 仅在 schema 允许时有效。
 - `--ids 123,124` 仅用于支持批量的对象操作，与单个目标互斥，先校验全部 ID 再去重。创建多条记录请显式逐条调用 create，不将对象 ID 当成批量创建输入。
@@ -39,6 +40,8 @@ zentao profile use 'admin@https://zentao.example.com'
 zentao auth status --verify --format=json
 zentao --profile 'admin@https://zentao.example.com' product list --page-size 20
 zentao bug create --product 12 --title '登录失败' --opened-build trunk
+zentao bug create --product 12 --title '登录失败' --opened-build trunk --steps '<img src="file:~/imgs/login.png" alt="登录截图">'
+zentao bug update 329 --markdown --steps '![复现截图](file:./screenshot.png)'
 cat query.json | zentao db query --data @- --format=json
 zentao knowledge search --keywords 登录 --keywords 超时 --lib-ids 12 --page 2
 zentao bug resolve --ids 123,124 --resolution fixed --format=json

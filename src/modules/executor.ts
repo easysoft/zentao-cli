@@ -17,6 +17,7 @@ import { ZentaoError } from '../errors.js';
 import { canAutoFill, defaultTableFields, paginationFields } from './contract.js';
 import { validateValue } from './validation.js';
 import { localUploadsBlocked } from './file-policy.js';
+import { setHtmlImageInputs } from './html-images.js';
 
 export interface ModuleExecutionResult {
     /** 解析到的动作定义 */
@@ -117,13 +118,14 @@ export async function executeModuleCommand(
     const processList = shouldProcess && action.type === 'list';
     const processSingle = shouldProcess && action.type === 'get';
     const rawFileWarnings: FileWarning[] = [];
+    setHtmlImageInputs(module.name, action, params);
 
     const requestOptions: RequestOptions = {
         client,
         actionAssistant: options.assistant,
         autoFill: canAutoFill(module, action),
         throwOnFail: true,
-        continueOnFileUploadError: localUploadsBlocked() ? false : undefined,
+        continueOnFileUploadError: !localUploadsBlocked(),
         onFileError: rawOutput ? warning => { rawFileWarnings.push(warning); } : undefined,
         recPerPage: pagination ? String(getParam(pagination.size.name)) : undefined,
         timeout: options.timeout,

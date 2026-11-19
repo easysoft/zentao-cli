@@ -8,6 +8,10 @@ test.each([
     ['- 登录\n- 保存', '<ul>\n<li>登录</li>\n<li>保存</li>\n</ul>\n'],
     ['```\n<code>\n```', '<pre><code>&lt;code&gt;\n</code></pre>\n'],
     ['', ''],
+    ['![**截图**](<file:~/相 册/图.png> "预览")', '<img src="file:~/相 册/图.png" alt="截图" title="预览">'],
+    ['![已有](file:42)', '<img src="file:42" alt="已有">'],
+    ['[链接](file:./a.png) ![站内](../a.png)', '[链接](file:./a.png) <img src="../a.png" alt="站内">'],
+    ['```\n![图片](file:./a.png)\n```', '<pre><code>![图片](file:./a.png)\n</code></pre>\n'],
 ])('renders Markdown field %j', async (input, expected) => {
     const render = await getMarkdownRenderer();
     expect(render(input)).toBe(expected);
