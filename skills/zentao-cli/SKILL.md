@@ -61,6 +61,22 @@ zentao doc my-docs --space-id 1 --lib-id 2
 
 业务字段同时支持空格与等号赋值。简单数组重复选项，复杂数组使用 JSON；所有未知字段、冲突输入和非法值会在认证前报错。多个路径参数分别提供，位置参数只代表帮助中声明的第一个目标。
 
+## 通过链接读取或下载附件
+
+把禅道图片地址或附件下载链接直接传给 `zentao file read`。相对链接按当前站点解析，完整链接须匹配所选站点的协议、主机、端口和安装目录。用 `--format=json` 读取时，`data` 是 Base64 编码的文件内容。用 `--output` 下载时，CLI 将原文件保存到指定路径。
+
+```bash
+zentao file read '/file-read-298.png' --format=json
+zentao file read '/index.php?module=file&method=read&fileID=298' --output ./截图.png
+zentao file read 'https://zentao.example.com/zentao/file-download-312.html' --output ./需求说明.pdf
+```
+
+## 工时单位
+
+禅道 API 以小时读写所有工时，包括任务的预计、消耗和剩余工时。用户按天报工时时，先在目标站点执行 `zentao setting work-hours --format=json`。返回的 `dailyWorkHours` 是每天可用的小时数，`effortUnit` 只决定前端默认显示单位（`day` 为天，`hour` 为小时）。
+
+将天数乘以 `dailyWorkHours`，再用换算后的小时数调用写入 API。例如，若 `dailyWorkHours` 为 7.5，用户要求把任务 42 的预计工时改为 2 天，就执行 `zentao task update 42 --estimate 15`。若查询未返回每日可用工时，先向用户确认每天的小时数。用户明确给出小时数时直接使用原值。
+
 ## 执行与核实
 
 Agent 发起 API 操作时，通过全局 `--assistant` 标注自身，例如 `zentao --assistant 'AI <codex 0.164.0, model: gpt-6.1-sol>' product list`。名称、版本和模型须使用当前已确认的信息；示例不能照抄，未知版本或模型省略，例如 `AI <codex>`。MCP 工具使用同义的顶层 `assistant` 字符串参数。用户要求关闭标记时传空字符串，不自行恢复；不要为添加标记修改用户的持久配置。标记须符合 HTTP 请求头字符限制，不能使用中文或换行。
